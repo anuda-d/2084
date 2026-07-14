@@ -110,3 +110,17 @@ runtime-specific hashing, hidden entropy, and unspecified mutable PRNG state,
 but deliberately leaves the seed contract and any derivation algorithm
 unresolved. The existing seam remains a single transition with one explicit
 integer seed.
+
+## Explicit per-transition seed candidate
+
+[Explicit per-transition seed candidate proposal](explicit_transition_seed_candidate.md)
+makes Contract A locally testable for one possible later repeated-step
+experiment. It provisionally defines zero-based logical step identities, one
+explicit `transition` stream, ordered seed inputs, prefix/suffix resume,
+pre-mutation validation, adjacent diagnostic traces, and the concrete evidence
+needed for the comparison note's seven acceptance tests.
+
+This is still documentation, not a runtime implementation or project-wide seed
+decision. Its identity, resume, diagnostic, and branch rules are deliberately
+candidate-local and reversible. It does not change `apply_transition`, replay
+record data, source-linked history, commands, dependencies, or runtime behavior.
