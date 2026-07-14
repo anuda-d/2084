@@ -65,7 +65,22 @@ standard-library test command above, or just this scenario's tests:
 python3 -m unittest experiments.tests.test_focal_life_scenario
 ```
 
-No new command or dependency is needed.
+A bounded normal-perspective transcript makes the fixed sequence watchable from
+the repository root:
+
+```bash
+python3 -m experiments.focal_life_observer
+```
+
+The transcript shows the focal need and request limit, source-linked direct and
+official observations, both selected actions with reasons retained by their
+decision traces, and both delivered outcomes. Its normal perspective uses the
+focal character's observations, need, decisions, and delivered outcome
+evidence. It does not show objective shelf or commitment values, remaining
+allocatable supply, or the raw omniscient event stream, and it does not tell the
+character why the delivered supply was constrained. This boundary is covered
+through the public transcript renderer and runnable module command using only
+the Python standard library.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, follow-up choice, and follow-up response are all provisional.
@@ -73,7 +88,9 @@ This is one fixed scenario with two decisions and two resolved attempts, not a
 repeated loop, belief or memory update, institution model, diary or UI, AI
 behavior, persistence/replay format, permanent setting, or claim that a human
 mind is being simulated. It does not choose a third activity after the delivered
-follow-up outcome or prescribe resistance or any other story.
+follow-up outcome or prescribe resistance or any other story. The transcript is
+not a general observer interface, authorization boundary, interactive view, or
+graphical UI.
 
 ## Replay record
 
