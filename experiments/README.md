@@ -140,12 +140,27 @@ choice between explicit seeds and stable versioned derivation.
 [Explicit per-transition seed candidate assessment](explicit_transition_seed_assessment.md)
 maps all seven shared acceptance tests to the candidate implementation and its
 tests, then records the corresponding Contract B evidence status. Contract A
-has bounded evidence for this generic in-memory experiment. Contract B still
-has no derivation algorithm, canonical encoding, version contract,
-implementation, or executable evidence, so the assessment does not select a
-project-wide seed contract.
+has bounded evidence for this generic in-memory experiment. The assessment
+records that Contract B had no concrete candidate at that point, so it does not
+select a project-wide seed contract.
 
-The smallest recommended follow-up is a reversible, documentation-only
-Contract B candidate proposal that makes those derivation details concrete and
-maps them to the same tests. It should leave product identity, branching,
-persistence, and the eventual seed-contract decision open.
+The assessment's recommended documentation-only follow-up is now the candidate
+proposal indexed below. Contract B still has no implementation or executable
+evidence.
+
+## Deterministic transition seed candidate
+
+[Deterministic transition seed candidate proposal](deterministic_transition_seed_candidate.md)
+makes one Contract B candidate precise enough for a later bounded experiment.
+It defines candidate-local unsigned 64-bit run seeds and zero-based steps, the
+single `transition` stream, derivation version 1, a byte-for-byte canonical
+encoding, and a platform-stable SHA-256 derivation whose first eight digest
+bytes become the effective unsigned 64-bit seed. It also specifies retained
+diagnostic evidence, validation-before-mutation, prefix/suffix resume rules, and
+concrete evidence for the same seven shared acceptance tests.
+
+This is a provisional, reversible, documentation-only candidate. It does not
+implement derivation, authorize repeated stepping, select Contract B, or change
+runtime code, tests, commands, dependencies, product behavior or identities,
+branching, persistence, replay schema, core philosophy, or the existing
+transition and history seams.
