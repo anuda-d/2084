@@ -114,13 +114,23 @@ integer seed.
 ## Explicit per-transition seed candidate
 
 [Explicit per-transition seed candidate proposal](explicit_transition_seed_candidate.md)
-makes Contract A locally testable for one possible later repeated-step
-experiment. It provisionally defines zero-based logical step identities, one
-explicit `transition` stream, ordered seed inputs, prefix/suffix resume,
-pre-mutation validation, adjacent diagnostic traces, and the concrete evidence
-needed for the comparison note's seven acceptance tests.
+makes Contract A locally testable. `explicit_transition_seed_run.py` implements
+that bounded candidate by coordinating repeated calls to the unchanged
+`apply_transition` against `SourceLinkedHistory`. Fresh execution validates a
+complete immutable input tuple before creating history, directly supplies each
+retained integer seed, chains immutable states, and returns complete immutable
+events and adjacent traces containing the exact step, `transition` stream,
+seed, and event.
 
-This is still documentation, not a runtime implementation or project-wide seed
-decision. Its identity, resume, diagnostic, and branch rules are deliberately
-candidate-local and reversible. It does not change `apply_transition`, replay
-record data, source-linked history, commands, dependencies, or runtime behavior.
+The candidate also validates reproduction metadata before execution and checks
+the resulting final state, events, and traces. A validated in-memory prefix can
+be rebuilt and resumed with an original, unrenumbered suffix; inconsistent
+prefix state, history, trace, or suffix metadata fails before rebuilding or
+appending history. Standard-library tests cover the proposal's seven evidence
+categories, including modulo-collision seeds, unrelated randomness, differing
+Python hash seeds, and failure-before-mutation cases.
+
+This remains a reversible candidate-local experiment, not a project-wide seed
+decision or production simulation loop. It does not change `apply_transition`,
+`SourceLinkedHistory`, replay record data, commands, dependencies, or the open
+choice between explicit seeds and stable versioned derivation.
