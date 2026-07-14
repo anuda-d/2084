@@ -9,12 +9,151 @@ from experiments.focal_life_scenario import (
     choose_allocation_request,
     choose_follow_up_after_allocation,
     resolve_allocation_request,
+    resolve_follow_up_choice,
     run_provisional_focal_life_scenario,
 )
 from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_follow_up_resolution_records_attempt_and_objectively_constrained_outcome(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        objective = ObjectiveAllocation(
+            availability_event_id=availability.event_id,
+            shelf_units=2,
+            committed_units=1,
+        )
+        request = AllocationRequest(
+            requested_units=2,
+            trace=run_provisional_focal_life_scenario().request.trace,
+        )
+        prior_resolution = resolve_allocation_request(
+            history=history,
+            request=request,
+            objective_allocation=objective,
+            tick=2,
+        )
+        handover = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=prior_resolution.consequence_event.event_id,
+            source="direct handover",
+            delivery_tick=2,
+            details={
+                "evidence_kind": "allocation_handover",
+                "granted_units": prior_resolution.granted_units,
+                "unfilled_units": prior_resolution.unfilled_units,
+            },
+        )
+        need = AllocationNeed(required_units=3, maximum_request_units=3)
+        decision = choose_follow_up_after_allocation((handover,), need)
+
+        resolution = resolve_follow_up_choice(
+            history=history,
+            decision=decision,
+            selected_handover=handover,
+            prior_resolution=prior_resolution,
+            objective_allocation=objective,
+            tick=3,
+        )
+
+        self.assertEqual(decision.choice, "seek_remaining_allocation")
+        self.assertEqual(resolution.attempted_event.details["choice"], decision.choice)
+        self.assertEqual(
+            resolution.attempted_event.details["selected_observation_id"],
+            handover.observation_id,
+        )
+        self.assertEqual(
+            resolution.attempted_event.details["prior_consequence_event_id"],
+            prior_resolution.consequence_event.event_id,
+        )
+        self.assertEqual(
+            resolution.outcome_event.details["attempted_event_id"],
+            resolution.attempted_event.event_id,
+        )
+        self.assertEqual(resolution.outcome_event.details["remaining_allocatable_units"], 0)
+        self.assertEqual(resolution.granted_units, 0)
+        self.assertEqual(resolution.unfilled_units, 2)
+
+    def test_invalid_follow_up_resolution_evidence_fails_before_history_mutation(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        objective = ObjectiveAllocation(
+            availability_event_id=availability.event_id,
+            shelf_units=2,
+            committed_units=1,
+        )
+        request = AllocationRequest(
+            requested_units=2,
+            trace=run_provisional_focal_life_scenario().request.trace,
+        )
+        prior_resolution = resolve_allocation_request(
+            history=history,
+            request=request,
+            objective_allocation=objective,
+            tick=2,
+        )
+        handover = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=prior_resolution.consequence_event.event_id,
+            source="direct handover",
+            delivery_tick=2,
+            details={
+                "evidence_kind": "allocation_handover",
+                "granted_units": 1,
+                "unfilled_units": 1,
+            },
+        )
+        decision = choose_follow_up_after_allocation(
+            (handover,),
+            AllocationNeed(required_units=3, maximum_request_units=3),
+        )
+        object.__setattr__(decision.trace, "observed_granted_units", True)
+        events_before_resolution = history.events()
+
+        with self.assertRaisesRegex(ValueError, "observed_granted_units"):
+            resolve_follow_up_choice(
+                history=history,
+                decision=decision,
+                selected_handover=handover,
+                prior_resolution=prior_resolution,
+                objective_allocation=objective,
+                tick=3,
+            )
+
+        self.assertEqual(history.events(), events_before_resolution)
+
+        object.__setattr__(decision.trace, "observed_granted_units", 1)
+        object.__setattr__(
+            prior_resolution.attempted_event,
+            "details",
+            {
+                "availability_event_id": availability.event_id,
+                "requested_units": 99,
+            },
+        )
+        corrupted_events = history.events()
+
+        with self.assertRaisesRegex(ValueError, "prior resolution evidence"):
+            resolve_follow_up_choice(
+                history=history,
+                decision=decision,
+                selected_handover=handover,
+                prior_resolution=prior_resolution,
+                objective_allocation=objective,
+                tick=3,
+            )
+
+        self.assertEqual(history.events(), corrupted_events)
+
     def test_follow_up_choice_changes_with_delivered_grant(self):
         history = SourceLinkedHistory()
         partial_event = history.record_event(
@@ -87,6 +226,35 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(evidence.follow_up.trace.required_units, 3)
         self.assertIn("latest handover", evidence.follow_up.trace.rule)
 
+    def test_scenario_delivers_only_understandable_follow_up_outcome(self):
+        evidence = run_provisional_focal_life_scenario()
+        handover = evidence.follow_up_observations[-1]
+        resolution = evidence.follow_up_resolution
+        outcome = evidence.follow_up_outcome_observation
+
+        self.assertEqual(evidence.follow_up.choice, "seek_remaining_allocation")
+        self.assertEqual(
+            resolution.attempted_event.details["selected_observation_id"],
+            handover.observation_id,
+        )
+        self.assertEqual(
+            resolution.attempted_event.details["prior_consequence_event_id"],
+            evidence.resolution.consequence_event.event_id,
+        )
+        self.assertEqual(outcome.event_id, resolution.outcome_event.event_id)
+        self.assertEqual(
+            outcome.details,
+            {
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 0,
+                "unfilled_units": 2,
+            },
+        )
+        self.assertNotIn("committed_units", outcome.details)
+        self.assertNotIn("shelf_units", outcome.details)
+        self.assertNotIn("remaining_allocatable_units", outcome.details)
+        self.assertEqual(evidence.focal_observations[-1], outcome)
+
     def test_follow_up_rejects_invalid_public_inputs(self):
         history = SourceLinkedHistory()
         event = history.record_event(
@@ -114,8 +282,15 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
     def test_scenario_separates_objective_state_claims_and_observations(self):
         evidence = run_provisional_focal_life_scenario()
-        availability, official_claim, attempted, consequence = evidence.events
-        direct, official, handover = evidence.focal_observations
+        (
+            availability,
+            official_claim,
+            attempted,
+            consequence,
+            follow_up_attempted,
+            follow_up_outcome,
+        ) = evidence.events
+        direct, official, handover, outcome_observation = evidence.focal_observations
 
         self.assertEqual(availability.kind, "provisional_shelf_availability")
         self.assertEqual(availability.details["shelf_units"], 2)
@@ -131,10 +306,13 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID, FOCAL_AGENT_ID, FOCAL_AGENT_ID),
+            (FOCAL_AGENT_ID,) * 4,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
+        self.assertEqual(follow_up_attempted.kind, "provisional_follow_up_attempted")
+        self.assertEqual(follow_up_outcome.kind, "provisional_follow_up_resolved")
+        self.assertEqual(outcome_observation.event_id, follow_up_outcome.event_id)
 
     def test_decision_uses_only_filtered_observations_and_need_constraints(self):
         evidence = run_provisional_focal_life_scenario()
@@ -240,11 +418,15 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 4)
-        self.assertEqual(len(first.focal_observations), 3)
+        self.assertEqual(len(first.events), 6)
+        self.assertEqual(len(first.focal_observations), 4)
+        self.assertEqual(
+            first.focal_observations[2].details["granted_units"],
+            first.resolution.granted_units,
+        )
         self.assertEqual(
             first.focal_observations[-1].details["granted_units"],
-            first.resolution.granted_units,
+            first.follow_up_resolution.granted_units,
         )
         self.assertIn("prefer latest direct", first.request.trace.rule)
 

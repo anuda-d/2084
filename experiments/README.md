@@ -41,7 +41,20 @@ character's filtered observations and the same need. Its provisional local rule
 waits when no handover was delivered, seeks the remaining allocation after a
 partial handover, and otherwise continues an ordinary task. The decision trace
 retains the selected handover observation, observed grant, need, remaining
-amount, and rule; it does not declare that the later choice succeeds.
+amount, and rule; it does not declare that the later choice succeeds. A public
+follow-up resolver separately records the selected attempt and its outcome. It
+links the attempt to the selected handover and prior consequence, then computes
+remaining allocatable supply from the original objective allocation minus the
+prior grant. In the fixed example, the first grant exhausted that supply, so
+the later request receives zero units and leaves two unfilled.
+
+The focal character receives a source-linked follow-up outcome containing only
+the understandable grant and shortfall. Objective shelf, commitment, and
+remaining-allocation values remain in omniscient event evidence rather than in
+the delivered observation. The resolver validates its public inputs and all
+linked allocation, prior-resolution, handover, and decision evidence before it
+appends either follow-up event; corrupt or inconsistent evidence therefore
+cannot leave a partial attempt in history.
 
 Tests independently vary delivered partial, sufficient, and absent handovers to
 show that the later choice changes with perceived consequences rather than a
@@ -55,12 +68,12 @@ python3 -m unittest experiments.tests.test_focal_life_scenario
 No new command or dependency is needed.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
-allocation rule, and follow-up choices are all provisional. This is one fixed
-scenario with two decisions, not a repeated loop, belief or memory update,
-institution model, diary or UI, AI behavior, persistence/replay format,
-permanent setting, or claim that a human mind is being simulated. The follow-up
-is not resolved into another world consequence, and the scenario does not
-prescribe resistance or any other story.
+allocation rule, follow-up choice, and follow-up response are all provisional.
+This is one fixed scenario with two decisions and two resolved attempts, not a
+repeated loop, belief or memory update, institution model, diary or UI, AI
+behavior, persistence/replay format, permanent setting, or claim that a human
+mind is being simulated. It does not choose a third activity after the delivered
+follow-up outcome or prescribe resistance or any other story.
 
 ## Replay record
 

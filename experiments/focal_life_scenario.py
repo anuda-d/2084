@@ -126,6 +126,16 @@ class FollowUpDecision:
 
 
 @dataclass(frozen=True)
+class FollowUpResolution:
+    """Objective result recorded separately from one follow-up choice."""
+
+    attempted_event: WorldEvent
+    outcome_event: WorldEvent
+    granted_units: int
+    unfilled_units: int
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -138,6 +148,8 @@ class FocalLifeScenarioEvidence:
     focal_observations: Tuple[Observation, ...]
     follow_up_observations: Tuple[Observation, ...]
     follow_up: FollowUpDecision
+    follow_up_resolution: FollowUpResolution
+    follow_up_outcome_observation: Observation
 
 
 def choose_allocation_request(
@@ -321,6 +333,149 @@ def resolve_allocation_request(
     )
 
 
+def resolve_follow_up_choice(
+    *,
+    history: SourceLinkedHistory,
+    decision: FollowUpDecision,
+    selected_handover: Observation,
+    prior_resolution: AllocationResolution,
+    objective_allocation: ObjectiveAllocation,
+    tick: int,
+) -> FollowUpResolution:
+    """Resolve the provisional seek choice against remaining objective supply."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(decision, FollowUpDecision):
+        raise TypeError("decision must be a FollowUpDecision")
+    if not isinstance(decision.trace, FollowUpDecisionTrace):
+        raise TypeError("decision trace must be a FollowUpDecisionTrace")
+    if not isinstance(selected_handover, Observation):
+        raise TypeError("selected_handover must be an Observation")
+    if not isinstance(prior_resolution, AllocationResolution):
+        raise TypeError("prior_resolution must be an AllocationResolution")
+    if not isinstance(objective_allocation, ObjectiveAllocation):
+        raise TypeError("objective_allocation must be an ObjectiveAllocation")
+    _require_units(tick, "tick")
+
+    events = history.events()
+    observations = history.observations()
+    availability_event = next(
+        (
+            event
+            for event in events
+            if event.event_id == objective_allocation.availability_event_id
+        ),
+        None,
+    )
+    if availability_event is None:
+        raise ValueError("objective allocation must refer to a recorded event")
+    if (
+        availability_event.details.get("shelf_units")
+        != objective_allocation.shelf_units
+        or availability_event.details.get("committed_units")
+        != objective_allocation.committed_units
+    ):
+        raise ValueError("objective allocation must match its recorded event")
+    if prior_resolution.attempted_event not in events:
+        raise ValueError("prior attempted event must be recorded in history")
+    if prior_resolution.consequence_event not in events:
+        raise ValueError("prior consequence event must be recorded in history")
+    prior_attempt_details = prior_resolution.attempted_event.details
+    prior_details = prior_resolution.consequence_event.details
+    prior_requested_units = prior_attempt_details.get("requested_units")
+    _require_units(prior_requested_units, "prior requested_units")
+    _require_units(prior_resolution.granted_units, "prior granted_units")
+    _require_units(prior_resolution.unfilled_units, "prior unfilled_units")
+    if (
+        prior_attempt_details.get("availability_event_id")
+        != objective_allocation.availability_event_id
+        or prior_details.get("attempted_event_id")
+        != prior_resolution.attempted_event.event_id
+        or prior_details.get("shelf_units") != objective_allocation.shelf_units
+        or prior_details.get("committed_units")
+        != objective_allocation.committed_units
+        or prior_details.get("allocatable_units")
+        != objective_allocation.allocatable_units
+        or prior_details.get("requested_units") != prior_requested_units
+        or prior_details.get("granted_units") != prior_resolution.granted_units
+        or prior_details.get("unfilled_units") != prior_resolution.unfilled_units
+        or prior_resolution.granted_units
+        != min(prior_requested_units, objective_allocation.allocatable_units)
+        or prior_resolution.unfilled_units
+        != prior_requested_units - prior_resolution.granted_units
+    ):
+        raise ValueError("prior resolution evidence is inconsistent")
+    if prior_resolution.granted_units > objective_allocation.allocatable_units:
+        raise ValueError("prior grant exceeds objective allocation")
+    if selected_handover not in observations:
+        raise ValueError("selected handover must be recorded in history")
+    if (
+        selected_handover.agent_id != FOCAL_AGENT_ID
+        or selected_handover.event_id != prior_resolution.consequence_event.event_id
+        or selected_handover.details.get("evidence_kind") != "allocation_handover"
+        or selected_handover.details.get("granted_units")
+        != prior_resolution.granted_units
+        or selected_handover.details.get("unfilled_units")
+        != prior_resolution.unfilled_units
+    ):
+        raise ValueError("selected handover is inconsistent with prior resolution")
+
+    trace = decision.trace
+    _require_units(
+        trace.observed_granted_units,
+        "follow-up observed_granted_units",
+    )
+    _require_units(trace.required_units, "follow-up required_units")
+    _require_units(trace.remaining_units, "follow-up remaining_units")
+    if (
+        decision.choice != "seek_remaining_allocation"
+        or trace.selected_observation_id != selected_handover.observation_id
+        or trace.observed_granted_units != prior_resolution.granted_units
+        or trace.remaining_units
+        != max(trace.required_units - prior_resolution.granted_units, 0)
+    ):
+        raise ValueError("follow-up decision is inconsistent with selected handover")
+    if tick < max(
+        prior_resolution.consequence_event.tick,
+        selected_handover.delivery_tick,
+    ):
+        raise ValueError("follow-up resolution cannot precede its evidence")
+
+    attempted_event = history.record_event(
+        tick=tick,
+        kind="provisional_follow_up_attempted",
+        details={
+            "choice": decision.choice,
+            "selected_observation_id": selected_handover.observation_id,
+            "prior_consequence_event_id": prior_resolution.consequence_event.event_id,
+            "requested_units": trace.remaining_units,
+        },
+    )
+    remaining_allocatable_units = (
+        objective_allocation.allocatable_units - prior_resolution.granted_units
+    )
+    granted_units = min(trace.remaining_units, remaining_allocatable_units)
+    unfilled_units = trace.remaining_units - granted_units
+    outcome_event = history.record_event(
+        tick=tick,
+        kind="provisional_follow_up_resolved",
+        details={
+            "attempted_event_id": attempted_event.event_id,
+            "prior_consequence_event_id": prior_resolution.consequence_event.event_id,
+            "remaining_allocatable_units": remaining_allocatable_units,
+            "requested_units": trace.remaining_units,
+            "granted_units": granted_units,
+            "unfilled_units": unfilled_units,
+        },
+    )
+    return FollowUpResolution(
+        attempted_event=attempted_event,
+        outcome_event=outcome_event,
+        granted_units=granted_units,
+        unfilled_units=unfilled_units,
+    )
+
+
 def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
     """Run the fixed example and return its complete development evidence."""
     history = SourceLinkedHistory()
@@ -377,6 +532,25 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
     )
     follow_up_observations = history.observations_for(FOCAL_AGENT_ID)
     follow_up = choose_follow_up_after_allocation(follow_up_observations, need)
+    follow_up_resolution = resolve_follow_up_choice(
+        history=history,
+        decision=follow_up,
+        selected_handover=follow_up_observations[-1],
+        prior_resolution=resolution,
+        objective_allocation=objective_allocation,
+        tick=4,
+    )
+    follow_up_outcome_observation = history.deliver_observation(
+        agent_id=FOCAL_AGENT_ID,
+        event_id=follow_up_resolution.outcome_event.event_id,
+        source="direct allocation outcome",
+        delivery_tick=4,
+        details={
+            "evidence_kind": "follow_up_allocation_outcome",
+            "granted_units": follow_up_resolution.granted_units,
+            "unfilled_units": follow_up_resolution.unfilled_units,
+        },
+    )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -384,7 +558,9 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         request=request,
         resolution=resolution,
         events=history.events(),
-        focal_observations=follow_up_observations,
+        focal_observations=history.observations_for(FOCAL_AGENT_ID),
         follow_up_observations=follow_up_observations,
         follow_up=follow_up,
+        follow_up_resolution=follow_up_resolution,
+        follow_up_outcome_observation=follow_up_outcome_observation,
     )
