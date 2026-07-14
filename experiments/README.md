@@ -96,3 +96,17 @@ Event and observation identifiers remain deterministic in-memory counters, and
 details and configuration accept only scalar, mapping, and sequence values that
 can be copied into immutable containers. Replay does not settle authorization
 for omniscient history and projections.
+
+## Repeated-step seed contract comparison
+
+[Repeated-step seed contract comparison](repeated_step_seed_contracts.md)
+compares explicit per-transition seeds with a stable, versioned deterministic
+derivation from a run seed plus explicit step and stream identities. It defines
+retained inputs, resume and branching implications, inspectability and failure
+expectations, and observable acceptance tests for either possible contract.
+
+This is a design note, not an implementation or decision. It rejects
+runtime-specific hashing, hidden entropy, and unspecified mutable PRNG state,
+but deliberately leaves the seed contract and any derivation algorithm
+unresolved. The existing seam remains a single transition with one explicit
+integer seed.
