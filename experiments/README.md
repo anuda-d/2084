@@ -134,3 +134,18 @@ This remains a reversible candidate-local experiment, not a project-wide seed
 decision or production simulation loop. It does not change `apply_transition`,
 `SourceLinkedHistory`, replay record data, commands, dependencies, or the open
 choice between explicit seeds and stable versioned derivation.
+
+## Post-experiment seed assessment
+
+[Explicit per-transition seed candidate assessment](explicit_transition_seed_assessment.md)
+maps all seven shared acceptance tests to the candidate implementation and its
+tests, then records the corresponding Contract B evidence status. Contract A
+has bounded evidence for this generic in-memory experiment. Contract B still
+has no derivation algorithm, canonical encoding, version contract,
+implementation, or executable evidence, so the assessment does not select a
+project-wide seed contract.
+
+The smallest recommended follow-up is a reversible, documentation-only
+Contract B candidate proposal that makes those derivation details concrete and
+maps them to the same tests. It should leave product identity, branching,
+persistence, and the eventual seed-contract decision open.
