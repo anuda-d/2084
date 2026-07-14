@@ -55,6 +55,27 @@ selection, deterministic repetition on fresh histories, validation before
 history mutation, and returned-data immutability. No additional command or
 dependency is required.
 
+## Single-transition replay
+
+`single_transition_replay.py` provisionally composes the existing replay record
+and deterministic integer transition. `SingleTransitionReplay.capture` retains
+a detached immutable copy of the initial `GenericIntegerState` alongside an
+unchanged `ReplayRecord`. The record configuration must contain exactly
+`deltas` and `event_kind`, and the record must contain exactly one objective
+event.
+
+`reproduce` reconstructs `TransitionConfiguration` from the record, invokes the
+existing `apply_transition` with the retained seed and state against a fresh
+`SourceLinkedHistory`, and returns the transition result only when that fresh
+history's complete objective event sequence exactly equals the record's event
+sequence. Invalid retained inputs raise `SingleTransitionReplayInputError`.
+Valid inputs that produce a different event raise
+`SingleTransitionReplayMismatchError`, which exposes immutable recorded and
+reproduced event tuples for diagnosis. Neither path mutates the caller's state,
+the replay record, or the history from which the record was captured. The
+standard-library command above exercises the worked example and mismatch paths;
+no command or dependency changes are required.
+
 ### Explicit limitations
 
 The single integer transition is not a repeated simulation loop, decision or
@@ -64,9 +85,14 @@ seed is a deterministic selector, not a claim about a future randomness
 strategy. The transition records at the prior state tick plus one; this local
 choice does not impose repository-wide monotonic event chronology.
 
-The replay record replays recorded history; it does not reproduce decisions or
-transitions from their inputs. Its structured-data shape is not a permanent
-schema. Event and observation identifiers remain deterministic in-memory
-counters, and details and configuration accept only scalar, mapping, and
-sequence values that can be copied into immutable containers. Replay does not
-settle authorization for omniscient history and projections.
+The replay record itself still only rebuilds recorded history. The composed
+single-transition seam reproduces exactly one generic integer transition; it is
+not repeated stepping, seed evolution, decision replay, portable persistence,
+or a permanent state/schema design. The retained initial state is in-memory and
+does not alter the replay record's version or structured-data shape. The seam
+compares objective events only: any observations already retained by the record
+remain untouched and are neither recreated nor treated as agent knowledge.
+Event and observation identifiers remain deterministic in-memory counters, and
+details and configuration accept only scalar, mapping, and sequence values that
+can be copied into immutable containers. Replay does not settle authorization
+for omniscient history and projections.
