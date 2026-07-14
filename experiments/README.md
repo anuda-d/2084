@@ -21,6 +21,32 @@ python3 -m unittest discover -s experiments/tests -p 'test_*.py'
 The repository-wide `scripts/check.sh` command runs the same suite. Python 3 is
 required; no third-party test runner or package installation is needed.
 
+## Provisional focal-life scenario
+
+`focal_life_scenario.py` composes source-linked history into one deterministic,
+ordinary allocation example. A provisional focal character directly sees two
+units while an official notice claims four are available. The objective record
+also retains one prior commitment that is not delivered to the character. A
+transparent rule prefers direct availability evidence, then caps a request by
+the observed value, the character's need, and its request limit. The decision
+accepts only the character's filtered observations and those need constraints;
+its trace retains the observation identifiers and values it used.
+
+World resolution is separate from request selection. It records the attempted
+request, limits the grant using objective shelf and commitment values, records
+the resulting grant and shortfall, and delivers the handover result to the
+focal character. Invalid or Boolean request quantities are rejected before any
+resolution event is recorded. Tests vary both the need and delivered
+observations to show that the request is policy-driven rather than a prescribed
+outcome. Run the existing standard-library test command above; no new command
+or dependency is needed.
+
+The character, location vocabulary, quantities, commitment, evidence priority,
+and allocation rule are all provisional. This is one fixed scenario, not a
+repeated loop, belief or memory update, institution model, diary or UI, AI
+behavior, persistence/replay format, permanent setting, or claim that a human
+mind is being simulated. It does not prescribe resistance or any other story.
+
 ## Replay record
 
 `replay_record.py` adds a provisional in-memory record around source-linked
