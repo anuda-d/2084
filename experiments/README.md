@@ -36,16 +36,31 @@ World resolution is separate from request selection. It records the attempted
 request, limits the grant using objective shelf and commitment values, records
 the resulting grant and shortfall, and delivers the handover result to the
 focal character. Invalid or Boolean request quantities are rejected before any
-resolution event is recorded. Tests vary both the need and delivered
-observations to show that the request is policy-driven rather than a prescribed
-outcome. Run the existing standard-library test command above; no new command
-or dependency is needed.
+resolution event is recorded. A second public decision then uses only the
+character's filtered observations and the same need. Its provisional local rule
+waits when no handover was delivered, seeks the remaining allocation after a
+partial handover, and otherwise continues an ordinary task. The decision trace
+retains the selected handover observation, observed grant, need, remaining
+amount, and rule; it does not declare that the later choice succeeds.
+
+Tests independently vary delivered partial, sufficient, and absent handovers to
+show that the later choice changes with perceived consequences rather than a
+prescribed story. They also exercise invalid public inputs. Run the
+standard-library test command above, or just this scenario's tests:
+
+```bash
+python3 -m unittest experiments.tests.test_focal_life_scenario
+```
+
+No new command or dependency is needed.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
-and allocation rule are all provisional. This is one fixed scenario, not a
-repeated loop, belief or memory update, institution model, diary or UI, AI
-behavior, persistence/replay format, permanent setting, or claim that a human
-mind is being simulated. It does not prescribe resistance or any other story.
+allocation rule, and follow-up choices are all provisional. This is one fixed
+scenario with two decisions, not a repeated loop, belief or memory update,
+institution model, diary or UI, AI behavior, persistence/replay format,
+permanent setting, or claim that a human mind is being simulated. The follow-up
+is not resolved into another world consequence, and the scenario does not
+prescribe resistance or any other story.
 
 ## Replay record
 

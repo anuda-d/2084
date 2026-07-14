@@ -7,6 +7,7 @@ from experiments.focal_life_scenario import (
     AllocationRequest,
     ObjectiveAllocation,
     choose_allocation_request,
+    choose_follow_up_after_allocation,
     resolve_allocation_request,
     run_provisional_focal_life_scenario,
 )
@@ -14,6 +15,103 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_follow_up_choice_changes_with_delivered_grant(self):
+        history = SourceLinkedHistory()
+        partial_event = history.record_event(
+            tick=1,
+            kind="provisional_allocation_resolved",
+            details={"granted_units": 1},
+        )
+        partial = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=partial_event.event_id,
+            source="direct handover",
+            delivery_tick=1,
+            details={"evidence_kind": "allocation_handover", "granted_units": 1},
+        )
+        sufficient_event = history.record_event(
+            tick=2,
+            kind="provisional_allocation_resolved",
+            details={"granted_units": 3},
+        )
+        sufficient = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=sufficient_event.event_id,
+            source="direct handover",
+            delivery_tick=2,
+            details={"evidence_kind": "allocation_handover", "granted_units": 3},
+        )
+        need = AllocationNeed(required_units=3, maximum_request_units=3)
+
+        partial_choice = choose_follow_up_after_allocation((partial,), need)
+        sufficient_choice = choose_follow_up_after_allocation((sufficient,), need)
+
+        self.assertEqual(partial_choice.choice, "seek_remaining_allocation")
+        self.assertEqual(partial_choice.trace.observed_granted_units, 1)
+        self.assertEqual(partial_choice.trace.remaining_units, 2)
+        self.assertEqual(sufficient_choice.choice, "continue_ordinary_task")
+        self.assertEqual(sufficient_choice.trace.observed_granted_units, 3)
+        self.assertEqual(sufficient_choice.trace.remaining_units, 0)
+
+    def test_follow_up_waits_when_no_handover_was_delivered(self):
+        decision = choose_follow_up_after_allocation(
+            (),
+            AllocationNeed(required_units=3, maximum_request_units=3),
+        )
+
+        self.assertEqual(decision.choice, "wait_for_handover")
+        self.assertIsNone(decision.trace.selected_observation_id)
+        self.assertIsNone(decision.trace.observed_granted_units)
+        self.assertEqual(decision.trace.remaining_units, 3)
+
+    def test_scenario_delivered_handover_drives_later_ordinary_choice(self):
+        evidence = run_provisional_focal_life_scenario()
+        parameters = tuple(
+            inspect.signature(choose_follow_up_after_allocation).parameters
+        )
+        handover = evidence.follow_up_observations[-1]
+
+        self.assertEqual(parameters, ("observations", "need"))
+        self.assertEqual(evidence.follow_up.choice, "seek_remaining_allocation")
+        self.assertEqual(
+            evidence.follow_up.trace.selected_observation_id,
+            handover.observation_id,
+        )
+        self.assertEqual(
+            handover.event_id,
+            evidence.resolution.consequence_event.event_id,
+        )
+        self.assertNotIn("committed_units", handover.details)
+        self.assertEqual(evidence.follow_up.trace.observed_granted_units, 1)
+        self.assertEqual(evidence.follow_up.trace.remaining_units, 2)
+        self.assertEqual(evidence.follow_up.trace.required_units, 3)
+        self.assertIn("latest handover", evidence.follow_up.trace.rule)
+
+    def test_follow_up_rejects_invalid_public_inputs(self):
+        history = SourceLinkedHistory()
+        event = history.record_event(
+            tick=1,
+            kind="provisional_allocation_resolved",
+            details={"granted_units": 1},
+        )
+        invalid_grant = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=event.event_id,
+            source="direct handover",
+            delivery_tick=1,
+            details={"evidence_kind": "allocation_handover", "granted_units": True},
+        )
+        need = AllocationNeed(required_units=3, maximum_request_units=3)
+
+        with self.assertRaisesRegex(TypeError, "observations must be a tuple"):
+            choose_follow_up_after_allocation([], need)
+        with self.assertRaisesRegex(TypeError, "AllocationNeed"):
+            choose_follow_up_after_allocation((), None)
+        with self.assertRaisesRegex(TypeError, "Observation records"):
+            choose_follow_up_after_allocation((object(),), need)
+        with self.assertRaisesRegex(ValueError, "observed granted_units"):
+            choose_follow_up_after_allocation((invalid_grant,), need)
+
     def test_scenario_separates_objective_state_claims_and_observations(self):
         evidence = run_provisional_focal_life_scenario()
         availability, official_claim, attempted, consequence = evidence.events

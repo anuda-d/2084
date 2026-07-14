@@ -107,6 +107,25 @@ class AllocationResolution:
 
 
 @dataclass(frozen=True)
+class FollowUpDecisionTrace:
+    """Delivered handover and local rule used for one later choice."""
+
+    selected_observation_id: str | None
+    observed_granted_units: int | None
+    required_units: int
+    remaining_units: int
+    rule: str
+
+
+@dataclass(frozen=True)
+class FollowUpDecision:
+    """A later ordinary choice, with no claim about its world outcome."""
+
+    choice: str
+    trace: FollowUpDecisionTrace
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -117,6 +136,8 @@ class FocalLifeScenarioEvidence:
     resolution: AllocationResolution
     events: Tuple[WorldEvent, ...]
     focal_observations: Tuple[Observation, ...]
+    follow_up_observations: Tuple[Observation, ...]
+    follow_up: FollowUpDecision
 
 
 def choose_allocation_request(
@@ -173,6 +194,62 @@ def choose_allocation_request(
         rule="prefer latest direct; otherwise latest official; cap by need and limit",
     )
     return AllocationRequest(requested_units=requested_units, trace=trace)
+
+
+def choose_follow_up_after_allocation(
+    observations: Tuple[Observation, ...],
+    need: AllocationNeed,
+) -> FollowUpDecision:
+    """Choose a provisional next activity from a delivered handover only."""
+    if not isinstance(observations, tuple):
+        raise TypeError("observations must be a tuple")
+    if not isinstance(need, AllocationNeed):
+        raise TypeError("need must be an AllocationNeed")
+
+    candidates = []
+    for position, observation in enumerate(observations):
+        if not isinstance(observation, Observation):
+            raise TypeError("observations must contain Observation records")
+        if observation.details.get("evidence_kind") != "allocation_handover":
+            continue
+        granted_units = observation.details.get("granted_units")
+        _require_units(granted_units, "observed granted_units")
+        candidates.append(
+            (observation.delivery_tick, position, observation, granted_units)
+        )
+
+    selected = max(candidates, default=None, key=lambda item: item[:2])
+    selected_observation = selected[2] if selected is not None else None
+    granted_units = selected[3] if selected is not None else None
+    remaining_units = (
+        max(need.required_units - granted_units, 0)
+        if granted_units is not None
+        else need.required_units
+    )
+    if granted_units is None:
+        choice = "wait_for_handover"
+    elif remaining_units > 0:
+        choice = "seek_remaining_allocation"
+    else:
+        choice = "continue_ordinary_task"
+    return FollowUpDecision(
+        choice=choice,
+        trace=FollowUpDecisionTrace(
+            selected_observation_id=(
+                selected_observation.observation_id
+                if selected_observation is not None
+                else None
+            ),
+            observed_granted_units=granted_units,
+            required_units=need.required_units,
+            remaining_units=remaining_units,
+            rule=(
+                "wait without a delivered handover; otherwise use the latest "
+                "handover, seek remainder when observed grant is below need, "
+                "or continue ordinary task"
+            ),
+        ),
+    )
 
 
 def resolve_allocation_request(
@@ -293,10 +370,13 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         source="direct handover",
         delivery_tick=3,
         details={
+            "evidence_kind": "allocation_handover",
             "granted_units": resolution.granted_units,
             "unfilled_units": resolution.unfilled_units,
         },
     )
+    follow_up_observations = history.observations_for(FOCAL_AGENT_ID)
+    follow_up = choose_follow_up_after_allocation(follow_up_observations, need)
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -304,5 +384,7 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         request=request,
         resolution=resolution,
         events=history.events(),
-        focal_observations=history.observations_for(FOCAL_AGENT_ID),
+        focal_observations=follow_up_observations,
+        follow_up_observations=follow_up_observations,
+        follow_up=follow_up,
     )
