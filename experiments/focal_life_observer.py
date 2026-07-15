@@ -82,6 +82,67 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
         f"{_unit_phrase(outcome.details['granted_units'])} granted; "
         f"{_unit_phrase(outcome.details['unfilled_units'])} unfilled."
     )
+    pressure = evidence.focal_pressure_observation
+    pressure_action = pressure.details["action"].replace("_", " ")
+    lines.append(
+        f"Social pressure delivered at tick {pressure.delivery_tick} via "
+        f"{pressure.source}: {pressure_action}."
+    )
+    third_choice = evidence.third_choice
+    third_trace = third_choice.trace
+    lines.extend(
+        (
+            (
+                "Remaining-need constraint: "
+                f"{_unit_phrase(third_trace.remaining_need_units)} from "
+                f"follow-up outcome {third_trace.selected_observation_id}."
+            ),
+            f"Decision: {third_choice.choice.replace('_', ' ')}.",
+            (
+                f"Reason: follow-up outcome "
+                f"{third_trace.selected_observation_id} granted "
+                f"{_unit_phrase(third_trace.observed_granted_units)} and left "
+                f"{_unit_phrase(third_trace.observed_unfilled_units)} unfilled; "
+                f"pressure {third_trace.selected_pressure_observation_id} said "
+                f"{pressure_action}; "
+                f"rule: {third_trace.rule}."
+            ),
+        )
+    )
+    private = evidence.private_availability_belief
+    public = evidence.public_expression
+    lines.extend(
+        (
+            (
+                f"Private belief: {_unit_phrase(private.units)} available from "
+                f"direct observation {private.source_observation_id}."
+            ),
+            f"Public expression: {_unit_phrase(public.expressed_units)} available.",
+            (
+                f"Reason: pressure {public.trace.selected_pressure_observation_id} "
+                f"urged public agreement, so official claim "
+                f"{public.trace.selected_official_observation_id} was repeated while "
+                "the private belief remained unchanged."
+            ),
+        )
+    )
+    diary_write = evidence.diary_write
+    diary_read = evidence.diary_read
+    lines.extend(
+        (
+            (
+                "Diary write (private perspective): started at tick "
+                f"{diary_write.started_tick} and completed at tick "
+                f"{diary_write.completed_tick}; retained "
+                f"{_unit_phrase(diary_write.entry.units)} available."
+            ),
+            (
+                f"Diary read at tick {diary_read.read_tick}: returned the same "
+                "retained private entry, "
+                f"{_unit_phrase(diary_read.entry.units)} available."
+            ),
+        )
+    )
     return "\n".join(lines) + "\n"
 
 
