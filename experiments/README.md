@@ -69,14 +69,29 @@ delivered to the focal character as social pressure, not the supporter's
 observation or reasoning trace.
 
 A third public decision carries the delivered outcome and any delivered social
-pressure forward without reading objective allocation state or resolving
-another attempt. Its immutable trace retains both selected observation
-identifiers, the understandable grant, shortfall and pressure action, the
+pressure forward without reading objective allocation state. Its immutable
+trace retains both selected observation identifiers, the understandable grant,
+shortfall and pressure action, the
 resulting constraint, and its local rule. Under the same zero-unit grant and
 two-unit shortfall, absence of pressure yields `wait_for_changed_conditions`,
 while delivered pressure yields `seek_alternative_source`. A delivered
 sufficient outcome instead produces no remaining constraint and
 `continue_ordinary_task`.
+
+The pressured fixed run resolves `seek_alternative_source` separately from that
+decision. A local, explicitly provisional objective event limits this worked
+alternative source to one available unit. Before mutation, the public resolver
+validates the decision, its selected delivered follow-up outcome and matching
+social pressure, and the recorded objective constraint. It then records the
+two-unit attempt and a separate consequence granting one unit and leaving one
+unfilled. Corrupt or inconsistent inputs append neither event. The focal
+character receives only a source-linked result observation containing that
+grant and shortfall; the source constraint, its event identity, allocation
+inputs, selected observation identifiers, and decision trace remain hidden.
+Without delivered pressure, the third choice remains
+`wait_for_changed_conditions` and no alternative-source attempt or outcome is
+recorded. The names, quantity, source limit, and rule are one reversible worked
+example rather than permanent worldbuilding or a general source model.
 
 The fixed scenario then records one same-proposition comparison. Narrow
 immutable objective evidence says that two units were available and links to
@@ -125,9 +140,9 @@ python3 -m experiments.focal_life_observer
 ```
 
 The transcript shows the focal need and request limit, source-linked direct and
-official observations, all focal choices, both delivered outcomes, the
-focal-visible social pressure and its effects, retained private belief, and
-public expression. It then shows private-perspective diary writing with time
+official observations, all focal choices, all three delivered allocation
+outcomes, the focal-visible social pressure and its effects, retained private
+belief, and public expression. It then shows private-perspective diary writing with time
 advancing and the later read returning the same retained entry. Its normal
 perspective does not expose objective truth or event identifiers, the
 supporter's source observation or local rule, objective commitment or
@@ -140,15 +155,15 @@ renderer and runnable module command using only the Python standard library.
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
-with five decisions, two resolved allocation attempts, one resolved social
+with five decisions, three resolved allocation attempts, one resolved social
 action, one resolved public expression, one diary write, and one diary read. It
 is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,
 persistence/replay format, permanent setting, or claim that a human mind is
-being simulated. The private belief does not update, and the third focal choice
-is not resolved. The local pressure rule demonstrates one divergence; it does
-not prescribe resistance or any other story. The transcript is not a general
+being simulated. The private belief does not update. The local pressure and
+alternative-source rules demonstrate one divergence and outcome; they do not
+prescribe resistance or any other story. The transcript is not a general
 observer interface, authorization boundary, interactive view, or graphical UI.
 
 ## Replay record

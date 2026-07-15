@@ -158,6 +158,29 @@ class OutcomeCarryoverDecision:
 
 
 @dataclass(frozen=True)
+class ObjectiveAlternativeSourceConstraint:
+    """One local, provisional limit on the worked alternative source."""
+
+    source_event_id: str
+    available_units: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.source_event_id, str) or not self.source_event_id:
+            raise ValueError("source_event_id must be a nonempty string")
+        _require_units(self.available_units, "available_units")
+
+
+@dataclass(frozen=True)
+class AlternativeSourceResolution:
+    """World-constrained result recorded separately from the third choice."""
+
+    attempted_event: WorldEvent
+    consequence_event: WorldEvent
+    granted_units: int
+    unfilled_units: int
+
+
+@dataclass(frozen=True)
 class SupportingActionTrace:
     """Visible focal action and local rule used by one supporting person."""
 
@@ -320,6 +343,9 @@ class FocalLifeScenarioEvidence:
     focal_pressure_observation: Observation | None
     third_choice_observations: Tuple[Observation, ...]
     third_choice: OutcomeCarryoverDecision
+    alternative_source_constraint: ObjectiveAlternativeSourceConstraint
+    third_choice_resolution: AlternativeSourceResolution | None
+    third_choice_outcome_observation: Observation | None
     private_availability_belief: PrivateAvailabilityBelief
     public_expression: PublicExpressionDecision
     public_expression_resolution: PublicExpressionResolution
@@ -1172,6 +1198,116 @@ def resolve_follow_up_choice(
     )
 
 
+def resolve_alternative_source_choice(
+    *,
+    history: SourceLinkedHistory,
+    decision: OutcomeCarryoverDecision,
+    selected_outcome: Observation,
+    selected_pressure: Observation,
+    objective_constraint: ObjectiveAlternativeSourceConstraint,
+    tick: int,
+) -> AlternativeSourceResolution:
+    """Validate delivered evidence, then constrain one alternative-source attempt."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(decision, OutcomeCarryoverDecision):
+        raise TypeError("decision must be an OutcomeCarryoverDecision")
+    if not isinstance(decision.trace, OutcomeCarryoverTrace):
+        raise TypeError("decision trace must be an OutcomeCarryoverTrace")
+    if not isinstance(selected_outcome, Observation):
+        raise TypeError("selected_outcome must be an Observation")
+    if not isinstance(selected_pressure, Observation):
+        raise TypeError("selected_pressure must be an Observation")
+    if not isinstance(objective_constraint, ObjectiveAlternativeSourceConstraint):
+        raise TypeError(
+            "objective_constraint must be an ObjectiveAlternativeSourceConstraint"
+        )
+    _require_units(tick, "tick")
+
+    observations = history.observations()
+    if selected_outcome not in observations or selected_pressure not in observations:
+        raise ValueError("alternative-source evidence must be recorded in history")
+    events_by_id = {event.event_id: event for event in history.events()}
+    outcome_event = events_by_id.get(selected_outcome.event_id)
+    pressure_event = events_by_id.get(selected_pressure.event_id)
+    constraint_event = events_by_id.get(objective_constraint.source_event_id)
+    if (
+        outcome_event is None
+        or selected_outcome.agent_id != FOCAL_AGENT_ID
+        or selected_outcome.details.get("evidence_kind")
+        != "follow_up_allocation_outcome"
+        or outcome_event.kind != "provisional_follow_up_resolved"
+        or selected_outcome.details.get("granted_units")
+        != outcome_event.details.get("granted_units")
+        or selected_outcome.details.get("unfilled_units")
+        != outcome_event.details.get("unfilled_units")
+    ):
+        raise ValueError("selected follow-up outcome evidence is inconsistent")
+    if (
+        pressure_event is None
+        or selected_pressure.agent_id != FOCAL_AGENT_ID
+        or selected_pressure.details.get("evidence_kind") != "social_pressure"
+        or selected_pressure.details.get("actor_id") != SUPPORTING_AGENT_ID
+        or selected_pressure.details.get("action") != "urge_public_agreement"
+        or pressure_event.kind != "provisional_supporting_action"
+        or pressure_event.details.get("actor_id") != SUPPORTING_AGENT_ID
+        or pressure_event.details.get("action") != "urge_public_agreement"
+    ):
+        raise ValueError("selected social pressure evidence is inconsistent")
+    if (
+        constraint_event is None
+        or constraint_event.kind != "provisional_alternative_source_constraint"
+        or constraint_event.details
+        != {"available_units": objective_constraint.available_units}
+    ):
+        raise ValueError("objective alternative-source constraint is inconsistent")
+    if decision != choose_after_follow_up_outcome(
+        (selected_outcome, selected_pressure)
+    ):
+        raise ValueError("alternative-source decision is inconsistent with evidence")
+    latest_evidence_tick = max(
+        outcome_event.tick,
+        pressure_event.tick,
+        constraint_event.tick,
+        selected_outcome.delivery_tick,
+        selected_pressure.delivery_tick,
+    )
+    if tick < latest_evidence_tick:
+        raise ValueError("alternative-source resolution cannot precede its evidence")
+
+    requested_units = decision.trace.remaining_need_units
+    attempted_event = history.record_event(
+        tick=tick,
+        kind="provisional_alternative_source_attempted",
+        details={
+            "choice": decision.choice,
+            "selected_outcome_observation_id": selected_outcome.observation_id,
+            "selected_pressure_observation_id": selected_pressure.observation_id,
+            "requested_units": requested_units,
+        },
+    )
+    granted_units = min(requested_units, objective_constraint.available_units)
+    unfilled_units = requested_units - granted_units
+    consequence_event = history.record_event(
+        tick=tick,
+        kind="provisional_alternative_source_resolved",
+        details={
+            "attempted_event_id": attempted_event.event_id,
+            "source_constraint_event_id": objective_constraint.source_event_id,
+            "available_units": objective_constraint.available_units,
+            "requested_units": requested_units,
+            "granted_units": granted_units,
+            "unfilled_units": unfilled_units,
+        },
+    )
+    return AlternativeSourceResolution(
+        attempted_event=attempted_event,
+        consequence_event=consequence_event,
+        granted_units=granted_units,
+        unfilled_units=unfilled_units,
+    )
+
+
 def run_provisional_focal_life_scenario(
     *, include_public_pressure: bool = True
 ) -> FocalLifeScenarioEvidence:
@@ -1287,6 +1423,37 @@ def run_provisional_focal_life_scenario(
         )
     third_choice_observations = history.observations_for(FOCAL_AGENT_ID)
     third_choice = choose_after_follow_up_outcome(third_choice_observations)
+    alternative_source_constraint_event = history.record_event(
+        tick=5,
+        kind="provisional_alternative_source_constraint",
+        details={"available_units": 1},
+    )
+    alternative_source_constraint = ObjectiveAlternativeSourceConstraint(
+        source_event_id=alternative_source_constraint_event.event_id,
+        available_units=alternative_source_constraint_event.details["available_units"],
+    )
+    third_choice_resolution = None
+    third_choice_outcome_observation = None
+    if third_choice.choice == "seek_alternative_source":
+        third_choice_resolution = resolve_alternative_source_choice(
+            history=history,
+            decision=third_choice,
+            selected_outcome=follow_up_outcome_observation,
+            selected_pressure=focal_pressure_observation,
+            objective_constraint=alternative_source_constraint,
+            tick=5,
+        )
+        third_choice_outcome_observation = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=third_choice_resolution.consequence_event.event_id,
+            source="direct alternative-source result",
+            delivery_tick=5,
+            details={
+                "evidence_kind": "alternative_source_outcome",
+                "granted_units": third_choice_resolution.granted_units,
+                "unfilled_units": third_choice_resolution.unfilled_units,
+            },
+        )
     public_expression = choose_public_availability_expression(
         third_choice_observations
     )
@@ -1338,6 +1505,9 @@ def run_provisional_focal_life_scenario(
         focal_pressure_observation=focal_pressure_observation,
         third_choice_observations=third_choice_observations,
         third_choice=third_choice,
+        alternative_source_constraint=alternative_source_constraint,
+        third_choice_resolution=third_choice_resolution,
+        third_choice_outcome_observation=third_choice_outcome_observation,
         private_availability_belief=public_expression.private_belief,
         public_expression=public_expression,
         public_expression_resolution=public_expression_resolution,

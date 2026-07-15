@@ -7,6 +7,7 @@ from experiments.focal_life_scenario import (
     SUPPORTING_AGENT_ID,
     AllocationNeed,
     AllocationRequest,
+    ObjectiveAlternativeSourceConstraint,
     PhysicalDiary,
     PrivateAvailabilityBelief,
     ObjectiveAllocation,
@@ -17,6 +18,7 @@ from experiments.focal_life_scenario import (
     choose_supporting_action,
     read_private_diary,
     resolve_allocation_request,
+    resolve_alternative_source_choice,
     resolve_follow_up_choice,
     resolve_public_expression,
     resolve_supporting_action,
@@ -27,6 +29,211 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_alternative_source_resolution_records_attempt_and_constrained_result(self):
+        history = SourceLinkedHistory()
+        outcome_event = history.record_event(
+            tick=4,
+            kind="provisional_follow_up_resolved",
+            details={"granted_units": 0, "unfilled_units": 2},
+        )
+        outcome = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=outcome_event.event_id,
+            source="direct allocation outcome",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 0,
+                "unfilled_units": 2,
+            },
+        )
+        pressure_event = history.record_event(
+            tick=4,
+            kind="provisional_supporting_action",
+            details={
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        pressure = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=pressure_event.event_id,
+            source="supporting person",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        constraint_event = history.record_event(
+            tick=5,
+            kind="provisional_alternative_source_constraint",
+            details={"available_units": 1},
+        )
+        constraint = ObjectiveAlternativeSourceConstraint(
+            source_event_id=constraint_event.event_id,
+            available_units=1,
+        )
+        decision = choose_after_follow_up_outcome((outcome, pressure))
+
+        resolution = resolve_alternative_source_choice(
+            history=history,
+            decision=decision,
+            selected_outcome=outcome,
+            selected_pressure=pressure,
+            objective_constraint=constraint,
+            tick=5,
+        )
+
+        self.assertEqual(decision.choice, "seek_alternative_source")
+        self.assertFalse(hasattr(decision, "granted_units"))
+        self.assertNotEqual(
+            resolution.attempted_event.event_id,
+            resolution.consequence_event.event_id,
+        )
+        self.assertEqual(
+            resolution.attempted_event.details,
+            {
+                "choice": "seek_alternative_source",
+                "selected_outcome_observation_id": outcome.observation_id,
+                "selected_pressure_observation_id": pressure.observation_id,
+                "requested_units": 2,
+            },
+        )
+        self.assertEqual(resolution.granted_units, 1)
+        self.assertEqual(resolution.unfilled_units, 1)
+        self.assertEqual(
+            resolution.consequence_event.details["attempted_event_id"],
+            resolution.attempted_event.event_id,
+        )
+        self.assertEqual(resolution.consequence_event.details["available_units"], 1)
+
+    def test_invalid_alternative_source_inputs_fail_before_attempt_or_result(self):
+        history = SourceLinkedHistory()
+        outcome_event = history.record_event(
+            tick=4,
+            kind="provisional_follow_up_resolved",
+            details={"granted_units": 0, "unfilled_units": 2},
+        )
+        outcome = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=outcome_event.event_id,
+            source="direct allocation outcome",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 0,
+                "unfilled_units": 2,
+            },
+        )
+        pressure_event = history.record_event(
+            tick=4,
+            kind="provisional_supporting_action",
+            details={
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        pressure = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=pressure_event.event_id,
+            source="supporting person",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        constraint_event = history.record_event(
+            tick=5,
+            kind="provisional_alternative_source_constraint",
+            details={"available_units": 1},
+        )
+        constraint = ObjectiveAlternativeSourceConstraint(
+            source_event_id=constraint_event.event_id,
+            available_units=1,
+        )
+        decision = choose_after_follow_up_outcome((outcome, pressure))
+        inconsistent_outcome = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=outcome_event.event_id,
+            source="direct allocation outcome",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 1,
+                "unfilled_units": 1,
+            },
+        )
+        inconsistent_pressure = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=pressure_event.event_id,
+            source="supporting person",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": "unrelated-person",
+                "action": "urge_public_agreement",
+            },
+        )
+        events_before = history.events()
+        cases = (
+            (
+                "decision",
+                replace(decision, choice="continue_ordinary_task"),
+                outcome,
+                pressure,
+                constraint,
+                "decision",
+            ),
+            (
+                "outcome",
+                decision,
+                inconsistent_outcome,
+                pressure,
+                constraint,
+                "follow-up outcome",
+            ),
+            (
+                "pressure",
+                decision,
+                outcome,
+                inconsistent_pressure,
+                constraint,
+                "social pressure",
+            ),
+            (
+                "constraint",
+                decision,
+                outcome,
+                pressure,
+                replace(constraint, available_units=2),
+                "constraint",
+            ),
+        )
+
+        for (
+            label,
+            candidate,
+            candidate_outcome,
+            candidate_pressure,
+            source,
+            error,
+        ) in cases:
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(ValueError, error):
+                    resolve_alternative_source_choice(
+                        history=history,
+                        decision=candidate,
+                        selected_outcome=candidate_outcome,
+                        selected_pressure=candidate_pressure,
+                        objective_constraint=source,
+                        tick=5,
+                    )
+                self.assertEqual(history.events(), events_before)
+
     def test_fixed_scenario_writes_then_reads_one_possessed_private_diary(self):
         evidence = run_provisional_focal_life_scenario()
         repeated = run_provisional_focal_life_scenario()
@@ -746,7 +953,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertNotIn("committed_units", outcome.details)
         self.assertNotIn("shelf_units", outcome.details)
         self.assertNotIn("remaining_allocatable_units", outcome.details)
-        self.assertEqual(evidence.focal_observations[-2], outcome)
+        self.assertEqual(evidence.third_choice_observations[-2], outcome)
 
     def test_scenario_outcome_and_pressure_constrain_third_autonomous_choice(self):
         evidence = run_provisional_focal_life_scenario()
@@ -795,6 +1002,70 @@ class FocalLifeScenarioTests(unittest.TestCase):
             ):
                 self.assertNotIn(hidden_field, observation.details)
 
+    def test_pressured_scenario_links_third_choice_to_focal_visible_resolved_result(self):
+        evidence = run_provisional_focal_life_scenario()
+        repeated = run_provisional_focal_life_scenario()
+        resolution = evidence.third_choice_resolution
+        outcome = evidence.third_choice_outcome_observation
+
+        self.assertEqual(
+            evidence.alternative_source_constraint.available_units,
+            1,
+        )
+        self.assertEqual(
+            resolution.attempted_event.details["choice"],
+            evidence.third_choice.choice,
+        )
+        self.assertEqual(
+            resolution.consequence_event.details["attempted_event_id"],
+            resolution.attempted_event.event_id,
+        )
+        self.assertEqual((resolution.granted_units, resolution.unfilled_units), (1, 1))
+        self.assertEqual(outcome.event_id, resolution.consequence_event.event_id)
+        self.assertEqual(
+            outcome.details,
+            {
+                "evidence_kind": "alternative_source_outcome",
+                "granted_units": 1,
+                "unfilled_units": 1,
+            },
+        )
+        for hidden_field in (
+            "available_units",
+            "source_constraint_event_id",
+            "committed_units",
+            "source_event_id",
+            "selected_outcome_observation_id",
+            "selected_pressure_observation_id",
+            "requested_units",
+            "raw_trace",
+        ):
+            self.assertNotIn(hidden_field, outcome.details)
+        self.assertEqual(outcome, repeated.third_choice_outcome_observation)
+        self.assertEqual(resolution, repeated.third_choice_resolution)
+
+    def test_pressure_free_wait_choice_has_no_alternative_source_resolution(self):
+        evidence = run_provisional_focal_life_scenario(
+            include_public_pressure=False
+        )
+
+        self.assertEqual(evidence.third_choice.choice, "wait_for_changed_conditions")
+        self.assertIsNone(evidence.third_choice_resolution)
+        self.assertIsNone(evidence.third_choice_outcome_observation)
+        self.assertFalse(
+            any(
+                event.kind == "provisional_alternative_source_attempted"
+                for event in evidence.events
+            )
+        )
+        self.assertFalse(
+            any(
+                observation.details.get("evidence_kind")
+                == "alternative_source_outcome"
+                for observation in evidence.focal_observations
+            )
+        )
+
     def test_follow_up_rejects_invalid_public_inputs(self):
         history = SourceLinkedHistory()
         event = history.record_event(
@@ -830,11 +1101,14 @@ class FocalLifeScenarioTests(unittest.TestCase):
             supporting_action,
             follow_up_attempted,
             follow_up_outcome,
+            alternative_source_constraint,
+            alternative_source_attempted,
+            alternative_source_outcome,
             public_expression,
             diary_written,
             diary_read,
         ) = evidence.events
-        direct, official, handover, outcome_observation, pressure = (
+        direct, official, handover, outcome_observation, pressure, alternative_outcome = (
             evidence.focal_observations
         )
 
@@ -852,7 +1126,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID,) * 5,
+            (FOCAL_AGENT_ID,) * 6,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
@@ -861,6 +1135,22 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(follow_up_attempted.kind, "provisional_follow_up_attempted")
         self.assertEqual(follow_up_outcome.kind, "provisional_follow_up_resolved")
         self.assertEqual(outcome_observation.event_id, follow_up_outcome.event_id)
+        self.assertEqual(
+            alternative_source_constraint.kind,
+            "provisional_alternative_source_constraint",
+        )
+        self.assertEqual(
+            alternative_source_attempted.kind,
+            "provisional_alternative_source_attempted",
+        )
+        self.assertEqual(
+            alternative_source_outcome.kind,
+            "provisional_alternative_source_resolved",
+        )
+        self.assertEqual(
+            alternative_outcome.event_id,
+            alternative_source_outcome.event_id,
+        )
         self.assertEqual(
             public_expression.kind,
             "provisional_public_availability_expression",
@@ -972,14 +1262,14 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 10)
-        self.assertEqual(len(first.focal_observations), 5)
+        self.assertEqual(len(first.events), 13)
+        self.assertEqual(len(first.focal_observations), 6)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],
             first.resolution.granted_units,
         )
         self.assertEqual(
-            first.focal_observations[-2].details["granted_units"],
+            first.follow_up_outcome_observation.details["granted_units"],
             first.follow_up_resolution.granted_units,
         )
         self.assertIn("prefer latest direct", first.request.trace.rule)

@@ -109,6 +109,14 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             ),
         )
     )
+    alternative_outcome = evidence.third_choice_outcome_observation
+    if alternative_outcome is not None:
+        lines.append(
+            f"Resolved at tick {alternative_outcome.delivery_tick} via "
+            f"{alternative_outcome.source}: "
+            f"{_unit_phrase(alternative_outcome.details['granted_units'])} granted; "
+            f"{_unit_phrase(alternative_outcome.details['unfilled_units'])} unfilled."
+        )
     private = evidence.private_availability_belief
     public = evidence.public_expression
     lines.extend(
