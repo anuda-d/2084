@@ -16,6 +16,9 @@ Delivered at tick 3 via direct handover: 1 unit granted; 1 unit unfilled.
 Decision: seek remaining allocation (2 units).
 Reason: handover observation-0003 granted 1 of 3 needed, leaving 2 units.
 Delivered at tick 4 via direct allocation outcome: 0 units granted; 2 units unfilled.
+Remaining-need constraint: 2 units from follow-up outcome observation-0004.
+Decision: wait for changed conditions.
+Reason: follow-up outcome observation-0004 granted 0 units and left 2 units unfilled; rule: wait without a delivered follow-up outcome; otherwise use the latest outcome shortfall as remaining need, wait for changed conditions while need remains, or continue ordinary task.
 """
 
 

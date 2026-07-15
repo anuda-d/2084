@@ -136,6 +136,25 @@ class FollowUpResolution:
 
 
 @dataclass(frozen=True)
+class OutcomeCarryoverTrace:
+    """Delivered follow-up outcome and local rule for one next choice."""
+
+    selected_observation_id: str | None
+    observed_granted_units: int | None
+    observed_unfilled_units: int | None
+    remaining_need_units: int | None
+    rule: str
+
+
+@dataclass(frozen=True)
+class OutcomeCarryoverDecision:
+    """A third ordinary choice, with no claim about its world outcome."""
+
+    choice: str
+    trace: OutcomeCarryoverTrace
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -150,6 +169,8 @@ class FocalLifeScenarioEvidence:
     follow_up: FollowUpDecision
     follow_up_resolution: FollowUpResolution
     follow_up_outcome_observation: Observation
+    third_choice_observations: Tuple[Observation, ...]
+    third_choice: OutcomeCarryoverDecision
 
 
 def choose_allocation_request(
@@ -259,6 +280,63 @@ def choose_follow_up_after_allocation(
                 "wait without a delivered handover; otherwise use the latest "
                 "handover, seek remainder when observed grant is below need, "
                 "or continue ordinary task"
+            ),
+        ),
+    )
+
+
+def choose_after_follow_up_outcome(
+    observations: Tuple[Observation, ...],
+) -> OutcomeCarryoverDecision:
+    """Choose one next activity from delivered follow-up outcomes only."""
+    if not isinstance(observations, tuple):
+        raise TypeError("observations must be a tuple")
+
+    candidates = []
+    for position, observation in enumerate(observations):
+        if not isinstance(observation, Observation):
+            raise TypeError("observations must contain Observation records")
+        if observation.details.get("evidence_kind") != "follow_up_allocation_outcome":
+            continue
+        granted_units = observation.details.get("granted_units")
+        unfilled_units = observation.details.get("unfilled_units")
+        _require_units(granted_units, "observed granted_units")
+        _require_units(unfilled_units, "observed unfilled_units")
+        candidates.append(
+            (
+                observation.delivery_tick,
+                position,
+                observation,
+                granted_units,
+                unfilled_units,
+            )
+        )
+
+    selected = max(candidates, default=None, key=lambda item: item[:2])
+    selected_observation = selected[2] if selected is not None else None
+    granted_units = selected[3] if selected is not None else None
+    unfilled_units = selected[4] if selected is not None else None
+    if selected_observation is None:
+        choice = "wait_for_follow_up_outcome"
+    elif unfilled_units > 0:
+        choice = "wait_for_changed_conditions"
+    else:
+        choice = "continue_ordinary_task"
+    return OutcomeCarryoverDecision(
+        choice=choice,
+        trace=OutcomeCarryoverTrace(
+            selected_observation_id=(
+                selected_observation.observation_id
+                if selected_observation is not None
+                else None
+            ),
+            observed_granted_units=granted_units,
+            observed_unfilled_units=unfilled_units,
+            remaining_need_units=unfilled_units,
+            rule=(
+                "wait without a delivered follow-up outcome; otherwise use the "
+                "latest outcome shortfall as remaining need, wait for changed "
+                "conditions while need remains, or continue ordinary task"
             ),
         ),
     )
@@ -551,6 +629,8 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
             "unfilled_units": follow_up_resolution.unfilled_units,
         },
     )
+    third_choice_observations = history.observations_for(FOCAL_AGENT_ID)
+    third_choice = choose_after_follow_up_outcome(third_choice_observations)
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -563,4 +643,6 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         follow_up=follow_up,
         follow_up_resolution=follow_up_resolution,
         follow_up_outcome_observation=follow_up_outcome_observation,
+        third_choice_observations=third_choice_observations,
+        third_choice=third_choice,
     )

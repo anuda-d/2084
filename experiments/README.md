@@ -56,6 +56,17 @@ linked allocation, prior-resolution, handover, and decision evidence before it
 appends either follow-up event; corrupt or inconsistent evidence therefore
 cannot leave a partial attempt in history.
 
+A third public decision carries that delivered outcome forward without reading
+objective allocation state or resolving another attempt. Its provisional rule
+waits when no follow-up outcome was delivered, uses the latest delivered
+outcome's shortfall as the remaining-need constraint, waits for changed
+conditions while that constraint is nonzero, and otherwise continues the
+ordinary task. Its immutable trace retains the selected observation identifier,
+the understandable grant and shortfall, the resulting constraint, and the local
+rule. The fixed zero-unit grant and two-unit shortfall therefore constrain the
+third choice to `wait_for_changed_conditions`; a delivered sufficient outcome
+instead produces no remaining constraint and `continue_ordinary_task`.
+
 Tests independently vary delivered partial, sufficient, and absent handovers to
 show that the later choice changes with perceived consequences rather than a
 prescribed story. They also exercise invalid public inputs. Run the
@@ -73,8 +84,9 @@ python3 -m experiments.focal_life_observer
 ```
 
 The transcript shows the focal need and request limit, source-linked direct and
-official observations, both selected actions with reasons retained by their
-decision traces, and both delivered outcomes. Its normal perspective uses the
+official observations, all three selected actions with reasons retained by
+their decision traces, both delivered outcomes, and the remaining-need
+constraint carried into the third action. Its normal perspective uses the
 focal character's observations, need, decisions, and delivered outcome
 evidence. It does not show objective shelf or commitment values, remaining
 allocatable supply, or the raw omniscient event stream, and it does not tell the
@@ -84,12 +96,12 @@ the Python standard library.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, follow-up choice, and follow-up response are all provisional.
-This is one fixed scenario with two decisions and two resolved attempts, not a
-repeated loop, belief or memory update, institution model, diary or UI, AI
+This is one fixed scenario with three decisions and two resolved attempts, not
+a repeated loop, belief or memory update, institution model, diary or UI, AI
 behavior, persistence/replay format, permanent setting, or claim that a human
-mind is being simulated. It does not choose a third activity after the delivered
-follow-up outcome or prescribe resistance or any other story. The transcript is
-not a general observer interface, authorization boundary, interactive view, or
+mind is being simulated. The third choice is not resolved, and the local waiting
+rule does not prescribe resistance or any other story. The transcript is not a
+general observer interface, authorization boundary, interactive view, or
 graphical UI.
 
 ## Replay record

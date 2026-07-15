@@ -82,6 +82,25 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
         f"{_unit_phrase(outcome.details['granted_units'])} granted; "
         f"{_unit_phrase(outcome.details['unfilled_units'])} unfilled."
     )
+    third_choice = evidence.third_choice
+    third_trace = third_choice.trace
+    lines.extend(
+        (
+            (
+                "Remaining-need constraint: "
+                f"{_unit_phrase(third_trace.remaining_need_units)} from "
+                f"follow-up outcome {third_trace.selected_observation_id}."
+            ),
+            f"Decision: {third_choice.choice.replace('_', ' ')}.",
+            (
+                f"Reason: follow-up outcome "
+                f"{third_trace.selected_observation_id} granted "
+                f"{_unit_phrase(third_trace.observed_granted_units)} and left "
+                f"{_unit_phrase(third_trace.observed_unfilled_units)} unfilled; "
+                f"rule: {third_trace.rule}."
+            ),
+        )
+    )
     return "\n".join(lines) + "\n"
 
 

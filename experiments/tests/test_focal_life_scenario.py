@@ -7,6 +7,7 @@ from experiments.focal_life_scenario import (
     AllocationRequest,
     ObjectiveAllocation,
     choose_allocation_request,
+    choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
     resolve_allocation_request,
     resolve_follow_up_choice,
@@ -16,6 +17,57 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_delivered_follow_up_outcome_changes_remaining_constraint_and_choice(self):
+        history = SourceLinkedHistory()
+        unresolved_event = history.record_event(
+            tick=1,
+            kind="provisional_follow_up_resolved",
+            details={"granted_units": 0, "unfilled_units": 2},
+        )
+        unresolved = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=unresolved_event.event_id,
+            source="direct allocation outcome",
+            delivery_tick=1,
+            details={
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 0,
+                "unfilled_units": 2,
+            },
+        )
+        sufficient_event = history.record_event(
+            tick=2,
+            kind="provisional_follow_up_resolved",
+            details={"granted_units": 2, "unfilled_units": 0},
+        )
+        sufficient = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=sufficient_event.event_id,
+            source="direct allocation outcome",
+            delivery_tick=2,
+            details={
+                "evidence_kind": "follow_up_allocation_outcome",
+                "granted_units": 2,
+                "unfilled_units": 0,
+            },
+        )
+
+        absent_choice = choose_after_follow_up_outcome(())
+        unresolved_choice = choose_after_follow_up_outcome((unresolved,))
+        sufficient_choice = choose_after_follow_up_outcome((sufficient, unresolved))
+
+        self.assertEqual(absent_choice.choice, "wait_for_follow_up_outcome")
+        self.assertIsNone(absent_choice.trace.remaining_need_units)
+        self.assertEqual(unresolved_choice.choice, "wait_for_changed_conditions")
+        self.assertEqual(unresolved_choice.trace.remaining_need_units, 2)
+        self.assertEqual(sufficient_choice.choice, "continue_ordinary_task")
+        self.assertEqual(sufficient_choice.trace.remaining_need_units, 0)
+        self.assertEqual(
+            sufficient_choice.trace.selected_observation_id,
+            sufficient.observation_id,
+        )
+        self.assertNotEqual(unresolved_choice.choice, sufficient_choice.choice)
+
     def test_follow_up_resolution_records_attempt_and_objectively_constrained_outcome(self):
         history = SourceLinkedHistory()
         availability = history.record_event(
@@ -254,6 +306,27 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertNotIn("shelf_units", outcome.details)
         self.assertNotIn("remaining_allocatable_units", outcome.details)
         self.assertEqual(evidence.focal_observations[-1], outcome)
+
+    def test_scenario_follow_up_outcome_constrains_third_autonomous_choice(self):
+        evidence = run_provisional_focal_life_scenario()
+        outcome = evidence.follow_up_outcome_observation
+        parameters = tuple(inspect.signature(choose_after_follow_up_outcome).parameters)
+
+        self.assertEqual(parameters, ("observations",))
+        self.assertEqual(evidence.third_choice.choice, "wait_for_changed_conditions")
+        self.assertEqual(
+            evidence.third_choice.trace.selected_observation_id,
+            outcome.observation_id,
+        )
+        self.assertEqual(evidence.third_choice.trace.observed_granted_units, 0)
+        self.assertEqual(evidence.third_choice.trace.observed_unfilled_units, 2)
+        self.assertEqual(evidence.third_choice.trace.remaining_need_units, 2)
+        self.assertIn("latest outcome shortfall", evidence.third_choice.trace.rule)
+        self.assertEqual(evidence.third_choice_observations[-1], outcome)
+        for observation in evidence.third_choice_observations:
+            self.assertNotIn("shelf_units", observation.details)
+            self.assertNotIn("committed_units", observation.details)
+            self.assertNotIn("remaining_allocatable_units", observation.details)
 
     def test_follow_up_rejects_invalid_public_inputs(self):
         history = SourceLinkedHistory()
