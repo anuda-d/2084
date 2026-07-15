@@ -18,6 +18,7 @@ from experiments.source_linked_history import (
 
 
 FOCAL_AGENT_ID = "provisional-focal"
+SUPPORTING_AGENT_ID = "provisional-supporting-person"
 
 
 def _require_units(value: int, field_name: str) -> int:
@@ -137,11 +138,13 @@ class FollowUpResolution:
 
 @dataclass(frozen=True)
 class OutcomeCarryoverTrace:
-    """Delivered follow-up outcome and local rule for one next choice."""
+    """Delivered outcome, pressure, and local rule for one next choice."""
 
     selected_observation_id: str | None
+    selected_pressure_observation_id: str | None
     observed_granted_units: int | None
     observed_unfilled_units: int | None
+    observed_pressure_action: str | None
     remaining_need_units: int | None
     rule: str
 
@@ -155,6 +158,30 @@ class OutcomeCarryoverDecision:
 
 
 @dataclass(frozen=True)
+class SupportingActionTrace:
+    """Visible focal action and local rule used by one supporting person."""
+
+    selected_observation_id: str | None
+    observed_requested_units: int | None
+    rule: str
+
+
+@dataclass(frozen=True)
+class SupportingActionDecision:
+    """A supporting person's bounded social action, not its world outcome."""
+
+    action: str
+    trace: SupportingActionTrace
+
+
+@dataclass(frozen=True)
+class SupportingActionResolution:
+    """Recorded world action produced separately from a supporting decision."""
+
+    action_event: WorldEvent
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -163,12 +190,16 @@ class FocalLifeScenarioEvidence:
     decision_observations: Tuple[Observation, ...]
     request: AllocationRequest
     resolution: AllocationResolution
+    supporting_observations: Tuple[Observation, ...]
+    supporting_decision: SupportingActionDecision
+    supporting_resolution: SupportingActionResolution
     events: Tuple[WorldEvent, ...]
     focal_observations: Tuple[Observation, ...]
     follow_up_observations: Tuple[Observation, ...]
     follow_up: FollowUpDecision
     follow_up_resolution: FollowUpResolution
     follow_up_outcome_observation: Observation
+    focal_pressure_observation: Observation
     third_choice_observations: Tuple[Observation, ...]
     third_choice: OutcomeCarryoverDecision
 
@@ -288,15 +319,24 @@ def choose_follow_up_after_allocation(
 def choose_after_follow_up_outcome(
     observations: Tuple[Observation, ...],
 ) -> OutcomeCarryoverDecision:
-    """Choose one next activity from delivered follow-up outcomes only."""
+    """Choose one next activity from delivered outcomes and social pressure."""
     if not isinstance(observations, tuple):
         raise TypeError("observations must be a tuple")
 
     candidates = []
+    pressure_candidates = []
     for position, observation in enumerate(observations):
         if not isinstance(observation, Observation):
             raise TypeError("observations must contain Observation records")
-        if observation.details.get("evidence_kind") != "follow_up_allocation_outcome":
+        evidence_kind = observation.details.get("evidence_kind")
+        if evidence_kind == "social_pressure":
+            action = observation.details.get("action")
+            if action == "urge_alternative_source":
+                pressure_candidates.append(
+                    (observation.delivery_tick, position, observation, action)
+                )
+            continue
+        if evidence_kind != "follow_up_allocation_outcome":
             continue
         granted_units = observation.details.get("granted_units")
         unfilled_units = observation.details.get("unfilled_units")
@@ -316,8 +356,17 @@ def choose_after_follow_up_outcome(
     selected_observation = selected[2] if selected is not None else None
     granted_units = selected[3] if selected is not None else None
     unfilled_units = selected[4] if selected is not None else None
+    selected_pressure = max(
+        pressure_candidates,
+        default=None,
+        key=lambda item: item[:2],
+    )
+    pressure_observation = selected_pressure[2] if selected_pressure is not None else None
+    pressure_action = selected_pressure[3] if selected_pressure is not None else None
     if selected_observation is None:
         choice = "wait_for_follow_up_outcome"
+    elif unfilled_units > 0 and pressure_observation is not None:
+        choice = "seek_alternative_source"
     elif unfilled_units > 0:
         choice = "wait_for_changed_conditions"
     else:
@@ -330,16 +379,125 @@ def choose_after_follow_up_outcome(
                 if selected_observation is not None
                 else None
             ),
+            selected_pressure_observation_id=(
+                pressure_observation.observation_id
+                if pressure_observation is not None
+                else None
+            ),
             observed_granted_units=granted_units,
             observed_unfilled_units=unfilled_units,
+            observed_pressure_action=pressure_action,
             remaining_need_units=unfilled_units,
             rule=(
                 "wait without a delivered follow-up outcome; otherwise use the "
-                "latest outcome shortfall as remaining need, wait for changed "
-                "conditions while need remains, or continue ordinary task"
+                "latest outcome shortfall as remaining need, seek an alternative "
+                "source when matching social pressure was delivered, wait for "
+                "changed conditions while need remains, or continue ordinary task"
             ),
         ),
     )
+
+
+def choose_supporting_action(
+    observations: Tuple[Observation, ...],
+) -> SupportingActionDecision:
+    """Choose a bounded social response from this person's observations only."""
+    if not isinstance(observations, tuple):
+        raise TypeError("observations must be a tuple")
+
+    candidates = []
+    for position, observation in enumerate(observations):
+        if not isinstance(observation, Observation):
+            raise TypeError("observations must contain Observation records")
+        if observation.details.get("evidence_kind") != "visible_allocation_request":
+            continue
+        requested_units = observation.details.get("requested_units")
+        _require_units(requested_units, "observed requested_units")
+        candidates.append(
+            (observation.delivery_tick, position, observation, requested_units)
+        )
+
+    selected = max(candidates, default=None, key=lambda item: item[:2])
+    selected_observation = selected[2] if selected is not None else None
+    requested_units = selected[3] if selected is not None else None
+    action = (
+        "urge_alternative_source"
+        if selected_observation is not None and requested_units > 0
+        else "take_no_social_action"
+    )
+    return SupportingActionDecision(
+        action=action,
+        trace=SupportingActionTrace(
+            selected_observation_id=(
+                selected_observation.observation_id
+                if selected_observation is not None
+                else None
+            ),
+            observed_requested_units=requested_units,
+            rule=(
+                "urge an alternative source after the latest visible allocation "
+                "request for more than zero units; otherwise take no social action"
+            ),
+        ),
+    )
+
+
+def resolve_supporting_action(
+    *,
+    history: SourceLinkedHistory,
+    decision: SupportingActionDecision,
+    selected_observation: Observation,
+    tick: int,
+) -> SupportingActionResolution:
+    """Validate source-linked evidence, then record one supporting action."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(decision, SupportingActionDecision):
+        raise TypeError("decision must be a SupportingActionDecision")
+    if not isinstance(decision.trace, SupportingActionTrace):
+        raise TypeError("decision trace must be a SupportingActionTrace")
+    if not isinstance(selected_observation, Observation):
+        raise TypeError("selected_observation must be an Observation")
+    _require_units(tick, "tick")
+
+    events = history.events()
+    observations = history.observations()
+    visible_request_event = next(
+        (
+            event
+            for event in events
+            if event.event_id == selected_observation.event_id
+        ),
+        None,
+    )
+    if visible_request_event is None or selected_observation not in observations:
+        raise ValueError("selected supporting evidence must be recorded in history")
+    requested_units = selected_observation.details.get("requested_units")
+    _require_units(requested_units, "supporting observed requested_units")
+    if (
+        selected_observation.agent_id != SUPPORTING_AGENT_ID
+        or selected_observation.details.get("evidence_kind")
+        != "visible_allocation_request"
+        or visible_request_event.kind != "provisional_allocation_requested"
+        or visible_request_event.details.get("requested_units") != requested_units
+    ):
+        raise ValueError("selected supporting evidence is inconsistent")
+    if decision != choose_supporting_action((selected_observation,)):
+        raise ValueError("supporting decision is inconsistent with selected evidence")
+    if tick < max(visible_request_event.tick, selected_observation.delivery_tick):
+        raise ValueError("supporting action cannot precede its evidence")
+
+    action_event = history.record_event(
+        tick=tick,
+        kind="provisional_supporting_action",
+        details={
+            "actor_id": SUPPORTING_AGENT_ID,
+            "action": decision.action,
+            "selected_observation_id": selected_observation.observation_id,
+            "visible_request_event_id": visible_request_event.event_id,
+        },
+    )
+    return SupportingActionResolution(action_event=action_event)
 
 
 def resolve_allocation_request(
@@ -598,6 +756,24 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         tick=3,
     )
     history.deliver_observation(
+        agent_id=SUPPORTING_AGENT_ID,
+        event_id=resolution.attempted_event.event_id,
+        source="direct sight",
+        delivery_tick=3,
+        details={
+            "evidence_kind": "visible_allocation_request",
+            "requested_units": request.requested_units,
+        },
+    )
+    supporting_observations = history.observations_for(SUPPORTING_AGENT_ID)
+    supporting_decision = choose_supporting_action(supporting_observations)
+    supporting_resolution = resolve_supporting_action(
+        history=history,
+        decision=supporting_decision,
+        selected_observation=supporting_observations[-1],
+        tick=3,
+    )
+    history.deliver_observation(
         agent_id=FOCAL_AGENT_ID,
         event_id=resolution.consequence_event.event_id,
         source="direct handover",
@@ -629,6 +805,17 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
             "unfilled_units": follow_up_resolution.unfilled_units,
         },
     )
+    focal_pressure_observation = history.deliver_observation(
+        agent_id=FOCAL_AGENT_ID,
+        event_id=supporting_resolution.action_event.event_id,
+        source="supporting person",
+        delivery_tick=4,
+        details={
+            "evidence_kind": "social_pressure",
+            "actor_id": SUPPORTING_AGENT_ID,
+            "action": supporting_decision.action,
+        },
+    )
     third_choice_observations = history.observations_for(FOCAL_AGENT_ID)
     third_choice = choose_after_follow_up_outcome(third_choice_observations)
     return FocalLifeScenarioEvidence(
@@ -637,12 +824,16 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         decision_observations=decision_observations,
         request=request,
         resolution=resolution,
+        supporting_observations=supporting_observations,
+        supporting_decision=supporting_decision,
+        supporting_resolution=supporting_resolution,
         events=history.events(),
         focal_observations=history.observations_for(FOCAL_AGENT_ID),
         follow_up_observations=follow_up_observations,
         follow_up=follow_up,
         follow_up_resolution=follow_up_resolution,
         follow_up_outcome_observation=follow_up_outcome_observation,
+        focal_pressure_observation=focal_pressure_observation,
         third_choice_observations=third_choice_observations,
         third_choice=third_choice,
     )

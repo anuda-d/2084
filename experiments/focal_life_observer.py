@@ -82,6 +82,12 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
         f"{_unit_phrase(outcome.details['granted_units'])} granted; "
         f"{_unit_phrase(outcome.details['unfilled_units'])} unfilled."
     )
+    pressure = evidence.focal_pressure_observation
+    pressure_action = pressure.details["action"].replace("_", " ")
+    lines.append(
+        f"Social pressure delivered at tick {pressure.delivery_tick} via "
+        f"{pressure.source}: {pressure_action}."
+    )
     third_choice = evidence.third_choice
     third_trace = third_choice.trace
     lines.extend(
@@ -97,6 +103,8 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
                 f"{third_trace.selected_observation_id} granted "
                 f"{_unit_phrase(third_trace.observed_granted_units)} and left "
                 f"{_unit_phrase(third_trace.observed_unfilled_units)} unfilled; "
+                f"pressure {third_trace.selected_pressure_observation_id} said "
+                f"{pressure_action}; "
                 f"rule: {third_trace.rule}."
             ),
         )

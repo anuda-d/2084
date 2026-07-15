@@ -3,20 +3,126 @@ import unittest
 
 from experiments.focal_life_scenario import (
     FOCAL_AGENT_ID,
+    SUPPORTING_AGENT_ID,
     AllocationNeed,
     AllocationRequest,
     ObjectiveAllocation,
     choose_allocation_request,
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
+    choose_supporting_action,
     resolve_allocation_request,
     resolve_follow_up_choice,
+    resolve_supporting_action,
     run_provisional_focal_life_scenario,
 )
 from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_supporting_action_is_recorded_separately_from_its_decision(self):
+        history = SourceLinkedHistory()
+        request_event = history.record_event(
+            tick=1,
+            kind="provisional_allocation_requested",
+            details={"requested_units": 2},
+        )
+        visible_request = history.deliver_observation(
+            agent_id=SUPPORTING_AGENT_ID,
+            event_id=request_event.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={
+                "evidence_kind": "visible_allocation_request",
+                "requested_units": 2,
+            },
+        )
+        decision = choose_supporting_action((visible_request,))
+
+        resolution = resolve_supporting_action(
+            history=history,
+            decision=decision,
+            selected_observation=visible_request,
+            tick=2,
+        )
+
+        self.assertFalse(hasattr(decision, "event_id"))
+        self.assertEqual(resolution.action_event.kind, "provisional_supporting_action")
+        self.assertEqual(resolution.action_event.details["action"], decision.action)
+        self.assertEqual(
+            resolution.action_event.details["selected_observation_id"],
+            visible_request.observation_id,
+        )
+        self.assertEqual(
+            resolution.action_event.details["visible_request_event_id"],
+            request_event.event_id,
+        )
+
+    def test_invalid_supporting_evidence_fails_before_history_mutation(self):
+        history = SourceLinkedHistory()
+        request_event = history.record_event(
+            tick=1,
+            kind="provisional_allocation_requested",
+            details={"requested_units": 2},
+        )
+        inconsistent = history.deliver_observation(
+            agent_id=SUPPORTING_AGENT_ID,
+            event_id=request_event.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={
+                "evidence_kind": "visible_allocation_request",
+                "requested_units": 3,
+            },
+        )
+        decision = choose_supporting_action((inconsistent,))
+        events_before = history.events()
+
+        with self.assertRaisesRegex(ValueError, "supporting evidence"):
+            resolve_supporting_action(
+                history=history,
+                decision=decision,
+                selected_observation=inconsistent,
+                tick=2,
+            )
+
+        self.assertEqual(history.events(), events_before)
+
+    def test_supporting_person_acts_only_from_a_delivered_visible_request(self):
+        evidence = run_provisional_focal_life_scenario()
+        visible_request = evidence.supporting_observations[0]
+
+        acted = choose_supporting_action((visible_request,))
+        absent = choose_supporting_action(())
+
+        self.assertEqual(
+            tuple(inspect.signature(choose_supporting_action).parameters),
+            ("observations",),
+        )
+        self.assertEqual(visible_request.agent_id, SUPPORTING_AGENT_ID)
+        self.assertEqual(
+            visible_request.details,
+            {"evidence_kind": "visible_allocation_request", "requested_units": 2},
+        )
+        self.assertEqual(acted.action, "urge_alternative_source")
+        self.assertEqual(
+            acted.trace.selected_observation_id,
+            visible_request.observation_id,
+        )
+        self.assertEqual(acted.trace.observed_requested_units, 2)
+        self.assertIn("visible allocation request", acted.trace.rule)
+        self.assertEqual(absent.action, "take_no_social_action")
+        self.assertIsNone(absent.trace.selected_observation_id)
+        self.assertNotEqual(acted.action, absent.action)
+        for hidden_field in (
+            "required_units",
+            "granted_units",
+            "unfilled_units",
+            "shelf_units",
+            "committed_units",
+        ):
+            self.assertNotIn(hidden_field, visible_request.details)
+
     def test_delivered_follow_up_outcome_changes_remaining_constraint_and_choice(self):
         history = SourceLinkedHistory()
         unresolved_event = history.record_event(
@@ -67,6 +173,28 @@ class FocalLifeScenarioTests(unittest.TestCase):
             sufficient.observation_id,
         )
         self.assertNotEqual(unresolved_choice.choice, sufficient_choice.choice)
+
+    def test_same_shortfall_changes_later_choice_when_social_pressure_is_delivered(self):
+        evidence = run_provisional_focal_life_scenario()
+        outcome = evidence.follow_up_outcome_observation
+        pressure = evidence.focal_pressure_observation
+
+        without_pressure = choose_after_follow_up_outcome((outcome,))
+        with_pressure = choose_after_follow_up_outcome((outcome, pressure))
+
+        self.assertEqual(outcome.details["granted_units"], 0)
+        self.assertEqual(outcome.details["unfilled_units"], 2)
+        self.assertEqual(without_pressure.choice, "wait_for_changed_conditions")
+        self.assertEqual(with_pressure.choice, "seek_alternative_source")
+        self.assertEqual(
+            with_pressure.trace.selected_observation_id,
+            outcome.observation_id,
+        )
+        self.assertEqual(
+            with_pressure.trace.selected_pressure_observation_id,
+            pressure.observation_id,
+        )
+        self.assertNotEqual(without_pressure.choice, with_pressure.choice)
 
     def test_follow_up_resolution_records_attempt_and_objectively_constrained_outcome(self):
         history = SourceLinkedHistory()
@@ -305,28 +433,54 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertNotIn("committed_units", outcome.details)
         self.assertNotIn("shelf_units", outcome.details)
         self.assertNotIn("remaining_allocatable_units", outcome.details)
-        self.assertEqual(evidence.focal_observations[-1], outcome)
+        self.assertEqual(evidence.focal_observations[-2], outcome)
 
-    def test_scenario_follow_up_outcome_constrains_third_autonomous_choice(self):
+    def test_scenario_outcome_and_pressure_constrain_third_autonomous_choice(self):
         evidence = run_provisional_focal_life_scenario()
         outcome = evidence.follow_up_outcome_observation
+        pressure = evidence.focal_pressure_observation
         parameters = tuple(inspect.signature(choose_after_follow_up_outcome).parameters)
 
         self.assertEqual(parameters, ("observations",))
-        self.assertEqual(evidence.third_choice.choice, "wait_for_changed_conditions")
+        self.assertEqual(evidence.third_choice.choice, "seek_alternative_source")
         self.assertEqual(
             evidence.third_choice.trace.selected_observation_id,
             outcome.observation_id,
+        )
+        self.assertEqual(
+            evidence.third_choice.trace.selected_pressure_observation_id,
+            pressure.observation_id,
+        )
+        self.assertEqual(
+            evidence.third_choice.trace.observed_pressure_action,
+            "urge_alternative_source",
+        )
+        self.assertEqual(
+            pressure.details,
+            {
+                "evidence_kind": "social_pressure",
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_alternative_source",
+            },
         )
         self.assertEqual(evidence.third_choice.trace.observed_granted_units, 0)
         self.assertEqual(evidence.third_choice.trace.observed_unfilled_units, 2)
         self.assertEqual(evidence.third_choice.trace.remaining_need_units, 2)
         self.assertIn("latest outcome shortfall", evidence.third_choice.trace.rule)
-        self.assertEqual(evidence.third_choice_observations[-1], outcome)
+        self.assertEqual(evidence.third_choice_observations[-2], outcome)
+        self.assertEqual(evidence.third_choice_observations[-1], pressure)
         for observation in evidence.third_choice_observations:
-            self.assertNotIn("shelf_units", observation.details)
-            self.assertNotIn("committed_units", observation.details)
-            self.assertNotIn("remaining_allocatable_units", observation.details)
+            for hidden_field in (
+                "shelf_units",
+                "committed_units",
+                "remaining_allocatable_units",
+                "visible_request_event_id",
+                "selected_observation_id",
+                "observed_requested_units",
+                "requested_units",
+                "rule",
+            ):
+                self.assertNotIn(hidden_field, observation.details)
 
     def test_follow_up_rejects_invalid_public_inputs(self):
         history = SourceLinkedHistory()
@@ -360,10 +514,13 @@ class FocalLifeScenarioTests(unittest.TestCase):
             official_claim,
             attempted,
             consequence,
+            supporting_action,
             follow_up_attempted,
             follow_up_outcome,
         ) = evidence.events
-        direct, official, handover, outcome_observation = evidence.focal_observations
+        direct, official, handover, outcome_observation, pressure = (
+            evidence.focal_observations
+        )
 
         self.assertEqual(availability.kind, "provisional_shelf_availability")
         self.assertEqual(availability.details["shelf_units"], 2)
@@ -379,10 +536,12 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID,) * 4,
+            (FOCAL_AGENT_ID,) * 5,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
+        self.assertEqual(supporting_action.kind, "provisional_supporting_action")
+        self.assertEqual(pressure.event_id, supporting_action.event_id)
         self.assertEqual(follow_up_attempted.kind, "provisional_follow_up_attempted")
         self.assertEqual(follow_up_outcome.kind, "provisional_follow_up_resolved")
         self.assertEqual(outcome_observation.event_id, follow_up_outcome.event_id)
@@ -491,14 +650,14 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 6)
-        self.assertEqual(len(first.focal_observations), 4)
+        self.assertEqual(len(first.events), 7)
+        self.assertEqual(len(first.focal_observations), 5)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],
             first.resolution.granted_units,
         )
         self.assertEqual(
-            first.focal_observations[-1].details["granted_units"],
+            first.focal_observations[-2].details["granted_units"],
             first.follow_up_resolution.granted_units,
         )
         self.assertIn("prefer latest direct", first.request.trace.rule)

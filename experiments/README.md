@@ -56,16 +56,26 @@ linked allocation, prior-resolution, handover, and decision evidence before it
 appends either follow-up event; corrupt or inconsistent evidence therefore
 cannot leave a partial attempt in history.
 
-A third public decision carries that delivered outcome forward without reading
-objective allocation state or resolving another attempt. Its provisional rule
-waits when no follow-up outcome was delivered, uses the latest delivered
-outcome's shortfall as the remaining-need constraint, waits for changed
-conditions while that constraint is nonzero, and otherwise continues the
-ordinary task. Its immutable trace retains the selected observation identifier,
-the understandable grant and shortfall, the resulting constraint, and the local
-rule. The fixed zero-unit grant and two-unit shortfall therefore constrain the
-third choice to `wait_for_changed_conditions`; a delivered sufficient outcome
-instead produces no remaining constraint and `continue_ordinary_task`.
+One provisional supporting person separately receives only a source-linked view
+that the focal character visibly requested two units. This view omits the focal
+need, both allocation outcomes, objective supply, commitment, and hidden focal
+state. The supporting decision's local rule urges an alternative source after a
+positive visible request and takes no social action when that observation is
+absent. A separate resolver validates the decision against its recorded
+observation and source event before recording the action; inconsistent evidence
+fails before history mutation. Only the understandable action is then delivered
+to the focal character as social pressure, not the supporter's observation or
+reasoning trace.
+
+A third public decision carries the delivered outcome and any delivered social
+pressure forward without reading objective allocation state or resolving
+another attempt. Its immutable trace retains both selected observation
+identifiers, the understandable grant, shortfall and pressure action, the
+resulting constraint, and its local rule. Under the same zero-unit grant and
+two-unit shortfall, absence of pressure yields `wait_for_changed_conditions`,
+while delivered pressure yields `seek_alternative_source`. A delivered
+sufficient outcome instead produces no remaining constraint and
+`continue_ordinary_task`.
 
 Tests independently vary delivered partial, sufficient, and absent handovers to
 show that the later choice changes with perceived consequences rather than a
@@ -84,22 +94,21 @@ python3 -m experiments.focal_life_observer
 ```
 
 The transcript shows the focal need and request limit, source-linked direct and
-official observations, all three selected actions with reasons retained by
-their decision traces, both delivered outcomes, and the remaining-need
-constraint carried into the third action. Its normal perspective uses the
-focal character's observations, need, decisions, and delivered outcome
-evidence. It does not show objective shelf or commitment values, remaining
-allocatable supply, or the raw omniscient event stream, and it does not tell the
-character why the delivered supply was constrained. This boundary is covered
-through the public transcript renderer and runnable module command using only
-the Python standard library.
+official observations, all three selected actions, both delivered outcomes, the
+focal-visible social pressure, and its effect on the final choice. Its normal
+perspective does not expose the supporter's source observation or local rule,
+objective shelf or commitment values, remaining allocatable supply, the raw
+omniscient event stream, or why the delivered supply was constrained. This
+boundary is covered through the public transcript renderer and runnable module
+command using only the Python standard library.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
-allocation rule, follow-up choice, and follow-up response are all provisional.
-This is one fixed scenario with three decisions and two resolved attempts, not
-a repeated loop, belief or memory update, institution model, diary or UI, AI
-behavior, persistence/replay format, permanent setting, or claim that a human
-mind is being simulated. The third choice is not resolved, and the local waiting
+allocation rule, supporting person, social action, follow-up choices, and
+responses are all provisional. This is one fixed scenario with four decisions,
+two resolved allocation attempts, and one resolved social action, not a repeated
+loop, belief or memory update, institution model, diary or UI, AI behavior,
+persistence/replay format, permanent setting, or claim that a human mind is
+being simulated. The third focal choice is not resolved, and the local pressure
 rule does not prescribe resistance or any other story. The transcript is not a
 general observer interface, authorization boundary, interactive view, or
 graphical UI.
