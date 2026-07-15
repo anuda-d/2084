@@ -1384,6 +1384,65 @@ class FocalLifeScenarioTests(unittest.TestCase):
         )
         self.assertIn("prefer latest direct", first.request.trace.rule)
 
+    def test_current_diary_access_changes_only_the_revision_informed_choice(self):
+        with_diary = run_provisional_focal_life_scenario(
+            later_diary_accessible=True
+        )
+        without_diary = run_provisional_focal_life_scenario(
+            later_diary_accessible=False
+        )
+
+        self.assertEqual(
+            with_diary.objective_allocation,
+            without_diary.objective_allocation,
+        )
+        self.assertEqual(with_diary.events, without_diary.events)
+        self.assertEqual(
+            with_diary.official_revision_observation,
+            without_diary.official_revision_observation,
+        )
+        self.assertEqual(
+            with_diary.focal_observations,
+            without_diary.focal_observations,
+        )
+        self.assertEqual(with_diary.diary.possessor_id, FOCAL_AGENT_ID)
+        self.assertNotEqual(without_diary.diary.possessor_id, FOCAL_AGENT_ID)
+
+        self.assertEqual(with_diary.reconsideration.choice, "recheck_local_supply")
+        self.assertEqual(without_diary.reconsideration.choice, "adjust_next_request")
+        self.assertEqual(
+            vars(with_diary.reconsideration.trace),
+            {
+                "selected_revision_observation_id": "observation-0008",
+                "observed_revision_units": 1,
+                "diary_entry_id": "diary-entry-0001",
+                "retained_private_units": 2,
+                "rule": (
+                    "adjust the next request to the delivered revision alone; "
+                    "when a currently accessible retained diary perspective "
+                    "differs, recheck local supply first"
+                ),
+            },
+        )
+        self.assertEqual(
+            vars(without_diary.reconsideration.trace),
+            {
+                "selected_revision_observation_id": "observation-0008",
+                "observed_revision_units": 1,
+                "diary_entry_id": None,
+                "retained_private_units": None,
+                "rule": (
+                    "adjust the next request to the delivered revision alone; "
+                    "when a currently accessible retained diary perspective "
+                    "differs, recheck local supply first"
+                ),
+            },
+        )
+        self.assertNotEqual(
+            with_diary.reconsideration.choice,
+            without_diary.reconsideration.choice,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

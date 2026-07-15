@@ -27,6 +27,8 @@ Reason: pressure observation-0006 urged public agreement, so official claim obse
 Diary write (private perspective): started at tick 6 and completed at tick 7; retained 2 units available.
 Diary read at tick 8: returned the same retained private entry, 2 units available.
 Official revision received at tick 9 via official revision notice: claim revised to 1 unit available.
+Later decision: recheck local supply.
+Reason: official revision observation-0008 said 1 unit; retained diary entry diary-entry-0001 said 2 units, so the local rule chooses to recheck local supply.
 """
 
 

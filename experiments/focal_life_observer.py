@@ -157,6 +157,28 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
         f"{revision.source}: claim revised to "
         f"{_unit_phrase(revision.details['available_units'])} available."
     )
+    reconsideration = evidence.reconsideration
+    reconsideration_trace = reconsideration.trace
+    lines.append(
+        f"Later decision: {reconsideration.choice.replace('_', ' ')}."
+    )
+    if reconsideration_trace.diary_entry_id is not None:
+        lines.append(
+            "Reason: official revision "
+            f"{reconsideration_trace.selected_revision_observation_id} said "
+            f"{_unit_phrase(reconsideration_trace.observed_revision_units)}; "
+            f"retained diary entry {reconsideration_trace.diary_entry_id} said "
+            f"{_unit_phrase(reconsideration_trace.retained_private_units)}, so "
+            "the local rule chooses to recheck local supply."
+        )
+    else:
+        lines.append(
+            "Reason: official revision "
+            f"{reconsideration_trace.selected_revision_observation_id} said "
+            f"{_unit_phrase(reconsideration_trace.observed_revision_units)}; no "
+            "diary perspective was currently accessible, so the local rule "
+            "adjusts the next request."
+        )
     return "\n".join(lines) + "\n"
 
 

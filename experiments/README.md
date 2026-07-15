@@ -150,8 +150,28 @@ event, and the focal character receives it only through a source-linked official
 revision observation. The earlier claim, objective shelf event, private belief,
 public expression, and diary entry remain unchanged and separately inspectable.
 The transcript presents the revised value as a claim received from its official
-source rather than as objective truth. The normal perspective does not expose
-objective truth or event identifiers, the
+source rather than as objective truth.
+
+One later, reversible ordinary choice now follows that revision. The public
+runner comparison
+`run_provisional_focal_life_scenario(later_diary_accessible=True/False)` keeps
+the complete recorded event history, focal observations, objective allocation,
+and delivered one-unit revision equal. It changes only the diary's current
+location/possessor fact. A small access boundary returns the retained entry only
+when the focal character currently possesses the diary; the decision receives
+that validated entry or no diary perspective, never the runner flag. Under the
+explicit local rule, a currently accessible two-unit entry that differs from
+the delivered one-unit revision selects `recheck_local_supply`; the revision
+alone selects `adjust_next_request`. These are attempted ordinary choices, not
+world outcomes. The immutable trace contains only the selected revision
+observation and value, the retained diary entry and value actually used (or
+explicit `None` values), and the local rule. It contains no allocation fields,
+raw event history, or hidden state.
+
+The comparison injects the diary's current possession as one provisional test
+variable after the fixed earlier read. It does not record a transfer or loss and
+does not introduce a memory model; those remain outside this experiment. The
+normal perspective does not expose objective truth or event identifiers, the
 supporter's source observation or local rule, objective commitment or
 allocatable-supply values, the raw omniscient event stream, or why the delivered
 supply was constrained. The separate objective availability record and its
@@ -162,14 +182,14 @@ renderer and runnable module command using only the Python standard library.
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
-with five decisions, three resolved allocation attempts, one resolved social
+with six decisions, three resolved allocation attempts, one resolved social
 action, one resolved public expression, one diary write, and one diary read. It
 is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,
 persistence/replay format, permanent setting, or claim that a human mind is
-being simulated. The later revision does not trigger reconsideration, and the
-private belief does not update. The local pressure and
+being simulated. The reconsideration does not update the private belief or
+author a world event. The local pressure and
 alternative-source rules demonstrate one divergence and outcome; they do not
 prescribe resistance or any other story. The transcript is not a general
 observer interface, authorization boundary, interactive view, or graphical UI.

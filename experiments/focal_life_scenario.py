@@ -322,6 +322,25 @@ class DiaryReadResult:
 
 
 @dataclass(frozen=True)
+class RevisionReconsiderationTrace:
+    """Delivered revision and retained private perspective used by one choice."""
+
+    selected_revision_observation_id: str
+    observed_revision_units: int
+    diary_entry_id: str | None
+    retained_private_units: int | None
+    rule: str
+
+
+@dataclass(frozen=True)
+class RevisionReconsiderationDecision:
+    """One ordinary later choice, with no authority to record its outcome."""
+
+    choice: str
+    trace: RevisionReconsiderationTrace
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -354,6 +373,7 @@ class FocalLifeScenarioEvidence:
     diary_read: DiaryReadResult
     official_revision_event: WorldEvent
     official_revision_observation: Observation
+    reconsideration: RevisionReconsiderationDecision
 
 
 def write_private_diary(
@@ -505,6 +525,78 @@ def read_private_diary(
         },
     )
     return DiaryReadResult(entry=entry, read_tick=tick, read_event=read_event)
+
+
+def currently_accessible_diary_entry(
+    *, diary: PhysicalDiary, actor_id: str, entry_id: str
+) -> DiaryEntry | None:
+    """Return a retained entry only when the actor currently has the diary."""
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(actor_id, str) or not actor_id.strip():
+        raise ValueError("actor_id must be a nonempty string")
+    if not isinstance(entry_id, str) or not entry_id.strip():
+        raise ValueError("entry_id must be a nonempty string")
+    if actor_id != diary.possessor_id:
+        return None
+    entry = next(
+        (candidate for candidate in diary.entries if candidate.entry_id == entry_id),
+        None,
+    )
+    if entry is None:
+        raise ValueError("entry must be retained in the diary")
+    return entry
+
+
+def choose_after_official_revision(
+    revision_observation: Observation,
+    retained_diary_entry: DiaryEntry | None,
+) -> RevisionReconsiderationDecision:
+    """Choose from a delivered revision and any currently accessible entry."""
+    if not isinstance(revision_observation, Observation):
+        raise TypeError("revision_observation must be an Observation")
+    if revision_observation.details.get("evidence_kind") != "official_claim_revision":
+        raise ValueError("revision_observation must deliver an official claim revision")
+    revision_units = revision_observation.details.get("available_units")
+    _require_units(revision_units, "observed revision available_units")
+    if retained_diary_entry is not None:
+        if not isinstance(retained_diary_entry, DiaryEntry):
+            raise TypeError("retained_diary_entry must be a DiaryEntry or None")
+        if (
+            retained_diary_entry.perspective_label != "private perspective"
+            or retained_diary_entry.proposition != "available_units"
+        ):
+            raise ValueError("diary entry must retain a private availability perspective")
+
+    rule = (
+        "adjust the next request to the delivered revision alone; when a currently "
+        "accessible retained diary perspective differs, recheck local supply first"
+    )
+    if (
+        retained_diary_entry is not None
+        and retained_diary_entry.units != revision_units
+    ):
+        choice = "recheck_local_supply"
+    else:
+        choice = "adjust_next_request"
+    return RevisionReconsiderationDecision(
+        choice=choice,
+        trace=RevisionReconsiderationTrace(
+            selected_revision_observation_id=revision_observation.observation_id,
+            observed_revision_units=revision_units,
+            diary_entry_id=(
+                retained_diary_entry.entry_id
+                if retained_diary_entry is not None
+                else None
+            ),
+            retained_private_units=(
+                retained_diary_entry.units
+                if retained_diary_entry is not None
+                else None
+            ),
+            rule=rule,
+        ),
+    )
 
 
 def choose_allocation_request(
@@ -1311,7 +1403,9 @@ def resolve_alternative_source_choice(
 
 
 def run_provisional_focal_life_scenario(
-    *, include_public_pressure: bool = True
+    *,
+    include_public_pressure: bool = True,
+    later_diary_accessible: bool = True,
 ) -> FocalLifeScenarioEvidence:
     """Run the fixed example and return its complete development evidence."""
     history = SourceLinkedHistory()
@@ -1507,6 +1601,23 @@ def run_provisional_focal_life_scenario(
             "revises_event_id": official_claim_event.event_id,
         },
     )
+    current_diary = diary_write.diary
+    if not later_diary_accessible:
+        current_diary = PhysicalDiary(
+            object_id=diary_write.diary.object_id,
+            location="temporarily elsewhere",
+            possessor_id="provisional-current-holder",
+            entries=diary_write.diary.entries,
+        )
+    retained_diary_entry = currently_accessible_diary_entry(
+        diary=current_diary,
+        actor_id=FOCAL_AGENT_ID,
+        entry_id=diary_write.entry.entry_id,
+    )
+    reconsideration = choose_after_official_revision(
+        official_revision_observation,
+        retained_diary_entry,
+    )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -1532,9 +1643,10 @@ def run_provisional_focal_life_scenario(
         private_availability_belief=public_expression.private_belief,
         public_expression=public_expression,
         public_expression_resolution=public_expression_resolution,
-        diary=diary_write.diary,
+        diary=current_diary,
         diary_write=diary_write,
         diary_read=diary_read,
         official_revision_event=official_revision_event,
         official_revision_observation=official_revision_observation,
+        reconsideration=reconsideration,
     )
