@@ -7,22 +7,188 @@ from experiments.focal_life_scenario import (
     SUPPORTING_AGENT_ID,
     AllocationNeed,
     AllocationRequest,
+    PhysicalDiary,
+    PrivateAvailabilityBelief,
     ObjectiveAllocation,
     choose_allocation_request,
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
     choose_public_availability_expression,
     choose_supporting_action,
+    read_private_diary,
     resolve_allocation_request,
     resolve_follow_up_choice,
     resolve_public_expression,
     resolve_supporting_action,
     run_provisional_focal_life_scenario,
+    write_private_diary,
 )
 from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_fixed_scenario_writes_then_reads_one_possessed_private_diary(self):
+        evidence = run_provisional_focal_life_scenario()
+        repeated = run_provisional_focal_life_scenario()
+
+        self.assertEqual(evidence.diary.object_id, "provisional-private-diary")
+        self.assertEqual(evidence.diary.possessor_id, FOCAL_AGENT_ID)
+        self.assertEqual(evidence.diary.location, "carried by provisional-focal")
+        self.assertEqual(
+            evidence.public_expression_resolution.expression_event.tick,
+            5,
+        )
+        self.assertEqual(
+            (evidence.diary_write.started_tick, evidence.diary_write.completed_tick),
+            (6, 7),
+        )
+        self.assertGreater(
+            evidence.diary_write.started_tick,
+            evidence.public_expression_resolution.expression_event.tick,
+        )
+        self.assertEqual(evidence.diary_read.read_tick, 8)
+        self.assertIs(evidence.diary_read.entry, evidence.diary_write.entry)
+        self.assertEqual(evidence.diary.entries, (evidence.diary_write.entry,))
+        self.assertEqual(evidence.diary_write, repeated.diary_write)
+        self.assertEqual(evidence.diary_read, repeated.diary_read)
+
+    def test_diary_write_requires_physical_possession_before_mutation(self):
+        history = SourceLinkedHistory()
+        diary = PhysicalDiary(
+            object_id="provisional-private-diary",
+            location="carried by provisional-focal",
+            possessor_id=FOCAL_AGENT_ID,
+        )
+        perspective = PrivateAvailabilityBelief(
+            proposition="available_units",
+            units=2,
+            source_observation_id="observation-0001",
+            source_event_id="event-0001",
+        )
+        events_before = history.events()
+
+        with self.assertRaisesRegex(ValueError, "must possess the diary"):
+            write_private_diary(
+                history=history,
+                diary=diary,
+                actor_id=SUPPORTING_AGENT_ID,
+                perspective=perspective,
+                start_tick=6,
+                duration_ticks=1,
+            )
+
+        self.assertEqual(history.events(), events_before)
+        self.assertEqual(diary.entries, ())
+
+    def test_diary_write_retains_private_perspective_and_advances_time(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        direct = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=availability.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={"evidence_kind": "direct", "available_units": 2},
+        )
+        perspective = PrivateAvailabilityBelief(
+            proposition="available_units",
+            units=2,
+            source_observation_id=direct.observation_id,
+            source_event_id=availability.event_id,
+        )
+        diary = PhysicalDiary(
+            object_id="provisional-private-diary",
+            location="carried by provisional-focal",
+            possessor_id=FOCAL_AGENT_ID,
+        )
+
+        result = write_private_diary(
+            history=history,
+            diary=diary,
+            actor_id=FOCAL_AGENT_ID,
+            perspective=perspective,
+            start_tick=6,
+            duration_ticks=1,
+        )
+
+        self.assertEqual((result.started_tick, result.completed_tick), (6, 7))
+        self.assertGreater(result.completed_tick, result.started_tick)
+        self.assertEqual(result.write_event.tick, 7)
+        self.assertEqual(result.diary.entries, (result.entry,))
+        self.assertEqual(result.entry.perspective_label, "private perspective")
+        self.assertEqual(result.entry.proposition, "available_units")
+        self.assertEqual(result.entry.units, 2)
+        self.assertEqual(
+            availability.details["shelf_units"]
+            - availability.details["committed_units"],
+            1,
+        )
+        self.assertNotEqual(result.entry.units, 1)
+        self.assertEqual(result.entry.source_observation_id, direct.observation_id)
+        self.assertNotIn(
+            "objective_allocation",
+            inspect.signature(write_private_diary).parameters,
+        )
+        retained_fields = vars(result.entry)
+        for forbidden in (
+            "shelf_units",
+            "committed_units",
+            "allocatable_units",
+            "objective_availability",
+            "raw_events",
+            "source_event_id",
+        ):
+            self.assertNotIn(forbidden, retained_fields)
+
+    def test_physically_accessible_diary_returns_the_exact_retained_entry(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        direct = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=availability.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={"evidence_kind": "direct", "available_units": 2},
+        )
+        written = write_private_diary(
+            history=history,
+            diary=PhysicalDiary(
+                object_id="provisional-private-diary",
+                location="carried by provisional-focal",
+                possessor_id=FOCAL_AGENT_ID,
+            ),
+            actor_id=FOCAL_AGENT_ID,
+            perspective=PrivateAvailabilityBelief(
+                proposition="available_units",
+                units=2,
+                source_observation_id=direct.observation_id,
+                source_event_id=availability.event_id,
+            ),
+            start_tick=6,
+            duration_ticks=1,
+        )
+
+        read = read_private_diary(
+            history=history,
+            diary=written.diary,
+            actor_id=FOCAL_AGENT_ID,
+            entry_id=written.entry.entry_id,
+            tick=8,
+        )
+
+        self.assertIs(read.entry, written.entry)
+        self.assertEqual(read.entry, written.entry)
+        self.assertEqual(read.read_tick, 8)
+        self.assertEqual(read.read_event.tick, 8)
+
     def test_pressure_separates_private_belief_public_expression_and_objective_event(self):
         pressured = run_provisional_focal_life_scenario()
         without_pressure = run_provisional_focal_life_scenario(
@@ -665,6 +831,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
             follow_up_attempted,
             follow_up_outcome,
             public_expression,
+            diary_written,
+            diary_read,
         ) = evidence.events
         direct, official, handover, outcome_observation, pressure = (
             evidence.focal_observations
@@ -697,6 +865,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
             public_expression.kind,
             "provisional_public_availability_expression",
         )
+        self.assertEqual(diary_written.kind, "provisional_private_diary_written")
+        self.assertEqual(diary_read.kind, "provisional_private_diary_read")
 
     def test_decision_uses_only_filtered_observations_and_need_constraints(self):
         evidence = run_provisional_focal_life_scenario()
@@ -802,7 +972,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 8)
+        self.assertEqual(len(first.events), 10)
         self.assertEqual(len(first.focal_observations), 5)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],

@@ -228,6 +228,77 @@ class PublicExpressionResolution:
 
 
 @dataclass(frozen=True)
+class DiaryEntry:
+    """One immutable private-perspective entry retained in the diary."""
+
+    entry_id: str
+    author_id: str
+    perspective_label: str
+    proposition: str
+    units: int
+    source_observation_id: str
+    started_tick: int
+    completed_tick: int
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "entry_id",
+            "author_id",
+            "perspective_label",
+            "proposition",
+            "source_observation_id",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} must be a nonempty string")
+        _require_units(self.units, "units")
+        _require_units(self.started_tick, "started_tick")
+        _require_units(self.completed_tick, "completed_tick")
+        if self.completed_tick <= self.started_tick:
+            raise ValueError("completed_tick must be later than started_tick")
+
+
+@dataclass(frozen=True)
+class PhysicalDiary:
+    """Minimal physical facts for the one provisional private diary."""
+
+    object_id: str
+    location: str
+    possessor_id: str
+    entries: Tuple[DiaryEntry, ...] = ()
+
+    def __post_init__(self) -> None:
+        for field_name in ("object_id", "location", "possessor_id"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} must be a nonempty string")
+        if not isinstance(self.entries, tuple):
+            raise TypeError("entries must be a tuple")
+        if any(not isinstance(entry, DiaryEntry) for entry in self.entries):
+            raise TypeError("entries must contain DiaryEntry records")
+
+
+@dataclass(frozen=True)
+class DiaryWriteResult:
+    """Public evidence from one completed diary write."""
+
+    diary: PhysicalDiary
+    entry: DiaryEntry
+    started_tick: int
+    completed_tick: int
+    write_event: WorldEvent
+
+
+@dataclass(frozen=True)
+class DiaryReadResult:
+    """Public evidence from reading one retained diary entry."""
+
+    entry: DiaryEntry
+    read_tick: int
+    read_event: WorldEvent
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
@@ -252,6 +323,160 @@ class FocalLifeScenarioEvidence:
     private_availability_belief: PrivateAvailabilityBelief
     public_expression: PublicExpressionDecision
     public_expression_resolution: PublicExpressionResolution
+    diary: PhysicalDiary
+    diary_write: DiaryWriteResult
+    diary_read: DiaryReadResult
+
+
+def write_private_diary(
+    *,
+    history: SourceLinkedHistory,
+    diary: PhysicalDiary,
+    actor_id: str,
+    perspective: PrivateAvailabilityBelief,
+    start_tick: int,
+    duration_ticks: int,
+) -> DiaryWriteResult:
+    """Write one retained perspective when the actor physically has the diary."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(actor_id, str) or not actor_id.strip():
+        raise ValueError("actor_id must be a nonempty string")
+    if not isinstance(perspective, PrivateAvailabilityBelief):
+        raise TypeError("perspective must be a PrivateAvailabilityBelief")
+    _require_units(start_tick, "start_tick")
+    if (
+        not isinstance(duration_ticks, int)
+        or isinstance(duration_ticks, bool)
+        or duration_ticks <= 0
+    ):
+        raise ValueError("duration_ticks must be a positive integer")
+    if actor_id != diary.possessor_id:
+        raise ValueError("actor must possess the diary to write")
+
+    observation = next(
+        (
+            candidate
+            for candidate in history.observations()
+            if candidate.observation_id == perspective.source_observation_id
+        ),
+        None,
+    )
+    event = next(
+        (
+            candidate
+            for candidate in history.events()
+            if candidate.event_id == perspective.source_event_id
+        ),
+        None,
+    )
+    if observation is None or event is None:
+        raise ValueError("private perspective must be recorded in history")
+    if (
+        observation.agent_id != actor_id
+        or observation.event_id != event.event_id
+        or observation.details.get("evidence_kind") != "direct"
+        or observation.details.get("available_units") != perspective.units
+        or perspective.proposition != "available_units"
+    ):
+        raise ValueError("private perspective is inconsistent with delivered evidence")
+    if start_tick < max(observation.delivery_tick, event.tick):
+        raise ValueError("diary writing cannot precede its perspective")
+
+    completed_tick = start_tick + duration_ticks
+    entry = DiaryEntry(
+        entry_id=f"diary-entry-{len(diary.entries) + 1:04d}",
+        author_id=actor_id,
+        perspective_label="private perspective",
+        proposition=perspective.proposition,
+        units=perspective.units,
+        source_observation_id=perspective.source_observation_id,
+        started_tick=start_tick,
+        completed_tick=completed_tick,
+    )
+    updated_diary = PhysicalDiary(
+        object_id=diary.object_id,
+        location=diary.location,
+        possessor_id=diary.possessor_id,
+        entries=diary.entries + (entry,),
+    )
+    write_event = history.record_event(
+        tick=completed_tick,
+        kind="provisional_private_diary_written",
+        details={
+            "actor_id": actor_id,
+            "diary_object_id": diary.object_id,
+            "entry_id": entry.entry_id,
+            "started_tick": start_tick,
+            "completed_tick": completed_tick,
+        },
+    )
+    return DiaryWriteResult(
+        diary=updated_diary,
+        entry=entry,
+        started_tick=start_tick,
+        completed_tick=completed_tick,
+        write_event=write_event,
+    )
+
+
+def read_private_diary(
+    *,
+    history: SourceLinkedHistory,
+    diary: PhysicalDiary,
+    actor_id: str,
+    entry_id: str,
+    tick: int,
+) -> DiaryReadResult:
+    """Return one retained entry when the actor physically has the diary."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(actor_id, str) or not actor_id.strip():
+        raise ValueError("actor_id must be a nonempty string")
+    if not isinstance(entry_id, str) or not entry_id.strip():
+        raise ValueError("entry_id must be a nonempty string")
+    _require_units(tick, "tick")
+    if actor_id != diary.possessor_id:
+        raise ValueError("actor must possess the diary to read")
+    entry = next(
+        (candidate for candidate in diary.entries if candidate.entry_id == entry_id),
+        None,
+    )
+    if entry is None:
+        raise ValueError("entry must be retained in the diary")
+    write_event = next(
+        (
+            candidate
+            for candidate in history.events()
+            if candidate.kind == "provisional_private_diary_written"
+            and candidate.details.get("diary_object_id") == diary.object_id
+            and candidate.details.get("entry_id") == entry.entry_id
+        ),
+        None,
+    )
+    if (
+        write_event is None
+        or write_event.tick != entry.completed_tick
+        or write_event.details.get("actor_id") != entry.author_id
+    ):
+        raise ValueError("diary entry is inconsistent with recorded writing")
+    if tick <= entry.completed_tick:
+        raise ValueError("diary reading must occur after writing completes")
+
+    read_event = history.record_event(
+        tick=tick,
+        kind="provisional_private_diary_read",
+        details={
+            "actor_id": actor_id,
+            "diary_object_id": diary.object_id,
+            "entry_id": entry.entry_id,
+        },
+    )
+    return DiaryReadResult(entry=entry, read_tick=tick, read_event=read_event)
 
 
 def choose_allocation_request(
@@ -1075,6 +1300,25 @@ def run_provisional_focal_life_scenario(
         selected_pressure_observation=focal_pressure_observation,
         tick=5,
     )
+    diary_write = write_private_diary(
+        history=history,
+        diary=PhysicalDiary(
+            object_id="provisional-private-diary",
+            location="carried by provisional-focal",
+            possessor_id=FOCAL_AGENT_ID,
+        ),
+        actor_id=FOCAL_AGENT_ID,
+        perspective=public_expression.private_belief,
+        start_tick=6,
+        duration_ticks=1,
+    )
+    diary_read = read_private_diary(
+        history=history,
+        diary=diary_write.diary,
+        actor_id=FOCAL_AGENT_ID,
+        entry_id=diary_write.entry.entry_id,
+        tick=8,
+    )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -1097,4 +1341,7 @@ def run_provisional_focal_life_scenario(
         private_availability_belief=public_expression.private_belief,
         public_expression=public_expression,
         public_expression_resolution=public_expression_resolution,
+        diary=diary_write.diary,
+        diary_write=diary_write,
+        diary_read=diary_read,
     )

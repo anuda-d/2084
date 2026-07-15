@@ -23,6 +23,8 @@ Reason: follow-up outcome observation-0005 granted 0 units and left 2 units unfi
 Private belief: 2 units available from direct observation observation-0001.
 Public expression: 4 units available.
 Reason: pressure observation-0006 urged public agreement, so official claim observation-0002 was repeated while the private belief remained unchanged.
+Diary write (private perspective): started at tick 6 and completed at tick 7; retained 2 units available.
+Diary read at tick 8: returned the same retained private entry, 2 units available.
 """
 
 

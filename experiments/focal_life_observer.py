@@ -126,6 +126,23 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             ),
         )
     )
+    diary_write = evidence.diary_write
+    diary_read = evidence.diary_read
+    lines.extend(
+        (
+            (
+                "Diary write (private perspective): started at tick "
+                f"{diary_write.started_tick} and completed at tick "
+                f"{diary_write.completed_tick}; retained "
+                f"{_unit_phrase(diary_write.entry.units)} available."
+            ),
+            (
+                f"Diary read at tick {diary_read.read_tick}: returned the same "
+                "retained private entry, "
+                f"{_unit_phrase(diary_read.entry.units)} available."
+            ),
+        )
+    )
     return "\n".join(lines) + "\n"
 
 

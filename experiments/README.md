@@ -96,6 +96,18 @@ official source, pressure, and underlying objective availability event. Corrupt
 or inconsistent input fails before an expression is recorded. The objective
 allocation event is unchanged by either the pressured or unpressured run.
 
+After the tick-5 public expression, the focal character writes the retained
+two-unit private belief into one diary physically carried by that character.
+The public write action requires possession, starts at tick 6, completes at
+tick 7, and rejects invalid or inconsistent delivered perspective evidence
+before recording an event. The immutable entry retains only its private-
+perspective label, proposition, value, source observation, author, and writing
+times; it does not copy shelf, commitment, allocatable-supply, raw-event, or
+objective-record fields. A later public read action also requires physical
+access and returns that exact retained entry at tick 8. The diary itself has
+only a stable provisional object identifier, one location/possessor fact, and
+its entry tuple; this is deliberately not a general object or inventory model.
+
 Tests independently vary delivered partial, sufficient, and absent handovers to
 show that the later choice changes with perceived consequences rather than a
 prescribed story. They also exercise invalid public inputs. Run the
@@ -115,27 +127,29 @@ python3 -m experiments.focal_life_observer
 The transcript shows the focal need and request limit, source-linked direct and
 official observations, all focal choices, both delivered outcomes, the
 focal-visible social pressure and its effects, retained private belief, and
-public expression. Its normal perspective does not expose objective truth or
-event identifiers, the supporter's source observation or local rule, objective
-commitment or allocatable-supply values, the raw omniscient event stream, or why
-the delivered supply was constrained. The separate objective availability
-record and its provenance remain available only through the scenario's returned
-development evidence and tests. This boundary is covered through the public
-transcript renderer and runnable module command using only the Python standard
-library.
+public expression. It then shows private-perspective diary writing with time
+advancing and the later read returning the same retained entry. Its normal
+perspective does not expose objective truth or event identifiers, the
+supporter's source observation or local rule, objective commitment or
+allocatable-supply values, the raw omniscient event stream, or why the delivered
+supply was constrained. The separate objective availability record and its
+provenance remain available only through the scenario's returned development
+evidence and tests. This boundary is covered through the public transcript
+renderer and runnable module command using only the Python standard library.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
 with five decisions, two resolved allocation attempts, one resolved social
-action, and one resolved public expression, not a repeated loop, general belief
-or memory update, confidence or decay model, institution model, diary or UI, AI
-behavior, persistence/replay format, permanent setting, or claim that a human
-mind is being simulated. The private belief does not update, and the third focal
-choice is not resolved. The local pressure rule demonstrates one divergence; it
-does not prescribe resistance or any other story. The transcript is not a
-general observer interface, authorization boundary, interactive view, or
-graphical UI.
+action, one resolved public expression, one diary write, and one diary read. It
+is not a repeated loop, general belief or memory update, confidence or decay
+model, institution model, object/inventory system, diary lifecycle, discovery,
+concealment, confiscation, sharing, entry editing, UI, AI behavior,
+persistence/replay format, permanent setting, or claim that a human mind is
+being simulated. The private belief does not update, and the third focal choice
+is not resolved. The local pressure rule demonstrates one divergence; it does
+not prescribe resistance or any other story. The transcript is not a general
+observer interface, authorization boundary, interactive view, or graphical UI.
 
 ## Replay record
 
