@@ -151,6 +151,12 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             ),
         )
     )
+    revision = evidence.official_revision_observation
+    lines.append(
+        f"Official revision received at tick {revision.delivery_tick} via "
+        f"{revision.source}: claim revised to "
+        f"{_unit_phrase(revision.details['available_units'])} available."
+    )
     return "\n".join(lines) + "\n"
 
 

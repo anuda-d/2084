@@ -452,6 +452,104 @@ class FocalLifeScenarioTests(unittest.TestCase):
             objective_event.details,
         )
 
+    def test_later_official_revision_preserves_prior_evidence_and_is_delivered(self):
+        evidence = run_provisional_focal_life_scenario()
+        objective_event = evidence.events[0]
+        earlier_claim = evidence.events[1]
+        earlier_direct, earlier_official = evidence.decision_observations
+        public_expression = evidence.public_expression_resolution.expression_event
+        diary_entry = evidence.diary_write.entry
+        revision_event = evidence.official_revision_event
+        revision = evidence.official_revision_observation
+
+        self.assertEqual(
+            objective_event.details,
+            {"shelf_units": 2, "committed_units": 1},
+        )
+        self.assertEqual(
+            earlier_claim.details,
+            {"claimed_available_units": 4},
+        )
+        self.assertEqual(
+            earlier_official.details,
+            {"evidence_kind": "official_claim", "available_units": 4},
+        )
+        self.assertEqual(earlier_direct.details["available_units"], 2)
+        self.assertEqual(
+            evidence.private_availability_belief,
+            PrivateAvailabilityBelief(
+                proposition="available_units",
+                units=2,
+                source_observation_id=earlier_direct.observation_id,
+                source_event_id=objective_event.event_id,
+            ),
+        )
+        self.assertEqual(
+            public_expression.details,
+            {
+                "actor_id": FOCAL_AGENT_ID,
+                "proposition": "available_units",
+                "expressed_units": 4,
+                "private_source_observation_id": earlier_direct.observation_id,
+                "official_source_observation_id": earlier_official.observation_id,
+                "pressure_observation_id": (
+                    evidence.focal_pressure_observation.observation_id
+                ),
+                "objective_availability_event_id": objective_event.event_id,
+            },
+        )
+        self.assertEqual(
+            vars(diary_entry),
+            {
+                "entry_id": "diary-entry-0001",
+                "author_id": FOCAL_AGENT_ID,
+                "perspective_label": "private perspective",
+                "proposition": "available_units",
+                "units": 2,
+                "source_observation_id": earlier_direct.observation_id,
+                "started_tick": 6,
+                "completed_tick": 7,
+            },
+        )
+        self.assertIs(evidence.diary_read.entry, diary_entry)
+        self.assertEqual(evidence.diary_read.read_tick, 8)
+        self.assertEqual(
+            evidence.diary_read.read_event.details,
+            {
+                "actor_id": FOCAL_AGENT_ID,
+                "diary_object_id": "provisional-private-diary",
+                "entry_id": diary_entry.entry_id,
+            },
+        )
+
+        official_claims = tuple(
+            event
+            for event in evidence.events
+            if event.kind == "provisional_official_availability_claim"
+        )
+        self.assertEqual(official_claims, (earlier_claim, revision_event))
+        self.assertEqual(revision_event.tick, 9)
+        self.assertEqual(
+            revision_event.details,
+            {
+                "claimed_available_units": 1,
+                "revises_event_id": earlier_claim.event_id,
+            },
+        )
+        self.assertEqual(revision.agent_id, FOCAL_AGENT_ID)
+        self.assertEqual(revision.event_id, revision_event.event_id)
+        self.assertEqual(revision.source, "official revision notice")
+        self.assertGreaterEqual(revision.delivery_tick, revision_event.tick)
+        self.assertEqual(
+            revision.details,
+            {
+                "evidence_kind": "official_claim_revision",
+                "available_units": 1,
+                "revises_event_id": earlier_claim.event_id,
+            },
+        )
+        self.assertEqual(evidence.focal_observations[-1], revision)
+
     def test_public_expression_resolver_rejects_corrupt_decision_before_mutation(self):
         history = SourceLinkedHistory()
         availability = history.record_event(
@@ -1107,10 +1205,17 @@ class FocalLifeScenarioTests(unittest.TestCase):
             public_expression,
             diary_written,
             diary_read,
+            official_revision,
         ) = evidence.events
-        direct, official, handover, outcome_observation, pressure, alternative_outcome = (
-            evidence.focal_observations
-        )
+        (
+            direct,
+            official,
+            handover,
+            outcome_observation,
+            pressure,
+            alternative_outcome,
+            revision_observation,
+        ) = evidence.focal_observations
 
         self.assertEqual(availability.kind, "provisional_shelf_availability")
         self.assertEqual(availability.details["shelf_units"], 2)
@@ -1126,7 +1231,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID,) * 6,
+            (FOCAL_AGENT_ID,) * 7,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
@@ -1157,6 +1262,11 @@ class FocalLifeScenarioTests(unittest.TestCase):
         )
         self.assertEqual(diary_written.kind, "provisional_private_diary_written")
         self.assertEqual(diary_read.kind, "provisional_private_diary_read")
+        self.assertEqual(
+            official_revision.kind,
+            "provisional_official_availability_claim",
+        )
+        self.assertEqual(revision_observation.event_id, official_revision.event_id)
 
     def test_decision_uses_only_filtered_observations_and_need_constraints(self):
         evidence = run_provisional_focal_life_scenario()
@@ -1262,8 +1372,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 13)
-        self.assertEqual(len(first.focal_observations), 6)
+        self.assertEqual(len(first.events), 14)
+        self.assertEqual(len(first.focal_observations), 7)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],
             first.resolution.granted_units,

@@ -352,6 +352,8 @@ class FocalLifeScenarioEvidence:
     diary: PhysicalDiary
     diary_write: DiaryWriteResult
     diary_read: DiaryReadResult
+    official_revision_event: WorldEvent
+    official_revision_observation: Observation
 
 
 def write_private_diary(
@@ -1486,6 +1488,25 @@ def run_provisional_focal_life_scenario(
         entry_id=diary_write.entry.entry_id,
         tick=8,
     )
+    official_revision_event = history.record_event(
+        tick=9,
+        kind="provisional_official_availability_claim",
+        details={
+            "claimed_available_units": 1,
+            "revises_event_id": official_claim_event.event_id,
+        },
+    )
+    official_revision_observation = history.deliver_observation(
+        agent_id=FOCAL_AGENT_ID,
+        event_id=official_revision_event.event_id,
+        source="official revision notice",
+        delivery_tick=9,
+        details={
+            "evidence_kind": "official_claim_revision",
+            "available_units": 1,
+            "revises_event_id": official_claim_event.event_id,
+        },
+    )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -1514,4 +1535,6 @@ def run_provisional_focal_life_scenario(
         diary=diary_write.diary,
         diary_write=diary_write,
         diary_read=diary_read,
+        official_revision_event=official_revision_event,
+        official_revision_observation=official_revision_observation,
     )

@@ -143,8 +143,15 @@ The transcript shows the focal need and request limit, source-linked direct and
 official observations, all focal choices, all three delivered allocation
 outcomes, the focal-visible social pressure and its effects, retained private
 belief, and public expression. It then shows private-perspective diary writing with time
-advancing and the later read returning the same retained entry. Its normal
-perspective does not expose objective truth or event identifiers, the
+advancing and the later read returning the same retained entry. After that read,
+the fixed scenario appends a tick-9 official claim revising the earlier official
+four-unit claim to one unit. The new claim explicitly links to the earlier claim
+event, and the focal character receives it only through a source-linked official
+revision observation. The earlier claim, objective shelf event, private belief,
+public expression, and diary entry remain unchanged and separately inspectable.
+The transcript presents the revised value as a claim received from its official
+source rather than as objective truth. The normal perspective does not expose
+objective truth or event identifiers, the
 supporter's source observation or local rule, objective commitment or
 allocatable-supply values, the raw omniscient event stream, or why the delivered
 supply was constrained. The separate objective availability record and its
@@ -161,7 +168,8 @@ is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,
 persistence/replay format, permanent setting, or claim that a human mind is
-being simulated. The private belief does not update. The local pressure and
+being simulated. The later revision does not trigger reconsideration, and the
+private belief does not update. The local pressure and
 alternative-source rules demonstrate one divergence and outcome; they do not
 prescribe resistance or any other story. The transcript is not a general
 observer interface, authorization boundary, interactive view, or graphical UI.
