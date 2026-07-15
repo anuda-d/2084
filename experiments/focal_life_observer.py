@@ -109,6 +109,23 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             ),
         )
     )
+    private = evidence.private_availability_belief
+    public = evidence.public_expression
+    lines.extend(
+        (
+            (
+                f"Private belief: {_unit_phrase(private.units)} available from "
+                f"direct observation {private.source_observation_id}."
+            ),
+            f"Public expression: {_unit_phrase(public.expressed_units)} available.",
+            (
+                f"Reason: pressure {public.trace.selected_pressure_observation_id} "
+                f"urged public agreement, so official claim "
+                f"{public.trace.selected_official_observation_id} was repeated while "
+                "the private belief remained unchanged."
+            ),
+        )
+    )
     return "\n".join(lines) + "\n"
 
 

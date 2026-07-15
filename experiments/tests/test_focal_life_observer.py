@@ -16,10 +16,13 @@ Delivered at tick 3 via direct handover: 1 unit granted; 1 unit unfilled.
 Decision: seek remaining allocation (2 units).
 Reason: handover observation-0004 granted 1 of 3 needed, leaving 2 units.
 Delivered at tick 4 via direct allocation outcome: 0 units granted; 2 units unfilled.
-Social pressure delivered at tick 4 via supporting person: urge alternative source.
+Social pressure delivered at tick 4 via supporting person: urge public agreement.
 Remaining-need constraint: 2 units from follow-up outcome observation-0005.
 Decision: seek alternative source.
-Reason: follow-up outcome observation-0005 granted 0 units and left 2 units unfilled; pressure observation-0006 said urge alternative source; rule: wait without a delivered follow-up outcome; otherwise use the latest outcome shortfall as remaining need, seek an alternative source when matching social pressure was delivered, wait for changed conditions while need remains, or continue ordinary task.
+Reason: follow-up outcome observation-0005 granted 0 units and left 2 units unfilled; pressure observation-0006 said urge public agreement; rule: wait without a delivered follow-up outcome; otherwise use the latest outcome shortfall as remaining need, seek an alternative source when matching social pressure was delivered, wait for changed conditions while need remains, or continue ordinary task.
+Private belief: 2 units available from direct observation observation-0001.
+Public expression: 4 units available.
+Reason: pressure observation-0006 urged public agreement, so official claim observation-0002 was repeated while the private belief remained unchanged.
 """
 
 

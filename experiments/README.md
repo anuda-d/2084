@@ -59,13 +59,14 @@ cannot leave a partial attempt in history.
 One provisional supporting person separately receives only a source-linked view
 that the focal character visibly requested two units. This view omits the focal
 need, both allocation outcomes, objective supply, commitment, and hidden focal
-state. The supporting decision's local rule urges an alternative source after a
+state. The supporting decision's local rule urges public agreement after a
 positive visible request and takes no social action when that observation is
-absent. A separate resolver validates the decision against its recorded
+absent. The supporting person does not need to know what the official notice
+claimed. A separate resolver validates the decision against its recorded
 observation and source event before recording the action; inconsistent evidence
-fails before history mutation. Only the understandable action is then delivered
-to the focal character as social pressure, not the supporter's observation or
-reasoning trace.
+fails before history mutation. Only the understandable generic action is then
+delivered to the focal character as social pressure, not the supporter's
+observation or reasoning trace.
 
 A third public decision carries the delivered outcome and any delivered social
 pressure forward without reading objective allocation state or resolving
@@ -76,6 +77,24 @@ two-unit shortfall, absence of pressure yields `wait_for_changed_conditions`,
 while delivered pressure yields `seek_alternative_source`. A delivered
 sufficient outcome instead produces no remaining constraint and
 `continue_ordinary_task`.
+
+The fixed scenario then records one same-proposition comparison. Narrow
+immutable objective evidence says that two units were available and links to
+the original allocation event. A separate private belief retains the two-unit
+value and links only to the focal character's delivered direct observation. A
+public-expression decision receives only the focal character's delivered
+observations: with delivered pressure it repeats the delivered four-unit
+official claim while preserving the private belief; without pressure it
+expresses the private two-unit value. The public runner exposes this comparison
+through `run_provisional_focal_life_scenario(include_public_pressure=False)`.
+
+The decision cannot append its own expression event. A separate resolver checks
+the recorded direct, official, and pressure observations against their source
+events, checks the decision against that exact evidence, and validates timing
+before mutation. The resulting event retains links to the private source,
+official source, pressure, and underlying objective availability event. Corrupt
+or inconsistent input fails before an expression is recorded. The objective
+allocation event is unchanged by either the pressured or unpressured run.
 
 Tests independently vary delivered partial, sufficient, and absent handovers to
 show that the later choice changes with perceived consequences rather than a
@@ -94,22 +113,27 @@ python3 -m experiments.focal_life_observer
 ```
 
 The transcript shows the focal need and request limit, source-linked direct and
-official observations, all three selected actions, both delivered outcomes, the
-focal-visible social pressure, and its effect on the final choice. Its normal
-perspective does not expose the supporter's source observation or local rule,
-objective shelf or commitment values, remaining allocatable supply, the raw
-omniscient event stream, or why the delivered supply was constrained. This
-boundary is covered through the public transcript renderer and runnable module
-command using only the Python standard library.
+official observations, all focal choices, both delivered outcomes, the
+focal-visible social pressure and its effects, retained private belief, and
+public expression. Its normal perspective does not expose objective truth or
+event identifiers, the supporter's source observation or local rule, objective
+commitment or allocatable-supply values, the raw omniscient event stream, or why
+the delivered supply was constrained. The separate objective availability
+record and its provenance remain available only through the scenario's returned
+development evidence and tests. This boundary is covered through the public
+transcript renderer and runnable module command using only the Python standard
+library.
 
 The character, location vocabulary, quantities, commitment, evidence priority,
-allocation rule, supporting person, social action, follow-up choices, and
-responses are all provisional. This is one fixed scenario with four decisions,
-two resolved allocation attempts, and one resolved social action, not a repeated
-loop, belief or memory update, institution model, diary or UI, AI behavior,
-persistence/replay format, permanent setting, or claim that a human mind is
-being simulated. The third focal choice is not resolved, and the local pressure
-rule does not prescribe resistance or any other story. The transcript is not a
+allocation rule, supporting person, social action, public-expression rule,
+follow-up choices, and responses are all provisional. This is one fixed scenario
+with five decisions, two resolved allocation attempts, one resolved social
+action, and one resolved public expression, not a repeated loop, general belief
+or memory update, confidence or decay model, institution model, diary or UI, AI
+behavior, persistence/replay format, permanent setting, or claim that a human
+mind is being simulated. The private belief does not update, and the third focal
+choice is not resolved. The local pressure rule demonstrates one divergence; it
+does not prescribe resistance or any other story. The transcript is not a
 general observer interface, authorization boundary, interactive view, or
 graphical UI.
 

@@ -1,5 +1,6 @@
 import inspect
 import unittest
+from dataclasses import replace
 
 from experiments.focal_life_scenario import (
     FOCAL_AGENT_ID,
@@ -10,9 +11,11 @@ from experiments.focal_life_scenario import (
     choose_allocation_request,
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
+    choose_public_availability_expression,
     choose_supporting_action,
     resolve_allocation_request,
     resolve_follow_up_choice,
+    resolve_public_expression,
     resolve_supporting_action,
     run_provisional_focal_life_scenario,
 )
@@ -20,6 +23,150 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_pressure_separates_private_belief_public_expression_and_objective_event(self):
+        pressured = run_provisional_focal_life_scenario()
+        without_pressure = run_provisional_focal_life_scenario(
+            include_public_pressure=False
+        )
+        direct, official = pressured.decision_observations
+        objective_event = pressured.events[0]
+        objective = pressured.objective_availability_evidence
+        private = pressured.private_availability_belief
+        public_event = pressured.public_expression_resolution.expression_event
+
+        self.assertEqual(objective.proposition, "available_units")
+        self.assertEqual(objective.units, 2)
+        self.assertEqual(objective.source_event_id, objective_event.event_id)
+        self.assertEqual(private.proposition, "available_units")
+        self.assertEqual(private.units, 2)
+        self.assertEqual(private.source_observation_id, direct.observation_id)
+        self.assertEqual(private.source_event_id, objective_event.event_id)
+        self.assertEqual(public_event.kind, "provisional_public_availability_expression")
+        self.assertEqual(public_event.details["proposition"], "available_units")
+        self.assertEqual(public_event.details["expressed_units"], 4)
+        self.assertEqual(
+            public_event.details["private_source_observation_id"],
+            direct.observation_id,
+        )
+        self.assertEqual(
+            public_event.details["official_source_observation_id"],
+            official.observation_id,
+        )
+        self.assertEqual(
+            public_event.details["pressure_observation_id"],
+            pressured.focal_pressure_observation.observation_id,
+        )
+        self.assertEqual(
+            public_event.details["objective_availability_event_id"],
+            objective_event.event_id,
+        )
+        self.assertEqual(objective_event.details, {"shelf_units": 2, "committed_units": 1})
+        self.assertEqual(
+            without_pressure.private_availability_belief.units,
+            private.units,
+        )
+        self.assertEqual(
+            without_pressure.public_expression_resolution.expression_event.details[
+                "expressed_units"
+            ],
+            2,
+        )
+        self.assertIsNone(
+            without_pressure.public_expression.trace.selected_pressure_observation_id
+        )
+        self.assertEqual(
+            without_pressure.events[0].details,
+            objective_event.details,
+        )
+
+    def test_public_expression_resolver_rejects_corrupt_decision_before_mutation(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        direct = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=availability.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={"evidence_kind": "direct", "available_units": 2},
+        )
+        official_event = history.record_event(
+            tick=2,
+            kind="provisional_official_availability_claim",
+            details={"claimed_available_units": 4},
+        )
+        official = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=official_event.event_id,
+            source="official notice",
+            delivery_tick=2,
+            details={"evidence_kind": "official_claim", "available_units": 4},
+        )
+        pressure_event = history.record_event(
+            tick=3,
+            kind="provisional_supporting_action",
+            details={
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        pressure = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=pressure_event.event_id,
+            source="supporting person",
+            delivery_tick=3,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": "urge_public_agreement",
+            },
+        )
+        decision = choose_public_availability_expression((direct, official, pressure))
+        corrupt = replace(decision, expressed_units=3)
+        events_before = history.events()
+
+        with self.assertRaisesRegex(ValueError, "public expression decision"):
+            resolve_public_expression(
+                history=history,
+                decision=corrupt,
+                selected_private_observation=direct,
+                selected_official_observation=official,
+                selected_pressure_observation=pressure,
+                tick=4,
+            )
+
+        self.assertEqual(history.events(), events_before)
+
+        wrong_actor_pressure = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=pressure_event.event_id,
+            source="supporting person",
+            delivery_tick=3,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": "unrelated-person",
+                "action": "urge_public_agreement",
+            },
+        )
+        wrong_source_decision = choose_public_availability_expression(
+            (direct, official, wrong_actor_pressure)
+        )
+
+        with self.assertRaisesRegex(ValueError, "public pressure evidence"):
+            resolve_public_expression(
+                history=history,
+                decision=wrong_source_decision,
+                selected_private_observation=direct,
+                selected_official_observation=official,
+                selected_pressure_observation=wrong_actor_pressure,
+                tick=4,
+            )
+
+        self.assertEqual(history.events(), events_before)
+
     def test_supporting_action_is_recorded_separately_from_its_decision(self):
         history = SourceLinkedHistory()
         request_event = history.record_event(
@@ -104,7 +251,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
             visible_request.details,
             {"evidence_kind": "visible_allocation_request", "requested_units": 2},
         )
-        self.assertEqual(acted.action, "urge_alternative_source")
+        self.assertEqual(acted.action, "urge_public_agreement")
         self.assertEqual(
             acted.trace.selected_observation_id,
             visible_request.observation_id,
@@ -453,14 +600,14 @@ class FocalLifeScenarioTests(unittest.TestCase):
         )
         self.assertEqual(
             evidence.third_choice.trace.observed_pressure_action,
-            "urge_alternative_source",
+            "urge_public_agreement",
         )
         self.assertEqual(
             pressure.details,
             {
                 "evidence_kind": "social_pressure",
                 "actor_id": SUPPORTING_AGENT_ID,
-                "action": "urge_alternative_source",
+                "action": "urge_public_agreement",
             },
         )
         self.assertEqual(evidence.third_choice.trace.observed_granted_units, 0)
@@ -517,6 +664,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
             supporting_action,
             follow_up_attempted,
             follow_up_outcome,
+            public_expression,
         ) = evidence.events
         direct, official, handover, outcome_observation, pressure = (
             evidence.focal_observations
@@ -545,6 +693,10 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(follow_up_attempted.kind, "provisional_follow_up_attempted")
         self.assertEqual(follow_up_outcome.kind, "provisional_follow_up_resolved")
         self.assertEqual(outcome_observation.event_id, follow_up_outcome.event_id)
+        self.assertEqual(
+            public_expression.kind,
+            "provisional_public_availability_expression",
+        )
 
     def test_decision_uses_only_filtered_observations_and_need_constraints(self):
         evidence = run_provisional_focal_life_scenario()
@@ -650,7 +802,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 7)
+        self.assertEqual(len(first.events), 8)
         self.assertEqual(len(first.focal_observations), 5)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],

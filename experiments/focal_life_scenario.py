@@ -182,11 +182,58 @@ class SupportingActionResolution:
 
 
 @dataclass(frozen=True)
+class ObjectiveAvailabilityEvidence:
+    """The narrow objective proposition retained beside fuller allocation state."""
+
+    proposition: str
+    units: int
+    source_event_id: str
+
+
+@dataclass(frozen=True)
+class PrivateAvailabilityBelief:
+    """A retained availability belief derived from one direct observation."""
+
+    proposition: str
+    units: int
+    source_observation_id: str
+    source_event_id: str
+
+
+@dataclass(frozen=True)
+class PublicExpressionTrace:
+    """Delivered evidence and local rule used for one public claim."""
+
+    selected_private_observation_id: str
+    selected_official_observation_id: str | None
+    selected_pressure_observation_id: str | None
+    rule: str
+
+
+@dataclass(frozen=True)
+class PublicExpressionDecision:
+    """A public claim decision, with no authority to record a world event."""
+
+    proposition: str
+    expressed_units: int
+    private_belief: PrivateAvailabilityBelief
+    trace: PublicExpressionTrace
+
+
+@dataclass(frozen=True)
+class PublicExpressionResolution:
+    """The separately recorded public expression."""
+
+    expression_event: WorldEvent
+
+
+@dataclass(frozen=True)
 class FocalLifeScenarioEvidence:
     """Immutable evidence retained from one deterministic scenario run."""
 
     need: AllocationNeed
     objective_allocation: ObjectiveAllocation
+    objective_availability_evidence: ObjectiveAvailabilityEvidence
     decision_observations: Tuple[Observation, ...]
     request: AllocationRequest
     resolution: AllocationResolution
@@ -199,9 +246,12 @@ class FocalLifeScenarioEvidence:
     follow_up: FollowUpDecision
     follow_up_resolution: FollowUpResolution
     follow_up_outcome_observation: Observation
-    focal_pressure_observation: Observation
+    focal_pressure_observation: Observation | None
     third_choice_observations: Tuple[Observation, ...]
     third_choice: OutcomeCarryoverDecision
+    private_availability_belief: PrivateAvailabilityBelief
+    public_expression: PublicExpressionDecision
+    public_expression_resolution: PublicExpressionResolution
 
 
 def choose_allocation_request(
@@ -331,7 +381,7 @@ def choose_after_follow_up_outcome(
         evidence_kind = observation.details.get("evidence_kind")
         if evidence_kind == "social_pressure":
             action = observation.details.get("action")
-            if action == "urge_alternative_source":
+            if action == "urge_public_agreement":
                 pressure_candidates.append(
                     (observation.delivery_tick, position, observation, action)
                 )
@@ -421,7 +471,7 @@ def choose_supporting_action(
     selected_observation = selected[2] if selected is not None else None
     requested_units = selected[3] if selected is not None else None
     action = (
-        "urge_alternative_source"
+        "urge_public_agreement"
         if selected_observation is not None and requested_units > 0
         else "take_no_social_action"
     )
@@ -435,8 +485,8 @@ def choose_supporting_action(
             ),
             observed_requested_units=requested_units,
             rule=(
-                "urge an alternative source after the latest visible allocation "
-                "request for more than zero units; otherwise take no social action"
+                "urge public agreement after the latest visible allocation request "
+                "for more than zero units; otherwise take no social action"
             ),
         ),
     )
@@ -498,6 +548,191 @@ def resolve_supporting_action(
         },
     )
     return SupportingActionResolution(action_event=action_event)
+
+
+def choose_public_availability_expression(
+    observations: Tuple[Observation, ...],
+) -> PublicExpressionDecision:
+    """Choose one public claim from delivered availability and pressure only."""
+    if not isinstance(observations, tuple):
+        raise TypeError("observations must be a tuple")
+    direct_candidates = []
+    official_candidates = []
+    pressure_candidates = []
+    for position, observation in enumerate(observations):
+        if not isinstance(observation, Observation):
+            raise TypeError("observations must contain Observation records")
+        evidence_kind = observation.details.get("evidence_kind")
+        if evidence_kind == "direct":
+            units = observation.details.get("available_units")
+            _require_units(units, "direct available_units")
+            direct_candidates.append((observation.delivery_tick, position, observation))
+        elif evidence_kind == "official_claim":
+            units = observation.details.get("available_units")
+            _require_units(units, "official available_units")
+            official_candidates.append((observation.delivery_tick, position, observation))
+        elif (
+            evidence_kind == "social_pressure"
+            and observation.details.get("action") == "urge_public_agreement"
+        ):
+            pressure_candidates.append((observation.delivery_tick, position, observation))
+    direct_selected = max(direct_candidates, default=None, key=lambda item: item[:2])
+    official_selected = max(
+        official_candidates, default=None, key=lambda item: item[:2]
+    )
+    pressure_selected = max(
+        pressure_candidates, default=None, key=lambda item: item[:2]
+    )
+    direct = direct_selected[2] if direct_selected is not None else None
+    official = official_selected[2] if official_selected is not None else None
+    pressure = pressure_selected[2] if pressure_selected is not None else None
+    if direct is None:
+        raise ValueError("a direct availability observation is required")
+
+    private = PrivateAvailabilityBelief(
+        proposition="available_units",
+        units=direct.details["available_units"],
+        source_observation_id=direct.observation_id,
+        source_event_id=direct.event_id,
+    )
+    selected_official = official if pressure is not None else None
+    expressed_units = (
+        selected_official.details["available_units"]
+        if selected_official is not None
+        else private.units
+    )
+    return PublicExpressionDecision(
+        proposition=private.proposition,
+        expressed_units=expressed_units,
+        private_belief=private,
+        trace=PublicExpressionTrace(
+            selected_private_observation_id=direct.observation_id,
+            selected_official_observation_id=(
+                selected_official.observation_id
+                if selected_official is not None
+                else None
+            ),
+            selected_pressure_observation_id=(
+                pressure.observation_id if pressure is not None else None
+            ),
+            rule=(
+                "repeat the latest delivered official availability claim when "
+                "social pressure is delivered; otherwise express retained direct evidence"
+            ),
+        ),
+    )
+
+
+def resolve_public_expression(
+    *,
+    history: SourceLinkedHistory,
+    decision: PublicExpressionDecision,
+    selected_private_observation: Observation,
+    selected_official_observation: Observation | None,
+    selected_pressure_observation: Observation | None,
+    tick: int,
+) -> PublicExpressionResolution:
+    """Validate delivered evidence, then record one public expression."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(decision, PublicExpressionDecision):
+        raise TypeError("decision must be a PublicExpressionDecision")
+    if not isinstance(selected_private_observation, Observation):
+        raise TypeError("selected_private_observation must be an Observation")
+    if selected_official_observation is not None and not isinstance(
+        selected_official_observation, Observation
+    ):
+        raise TypeError("selected_official_observation must be an Observation or None")
+    if selected_pressure_observation is not None and not isinstance(
+        selected_pressure_observation, Observation
+    ):
+        raise TypeError("selected_pressure_observation must be an Observation or None")
+    _require_units(tick, "tick")
+
+    observations = history.observations()
+    selected = tuple(
+        observation
+        for observation in (
+            selected_private_observation,
+            selected_official_observation,
+            selected_pressure_observation,
+        )
+        if observation is not None
+    )
+    if any(observation not in observations for observation in selected):
+        raise ValueError("public expression evidence must be recorded in history")
+    events_by_id = {event.event_id: event for event in history.events()}
+    private_event = events_by_id.get(selected_private_observation.event_id)
+    official_event = (
+        events_by_id.get(selected_official_observation.event_id)
+        if selected_official_observation is not None
+        else None
+    )
+    pressure_event = (
+        events_by_id.get(selected_pressure_observation.event_id)
+        if selected_pressure_observation is not None
+        else None
+    )
+    if (
+        private_event is None
+        or selected_private_observation.agent_id != FOCAL_AGENT_ID
+        or selected_private_observation.details.get("evidence_kind") != "direct"
+        or private_event.kind != "provisional_shelf_availability"
+        or selected_private_observation.details.get("available_units")
+        != private_event.details.get("shelf_units")
+    ):
+        raise ValueError("private availability evidence is inconsistent")
+    if selected_official_observation is not None and (
+        official_event is None
+        or selected_official_observation.agent_id != FOCAL_AGENT_ID
+        or selected_official_observation.details.get("evidence_kind")
+        != "official_claim"
+        or official_event.kind != "provisional_official_availability_claim"
+        or selected_official_observation.details.get("available_units")
+        != official_event.details.get("claimed_available_units")
+    ):
+        raise ValueError("official availability evidence is inconsistent")
+    if selected_pressure_observation is not None and (
+        pressure_event is None
+        or selected_pressure_observation.agent_id != FOCAL_AGENT_ID
+        or selected_pressure_observation.details.get("evidence_kind")
+        != "social_pressure"
+        or selected_pressure_observation.details.get("action")
+        != "urge_public_agreement"
+        or selected_pressure_observation.details.get("actor_id")
+        != SUPPORTING_AGENT_ID
+        or pressure_event.kind != "provisional_supporting_action"
+        or pressure_event.details.get("action") != "urge_public_agreement"
+        or pressure_event.details.get("actor_id") != SUPPORTING_AGENT_ID
+    ):
+        raise ValueError("public pressure evidence is inconsistent")
+    if decision != choose_public_availability_expression(selected):
+        raise ValueError("public expression decision is inconsistent with evidence")
+    latest_evidence_tick = max(
+        max(observation.delivery_tick for observation in selected),
+        max(events_by_id[observation.event_id].tick for observation in selected),
+    )
+    if tick < latest_evidence_tick:
+        raise ValueError("public expression cannot precede its evidence")
+
+    event = history.record_event(
+        tick=tick,
+        kind="provisional_public_availability_expression",
+        details={
+            "actor_id": FOCAL_AGENT_ID,
+            "proposition": decision.proposition,
+            "expressed_units": decision.expressed_units,
+            "private_source_observation_id": (
+                decision.private_belief.source_observation_id
+            ),
+            "official_source_observation_id": (
+                decision.trace.selected_official_observation_id
+            ),
+            "pressure_observation_id": decision.trace.selected_pressure_observation_id,
+            "objective_availability_event_id": decision.private_belief.source_event_id,
+        },
+    )
+    return PublicExpressionResolution(expression_event=event)
 
 
 def resolve_allocation_request(
@@ -712,7 +947,9 @@ def resolve_follow_up_choice(
     )
 
 
-def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
+def run_provisional_focal_life_scenario(
+    *, include_public_pressure: bool = True
+) -> FocalLifeScenarioEvidence:
     """Run the fixed example and return its complete development evidence."""
     history = SourceLinkedHistory()
     availability_event = history.record_event(
@@ -724,6 +961,11 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         availability_event_id=availability_event.event_id,
         shelf_units=availability_event.details["shelf_units"],
         committed_units=availability_event.details["committed_units"],
+    )
+    objective_availability_evidence = ObjectiveAvailabilityEvidence(
+        proposition="available_units",
+        units=availability_event.details["shelf_units"],
+        source_event_id=availability_event.event_id,
     )
     history.deliver_observation(
         agent_id=FOCAL_AGENT_ID,
@@ -805,22 +1047,38 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
             "unfilled_units": follow_up_resolution.unfilled_units,
         },
     )
-    focal_pressure_observation = history.deliver_observation(
-        agent_id=FOCAL_AGENT_ID,
-        event_id=supporting_resolution.action_event.event_id,
-        source="supporting person",
-        delivery_tick=4,
-        details={
-            "evidence_kind": "social_pressure",
-            "actor_id": SUPPORTING_AGENT_ID,
-            "action": supporting_decision.action,
-        },
-    )
+    focal_pressure_observation = None
+    if include_public_pressure:
+        focal_pressure_observation = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=supporting_resolution.action_event.event_id,
+            source="supporting person",
+            delivery_tick=4,
+            details={
+                "evidence_kind": "social_pressure",
+                "actor_id": SUPPORTING_AGENT_ID,
+                "action": supporting_decision.action,
+            },
+        )
     third_choice_observations = history.observations_for(FOCAL_AGENT_ID)
     third_choice = choose_after_follow_up_outcome(third_choice_observations)
+    public_expression = choose_public_availability_expression(
+        third_choice_observations
+    )
+    public_expression_resolution = resolve_public_expression(
+        history=history,
+        decision=public_expression,
+        selected_private_observation=decision_observations[0],
+        selected_official_observation=(
+            decision_observations[1] if include_public_pressure else None
+        ),
+        selected_pressure_observation=focal_pressure_observation,
+        tick=5,
+    )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
+        objective_availability_evidence=objective_availability_evidence,
         decision_observations=decision_observations,
         request=request,
         resolution=resolution,
@@ -836,4 +1094,7 @@ def run_provisional_focal_life_scenario() -> FocalLifeScenarioEvidence:
         focal_pressure_observation=focal_pressure_observation,
         third_choice_observations=third_choice_observations,
         third_choice=third_choice,
+        private_availability_belief=public_expression.private_belief,
+        public_expression=public_expression,
+        public_expression_resolution=public_expression_resolution,
     )
