@@ -14,6 +14,7 @@ from experiments.focal_life_scenario import (
     choose_allocation_request,
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
+    choose_diary_consult_after_revision,
     choose_provisional_diary_relocation,
     choose_public_availability_expression,
     choose_supporting_action,
@@ -21,6 +22,7 @@ from experiments.focal_life_scenario import (
     resolve_allocation_request,
     resolve_alternative_source_choice,
     resolve_follow_up_choice,
+    resolve_diary_consult,
     resolve_provisional_diary_relocation,
     resolve_public_expression,
     resolve_supporting_action,
@@ -31,6 +33,261 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_post_revision_diary_consult_is_resolved_from_physical_access(self):
+        accessible = run_provisional_focal_life_scenario(
+            diary_relocation="store_in_private_quarters"
+        )
+        inaccessible = run_provisional_focal_life_scenario(
+            diary_relocation="entrust_to_supporting_person"
+        )
+
+        self.assertEqual(
+            accessible.official_revision_observation,
+            inaccessible.official_revision_observation,
+        )
+        self.assertEqual(accessible.diary_write.entry, inaccessible.diary_write.entry)
+        self.assertEqual(
+            accessible.diary_consult_decision,
+            inaccessible.diary_consult_decision,
+        )
+        decision_fields = vars(accessible.diary_consult_decision)
+        self.assertEqual(
+            decision_fields,
+            {
+                "choice": "consult_private_diary",
+                "actor_id": FOCAL_AGENT_ID,
+                "selected_revision_observation_id": "observation-0009",
+            },
+        )
+        for forbidden in (
+            "possessor_id",
+            "holder_id",
+            "location",
+            "entry",
+            "entry_id",
+            "diary_object_id",
+            "success",
+            "outcome",
+        ):
+            self.assertNotIn(forbidden, decision_fields)
+
+        self.assertIs(
+            accessible.diary_consult_resolution.retained_entry,
+            accessible.diary_write.entry,
+        )
+        self.assertIsNone(inaccessible.diary_consult_resolution.retained_entry)
+        self.assertEqual(
+            tuple(
+                event.kind
+                for event in accessible.events[-2:]
+            ),
+            (
+                "provisional_diary_consult_attempted",
+                "provisional_diary_consult_resolved",
+            ),
+        )
+        self.assertEqual(
+            dict(accessible.diary_consult_observation.details),
+            {
+                "evidence_kind": "diary_consult_outcome",
+                "outcome": "entry_retrieved",
+                "attempted_tick": 12,
+                "resolved_tick": 13,
+                "entry_id": "diary-entry-0001",
+                "perspective_label": "private perspective",
+                "proposition": "available_units",
+                "available_units": 2,
+            },
+        )
+        failure_details = dict(inaccessible.diary_consult_observation.details)
+        self.assertEqual(
+            failure_details,
+            {
+                "evidence_kind": "diary_consult_outcome",
+                "outcome": "inaccessible",
+                "attempted_tick": 12,
+                "resolved_tick": 13,
+                "message": "The private diary is not currently accessible.",
+            },
+        )
+        failure_text = repr(failure_details)
+        for hidden in (
+            inaccessible.diary_write.entry.entry_id,
+            inaccessible.diary.object_id,
+            inaccessible.diary.possessor_id,
+            inaccessible.diary.location,
+        ):
+            self.assertNotIn(hidden, failure_text)
+        for hidden_key in (
+            "entry_id",
+            "diary_object_id",
+            "possessor_id",
+            "holder_id",
+            "location",
+            "available_units",
+            "proposition",
+            "perspective_label",
+        ):
+            self.assertNotIn(hidden_key, failure_details)
+
+        self.assertEqual(accessible.reconsideration.choice, "recheck_local_supply")
+        self.assertEqual(inaccessible.reconsideration.choice, "adjust_next_request")
+
+    def test_diary_consult_rejects_corrupt_provenance_before_history_mutation(self):
+        def build_context():
+            history = SourceLinkedHistory()
+            availability = history.record_event(
+                tick=1,
+                kind="provisional_shelf_availability",
+                details={"shelf_units": 2, "committed_units": 1},
+            )
+            direct = history.deliver_observation(
+                agent_id=FOCAL_AGENT_ID,
+                event_id=availability.event_id,
+                source="direct sight",
+                delivery_tick=1,
+                details={"evidence_kind": "direct", "available_units": 2},
+            )
+            written = write_private_diary(
+                history=history,
+                diary=PhysicalDiary(
+                    object_id="provisional-private-diary",
+                    location="carried by provisional-focal",
+                    possessor_id=FOCAL_AGENT_ID,
+                ),
+                actor_id=FOCAL_AGENT_ID,
+                perspective=PrivateAvailabilityBelief(
+                    proposition="available_units",
+                    units=2,
+                    source_observation_id=direct.observation_id,
+                    source_event_id=availability.event_id,
+                ),
+                start_tick=2,
+                duration_ticks=1,
+            )
+            read = read_private_diary(
+                history=history,
+                diary=written.diary,
+                actor_id=FOCAL_AGENT_ID,
+                entry_id=written.entry.entry_id,
+                tick=4,
+            )
+            relocation_decision = choose_provisional_diary_relocation(
+                relocation="store_in_private_quarters",
+                diary=written.diary,
+                actor_id=FOCAL_AGENT_ID,
+            )
+            relocation = resolve_provisional_diary_relocation(
+                history=history,
+                diary=written.diary,
+                diary_write=written,
+                diary_read=read,
+                decision=relocation_decision,
+                attempted_tick=5,
+                resolved_tick=6,
+            )
+            earlier_claim = history.record_event(
+                tick=1,
+                kind="provisional_official_availability_claim",
+                details={"claimed_available_units": 4},
+            )
+            revision = history.record_event(
+                tick=7,
+                kind="provisional_official_availability_claim",
+                details={
+                    "claimed_available_units": 1,
+                    "revises_event_id": earlier_claim.event_id,
+                },
+            )
+            revision_observation = history.deliver_observation(
+                agent_id=FOCAL_AGENT_ID,
+                event_id=revision.event_id,
+                source="official revision notice",
+                delivery_tick=7,
+                details={
+                    "evidence_kind": "official_claim_revision",
+                    "available_units": 1,
+                    "revises_event_id": earlier_claim.event_id,
+                },
+            )
+            return {
+                "history": history,
+                "diary": relocation.diary,
+                "diary_write": written,
+                "diary_read": read,
+                "relocation": relocation,
+                "revision_event": revision,
+                "revision_observation": revision_observation,
+                "decision": choose_diary_consult_after_revision(
+                    revision_observation
+                ),
+                "attempted_tick": 8,
+                "resolved_tick": 9,
+            }
+
+        def corrupt_revision_value(context):
+            history = context["history"]
+            revision = history.record_event(
+                tick=7,
+                kind="provisional_official_availability_claim",
+                details={
+                    "claimed_available_units": 7,
+                    "revises_event_id": context["revision_event"].details[
+                        "revises_event_id"
+                    ],
+                },
+            )
+            observation = history.deliver_observation(
+                agent_id=FOCAL_AGENT_ID,
+                event_id=revision.event_id,
+                source="official revision notice",
+                delivery_tick=7,
+                details={
+                    "evidence_kind": "official_claim_revision",
+                    "available_units": 1,
+                    "revises_event_id": revision.details["revises_event_id"],
+                },
+            )
+            context.update(
+                revision_event=revision,
+                revision_observation=observation,
+                decision=choose_diary_consult_after_revision(observation),
+            )
+            return "official revision"
+
+        def corrupt_relocation_decision(context):
+            context["relocation"] = replace(
+                context["relocation"],
+                decision=replace(
+                    context["relocation"].decision,
+                    destination="unrecorded provisional location",
+                ),
+            )
+            return "relocation"
+
+        def corrupt_read_chronology(context):
+            context["diary_read"] = replace(context["diary_read"], read_tick=3)
+            return "diary read"
+
+        for label, corrupt in (
+            ("revision value", corrupt_revision_value),
+            ("relocation", corrupt_relocation_decision),
+            ("read chronology", corrupt_read_chronology),
+        ):
+            with self.subTest(label=label):
+                context = build_context()
+                error = corrupt(context)
+                events_before = context["history"].events()
+                observations_before = context["history"].observations()
+
+                with self.assertRaisesRegex(ValueError, error):
+                    resolve_diary_consult(**context)
+
+                self.assertEqual(context["history"].events(), events_before)
+                self.assertEqual(
+                    context["history"].observations(), observations_before
+                )
+
     def test_alternative_source_resolution_records_attempt_and_constrained_result(self):
         history = SourceLinkedHistory()
         outcome_event = history.record_event(
@@ -688,7 +945,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
                 "revises_event_id": earlier_claim.event_id,
             },
         )
-        self.assertEqual(evidence.focal_observations[-1], revision)
+        self.assertEqual(evidence.focal_observations[-2], revision)
 
     def test_public_expression_resolver_rejects_corrupt_decision_before_mutation(self):
         history = SourceLinkedHistory()
@@ -1348,6 +1605,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
             diary_relocation_attempted,
             diary_relocation_resolved,
             official_revision,
+            diary_consult_attempted,
+            diary_consult_resolved,
         ) = evidence.events
         (
             direct,
@@ -1358,6 +1617,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
             alternative_outcome,
             diary_relocation_observation,
             revision_observation,
+            diary_consult_observation,
         ) = evidence.focal_observations
 
         self.assertEqual(availability.kind, "provisional_shelf_availability")
@@ -1374,7 +1634,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID,) * 8,
+            (FOCAL_AGENT_ID,) * 9,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
@@ -1422,6 +1682,18 @@ class FocalLifeScenarioTests(unittest.TestCase):
             "provisional_official_availability_claim",
         )
         self.assertEqual(revision_observation.event_id, official_revision.event_id)
+        self.assertEqual(
+            diary_consult_attempted.kind,
+            "provisional_diary_consult_attempted",
+        )
+        self.assertEqual(
+            diary_consult_resolved.kind,
+            "provisional_diary_consult_resolved",
+        )
+        self.assertEqual(
+            diary_consult_observation.event_id,
+            diary_consult_resolved.event_id,
+        )
 
     def test_decision_uses_only_filtered_observations_and_need_constraints(self):
         evidence = run_provisional_focal_life_scenario()
@@ -1527,8 +1799,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 16)
-        self.assertEqual(len(first.focal_observations), 8)
+        self.assertEqual(len(first.events), 18)
+        self.assertEqual(len(first.focal_observations), 9)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],
             first.resolution.granted_units,
@@ -1551,15 +1823,17 @@ class FocalLifeScenarioTests(unittest.TestCase):
             with_diary.objective_allocation,
             without_diary.objective_allocation,
         )
-        self.assertEqual(len(with_diary.events), 16)
-        self.assertEqual(len(without_diary.events), 16)
+        self.assertEqual(len(with_diary.events), 18)
+        self.assertEqual(len(without_diary.events), 18)
         self.assertEqual(
-            tuple(event.kind for event in with_diary.events[-4:]),
+            tuple(event.kind for event in with_diary.events[-6:]),
             (
                 "provisional_private_diary_read",
                 "provisional_diary_relocation_attempted",
                 "provisional_diary_relocation_resolved",
                 "provisional_official_availability_claim",
+                "provisional_diary_consult_attempted",
+                "provisional_diary_consult_resolved",
             ),
         )
         self.assertEqual(
@@ -1602,8 +1876,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
             without_diary.official_revision_observation,
         )
         self.assertEqual(
-            with_diary.focal_observations[:-2],
-            without_diary.focal_observations[:-2],
+            with_diary.focal_observations[:-3],
+            without_diary.focal_observations[:-3],
         )
         self.assertEqual(with_diary.diary.possessor_id, FOCAL_AGENT_ID)
         self.assertEqual(

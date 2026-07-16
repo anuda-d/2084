@@ -3,7 +3,10 @@ import sys
 import unittest
 
 from experiments.focal_life_observer import render_focal_life_transcript
-from experiments.focal_life_scenario import run_provisional_focal_life_scenario
+from experiments.focal_life_scenario import (
+    SUPPORTING_AGENT_ID,
+    run_provisional_focal_life_scenario,
+)
 
 
 EXPECTED_TRANSCRIPT = """2084 focal-life observer (provisional)
@@ -29,6 +32,8 @@ Diary read at tick 8: returned the same retained private entry, 2 units availabl
 Diary relocation attempted at tick 9: store in private quarters, from carried by provisional-focal to provisional-focal private quarters.
 Diary relocation resolved at tick 10: the diary is now at provisional-focal private quarters.
 Official revision received at tick 11 via official revision notice: claim revised to 1 unit available.
+Diary consult attempted at tick 12 after the official revision.
+Diary consult resolved at tick 13 via direct diary consult: returned retained private entry diary-entry-0001, 2 units available.
 Later decision: recheck local supply.
 Reason: official revision observation-0009 said 1 unit; retained diary entry diary-entry-0001 said 2 units, so the local rule chooses to recheck local supply.
 """
@@ -54,6 +59,42 @@ class FocalLifeObserverTests(unittest.TestCase):
             (completed.returncode, completed.stdout, completed.stderr),
             (0, EXPECTED_TRANSCRIPT, ""),
         )
+
+    def test_consult_outcome_is_understandable_in_both_branch_transcripts(self):
+        accessible = render_focal_life_transcript(
+            run_provisional_focal_life_scenario(
+                diary_relocation="store_in_private_quarters"
+            )
+        )
+        inaccessible = render_focal_life_transcript(
+            run_provisional_focal_life_scenario(
+                diary_relocation="entrust_to_supporting_person"
+            )
+        )
+
+        self.assertIn(
+            "Diary consult resolved at tick 13 via direct diary consult: returned "
+            "retained private entry diary-entry-0001, 2 units available.",
+            accessible,
+        )
+        inaccessible_line = next(
+            line
+            for line in inaccessible.splitlines()
+            if line.startswith("Diary consult resolved")
+        )
+        self.assertEqual(
+            inaccessible_line,
+            "Diary consult resolved at tick 13 via direct diary consult: "
+            "The private diary is not currently accessible.",
+        )
+        for hidden in (
+            "diary-entry-0001",
+            "provisional-private-diary",
+            SUPPORTING_AGENT_ID,
+            "carried by provisional-supporting-person",
+            "2 units",
+        ):
+            self.assertNotIn(hidden, inaccessible_line)
 
 
 if __name__ == "__main__":

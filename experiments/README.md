@@ -154,20 +154,24 @@ public expression, and diary entry remain unchanged and separately inspectable.
 The transcript presents the revised value as a claim received from its official
 source rather than as objective truth.
 
-One later, reversible ordinary choice now follows that revision. The public
+One later, result-free diary-consult decision now follows that revision. The public
 runner comparison varies the explicit provisional relocation choice through
 `run_provisional_focal_life_scenario(diary_relocation="store_in_private_quarters")`
-and `diary_relocation="entrust_to_supporting_person"`. Each run validates current
-focal possession, exact diary/write/read evidence, the retained entry, and
-chronology before recording anything. It then records distinct immutable
-attempt and outcome events with actor, diary identity, origin, destination,
-time, and resulting physical state. A small access boundary returns the retained
-entry only when the focal character possesses the resolved diary. The relocation
-outcome is delivered to the focal character without the resulting possessor or
-diary object identifier, and the normal transcript renders that limited
-observation. The later
-decision receives that validated entry or no diary perspective, never the
-relocation choice. Under the
+and `diary_relocation="entrust_to_supporting_person"`. The consult decision is
+selected from the delivered revision observation alone and contains no diary
+identity, entry, location, possessor, success, or outcome. Its separate resolver
+preflights the recorded write, read, relocation, revision, decision, and their
+chronology before appending a tick-12 attempt and tick-13 outcome. Current
+physical possession determines the result rather than the decision.
+
+When access succeeds, the focal-visible outcome returns the exact retained
+entry. When access fails, it reports only that the private diary is not currently
+accessible; that observation contains no entry value or identifier, diary object
+identifier, holder identity, or hidden location. The normal transcript renders
+both the attempt and the applicable understandable outcome, and the module
+command renders the default accessible run. The existing later reconsideration
+then receives the resolved entry or no diary perspective, never the relocation
+choice or unresolved access state. Under the
 explicit local rule, a currently accessible two-unit entry that differs from
 the delivered one-unit revision selects `recheck_local_supply`; the revision
 alone selects `adjust_next_request`. These are attempted ordinary choices, not
@@ -190,9 +194,9 @@ renderer and runnable module command using only the Python standard library.
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
-with seven decisions, three resolved allocation attempts, one resolved social
+with eight decisions, three resolved allocation attempts, one resolved social
 action, one resolved public expression, one diary write, one diary read, and one
-resolved diary relocation. It
+resolved diary relocation and consult. It
 is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,

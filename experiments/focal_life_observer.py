@@ -176,6 +176,23 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
         f"{revision.source}: claim revised to "
         f"{_unit_phrase(revision.details['available_units'])} available."
     )
+    consult = evidence.diary_consult_observation
+    lines.append(
+        "Diary consult attempted at tick "
+        f"{consult.details['attempted_tick']} after the official revision."
+    )
+    if consult.details["outcome"] == "entry_retrieved":
+        lines.append(
+            f"Diary consult resolved at tick {consult.delivery_tick} via "
+            f"{consult.source}: returned retained private entry "
+            f"{consult.details['entry_id']}, "
+            f"{_unit_phrase(consult.details['available_units'])} available."
+        )
+    else:
+        lines.append(
+            f"Diary consult resolved at tick {consult.delivery_tick} via "
+            f"{consult.source}: {consult.details['message']}"
+        )
     reconsideration = evidence.reconsideration
     reconsideration_trace = reconsideration.trace
     lines.append(

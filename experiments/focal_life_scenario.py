@@ -344,6 +344,26 @@ class DiaryRelocationResolution:
 
 
 @dataclass(frozen=True)
+class DiaryConsultDecision:
+    """A post-revision attempt to consult the diary, without its result."""
+
+    choice: str
+    actor_id: str
+    selected_revision_observation_id: str
+
+
+@dataclass(frozen=True)
+class DiaryConsultResolution:
+    """World-resolved diary access and the limited outcome delivered to the focal."""
+
+    decision: DiaryConsultDecision
+    attempted_event: WorldEvent
+    outcome_event: WorldEvent
+    outcome_observation: Observation
+    retained_entry: DiaryEntry | None
+
+
+@dataclass(frozen=True)
 class RevisionReconsiderationTrace:
     """Delivered revision and retained private perspective used by one choice."""
 
@@ -398,6 +418,9 @@ class FocalLifeScenarioEvidence:
     diary_relocation_observation: Observation
     official_revision_event: WorldEvent
     official_revision_observation: Observation
+    diary_consult_decision: DiaryConsultDecision
+    diary_consult_resolution: DiaryConsultResolution
+    diary_consult_observation: Observation
     reconsideration: RevisionReconsiderationDecision
 
 
@@ -552,25 +575,19 @@ def read_private_diary(
     return DiaryReadResult(entry=entry, read_tick=tick, read_event=read_event)
 
 
-def currently_accessible_diary_entry(
-    *, diary: PhysicalDiary, actor_id: str, entry_id: str
-) -> DiaryEntry | None:
-    """Return a retained entry only when the actor currently has the diary."""
-    if not isinstance(diary, PhysicalDiary):
-        raise TypeError("diary must be a PhysicalDiary")
-    if not isinstance(actor_id, str) or not actor_id.strip():
-        raise ValueError("actor_id must be a nonempty string")
-    if not isinstance(entry_id, str) or not entry_id.strip():
-        raise ValueError("entry_id must be a nonempty string")
-    if actor_id != diary.possessor_id:
-        return None
-    entry = next(
-        (candidate for candidate in diary.entries if candidate.entry_id == entry_id),
-        None,
+def choose_diary_consult_after_revision(
+    revision_observation: Observation,
+) -> DiaryConsultDecision:
+    """Choose to consult the private diary from the delivered revision alone."""
+    if not isinstance(revision_observation, Observation):
+        raise TypeError("revision_observation must be an Observation")
+    if revision_observation.details.get("evidence_kind") != "official_claim_revision":
+        raise ValueError("revision_observation must deliver an official claim revision")
+    return DiaryConsultDecision(
+        choice="consult_private_diary",
+        actor_id=revision_observation.agent_id,
+        selected_revision_observation_id=revision_observation.observation_id,
     )
-    if entry is None:
-        raise ValueError("entry must be retained in the diary")
-    return entry
 
 
 def choose_provisional_diary_relocation(
@@ -714,6 +731,207 @@ def resolve_provisional_diary_relocation(
         attempted_event=attempted_event,
         outcome_event=outcome_event,
         diary=relocated_diary,
+    )
+
+
+def resolve_diary_consult(
+    *,
+    history: SourceLinkedHistory,
+    diary: PhysicalDiary,
+    diary_write: DiaryWriteResult,
+    diary_read: DiaryReadResult,
+    relocation: DiaryRelocationResolution,
+    revision_event: WorldEvent,
+    revision_observation: Observation,
+    decision: DiaryConsultDecision,
+    attempted_tick: int,
+    resolved_tick: int,
+) -> DiaryConsultResolution:
+    """Resolve a diary consult from recorded provenance and physical possession."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(diary_write, DiaryWriteResult):
+        raise TypeError("diary_write must be a DiaryWriteResult")
+    if not isinstance(diary_read, DiaryReadResult):
+        raise TypeError("diary_read must be a DiaryReadResult")
+    if not isinstance(relocation, DiaryRelocationResolution):
+        raise TypeError("relocation must be a DiaryRelocationResolution")
+    if not isinstance(revision_event, WorldEvent):
+        raise TypeError("revision_event must be a WorldEvent")
+    if not isinstance(revision_observation, Observation):
+        raise TypeError("revision_observation must be an Observation")
+    if not isinstance(decision, DiaryConsultDecision):
+        raise TypeError("decision must be a DiaryConsultDecision")
+    _require_units(attempted_tick, "attempted_tick")
+    _require_units(resolved_tick, "resolved_tick")
+    if resolved_tick <= attempted_tick:
+        raise ValueError("resolved_tick must be later than attempted_tick")
+
+    events = history.events()
+    observations = history.observations()
+    if diary != relocation.diary:
+        raise ValueError("consult requires the resolved relocated diary state")
+    if (
+        diary.object_id != diary_write.diary.object_id
+        or diary.entries != (diary_write.entry,)
+        or diary_read.entry is not diary_write.entry
+    ):
+        raise ValueError("consult requires the exact retained diary entry")
+    if (
+        relocation.attempted_event not in events
+        or relocation.outcome_event not in events
+        or diary_write.write_event not in events
+        or diary_read.read_event not in events
+    ):
+        raise ValueError("consult provenance must be recorded in history")
+    if (
+        diary_write.diary.entries != (diary_write.entry,)
+        or diary_write.write_event.kind != "provisional_private_diary_written"
+        or diary_write.write_event.tick != diary_write.completed_tick
+        or diary_write.write_event.details.get("actor_id")
+        != diary_write.entry.author_id
+        or diary_write.write_event.details.get("diary_object_id")
+        != diary_write.diary.object_id
+        or diary_write.write_event.details.get("entry_id")
+        != diary_write.entry.entry_id
+        or diary_write.write_event.details.get("started_tick")
+        != diary_write.entry.started_tick
+        or diary_write.write_event.details.get("completed_tick")
+        != diary_write.entry.completed_tick
+    ):
+        raise ValueError("diary writing provenance is inconsistent")
+    if (
+        diary_read.read_event.kind != "provisional_private_diary_read"
+        or diary_read.read_event.tick != diary_read.read_tick
+        or diary_read.read_event.details.get("actor_id") != diary_write.entry.author_id
+        or diary_read.read_event.details.get("diary_object_id") != diary.object_id
+        or diary_read.read_event.details.get("entry_id") != diary_write.entry.entry_id
+        or diary_read.read_tick <= diary_write.completed_tick
+    ):
+        raise ValueError("diary read provenance or chronology is inconsistent")
+    expected_relocation_decision = choose_provisional_diary_relocation(
+        relocation=relocation.decision.choice,
+        diary=diary_write.diary,
+        actor_id=relocation.decision.actor_id,
+    )
+    if relocation.decision != expected_relocation_decision:
+        raise ValueError("relocation decision provenance is inconsistent")
+    if (
+        relocation.attempted_event.kind
+        != "provisional_diary_relocation_attempted"
+        or relocation.attempted_event.details.get("actor_id")
+        != relocation.decision.actor_id
+        or relocation.attempted_event.details.get("diary_object_id")
+        != diary.object_id
+        or relocation.attempted_event.details.get("origin")
+        != relocation.decision.origin
+        or relocation.attempted_event.details.get("destination")
+        != relocation.decision.destination
+        or relocation.attempted_event.details.get("attempted_tick")
+        != relocation.attempted_event.tick
+        or relocation.outcome_event.kind != "provisional_diary_relocation_resolved"
+        or relocation.outcome_event.details.get("attempted_event_id")
+        != relocation.attempted_event.event_id
+        or relocation.outcome_event.details.get("diary_object_id") != diary.object_id
+        or relocation.outcome_event.details.get("resulting_possessor_id")
+        != diary.possessor_id
+        or relocation.outcome_event.details.get("resulting_location")
+        != diary.location
+        or relocation.outcome_event.details.get("resolved_tick")
+        != relocation.outcome_event.tick
+        or relocation.outcome_event.tick <= relocation.attempted_event.tick
+        or relocation.attempted_event.tick <= diary_read.read_tick
+    ):
+        raise ValueError("relocation provenance or chronology is inconsistent")
+    if revision_event not in events or revision_observation not in observations:
+        raise ValueError("official revision must be recorded and delivered")
+    revision_units = revision_observation.details.get("available_units")
+    _require_units(revision_units, "official revision available_units")
+    revises_event_id = revision_event.details.get("revises_event_id")
+    revised_event = next(
+        (event for event in events if event.event_id == revises_event_id), None
+    )
+    if (
+        revision_event.kind != "provisional_official_availability_claim"
+        or revision_event.details.get("claimed_available_units") != revision_units
+        or revised_event is None
+        or revised_event.kind != "provisional_official_availability_claim"
+        or revised_event.tick > revision_event.tick
+        or revision_observation.event_id != revision_event.event_id
+        or revision_observation.agent_id != FOCAL_AGENT_ID
+        or revision_observation.source != "official revision notice"
+        or revision_observation.details.get("evidence_kind")
+        != "official_claim_revision"
+        or revision_observation.details.get("revises_event_id") != revises_event_id
+        or revision_observation.delivery_tick < revision_event.tick
+    ):
+        raise ValueError("official revision provenance is inconsistent")
+    expected_decision = choose_diary_consult_after_revision(revision_observation)
+    if decision != expected_decision:
+        raise ValueError("consult decision is inconsistent with the delivered revision")
+    if attempted_tick <= max(
+        relocation.outcome_event.tick,
+        revision_event.tick,
+        revision_observation.delivery_tick,
+    ):
+        raise ValueError("diary consult must follow relocation and revision")
+
+    attempted_event = history.record_event(
+        tick=attempted_tick,
+        kind="provisional_diary_consult_attempted",
+        details={
+            "actor_id": decision.actor_id,
+            "choice": decision.choice,
+            "selected_revision_observation_id": (
+                decision.selected_revision_observation_id
+            ),
+        },
+    )
+    retained_entry = diary_write.entry if diary.possessor_id == decision.actor_id else None
+    outcome_event = history.record_event(
+        tick=resolved_tick,
+        kind="provisional_diary_consult_resolved",
+        details={
+            "attempted_event_id": attempted_event.event_id,
+            "outcome": (
+                "entry_retrieved" if retained_entry is not None else "inaccessible"
+            ),
+        },
+    )
+    if retained_entry is not None:
+        observation_details = {
+            "evidence_kind": "diary_consult_outcome",
+            "outcome": "entry_retrieved",
+            "attempted_tick": attempted_tick,
+            "resolved_tick": resolved_tick,
+            "entry_id": retained_entry.entry_id,
+            "perspective_label": retained_entry.perspective_label,
+            "proposition": retained_entry.proposition,
+            "available_units": retained_entry.units,
+        }
+    else:
+        observation_details = {
+            "evidence_kind": "diary_consult_outcome",
+            "outcome": "inaccessible",
+            "attempted_tick": attempted_tick,
+            "resolved_tick": resolved_tick,
+            "message": "The private diary is not currently accessible.",
+        }
+    outcome_observation = history.deliver_observation(
+        agent_id=decision.actor_id,
+        event_id=outcome_event.event_id,
+        source="direct diary consult",
+        delivery_tick=resolved_tick,
+        details=observation_details,
+    )
+    return DiaryConsultResolution(
+        decision=decision,
+        attempted_event=attempted_event,
+        outcome_event=outcome_event,
+        outcome_observation=outcome_observation,
+        retained_entry=retained_entry,
     )
 
 
@@ -1798,14 +2016,24 @@ def run_provisional_focal_life_scenario(
             "revises_event_id": official_claim_event.event_id,
         },
     )
-    retained_diary_entry = currently_accessible_diary_entry(
+    diary_consult_decision = choose_diary_consult_after_revision(
+        official_revision_observation
+    )
+    diary_consult_resolution = resolve_diary_consult(
+        history=history,
         diary=diary_relocation_resolution.diary,
-        actor_id=FOCAL_AGENT_ID,
-        entry_id=diary_write.entry.entry_id,
+        diary_write=diary_write,
+        diary_read=diary_read,
+        relocation=diary_relocation_resolution,
+        revision_event=official_revision_event,
+        revision_observation=official_revision_observation,
+        decision=diary_consult_decision,
+        attempted_tick=12,
+        resolved_tick=13,
     )
     reconsideration = choose_after_official_revision(
         official_revision_observation,
-        retained_diary_entry,
+        diary_consult_resolution.retained_entry,
     )
     return FocalLifeScenarioEvidence(
         need=need,
@@ -1840,5 +2068,8 @@ def run_provisional_focal_life_scenario(
         diary_relocation_observation=diary_relocation_observation,
         official_revision_event=official_revision_event,
         official_revision_observation=official_revision_observation,
+        diary_consult_decision=diary_consult_decision,
+        diary_consult_resolution=diary_consult_resolution,
+        diary_consult_observation=diary_consult_resolution.outcome_observation,
         reconsideration=reconsideration,
     )
