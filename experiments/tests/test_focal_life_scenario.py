@@ -15,6 +15,7 @@ from experiments.focal_life_scenario import (
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
     choose_diary_consult_after_revision,
+    choose_diary_retrieval,
     choose_provisional_diary_relocation,
     choose_public_availability_expression,
     choose_supporting_action,
@@ -23,6 +24,7 @@ from experiments.focal_life_scenario import (
     resolve_alternative_source_choice,
     resolve_follow_up_choice,
     resolve_diary_consult,
+    resolve_diary_retrieval,
     resolve_provisional_diary_relocation,
     resolve_public_expression,
     resolve_supporting_action,
@@ -33,6 +35,239 @@ from experiments.source_linked_history import SourceLinkedHistory
 
 
 class FocalLifeScenarioTests(unittest.TestCase):
+    def test_delivered_time_constraint_changes_inaccessible_diary_retrieval(self):
+        retrievable = run_provisional_focal_life_scenario(
+            diary_relocation="entrust_to_supporting_person",
+            diary_retrieval_window_ticks=2,
+        )
+        deferred = run_provisional_focal_life_scenario(
+            diary_relocation="entrust_to_supporting_person",
+            diary_retrieval_window_ticks=1,
+        )
+
+        self.assertEqual(
+            retrievable.diary_consult_observation,
+            deferred.diary_consult_observation,
+        )
+        self.assertEqual(retrievable.events[:-3], deferred.events)
+        self.assertEqual(
+            retrievable.focal_observations[:-1],
+            deferred.focal_observations[:-1],
+        )
+        self.assertEqual(
+            dict(retrievable.focal_observations[-1].details),
+            {
+                "evidence_kind": "diary_retrieval_constraint",
+                "current_tick": 14,
+                "reachable_in_ticks": 2,
+                "deadline_tick": 16,
+            },
+        )
+        self.assertEqual(
+            dict(deferred.focal_observations[-1].details),
+            {
+                "evidence_kind": "diary_retrieval_constraint",
+                "current_tick": 14,
+                "reachable_in_ticks": 2,
+                "deadline_tick": 15,
+            },
+        )
+        self.assertEqual(
+            retrievable.diary_retrieval_decision.choice,
+            "retrieve_private_diary",
+        )
+        self.assertEqual(deferred.diary_retrieval_decision.choice, "defer_retrieval")
+        self.assertEqual(
+            vars(retrievable.diary_retrieval_decision.trace),
+            {
+                "selected_consult_observation_id": "observation-0010",
+                "selected_constraint_observation_id": "observation-0011",
+                "observed_consult_outcome": "inaccessible",
+                "observed_current_tick": 14,
+                "observed_reachable_in_ticks": 2,
+                "observed_deadline_tick": 16,
+                "rule": (
+                    "retrieve after an inaccessible consult when delivered "
+                    "reachability fits the delivered deadline; otherwise defer"
+                ),
+            },
+        )
+        for forbidden in (
+            "possessor_id",
+            "holder_id",
+            "diary_location",
+            "entry",
+            "success",
+            "outcome_event",
+        ):
+            self.assertNotIn(forbidden, vars(retrievable.diary_retrieval_decision))
+            self.assertNotIn(forbidden, vars(retrievable.diary_retrieval_decision.trace))
+
+        self.assertEqual(
+            tuple(event.kind for event in retrievable.events[-3:-1]),
+            (
+                "provisional_diary_retrieval_attempted",
+                "provisional_diary_retrieval_resolved",
+            ),
+        )
+        self.assertIs(
+            retrievable.diary_retrieval_read.entry,
+            retrievable.diary_write.entry,
+        )
+        self.assertEqual(retrievable.diary_retrieval_read.read_tick, 17)
+        self.assertEqual(retrievable.diary.possessor_id, FOCAL_AGENT_ID)
+        self.assertEqual(retrievable.diary_retrieval_resolution.resolved_tick, 16)
+
+        self.assertIsNone(deferred.diary_retrieval_resolution)
+        self.assertIsNone(deferred.diary_retrieval_read)
+        self.assertEqual(deferred.diary, deferred.diary_relocation.diary)
+        self.assertFalse(
+            any(
+                event.kind.startswith("provisional_diary_retrieval_")
+                and event.kind != "provisional_diary_retrieval_constraint"
+                for event in deferred.events
+            )
+        )
+
+    def test_diary_retrieval_rejects_corrupt_location_before_history_mutation(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        direct = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=availability.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={"evidence_kind": "direct", "available_units": 2},
+        )
+        written = write_private_diary(
+            history=history,
+            diary=PhysicalDiary(
+                object_id="provisional-private-diary",
+                location="carried by provisional-focal",
+                possessor_id=FOCAL_AGENT_ID,
+            ),
+            actor_id=FOCAL_AGENT_ID,
+            perspective=PrivateAvailabilityBelief(
+                proposition="available_units",
+                units=2,
+                source_observation_id=direct.observation_id,
+                source_event_id=availability.event_id,
+            ),
+            start_tick=2,
+            duration_ticks=1,
+        )
+        first_read = read_private_diary(
+            history=history,
+            diary=written.diary,
+            actor_id=FOCAL_AGENT_ID,
+            entry_id=written.entry.entry_id,
+            tick=4,
+        )
+        relocation_decision = choose_provisional_diary_relocation(
+            relocation="entrust_to_supporting_person",
+            diary=written.diary,
+            actor_id=FOCAL_AGENT_ID,
+        )
+        relocation = resolve_provisional_diary_relocation(
+            history=history,
+            diary=written.diary,
+            diary_write=written,
+            diary_read=first_read,
+            decision=relocation_decision,
+            attempted_tick=5,
+            resolved_tick=6,
+        )
+        earlier_claim = history.record_event(
+            tick=1,
+            kind="provisional_official_availability_claim",
+            details={"claimed_available_units": 4},
+        )
+        revision = history.record_event(
+            tick=7,
+            kind="provisional_official_availability_claim",
+            details={
+                "claimed_available_units": 1,
+                "revises_event_id": earlier_claim.event_id,
+            },
+        )
+        revision_observation = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=revision.event_id,
+            source="official revision notice",
+            delivery_tick=7,
+            details={
+                "evidence_kind": "official_claim_revision",
+                "available_units": 1,
+                "revises_event_id": earlier_claim.event_id,
+            },
+        )
+        consult = resolve_diary_consult(
+            history=history,
+            diary=relocation.diary,
+            diary_write=written,
+            diary_read=first_read,
+            relocation=relocation,
+            revision_event=revision,
+            revision_observation=revision_observation,
+            decision=choose_diary_consult_after_revision(revision_observation),
+            attempted_tick=8,
+            resolved_tick=9,
+        )
+        constraint_event = history.record_event(
+            tick=10,
+            kind="provisional_diary_retrieval_constraint",
+            details={
+                "actor_location": "provisional-focal work area",
+                "diary_location": relocation.diary.location,
+                "travel_duration_ticks": 2,
+            },
+        )
+        constraint = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=constraint_event.event_id,
+            source="direct time and reachability check",
+            delivery_tick=10,
+            details={
+                "evidence_kind": "diary_retrieval_constraint",
+                "current_tick": 10,
+                "reachable_in_ticks": 2,
+                "deadline_tick": 12,
+            },
+        )
+        corrupt_relocation = replace(
+            relocation,
+            diary=replace(relocation.diary, location="unrecorded location"),
+        )
+        events_before = history.events()
+        observations_before = history.observations()
+
+        with self.assertRaisesRegex(ValueError, "relocation"):
+            resolve_diary_retrieval(
+                history=history,
+                diary=corrupt_relocation.diary,
+                diary_write=written,
+                relocation=corrupt_relocation,
+                consult_resolution=consult,
+                constraint_event=constraint_event,
+                constraint_observation=constraint,
+                decision=choose_diary_retrieval(
+                    consult.outcome_observation,
+                    constraint,
+                ),
+                current_tick=10,
+                actor_location="provisional-focal work area",
+                diary_location="unrecorded location",
+                travel_duration_ticks=2,
+                deadline_tick=12,
+            )
+
+        self.assertEqual(history.events(), events_before)
+        self.assertEqual(history.observations(), observations_before)
+
     def test_post_revision_diary_consult_is_resolved_from_physical_access(self):
         accessible = run_provisional_focal_life_scenario(
             diary_relocation="store_in_private_quarters"

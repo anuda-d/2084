@@ -169,7 +169,9 @@ entry. When access fails, it reports only that the private diary is not currentl
 accessible; that observation contains no entry value or identifier, diary object
 identifier, holder identity, or hidden location. The normal transcript renders
 both the attempt and the applicable understandable outcome, and the module
-command renders the default accessible run. The existing later reconsideration
+command now renders the inaccessible branch followed by a successful retrieval.
+Immediately after the tick-13 consult and before any tick-14 retrieval evidence,
+the existing later reconsideration
 then receives the resolved entry or no diary perspective, never the relocation
 choice or unresolved access state. Under the
 explicit local rule, a currently accessible two-unit entry that differs from
@@ -179,6 +181,25 @@ world outcomes. The immutable trace contains only the selected revision
 observation and value, the retained diary entry and value actually used (or
 explicit `None` values), and the local rule. It contains no allocation fields,
 raw event history, or hidden state.
+
+Only the inaccessible branch accepts the optional
+`diary_retrieval_window_ticks` runner input. At tick 14 it delivers a local
+time/reachability observation: the diary is reachable in two ticks and the
+available deadline is the current tick plus that input. A two-tick window
+selects `retrieve_private_diary`; a one-tick window selects `defer_retrieval`.
+Both runs share all earlier diary state and consult evidence. The decision uses
+only the two delivered observations and records no event, time advance,
+possession change, holder identity, location, entry content, or result.
+
+The successful branch separately validates the recorded relocation, failed
+consult and constraint provenance plus explicit current time, actor location,
+diary location, travel duration, and deadline before recording anything. It
+then records distinct tick-14 attempt and tick-16 consequence events; only the
+consequence returns the diary with changed possession and time. A tick-17 read
+returns the exact original immutable entry. Corrupt location provenance fails
+before history mutation. The one-tick branch records neither retrieval event
+and has no later read. These locations, ticks, and local rule are provisional,
+not a travel, clock, inventory, transfer, ownership, or diary-lifecycle system.
 
 The comparison constructs only one provisional physical relocation after the
 fixed earlier read. It is not a general transfer, inventory, ownership, consent,
@@ -194,9 +215,9 @@ renderer and runnable module command using only the Python standard library.
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
-with eight decisions, three resolved allocation attempts, one resolved social
+with a bounded sequence of decisions, three resolved allocation attempts, one resolved social
 action, one resolved public expression, one diary write, one diary read, and one
-resolved diary relocation and consult. It
+resolved diary relocation and consult, plus the optional retrieval and later read. It
 is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,

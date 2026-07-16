@@ -215,12 +215,68 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             "diary perspective was currently accessible, so the local rule "
             "adjusts the next request."
         )
+    retrieval_constraint = evidence.diary_retrieval_constraint_observation
+    retrieval_decision = evidence.diary_retrieval_decision
+    if retrieval_constraint is not None and retrieval_decision is not None:
+        retrieval_trace = retrieval_decision.trace
+        lines.extend(
+            (
+                (
+                    "Retrieval constraint delivered at tick "
+                    f"{retrieval_constraint.delivery_tick}: reachable in "
+                    f"{retrieval_trace.observed_reachable_in_ticks} ticks; "
+                    f"deadline tick {retrieval_trace.observed_deadline_tick}."
+                ),
+                f"Retrieval decision: {retrieval_decision.choice.replace('_', ' ')}.",
+                (
+                    "Reason: inaccessible consult "
+                    f"{retrieval_trace.selected_consult_observation_id} and time "
+                    f"constraint {retrieval_trace.selected_constraint_observation_id} "
+                    "leave enough delivered time."
+                    if retrieval_decision.choice == "retrieve_private_diary"
+                    else (
+                        "Reason: inaccessible consult "
+                        f"{retrieval_trace.selected_consult_observation_id} and time "
+                        "constraint "
+                        f"{retrieval_trace.selected_constraint_observation_id} do not "
+                        "leave enough delivered time."
+                    )
+                ),
+            )
+        )
+    retrieval_resolution = evidence.diary_retrieval_resolution
+    retrieval_read = evidence.diary_retrieval_read
+    if retrieval_resolution is not None and retrieval_read is not None:
+        lines.extend(
+            (
+                (
+                    "Diary retrieval attempted at tick "
+                    f"{retrieval_resolution.started_tick} from "
+                    f"{retrieval_resolution.actor_location}."
+                ),
+                (
+                    "Diary retrieval resolved at tick "
+                    f"{retrieval_resolution.resolved_tick}: possession changed only "
+                    "through the resolved consequence."
+                ),
+                (
+                    f"Diary read at tick {retrieval_read.read_tick}: returned the "
+                    f"exact original private entry {retrieval_read.entry.entry_id}, "
+                    f"{_unit_phrase(retrieval_read.entry.units)} available."
+                ),
+            )
+        )
     return "\n".join(lines) + "\n"
 
 
 def _main() -> None:
     print(
-        render_focal_life_transcript(run_provisional_focal_life_scenario()),
+        render_focal_life_transcript(
+            run_provisional_focal_life_scenario(
+                diary_relocation="entrust_to_supporting_person",
+                diary_retrieval_window_ticks=2,
+            )
+        ),
         end="",
     )
 

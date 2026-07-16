@@ -364,6 +364,41 @@ class DiaryConsultResolution:
 
 
 @dataclass(frozen=True)
+class DiaryRetrievalTrace:
+    """Delivered inaccessible result and time constraint used by one choice."""
+
+    selected_consult_observation_id: str
+    selected_constraint_observation_id: str
+    observed_consult_outcome: str
+    observed_current_tick: int
+    observed_reachable_in_ticks: int
+    observed_deadline_tick: int
+    rule: str
+
+
+@dataclass(frozen=True)
+class DiaryRetrievalDecision:
+    """One local retrieve-or-defer choice, without authority over its result."""
+
+    choice: str
+    actor_id: str
+    trace: DiaryRetrievalTrace
+
+
+@dataclass(frozen=True)
+class DiaryRetrievalResolution:
+    """Separate attempt, consequence, time, and diary state for retrieval."""
+
+    decision: DiaryRetrievalDecision
+    attempted_event: WorldEvent
+    consequence_event: WorldEvent
+    diary: PhysicalDiary
+    started_tick: int
+    resolved_tick: int
+    actor_location: str
+
+
+@dataclass(frozen=True)
 class RevisionReconsiderationTrace:
     """Delivered revision and retained private perspective used by one choice."""
 
@@ -421,6 +456,10 @@ class FocalLifeScenarioEvidence:
     diary_consult_decision: DiaryConsultDecision
     diary_consult_resolution: DiaryConsultResolution
     diary_consult_observation: Observation
+    diary_retrieval_constraint_observation: Observation | None
+    diary_retrieval_decision: DiaryRetrievalDecision | None
+    diary_retrieval_resolution: DiaryRetrievalResolution | None
+    diary_retrieval_read: DiaryReadResult | None
     reconsideration: RevisionReconsiderationDecision
 
 
@@ -587,6 +626,57 @@ def choose_diary_consult_after_revision(
         choice="consult_private_diary",
         actor_id=revision_observation.agent_id,
         selected_revision_observation_id=revision_observation.observation_id,
+    )
+
+
+def choose_diary_retrieval(
+    consult_observation: Observation,
+    constraint_observation: Observation,
+) -> DiaryRetrievalDecision:
+    """Choose retrieval using only delivered access and reachability evidence."""
+    if not isinstance(consult_observation, Observation):
+        raise TypeError("consult_observation must be an Observation")
+    if not isinstance(constraint_observation, Observation):
+        raise TypeError("constraint_observation must be an Observation")
+    if (
+        consult_observation.agent_id != constraint_observation.agent_id
+        or consult_observation.details.get("evidence_kind")
+        != "diary_consult_outcome"
+        or consult_observation.details.get("outcome") != "inaccessible"
+    ):
+        raise ValueError("retrieval requires a delivered inaccessible consult outcome")
+    if (
+        constraint_observation.details.get("evidence_kind")
+        != "diary_retrieval_constraint"
+    ):
+        raise ValueError("constraint_observation must deliver a retrieval constraint")
+    current_tick = constraint_observation.details.get("current_tick")
+    reachable_in_ticks = constraint_observation.details.get("reachable_in_ticks")
+    deadline_tick = constraint_observation.details.get("deadline_tick")
+    _require_units(current_tick, "observed current_tick")
+    _require_units(reachable_in_ticks, "observed reachable_in_ticks")
+    _require_units(deadline_tick, "observed deadline_tick")
+    rule = (
+        "retrieve after an inaccessible consult when delivered reachability fits "
+        "the delivered deadline; otherwise defer"
+    )
+    choice = (
+        "retrieve_private_diary"
+        if current_tick + reachable_in_ticks <= deadline_tick
+        else "defer_retrieval"
+    )
+    return DiaryRetrievalDecision(
+        choice=choice,
+        actor_id=consult_observation.agent_id,
+        trace=DiaryRetrievalTrace(
+            selected_consult_observation_id=consult_observation.observation_id,
+            selected_constraint_observation_id=constraint_observation.observation_id,
+            observed_consult_outcome="inaccessible",
+            observed_current_tick=current_tick,
+            observed_reachable_in_ticks=reachable_in_ticks,
+            observed_deadline_tick=deadline_tick,
+            rule=rule,
+        ),
     )
 
 
@@ -932,6 +1022,184 @@ def resolve_diary_consult(
         outcome_event=outcome_event,
         outcome_observation=outcome_observation,
         retained_entry=retained_entry,
+    )
+
+
+def resolve_diary_retrieval(
+    *,
+    history: SourceLinkedHistory,
+    diary: PhysicalDiary,
+    diary_write: DiaryWriteResult,
+    relocation: DiaryRelocationResolution,
+    consult_resolution: DiaryConsultResolution,
+    constraint_event: WorldEvent,
+    constraint_observation: Observation,
+    decision: DiaryRetrievalDecision,
+    current_tick: int,
+    actor_location: str,
+    diary_location: str,
+    travel_duration_ticks: int,
+    deadline_tick: int,
+) -> DiaryRetrievalResolution:
+    """Validate local provenance and physical/time constraints before retrieval."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(diary_write, DiaryWriteResult):
+        raise TypeError("diary_write must be a DiaryWriteResult")
+    if not isinstance(relocation, DiaryRelocationResolution):
+        raise TypeError("relocation must be a DiaryRelocationResolution")
+    if not isinstance(consult_resolution, DiaryConsultResolution):
+        raise TypeError("consult_resolution must be a DiaryConsultResolution")
+    if not isinstance(constraint_event, WorldEvent):
+        raise TypeError("constraint_event must be a WorldEvent")
+    if not isinstance(constraint_observation, Observation):
+        raise TypeError("constraint_observation must be an Observation")
+    if not isinstance(decision, DiaryRetrievalDecision):
+        raise TypeError("decision must be a DiaryRetrievalDecision")
+    _require_units(current_tick, "current_tick")
+    _require_units(travel_duration_ticks, "travel_duration_ticks")
+    _require_units(deadline_tick, "deadline_tick")
+    for value, field_name in (
+        (actor_location, "actor_location"),
+        (diary_location, "diary_location"),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{field_name} must be a nonempty string")
+
+    events = history.events()
+    observations = history.observations()
+    consult_observation = consult_resolution.outcome_observation
+    if (
+        diary != relocation.diary
+        or diary.object_id != diary_write.diary.object_id
+        or diary.entries != (diary_write.entry,)
+        or diary_write.entry is not diary.entries[0]
+    ):
+        raise ValueError("retrieval requires the exact relocated diary and entry")
+    if (
+        diary_write.write_event not in events
+        or relocation.attempted_event not in events
+        or relocation.outcome_event not in events
+        or consult_resolution.attempted_event not in events
+        or consult_resolution.outcome_event not in events
+        or constraint_event not in events
+        or consult_observation not in observations
+        or constraint_observation not in observations
+    ):
+        raise ValueError("retrieval provenance must be recorded in history")
+    if (
+        diary_write.diary.entries != (diary_write.entry,)
+        or diary_write.write_event.kind != "provisional_private_diary_written"
+        or diary_write.write_event.tick != diary_write.entry.completed_tick
+        or diary_write.write_event.details.get("diary_object_id") != diary.object_id
+        or diary_write.write_event.details.get("entry_id")
+        != diary_write.entry.entry_id
+    ):
+        raise ValueError("diary writing provenance is inconsistent")
+    if (
+        relocation.attempted_event.kind
+        != "provisional_diary_relocation_attempted"
+        or relocation.outcome_event.kind
+        != "provisional_diary_relocation_resolved"
+        or relocation.outcome_event.details.get("attempted_event_id")
+        != relocation.attempted_event.event_id
+        or relocation.outcome_event.details.get("diary_object_id")
+        != diary.object_id
+        or relocation.outcome_event.details.get("resulting_location")
+        != diary.location
+        or relocation.outcome_event.details.get("resulting_possessor_id")
+        != diary.possessor_id
+        or relocation.outcome_event.tick <= relocation.attempted_event.tick
+    ):
+        raise ValueError("relocation provenance is inconsistent")
+    if (
+        consult_resolution.retained_entry is not None
+        or consult_resolution.attempted_event.kind
+        != "provisional_diary_consult_attempted"
+        or consult_resolution.attempted_event.details.get("actor_id")
+        != consult_resolution.decision.actor_id
+        or consult_resolution.attempted_event.details.get(
+            "selected_revision_observation_id"
+        )
+        != consult_resolution.decision.selected_revision_observation_id
+        or consult_resolution.outcome_event.kind
+        != "provisional_diary_consult_resolved"
+        or consult_resolution.outcome_event.details.get("attempted_event_id")
+        != consult_resolution.attempted_event.event_id
+        or consult_observation.event_id != consult_resolution.outcome_event.event_id
+        or consult_observation.agent_id != decision.actor_id
+        or consult_observation.details.get("outcome") != "inaccessible"
+        or constraint_event.kind != "provisional_diary_retrieval_constraint"
+        or constraint_observation.event_id != constraint_event.event_id
+        or constraint_observation.agent_id != decision.actor_id
+        or constraint_observation.source != "direct time and reachability check"
+        or constraint_observation.delivery_tick != current_tick
+        or constraint_event.tick != current_tick
+        or constraint_event.details.get("actor_location") != actor_location
+        or constraint_event.details.get("diary_location") != diary_location
+        or constraint_event.details.get("travel_duration_ticks")
+        != travel_duration_ticks
+    ):
+        raise ValueError("retrieval provenance is inconsistent")
+    expected_decision = choose_diary_retrieval(
+        consult_observation,
+        constraint_observation,
+    )
+    if decision != expected_decision or decision.choice != "retrieve_private_diary":
+        raise ValueError("retrieval decision is inconsistent with delivered evidence")
+    if (
+        current_tick != decision.trace.observed_current_tick
+        or travel_duration_ticks != decision.trace.observed_reachable_in_ticks
+        or deadline_tick != decision.trace.observed_deadline_tick
+        or diary_location != diary.location
+        or current_tick <= consult_observation.delivery_tick
+        or current_tick + travel_duration_ticks > deadline_tick
+    ):
+        raise ValueError("retrieval time or location constraints are inconsistent")
+
+    attempted_event = history.record_event(
+        tick=current_tick,
+        kind="provisional_diary_retrieval_attempted",
+        details={
+            "actor_id": decision.actor_id,
+            "selected_consult_observation_id": (
+                decision.trace.selected_consult_observation_id
+            ),
+            "selected_constraint_observation_id": (
+                decision.trace.selected_constraint_observation_id
+            ),
+            "actor_location": actor_location,
+            "diary_location": diary_location,
+            "deadline_tick": deadline_tick,
+        },
+    )
+    resolved_tick = current_tick + travel_duration_ticks
+    retrieved_diary = PhysicalDiary(
+        object_id=diary.object_id,
+        location=actor_location,
+        possessor_id=decision.actor_id,
+        entries=diary.entries,
+    )
+    consequence_event = history.record_event(
+        tick=resolved_tick,
+        kind="provisional_diary_retrieval_resolved",
+        details={
+            "attempted_event_id": attempted_event.event_id,
+            "resolved_tick": resolved_tick,
+            "resulting_location": retrieved_diary.location,
+            "resulting_possessor_id": retrieved_diary.possessor_id,
+        },
+    )
+    return DiaryRetrievalResolution(
+        decision=decision,
+        attempted_event=attempted_event,
+        consequence_event=consequence_event,
+        diary=retrieved_diary,
+        started_tick=current_tick,
+        resolved_tick=resolved_tick,
+        actor_location=actor_location,
     )
 
 
@@ -1793,6 +2061,7 @@ def run_provisional_focal_life_scenario(
     *,
     include_public_pressure: bool = True,
     diary_relocation: str = "store_in_private_quarters",
+    diary_retrieval_window_ticks: int | None = None,
 ) -> FocalLifeScenarioEvidence:
     """Run the fixed example and return its complete development evidence."""
     history = SourceLinkedHistory()
@@ -2035,6 +2304,74 @@ def run_provisional_focal_life_scenario(
         official_revision_observation,
         diary_consult_resolution.retained_entry,
     )
+    diary_retrieval_constraint_observation = None
+    diary_retrieval_decision = None
+    diary_retrieval_resolution = None
+    diary_retrieval_read = None
+    final_diary = diary_relocation_resolution.diary
+    if diary_retrieval_window_ticks is not None:
+        _require_units(
+            diary_retrieval_window_ticks,
+            "diary_retrieval_window_ticks",
+        )
+        if diary_consult_resolution.retained_entry is not None:
+            raise ValueError(
+                "diary retrieval evidence applies only after an inaccessible consult"
+            )
+        current_tick = 14
+        actor_location = "provisional-focal work area"
+        diary_location = diary_relocation_resolution.diary.location
+        travel_duration_ticks = 2
+        deadline_tick = current_tick + diary_retrieval_window_ticks
+        constraint_event = history.record_event(
+            tick=current_tick,
+            kind="provisional_diary_retrieval_constraint",
+            details={
+                "actor_location": actor_location,
+                "diary_location": diary_location,
+                "travel_duration_ticks": travel_duration_ticks,
+            },
+        )
+        diary_retrieval_constraint_observation = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=constraint_event.event_id,
+            source="direct time and reachability check",
+            delivery_tick=current_tick,
+            details={
+                "evidence_kind": "diary_retrieval_constraint",
+                "current_tick": current_tick,
+                "reachable_in_ticks": travel_duration_ticks,
+                "deadline_tick": deadline_tick,
+            },
+        )
+        diary_retrieval_decision = choose_diary_retrieval(
+            diary_consult_resolution.outcome_observation,
+            diary_retrieval_constraint_observation,
+        )
+        if diary_retrieval_decision.choice == "retrieve_private_diary":
+            diary_retrieval_resolution = resolve_diary_retrieval(
+                history=history,
+                diary=diary_relocation_resolution.diary,
+                diary_write=diary_write,
+                relocation=diary_relocation_resolution,
+                consult_resolution=diary_consult_resolution,
+                constraint_event=constraint_event,
+                constraint_observation=diary_retrieval_constraint_observation,
+                decision=diary_retrieval_decision,
+                current_tick=current_tick,
+                actor_location=actor_location,
+                diary_location=diary_location,
+                travel_duration_ticks=travel_duration_ticks,
+                deadline_tick=deadline_tick,
+            )
+            final_diary = diary_retrieval_resolution.diary
+            diary_retrieval_read = read_private_diary(
+                history=history,
+                diary=final_diary,
+                actor_id=FOCAL_AGENT_ID,
+                entry_id=diary_write.entry.entry_id,
+                tick=diary_retrieval_resolution.resolved_tick + 1,
+            )
     return FocalLifeScenarioEvidence(
         need=need,
         objective_allocation=objective_allocation,
@@ -2060,7 +2397,7 @@ def run_provisional_focal_life_scenario(
         private_availability_belief=public_expression.private_belief,
         public_expression=public_expression,
         public_expression_resolution=public_expression_resolution,
-        diary=diary_relocation_resolution.diary,
+        diary=final_diary,
         diary_write=diary_write,
         diary_read=diary_read,
         diary_relocation_decision=diary_relocation_decision,
@@ -2071,5 +2408,11 @@ def run_provisional_focal_life_scenario(
         diary_consult_decision=diary_consult_decision,
         diary_consult_resolution=diary_consult_resolution,
         diary_consult_observation=diary_consult_resolution.outcome_observation,
+        diary_retrieval_constraint_observation=(
+            diary_retrieval_constraint_observation
+        ),
+        diary_retrieval_decision=diary_retrieval_decision,
+        diary_retrieval_resolution=diary_retrieval_resolution,
+        diary_retrieval_read=diary_retrieval_read,
         reconsideration=reconsideration,
     )

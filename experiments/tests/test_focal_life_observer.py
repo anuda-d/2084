@@ -29,20 +29,29 @@ Public expression: 4 units available.
 Reason: pressure observation-0006 urged public agreement, so official claim observation-0002 was repeated while the private belief remained unchanged.
 Diary write (private perspective): started at tick 6 and completed at tick 7; retained 2 units available.
 Diary read at tick 8: returned the same retained private entry, 2 units available.
-Diary relocation attempted at tick 9: store in private quarters, from carried by provisional-focal to provisional-focal private quarters.
-Diary relocation resolved at tick 10: the diary is now at provisional-focal private quarters.
+Diary relocation attempted at tick 9: entrust to supporting person, from carried by provisional-focal to carried by provisional-supporting-person.
+Diary relocation resolved at tick 10: the diary is now at carried by provisional-supporting-person.
 Official revision received at tick 11 via official revision notice: claim revised to 1 unit available.
 Diary consult attempted at tick 12 after the official revision.
-Diary consult resolved at tick 13 via direct diary consult: returned retained private entry diary-entry-0001, 2 units available.
-Later decision: recheck local supply.
-Reason: official revision observation-0009 said 1 unit; retained diary entry diary-entry-0001 said 2 units, so the local rule chooses to recheck local supply.
+Diary consult resolved at tick 13 via direct diary consult: The private diary is not currently accessible.
+Later decision: adjust next request.
+Reason: official revision observation-0009 said 1 unit; no diary perspective was currently accessible, so the local rule adjusts the next request.
+Retrieval constraint delivered at tick 14: reachable in 2 ticks; deadline tick 16.
+Retrieval decision: retrieve private diary.
+Reason: inaccessible consult observation-0010 and time constraint observation-0011 leave enough delivered time.
+Diary retrieval attempted at tick 14 from provisional-focal work area.
+Diary retrieval resolved at tick 16: possession changed only through the resolved consequence.
+Diary read at tick 17: returned the exact original private entry diary-entry-0001, 2 units available.
 """
 
 
 class FocalLifeObserverTests(unittest.TestCase):
     def test_fixed_scenario_renders_focal_perspective_transcript(self):
         transcript = render_focal_life_transcript(
-            run_provisional_focal_life_scenario()
+            run_provisional_focal_life_scenario(
+                diary_relocation="entrust_to_supporting_person",
+                diary_retrieval_window_ticks=2,
+            )
         )
 
         self.assertEqual(transcript, EXPECTED_TRANSCRIPT)
