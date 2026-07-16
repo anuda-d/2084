@@ -151,6 +151,25 @@ def render_focal_life_transcript(evidence: FocalLifeScenarioEvidence) -> str:
             ),
         )
     )
+    relocation = evidence.diary_relocation_decision
+    relocation_observation = evidence.diary_relocation_observation
+    lines.extend(
+        (
+            (
+                "Diary relocation attempted at tick "
+                f"{relocation_observation.details['attempted_tick']}: "
+                f"{relocation.choice.replace('_', ' ')}, from "
+                f"{relocation_observation.details['origin']} to "
+                f"{relocation_observation.details['destination']}."
+            ),
+            (
+                "Diary relocation resolved at tick "
+                f"{relocation_observation.delivery_tick}: "
+                "the diary is now at "
+                f"{relocation_observation.details['destination']}."
+            ),
+        )
+    )
     revision = evidence.official_revision_observation
     lines.append(
         f"Official revision received at tick {revision.delivery_tick} via "

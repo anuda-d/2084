@@ -14,12 +14,14 @@ from experiments.focal_life_scenario import (
     choose_allocation_request,
     choose_after_follow_up_outcome,
     choose_follow_up_after_allocation,
+    choose_provisional_diary_relocation,
     choose_public_availability_expression,
     choose_supporting_action,
     read_private_diary,
     resolve_allocation_request,
     resolve_alternative_source_choice,
     resolve_follow_up_choice,
+    resolve_provisional_diary_relocation,
     resolve_public_expression,
     resolve_supporting_action,
     run_provisional_focal_life_scenario,
@@ -240,7 +242,9 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(evidence.diary.object_id, "provisional-private-diary")
         self.assertEqual(evidence.diary.possessor_id, FOCAL_AGENT_ID)
-        self.assertEqual(evidence.diary.location, "carried by provisional-focal")
+        self.assertEqual(
+            evidence.diary.location, "provisional-focal private quarters"
+        )
         self.assertEqual(
             evidence.public_expression_resolution.expression_event.tick,
             5,
@@ -396,6 +400,142 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(read.read_tick, 8)
         self.assertEqual(read.read_event.tick, 8)
 
+    def test_diary_relocation_rejects_corrupted_recorded_state_before_mutation(self):
+        history = SourceLinkedHistory()
+        availability = history.record_event(
+            tick=1,
+            kind="provisional_shelf_availability",
+            details={"shelf_units": 2, "committed_units": 1},
+        )
+        observation = history.deliver_observation(
+            agent_id=FOCAL_AGENT_ID,
+            event_id=availability.event_id,
+            source="direct sight",
+            delivery_tick=1,
+            details={"evidence_kind": "direct", "available_units": 2},
+        )
+        perspective = PrivateAvailabilityBelief(
+            proposition="available_units",
+            units=2,
+            source_observation_id=observation.observation_id,
+            source_event_id=availability.event_id,
+        )
+        written = write_private_diary(
+            history=history,
+            diary=PhysicalDiary(
+                object_id="provisional-private-diary",
+                location="carried by provisional-focal",
+                possessor_id=FOCAL_AGENT_ID,
+            ),
+            actor_id=FOCAL_AGENT_ID,
+            perspective=perspective,
+            start_tick=2,
+            duration_ticks=1,
+        )
+        read = read_private_diary(
+            history=history,
+            diary=written.diary,
+            actor_id=FOCAL_AGENT_ID,
+            entry_id="diary-entry-0001",
+            tick=4,
+        )
+        corrupted_diary = replace(
+            written.diary, location="unrecorded provisional location"
+        )
+        decision = choose_provisional_diary_relocation(
+            relocation="store_in_private_quarters",
+            diary=corrupted_diary,
+            actor_id=FOCAL_AGENT_ID,
+        )
+        events_before = history.events()
+
+        with self.assertRaisesRegex(ValueError, "exact recorded diary state"):
+            resolve_provisional_diary_relocation(
+                history=history,
+                diary=corrupted_diary,
+                diary_write=written,
+                diary_read=read,
+                decision=decision,
+                attempted_tick=5,
+                resolved_tick=6,
+            )
+
+        self.assertEqual(history.events(), events_before)
+
+        exact_diary_decision = choose_provisional_diary_relocation(
+            relocation="store_in_private_quarters",
+            diary=written.diary,
+            actor_id=FOCAL_AGENT_ID,
+        )
+        invalid_cases = (
+            (
+                "current focal possession",
+                choose_provisional_diary_relocation(
+                    relocation="store_in_private_quarters",
+                    diary=written.diary,
+                    actor_id=SUPPORTING_AGENT_ID,
+                ),
+                read,
+                5,
+                "currently possess",
+            ),
+            (
+                "retained entry",
+                exact_diary_decision,
+                replace(read, entry=replace(read.entry, units=1)),
+                5,
+                "exact retained diary entry",
+            ),
+            (
+                "chronology",
+                exact_diary_decision,
+                read,
+                4,
+                "follow the recorded read",
+            ),
+        )
+        for label, candidate_decision, candidate_read, attempted_tick, error in (
+            invalid_cases
+        ):
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(ValueError, error):
+                    resolve_provisional_diary_relocation(
+                        history=history,
+                        diary=written.diary,
+                        diary_write=written,
+                        diary_read=candidate_read,
+                        decision=candidate_decision,
+                        attempted_tick=attempted_tick,
+                        resolved_tick=6,
+                    )
+                self.assertEqual(history.events(), events_before)
+
+        history.record_event(
+            tick=3,
+            kind="provisional_private_diary_written",
+            details={
+                "actor_id": FOCAL_AGENT_ID,
+                "diary_object_id": "provisional-private-diary",
+                "entry_id": "diary-entry-0001",
+                "started_tick": 2,
+                "completed_tick": 3,
+            },
+        )
+        events_with_corruption = history.events()
+
+        with self.assertRaisesRegex(ValueError, "recorded writing"):
+            resolve_provisional_diary_relocation(
+                history=history,
+                diary=written.diary,
+                diary_write=written,
+                diary_read=read,
+                decision=exact_diary_decision,
+                attempted_tick=5,
+                resolved_tick=6,
+            )
+
+        self.assertEqual(history.events(), events_with_corruption)
+
     def test_pressure_separates_private_belief_public_expression_and_objective_event(self):
         pressured = run_provisional_focal_life_scenario()
         without_pressure = run_provisional_focal_life_scenario(
@@ -528,7 +668,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
             if event.kind == "provisional_official_availability_claim"
         )
         self.assertEqual(official_claims, (earlier_claim, revision_event))
-        self.assertEqual(revision_event.tick, 9)
+        self.assertEqual(revision_event.tick, 11)
         self.assertEqual(
             revision_event.details,
             {
@@ -1205,6 +1345,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
             public_expression,
             diary_written,
             diary_read,
+            diary_relocation_attempted,
+            diary_relocation_resolved,
             official_revision,
         ) = evidence.events
         (
@@ -1214,6 +1356,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
             outcome_observation,
             pressure,
             alternative_outcome,
+            diary_relocation_observation,
             revision_observation,
         ) = evidence.focal_observations
 
@@ -1231,7 +1374,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(official.details["available_units"], 4)
         self.assertEqual(
             tuple(item.agent_id for item in evidence.focal_observations),
-            (FOCAL_AGENT_ID,) * 7,
+            (FOCAL_AGENT_ID,) * 8,
         )
         self.assertEqual(attempted.kind, "provisional_allocation_requested")
         self.assertEqual(handover.event_id, consequence.event_id)
@@ -1259,6 +1402,18 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(
             public_expression.kind,
             "provisional_public_availability_expression",
+        )
+        self.assertEqual(
+            diary_relocation_attempted.kind,
+            "provisional_diary_relocation_attempted",
+        )
+        self.assertEqual(
+            diary_relocation_resolved.kind,
+            "provisional_diary_relocation_resolved",
+        )
+        self.assertEqual(
+            diary_relocation_observation.event_id,
+            diary_relocation_resolved.event_id,
         )
         self.assertEqual(diary_written.kind, "provisional_private_diary_written")
         self.assertEqual(diary_read.kind, "provisional_private_diary_read")
@@ -1372,8 +1527,8 @@ class FocalLifeScenarioTests(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertEqual(len(first.decision_observations), 2)
-        self.assertEqual(len(first.events), 14)
-        self.assertEqual(len(first.focal_observations), 7)
+        self.assertEqual(len(first.events), 16)
+        self.assertEqual(len(first.focal_observations), 8)
         self.assertEqual(
             first.focal_observations[2].details["granted_units"],
             first.resolution.granted_units,
@@ -1384,36 +1539,90 @@ class FocalLifeScenarioTests(unittest.TestCase):
         )
         self.assertIn("prefer latest direct", first.request.trace.rule)
 
-    def test_current_diary_access_changes_only_the_revision_informed_choice(self):
+    def test_resolved_diary_relocation_changes_only_later_physical_access(self):
         with_diary = run_provisional_focal_life_scenario(
-            later_diary_accessible=True
+            diary_relocation="store_in_private_quarters"
         )
         without_diary = run_provisional_focal_life_scenario(
-            later_diary_accessible=False
+            diary_relocation="entrust_to_supporting_person"
         )
 
         self.assertEqual(
             with_diary.objective_allocation,
             without_diary.objective_allocation,
         )
-        self.assertEqual(with_diary.events, without_diary.events)
+        self.assertEqual(len(with_diary.events), 16)
+        self.assertEqual(len(without_diary.events), 16)
+        self.assertEqual(
+            tuple(event.kind for event in with_diary.events[-4:]),
+            (
+                "provisional_private_diary_read",
+                "provisional_diary_relocation_attempted",
+                "provisional_diary_relocation_resolved",
+                "provisional_official_availability_claim",
+            ),
+        )
+        self.assertEqual(
+            dict(with_diary.diary_relocation.attempted_event.details),
+            {
+                "actor_id": "provisional-focal",
+                "diary_object_id": "provisional-private-diary",
+                "origin": "carried by provisional-focal",
+                "destination": "provisional-focal private quarters",
+                "attempted_tick": 9,
+            },
+        )
+        self.assertEqual(
+            dict(with_diary.diary_relocation.outcome_event.details),
+            {
+                "attempted_event_id": "event-0014",
+                "actor_id": "provisional-focal",
+                "diary_object_id": "provisional-private-diary",
+                "origin": "carried by provisional-focal",
+                "destination": "provisional-focal private quarters",
+                "attempted_tick": 9,
+                "resolved_tick": 10,
+                "resulting_possessor_id": "provisional-focal",
+                "resulting_location": "provisional-focal private quarters",
+            },
+        )
+        self.assertEqual(
+            dict(with_diary.diary_relocation_observation.details),
+            {
+                "evidence_kind": "diary_relocation_outcome",
+                "choice": "store_in_private_quarters",
+                "origin": "carried by provisional-focal",
+                "destination": "provisional-focal private quarters",
+                "attempted_tick": 9,
+                "resolved_tick": 10,
+            },
+        )
         self.assertEqual(
             with_diary.official_revision_observation,
             without_diary.official_revision_observation,
         )
         self.assertEqual(
-            with_diary.focal_observations,
-            without_diary.focal_observations,
+            with_diary.focal_observations[:-2],
+            without_diary.focal_observations[:-2],
         )
         self.assertEqual(with_diary.diary.possessor_id, FOCAL_AGENT_ID)
-        self.assertNotEqual(without_diary.diary.possessor_id, FOCAL_AGENT_ID)
+        self.assertEqual(
+            without_diary.diary.possessor_id, SUPPORTING_AGENT_ID
+        )
+        self.assertEqual(
+            with_diary.diary.entries,
+            (with_diary.diary_write.entry,),
+        )
+        self.assertIs(
+            with_diary.diary.entries[0], with_diary.diary_write.entry
+        )
 
         self.assertEqual(with_diary.reconsideration.choice, "recheck_local_supply")
         self.assertEqual(without_diary.reconsideration.choice, "adjust_next_request")
         self.assertEqual(
             vars(with_diary.reconsideration.trace),
             {
-                "selected_revision_observation_id": "observation-0008",
+                "selected_revision_observation_id": "observation-0009",
                 "observed_revision_units": 1,
                 "diary_entry_id": "diary-entry-0001",
                 "retained_private_units": 2,
@@ -1427,7 +1636,7 @@ class FocalLifeScenarioTests(unittest.TestCase):
         self.assertEqual(
             vars(without_diary.reconsideration.trace),
             {
-                "selected_revision_observation_id": "observation-0008",
+                "selected_revision_observation_id": "observation-0009",
                 "observed_revision_units": 1,
                 "diary_entry_id": None,
                 "retained_private_units": None,

@@ -322,6 +322,28 @@ class DiaryReadResult:
 
 
 @dataclass(frozen=True)
+class DiaryRelocationDecision:
+    """One provisional physical relocation choice, not its world outcome."""
+
+    choice: str
+    actor_id: str
+    diary_object_id: str
+    origin: str
+    destination: str
+    intended_possessor_id: str
+
+
+@dataclass(frozen=True)
+class DiaryRelocationResolution:
+    """Recorded attempt, outcome, and resulting physical diary state."""
+
+    decision: DiaryRelocationDecision
+    attempted_event: WorldEvent
+    outcome_event: WorldEvent
+    diary: PhysicalDiary
+
+
+@dataclass(frozen=True)
 class RevisionReconsiderationTrace:
     """Delivered revision and retained private perspective used by one choice."""
 
@@ -371,6 +393,9 @@ class FocalLifeScenarioEvidence:
     diary: PhysicalDiary
     diary_write: DiaryWriteResult
     diary_read: DiaryReadResult
+    diary_relocation_decision: DiaryRelocationDecision
+    diary_relocation: DiaryRelocationResolution
+    diary_relocation_observation: Observation
     official_revision_event: WorldEvent
     official_revision_observation: Observation
     reconsideration: RevisionReconsiderationDecision
@@ -546,6 +571,150 @@ def currently_accessible_diary_entry(
     if entry is None:
         raise ValueError("entry must be retained in the diary")
     return entry
+
+
+def choose_provisional_diary_relocation(
+    *, relocation: str, diary: PhysicalDiary, actor_id: str
+) -> DiaryRelocationDecision:
+    """Choose one explicitly provisional destination for the possessed diary."""
+    if not isinstance(relocation, str) or not relocation.strip():
+        raise ValueError("relocation must be a nonempty string")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(actor_id, str) or not actor_id.strip():
+        raise ValueError("actor_id must be a nonempty string")
+    destinations = {
+        "store_in_private_quarters": (
+            "provisional-focal private quarters",
+            FOCAL_AGENT_ID,
+        ),
+        "entrust_to_supporting_person": (
+            "carried by provisional-supporting-person",
+            SUPPORTING_AGENT_ID,
+        ),
+    }
+    if relocation not in destinations:
+        raise ValueError("unsupported provisional diary relocation")
+    destination, intended_possessor_id = destinations[relocation]
+    return DiaryRelocationDecision(
+        choice=relocation,
+        actor_id=actor_id,
+        diary_object_id=diary.object_id,
+        origin=diary.location,
+        destination=destination,
+        intended_possessor_id=intended_possessor_id,
+    )
+
+
+def resolve_provisional_diary_relocation(
+    *,
+    history: SourceLinkedHistory,
+    diary: PhysicalDiary,
+    diary_write: DiaryWriteResult,
+    diary_read: DiaryReadResult,
+    decision: DiaryRelocationDecision,
+    attempted_tick: int,
+    resolved_tick: int,
+) -> DiaryRelocationResolution:
+    """Validate and record one physical diary relocation attempt and outcome."""
+    if not isinstance(history, SourceLinkedHistory):
+        raise TypeError("history must be a SourceLinkedHistory")
+    if not isinstance(diary, PhysicalDiary):
+        raise TypeError("diary must be a PhysicalDiary")
+    if not isinstance(diary_write, DiaryWriteResult):
+        raise TypeError("diary_write must be a DiaryWriteResult")
+    if not isinstance(diary_read, DiaryReadResult):
+        raise TypeError("diary_read must be a DiaryReadResult")
+    if not isinstance(decision, DiaryRelocationDecision):
+        raise TypeError("decision must be a DiaryRelocationDecision")
+    _require_units(attempted_tick, "attempted_tick")
+    _require_units(resolved_tick, "resolved_tick")
+    if resolved_tick <= attempted_tick:
+        raise ValueError("resolved_tick must be later than attempted_tick")
+    if decision.actor_id != diary.possessor_id:
+        raise ValueError("actor must currently possess the diary to relocate it")
+    if diary != diary_write.diary:
+        raise ValueError("relocation requires the exact recorded diary state")
+    expected = choose_provisional_diary_relocation(
+        relocation=decision.choice,
+        diary=diary,
+        actor_id=decision.actor_id,
+    )
+    if decision != expected:
+        raise ValueError("relocation decision is inconsistent with the diary state")
+    if diary.entries != (diary_write.entry,) or diary_read.entry != diary_write.entry:
+        raise ValueError("relocation requires the exact retained diary entry")
+
+    events = history.events()
+    if diary_write.write_event not in events or diary_read.read_event not in events:
+        raise ValueError("diary read must be recorded in history")
+    if (
+        diary_read.read_event.kind != "provisional_private_diary_read"
+        or diary_read.read_event.tick != diary_read.read_tick
+        or diary_read.read_event.details.get("actor_id") != decision.actor_id
+        or diary_read.read_event.details.get("diary_object_id") != diary.object_id
+        or diary_read.read_event.details.get("entry_id") != diary_read.entry.entry_id
+    ):
+        raise ValueError("diary read is inconsistent with recorded history")
+    write_events = tuple(
+        event
+        for event in events
+        if event.kind == "provisional_private_diary_written"
+        and event.details.get("diary_object_id") == diary.object_id
+        and event.details.get("entry_id") == diary_read.entry.entry_id
+    )
+    if (
+        len(write_events) != 1
+        or write_events[0] != diary_write.write_event
+        or write_events[0].tick != diary_read.entry.completed_tick
+        or write_events[0].details.get("actor_id") != diary_read.entry.author_id
+        or write_events[0].details.get("started_tick")
+        != diary_read.entry.started_tick
+        or write_events[0].details.get("completed_tick")
+        != diary_read.entry.completed_tick
+    ):
+        raise ValueError("diary state is inconsistent with recorded writing")
+    if attempted_tick <= diary_read.read_tick:
+        raise ValueError("diary relocation must follow the recorded read")
+
+    attempted_event = history.record_event(
+        tick=attempted_tick,
+        kind="provisional_diary_relocation_attempted",
+        details={
+            "actor_id": decision.actor_id,
+            "diary_object_id": diary.object_id,
+            "origin": diary.location,
+            "destination": decision.destination,
+            "attempted_tick": attempted_tick,
+        },
+    )
+    relocated_diary = PhysicalDiary(
+        object_id=diary.object_id,
+        location=decision.destination,
+        possessor_id=decision.intended_possessor_id,
+        entries=diary.entries,
+    )
+    outcome_event = history.record_event(
+        tick=resolved_tick,
+        kind="provisional_diary_relocation_resolved",
+        details={
+            "attempted_event_id": attempted_event.event_id,
+            "actor_id": decision.actor_id,
+            "diary_object_id": diary.object_id,
+            "origin": diary.location,
+            "destination": decision.destination,
+            "attempted_tick": attempted_tick,
+            "resolved_tick": resolved_tick,
+            "resulting_possessor_id": relocated_diary.possessor_id,
+            "resulting_location": relocated_diary.location,
+        },
+    )
+    return DiaryRelocationResolution(
+        decision=decision,
+        attempted_event=attempted_event,
+        outcome_event=outcome_event,
+        diary=relocated_diary,
+    )
 
 
 def choose_after_official_revision(
@@ -1405,7 +1574,7 @@ def resolve_alternative_source_choice(
 def run_provisional_focal_life_scenario(
     *,
     include_public_pressure: bool = True,
-    later_diary_accessible: bool = True,
+    diary_relocation: str = "store_in_private_quarters",
 ) -> FocalLifeScenarioEvidence:
     """Run the fixed example and return its complete development evidence."""
     history = SourceLinkedHistory()
@@ -1582,8 +1751,36 @@ def run_provisional_focal_life_scenario(
         entry_id=diary_write.entry.entry_id,
         tick=8,
     )
+    diary_relocation_decision = choose_provisional_diary_relocation(
+        relocation=diary_relocation,
+        diary=diary_write.diary,
+        actor_id=FOCAL_AGENT_ID,
+    )
+    diary_relocation_resolution = resolve_provisional_diary_relocation(
+        history=history,
+        diary=diary_write.diary,
+        diary_write=diary_write,
+        diary_read=diary_read,
+        decision=diary_relocation_decision,
+        attempted_tick=9,
+        resolved_tick=10,
+    )
+    diary_relocation_observation = history.deliver_observation(
+        agent_id=FOCAL_AGENT_ID,
+        event_id=diary_relocation_resolution.outcome_event.event_id,
+        source="direct diary relocation",
+        delivery_tick=10,
+        details={
+            "evidence_kind": "diary_relocation_outcome",
+            "choice": diary_relocation_decision.choice,
+            "origin": diary_relocation_decision.origin,
+            "destination": diary_relocation_decision.destination,
+            "attempted_tick": 9,
+            "resolved_tick": 10,
+        },
+    )
     official_revision_event = history.record_event(
-        tick=9,
+        tick=11,
         kind="provisional_official_availability_claim",
         details={
             "claimed_available_units": 1,
@@ -1594,23 +1791,15 @@ def run_provisional_focal_life_scenario(
         agent_id=FOCAL_AGENT_ID,
         event_id=official_revision_event.event_id,
         source="official revision notice",
-        delivery_tick=9,
+        delivery_tick=11,
         details={
             "evidence_kind": "official_claim_revision",
             "available_units": 1,
             "revises_event_id": official_claim_event.event_id,
         },
     )
-    current_diary = diary_write.diary
-    if not later_diary_accessible:
-        current_diary = PhysicalDiary(
-            object_id=diary_write.diary.object_id,
-            location="temporarily elsewhere",
-            possessor_id="provisional-current-holder",
-            entries=diary_write.diary.entries,
-        )
     retained_diary_entry = currently_accessible_diary_entry(
-        diary=current_diary,
+        diary=diary_relocation_resolution.diary,
         actor_id=FOCAL_AGENT_ID,
         entry_id=diary_write.entry.entry_id,
     )
@@ -1643,9 +1832,12 @@ def run_provisional_focal_life_scenario(
         private_availability_belief=public_expression.private_belief,
         public_expression=public_expression,
         public_expression_resolution=public_expression_resolution,
-        diary=current_diary,
+        diary=diary_relocation_resolution.diary,
         diary_write=diary_write,
         diary_read=diary_read,
+        diary_relocation_decision=diary_relocation_decision,
+        diary_relocation=diary_relocation_resolution,
+        diary_relocation_observation=diary_relocation_observation,
         official_revision_event=official_revision_event,
         official_revision_observation=official_revision_observation,
         reconsideration=reconsideration,

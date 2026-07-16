@@ -144,7 +144,9 @@ official observations, all focal choices, all three delivered allocation
 outcomes, the focal-visible social pressure and its effects, retained private
 belief, and public expression. It then shows private-perspective diary writing with time
 advancing and the later read returning the same retained entry. After that read,
-the fixed scenario appends a tick-9 official claim revising the earlier official
+it shows an attempted tick-9 diary relocation and its separately resolved
+tick-10 physical outcome. The fixed scenario then appends a tick-11 official
+claim revising the earlier official
 four-unit claim to one unit. The new claim explicitly links to the earlier claim
 event, and the focal character receives it only through a source-linked official
 revision observation. The earlier claim, objective shelf event, private belief,
@@ -153,13 +155,19 @@ The transcript presents the revised value as a claim received from its official
 source rather than as objective truth.
 
 One later, reversible ordinary choice now follows that revision. The public
-runner comparison
-`run_provisional_focal_life_scenario(later_diary_accessible=True/False)` keeps
-the complete recorded event history, focal observations, objective allocation,
-and delivered one-unit revision equal. It changes only the diary's current
-location/possessor fact. A small access boundary returns the retained entry only
-when the focal character currently possesses the diary; the decision receives
-that validated entry or no diary perspective, never the runner flag. Under the
+runner comparison varies the explicit provisional relocation choice through
+`run_provisional_focal_life_scenario(diary_relocation="store_in_private_quarters")`
+and `diary_relocation="entrust_to_supporting_person"`. Each run validates current
+focal possession, exact diary/write/read evidence, the retained entry, and
+chronology before recording anything. It then records distinct immutable
+attempt and outcome events with actor, diary identity, origin, destination,
+time, and resulting physical state. A small access boundary returns the retained
+entry only when the focal character possesses the resolved diary. The relocation
+outcome is delivered to the focal character without the resulting possessor or
+diary object identifier, and the normal transcript renders that limited
+observation. The later
+decision receives that validated entry or no diary perspective, never the
+relocation choice. Under the
 explicit local rule, a currently accessible two-unit entry that differs from
 the delivered one-unit revision selects `recheck_local_supply`; the revision
 alone selects `adjust_next_request`. These are attempted ordinary choices, not
@@ -168,9 +176,9 @@ observation and value, the retained diary entry and value actually used (or
 explicit `None` values), and the local rule. It contains no allocation fields,
 raw event history, or hidden state.
 
-The comparison injects the diary's current possession as one provisional test
-variable after the fixed earlier read. It does not record a transfer or loss and
-does not introduce a memory model; those remain outside this experiment. The
+The comparison constructs only one provisional physical relocation after the
+fixed earlier read. It is not a general transfer, inventory, ownership, consent,
+discovery, or loss mechanism and does not introduce a memory model. The
 normal perspective does not expose objective truth or event identifiers, the
 supporter's source observation or local rule, objective commitment or
 allocatable-supply values, the raw omniscient event stream, or why the delivered
@@ -182,8 +190,9 @@ renderer and runnable module command using only the Python standard library.
 The character, location vocabulary, quantities, commitment, evidence priority,
 allocation rule, supporting person, social action, public-expression rule,
 follow-up choices, and responses are all provisional. This is one fixed scenario
-with six decisions, three resolved allocation attempts, one resolved social
-action, one resolved public expression, one diary write, and one diary read. It
+with seven decisions, three resolved allocation attempts, one resolved social
+action, one resolved public expression, one diary write, one diary read, and one
+resolved diary relocation. It
 is not a repeated loop, general belief or memory update, confidence or decay
 model, institution model, object/inventory system, diary lifecycle, discovery,
 concealment, confiscation, sharing, entry editing, UI, AI behavior,
