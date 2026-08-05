@@ -21,6 +21,36 @@ The current center of gravity is a small authoritarian social world in which:
 
 This direction remains provisional. The first implementation should clarify it rather than attempt to reproduce an entire society.
 
+## Current runnable slice
+
+The repository now contains a deterministic, terminal-based first living slice.
+It follows one autonomous focal character and two supporting characters through
+24 ticks spanning work, travel, an allocation contradiction, public pressure,
+and a physical diary. The normal command is intentionally filtered to the focal
+character; a separate inspector exposes objective development records.
+
+Run it from the repository root:
+
+```bash
+python3 -m experiments.scenarios.first_day --seed 42 --ticks 30
+```
+
+Use the explicitly omniscient inspector:
+
+```bash
+python3 -m experiments.scenarios.first_day --seed 42 --ticks 30 --inspect
+```
+
+Run all tests:
+
+```bash
+./scripts/check.sh
+```
+
+See [experiments/README.md](experiments/README.md) for the tick order, state
+boundaries, scenario rules, and limitations. The implementation is an engine
+feasibility slice, not a claim of human realism or a complete society.
+
 ## Documents
 
 - [CORE_CONSTRUCT.md](CORE_CONSTRUCT.md) — the experience, central tensions, and current conceptual pillars.

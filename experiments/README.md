@@ -3,6 +3,134 @@
 Experiments in this directory test one uncertain concept at a time. They are not
 production packages or settled architecture.
 
+## First living simulation slice
+
+The current runnable slice is a reusable deterministic step loop rather than a
+fixed sequence of scenario calls. It retains the recovered experiments below as
+regression-tested evidence instead of replacing them.
+
+Run the filtered focal-character observer from the repository root:
+
+```bash
+python3 -m experiments.scenarios.first_day --seed 42 --ticks 30
+```
+
+Run the explicitly omniscient development inspector:
+
+```bash
+python3 -m experiments.scenarios.first_day --seed 42 --ticks 30 --inspect
+```
+
+Run every recovered and living-slice test:
+
+```bash
+./scripts/check.sh
+```
+
+The equivalent direct test command is:
+
+```bash
+python3 -m unittest discover -s experiments/tests -p 'test_*.py'
+```
+
+Python 3 is the only runtime dependency.
+
+### What the default run demonstrates
+
+Seed 42 produces one 24-tick authored starting situation. Mara Vale begins at
+home with a workplace obligation and a need for three household allocation
+units. Ilan Reed independently completes scheduled work. Mara travels through
+home, workplace, and allocation office; directly sees three units; then receives
+an incompatible official five-unit claim. Her request cites the direct
+observation. Objective stock includes one hidden commitment, so the resolver
+grants two units and delivers only the grant and shortfall.
+
+Allocation clerk Sena Orr sees only the visible request and the public official
+claim. Her configured public reminder supplies pressure 0.8. Mara's provisional
+policy conforms publicly only above threshold 0.7, so she repeats five units
+while retaining the directly grounded private belief of three. She returns home,
+writes that perspective into the physical diary over two ticks, receives a later
+official revision to one unit, and reads the unchanged earlier entry before
+returning to ordinary work.
+
+This sequence is not described as emergent. The starting need, travel graph,
+institutional claim schedule (five units at tick 8 and one at tick 16), supporting
+schedules, policy priorities, hidden commitment, pressure value, conformity
+threshold, and action durations are authored provisional inputs and rules. The
+characters select actions from those inputs without a prescribed rebellion,
+arrest, betrayal, or dramatic ending.
+
+### Explicit tick order
+
+`Simulation.step()` uses this stable order:
+
+1. Increment and start the tick.
+2. Apply scheduled institutional events and deliver eligible broadcasts.
+3. Complete actions whose duration elapsed.
+4. Generate completion perceptions and deliver queued prior-action outcomes.
+5. Update structured beliefs from newly delivered claim observations.
+6. Ask each idle agent policy for one attempted action using its restricted view.
+7. Validate and resolve or schedule each attempt; newly caused observations are
+   queued for a later tick where required.
+8. Produce and retain the focal-character snapshot.
+
+The default completion condition requires tick 24, two completed focal work
+periods, and a completed diary read. `max_ticks` is a safety boundary, not the
+scenario's success condition.
+
+### State and authority boundaries
+
+- `core/world.py` owns objective locations, resource quantities and commitments,
+  institutional state, and the physical diary.
+- `core/events.py` owns immutable append-only events and agent-specific
+  observations with stable identifiers and source links.
+- `core/beliefs.py` owns structured beliefs, confidence, conflicts, and
+  source-linked development transitions.
+- `core/actions.py` represents immutable attempted actions; selection does not
+  mutate the world.
+- `core/simulation.py` owns tick order, validation, resolution, perception
+  delivery, completion, replay data, and the focal projection boundary.
+- `policies/` receives only `AgentView` or `InstitutionView`. Agent policies do
+  not receive objective resources, event history, or institutional records.
+- `scenarios/first_day.py` configures names, locations, quantities, schedules,
+  policies, thresholds, and durations.
+- `observer/terminal.py` accepts only focal snapshots. It cannot inspect the
+  world or event log. `observer/inspector.py` separately accepts the simulation
+  and is labelled omniscient.
+
+Action outcomes are separate events linked to their attempts. Allocation results
+are resolved from objective state, then delivered in a narrower observation on
+the following tick. Public claims and later revisions are new records and never
+overwrite objective history. Diary entries retain the author's delivered
+perspective and require physical access plus simulated time.
+
+### Determinism and replay evidence
+
+Each simulation owns a `random.Random(seed)` instance; the default policy path
+currently needs no random choice. No global random state, clock, entropy source,
+worker, or process state affects behavior. `history_data()` returns detached,
+JSON-compatible configuration, ordered events, observations, and belief
+transitions. Equal configuration and seed 42 produce identical ordered records
+and stable identifiers.
+
+### Current limitations
+
+- The world has exactly one focal character, two supporting characters, three
+  locations, one resource, one institution, and one diary.
+- Policies are transparent deterministic rules, not models of human cognition.
+- Claim recognition supports one structured allocation proposition.
+- Travel and actions use integer ticks; there is no real-time clock.
+- Institutional behavior is a small broadcast schedule plus bounded records,
+  not a general bureaucracy or surveillance system.
+- Supporting schedules and perception eligibility are intentionally narrow.
+- Replay evidence is in-memory JSON-compatible data, not a durable save format.
+- The terminal observer is read-only. There is no intervention, graphical UI,
+  web service, LLM integration, vector memory, or large population.
+
+Recovery and delivery evidence are recorded in
+[`FIRST_LIVING_SLICE_BASELINE.md`](FIRST_LIVING_SLICE_BASELINE.md) and
+[`FIRST_LIVING_SLICE_DELIVERY.md`](FIRST_LIVING_SLICE_DELIVERY.md).
+
 ## Source-linked history
 
 `source_linked_history.py` tests the existing architectural boundary between
