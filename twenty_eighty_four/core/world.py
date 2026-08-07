@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from experiments.core.agents import AgentState
-from experiments.core.institutions import InstitutionState
+from twenty_eighty_four.core.agents import AgentState
+from twenty_eighty_four.core.institutions import InstitutionState
 
 
 @dataclass

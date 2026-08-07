@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import argparse
 
-from experiments.core.agents import AgentState
-from experiments.core.institutions import InstitutionState
-from experiments.core.simulation import Simulation, SimulationRules
-from experiments.core.world import PhysicalDiary, ResourceState, WorldState
-from experiments.policies.focal_policy import FocalPolicy
-from experiments.policies.institution_policy import InstitutionPolicy
-from experiments.policies.supporting_policy import AllocationClerkPolicy, CoworkerPolicy
+from twenty_eighty_four.core.agents import AgentState
+from twenty_eighty_four.core.institutions import InstitutionState
+from twenty_eighty_four.core.simulation import Simulation, SimulationRules
+from twenty_eighty_four.core.world import PhysicalDiary, ResourceState, WorldState
+from twenty_eighty_four.policies.focal_policy import FocalPolicy
+from twenty_eighty_four.policies.institution_policy import InstitutionPolicy
+from twenty_eighty_four.policies.supporting_policy import AllocationClerkPolicy, CoworkerPolicy
 
 
 FOCAL_AGENT_ID = "mara-vale"
@@ -27,7 +27,8 @@ def build_first_day(seed: int = 42) -> Simulation:
             display_name="Mara Vale",
             role="focal",
             location="home",
-            aim="complete work and collect three household allocation units",
+            aim="complete work and secure the household allocation",
+            required_resource_id="household_allocation",
             required_units=3,
             obligations=("workplace shift", "household allocation"),
         ),
@@ -138,11 +139,11 @@ def main(argv: list[str] | None = None) -> int:
     simulation = build_first_day(seed=args.seed)
     simulation.run(max_ticks=args.ticks)
     if args.inspect:
-        from experiments.observer.inspector import render_inspector
+        from twenty_eighty_four.observer.inspector import render_inspector
 
         output = render_inspector(simulation)
     else:
-        from experiments.observer.terminal import render_terminal
+        from twenty_eighty_four.observer.terminal import render_terminal
 
         output = render_terminal(simulation.snapshots)
     print(output, end="")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from experiments.core.simulation import Simulation
+from twenty_eighty_four.core.simulation import Simulation
 
 
 def render_inspector(simulation: Simulation) -> str:

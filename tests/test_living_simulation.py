@@ -4,14 +4,15 @@ import subprocess
 import sys
 from dataclasses import fields, replace
 
-from experiments.core.actions import ACTION_KINDS, ActionAttempt
-from experiments.core.agents import AgentView
-from experiments.core.institutions import InstitutionView
-from experiments.core.events import freeze_mapping
-from experiments.observer.inspector import render_inspector
-from experiments.observer.terminal import render_terminal
-from experiments.policies.focal_policy import FocalPolicy
-from experiments.scenarios.first_day import (
+from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult
+from twenty_eighty_four.core.agents import AgentView
+from twenty_eighty_four.core.institutions import InstitutionView
+from twenty_eighty_four.core.events import freeze_mapping
+from twenty_eighty_four.observer.inspector import render_inspector
+from twenty_eighty_four.observer.terminal import render_terminal
+from twenty_eighty_four.core.simulation import FocalSnapshot
+from twenty_eighty_four.policies.focal_policy import FocalPolicy
+from twenty_eighty_four.scenarios.first_day import (
     CLERK_ID,
     CO_WORKER_ID,
     FOCAL_AGENT_ID,
@@ -62,6 +63,36 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(completion.action_id, attempt.action_id)
         self.assertEqual(completion.caused_by, (attempt.event_id,))
 
+    def test_agent_view_receives_an_immutable_result_only_when_travel_completes(self):
+        simulation = build_first_day(seed=42)
+
+        simulation.step()
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).action_results, ())
+        simulation.step()
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).action_results, ())
+
+        simulation.step()
+
+        result = simulation.agent_view(FOCAL_AGENT_ID).action_results[-1]
+        attempt = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        completion = next(
+            event
+            for event in simulation.events
+            if event.kind == "travel_completed" and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(result.action_id, attempt.action_id)
+        self.assertEqual(result.attempt_event_id, attempt.event_id)
+        self.assertEqual(result.outcome_event_id, completion.event_id)
+        self.assertEqual(result.action_kind, "travel")
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.resolved_tick, 3)
+        with self.assertRaises(AttributeError):
+            result.status = "rejected"
+
     def test_remote_allocation_request_is_rejected_without_resource_mutation(self):
         simulation = build_first_day(seed=42)
         resources_before = simulation.inspector_state()["objective_resources"].copy()
@@ -83,6 +114,12 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(rejection.action_id, attempt.action_id)
         self.assertEqual(rejection.caused_by, (attempt.event_id,))
         self.assertIn("allocation_office", rejection.details["reason"])
+        result = simulation.agent_view(FOCAL_AGENT_ID).action_results[-1]
+        self.assertEqual(result.action_id, attempt.action_id)
+        self.assertEqual(result.outcome_event_id, rejection.event_id)
+        self.assertEqual(result.action_kind, "request_allocation")
+        self.assertEqual(result.status, "rejected")
+        self.assertEqual(result.reason, rejection.details["reason"])
 
     def test_arrival_is_delivered_as_an_observation_before_work_is_selected(self):
         simulation = build_first_day(seed=42)
@@ -221,6 +258,35 @@ class LivingSimulationStepTests(unittest.TestCase):
             simulation.inspector_state()["objective_resources"]["granted_units"], 2
         )
 
+    def test_granted_units_become_holdings_only_when_the_handover_is_delivered(self):
+        simulation = build_first_day(seed=42)
+        initial_view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertEqual(initial_view.required_resource_id, "household_allocation")
+        self.assertEqual(dict(initial_view.resource_holdings), {})
+        self.assertEqual(initial_view.remaining_required_units, 3)
+        with self.assertRaises(TypeError):
+            initial_view.resource_holdings["household_allocation"] = 99
+
+        request_tick = [simulation.step() for _ in range(8)][-1]
+        self.assertEqual(request_tick.held_units, 0)
+        self.assertEqual(request_tick.remaining_required_units, 3)
+
+        handover_tick = simulation.step()
+
+        self.assertEqual(handover_tick.held_units, 2)
+        self.assertEqual(handover_tick.remaining_required_units, 1)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertEqual(dict(view.resource_holdings), {"household_allocation": 2})
+        self.assertEqual(view.remaining_required_units, 1)
+        self.assertEqual(
+            simulation.inspector_state()["agent_resource_holdings"][FOCAL_AGENT_ID],
+            {"household_allocation": 2},
+        )
+        self.assertEqual(
+            simulation.history_data()["agent_resource_holdings"][FOCAL_AGENT_ID],
+            {"household_allocation": 2},
+        )
+
     def test_supporting_worker_advances_independently_and_is_seen_only_when_present(self):
         simulation = build_first_day(seed=42)
 
@@ -319,6 +385,230 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
         self.assertIn(pressure.observation_id, expression.details["evidence_observation_ids"])
 
+    def test_malformed_public_statement_is_rejected_without_mutation_or_policy_crash(self):
+        simulation = build_first_day(seed=42)
+
+        attempt = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="speak",
+                parameters={
+                    "private_belief_id": "belief-does-not-exist",
+                    "evidence_observation_ids": (),
+                },
+                explanation="fabricated statement",
+            )
+        )
+
+        rejection = simulation.events[-1]
+        self.assertEqual(rejection.kind, "action_rejected")
+        self.assertEqual(rejection.caused_by, (attempt.event_id,))
+        self.assertFalse(
+            any(event.kind == "public_statement_made" for event in simulation.events)
+        )
+        self.assertEqual(
+            simulation.agent_view(FOCAL_AGENT_ID).action_results[-1].status,
+            "rejected",
+        )
+        snapshot = simulation.step()
+        self.assertEqual(snapshot.current_action, "travel to workplace")
+
+    def test_rejected_public_statement_does_not_redirect_the_focal_policy(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(9):
+            simulation.step()
+        private = next(
+            belief
+            for belief in simulation.agent_view(FOCAL_AGENT_ID).beliefs
+            if belief.context == "private"
+        )
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="speak",
+                parameters={
+                    "proposition": private.proposition,
+                    "asserted_value": 5,
+                    "private_belief_id": private.belief_id,
+                    "evidence_observation_ids": ("observation-does-not-exist",),
+                },
+                explanation="rejected public statement",
+            )
+        )
+
+        selected = FocalPolicy().choose(simulation.agent_view(FOCAL_AGENT_ID))
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertEqual(selected.kind, "wait")
+        self.assertEqual(selected.explanation, "wait after the partial allocation")
+
+    def test_rejected_work_does_not_satisfy_the_remaining_work_obligation(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(18):
+            simulation.step()
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                explanation="try to replace the trip with work",
+            )
+        )
+
+        simulation.step()
+        arrival = simulation.step()
+
+        self.assertTrue(
+            any(
+                result.action_kind == "work" and result.status == "rejected"
+                for result in simulation.agent_view(FOCAL_AGENT_ID).action_results
+            )
+        )
+        self.assertEqual(arrival.location, "workplace")
+        self.assertEqual(arrival.current_action, "resume the afternoon ledger shift")
+
+    def test_every_action_kind_rejects_unexpected_parameters_without_consequences(self):
+        cases = {
+            "travel": {"destination": "workplace", "unexpected": True},
+            "work": {"unexpected": True},
+            "request_allocation": {"requested_units": 1, "unexpected": True},
+            "speak": {"unexpected": True},
+            "write_diary": {"unexpected": True},
+            "read_diary": {"unexpected": True},
+            "wait": {"unexpected": True},
+        }
+
+        for action_kind, parameters in cases.items():
+            with self.subTest(action_kind=action_kind):
+                simulation = build_first_day(seed=42)
+                attempt = simulation.resolve_attempt(
+                    ActionAttempt(
+                        actor_id=FOCAL_AGENT_ID,
+                        kind=action_kind,
+                        parameters=parameters,
+                        explanation="malformed action",
+                    )
+                )
+
+                rejection = simulation.events[-1]
+                self.assertEqual(rejection.kind, "action_rejected")
+                self.assertEqual(rejection.caused_by, (attempt.event_id,))
+                self.assertIn("unexpected parameters", rejection.details["reason"])
+                self.assertEqual(
+                    simulation.agent_view(FOCAL_AGENT_ID).action_results[-1].status,
+                    "rejected",
+                )
+                self.assertEqual(len(simulation.events), 2)
+
+    def test_allocation_request_rejects_an_invalid_evidence_container(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(7):
+            simulation.step()
+        resources_before = simulation.inspector_state()["objective_resources"].copy()
+
+        attempt = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="request_allocation",
+                parameters={
+                    "requested_units": 3,
+                    "evidence_observation_ids": 7,
+                },
+                explanation="malformed allocation request",
+            )
+        )
+
+        rejection = simulation.events[-1]
+        self.assertEqual(rejection.kind, "action_rejected")
+        self.assertEqual(rejection.caused_by, (attempt.event_id,))
+        self.assertIn("evidence", rejection.details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["objective_resources"], resources_before
+        )
+
+    def test_diary_write_rejects_invalid_sources_without_raising_or_mutating(self):
+        simulation = build_first_day(seed=42)
+        diary_before = simulation.inspector_state()["diaries"]["mara-private-diary"]
+
+        attempt = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="write_diary",
+                parameters={
+                    "object_id": "mara-private-diary",
+                    "proposition": "daily_allocation_units",
+                    "asserted_value": 3,
+                    "source_observation_ids": 7,
+                },
+                explanation="malformed diary entry",
+            )
+        )
+
+        rejection = simulation.events[-1]
+        self.assertEqual(rejection.kind, "action_rejected")
+        self.assertEqual(rejection.caused_by, (attempt.event_id,))
+        self.assertIn("diary", rejection.details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["diaries"]["mara-private-diary"],
+            diary_before,
+        )
+
+    def test_diary_write_rejects_a_claim_that_does_not_match_the_cited_belief(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(8):
+            simulation.step()
+        simulation.world.agents[FOCAL_AGENT_ID].location = "home"
+        direct = next(
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "direct_resource_claim"
+        )
+        diary_before = simulation.inspector_state()["diaries"]["mara-private-diary"]
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="write_diary",
+                parameters={
+                    "object_id": "mara-private-diary",
+                    "proposition": "daily_allocation_units",
+                    "asserted_value": 99,
+                    "source_observation_ids": (direct.observation_id,),
+                },
+                explanation="write a claim unrelated to the cited belief",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertIn("match an actor belief", simulation.events[-1].details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["diaries"]["mara-private-diary"],
+            diary_before,
+        )
+
+    def test_unknown_actor_is_rejected_without_raising_or_mutating_agents(self):
+        simulation = build_first_day(seed=42)
+        locations_before = simulation.inspector_state()["agent_locations"].copy()
+
+        attempt = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id="unknown-person",
+                kind="wait",
+                explanation="attempt to act without a registered agent",
+            )
+        )
+
+        rejection = simulation.events[-1]
+        self.assertEqual(rejection.kind, "action_rejected")
+        self.assertEqual(rejection.caused_by, (attempt.event_id,))
+        self.assertIn("not registered", rejection.details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["agent_locations"], locations_before
+        )
+        result = simulation.history_data()["action_results"][-1]
+        self.assertEqual(result["actor_id"], "unknown-person")
+        self.assertEqual(result["action_id"], attempt.action_id)
+        self.assertEqual(result["status"], "rejected")
+
     def test_diary_write_requires_returning_home_and_completes_after_two_ticks(self):
         simulation = build_first_day(seed=42)
 
@@ -405,6 +695,29 @@ class LivingSimulationStepTests(unittest.TestCase):
             ],
         )
 
+    def test_history_serializes_one_terminal_result_for_every_resolved_attempt(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+
+        results = simulation.history_data()["action_results"]
+        attempts = [
+            event for event in simulation.events if event.kind == "action_attempted"
+        ]
+
+        self.assertEqual(len(results), len(attempts))
+        self.assertEqual(
+            {result["action_id"] for result in results},
+            {attempt.action_id for attempt in attempts},
+        )
+        self.assertTrue(all(result["status"] == "completed" for result in results))
+        for result in results:
+            outcome = next(
+                event
+                for event in simulation.events
+                if event.event_id == result["outcome_event_id"]
+            )
+            self.assertEqual(outcome.action_id, result["action_id"])
+
     def test_normal_observer_is_filtered_while_inspector_exposes_causal_evidence(self):
         simulation = build_first_day(seed=42)
         simulation.run(max_ticks=30)
@@ -415,6 +728,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("directly saw 3 allocation units", normal)
         self.assertIn("official broadcast claimed 5 allocation units", normal)
         self.assertIn("2 granted and 1 unfilled", normal)
+        self.assertIn("Household allocation: 2 held; 1 still needed.", normal)
         self.assertIn("Private belief: 3 units", normal)
         self.assertIn("repeat the official 5-unit claim publicly", normal)
         self.assertIn("Diary read returned the earlier 3-unit perspective", normal)
@@ -445,12 +759,59 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("observation-", inspector)
         self.assertIn("caused_by", inspector)
 
+    def test_final_workday_explanation_preserves_the_unmet_household_need(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+
+        final = simulation.snapshots[-1]
+
+        self.assertEqual(final.held_units, 2)
+        self.assertEqual(final.remaining_required_units, 1)
+        self.assertIn("one household allocation unit remains unmet", final.explanation)
+        self.assertNotIn("household errand are complete", final.explanation)
+
+    def test_normal_observer_explains_a_focal_rejection_without_hidden_state(self):
+        rejection = ActionResult(
+            action_id="action-0001",
+            attempt_event_id="event-0001",
+            outcome_event_id="event-0002",
+            actor_id=FOCAL_AGENT_ID,
+            action_kind="travel",
+            status="rejected",
+            resolved_tick=1,
+            reason="destination is not reachable from the current location",
+        )
+        snapshot = FocalSnapshot(
+            tick=1,
+            location="home",
+            aim="complete work and secure the household allocation",
+            required_units=3,
+            held_units=0,
+            remaining_required_units=3,
+            current_action="travel to an unavailable location",
+            explanation="attempt the planned journey",
+            new_observations=(),
+            new_action_results=(rejection,),
+            beliefs=(),
+            accessible_diary_entry_count=0,
+            diary_entries=(),
+        )
+
+        normal = render_terminal((snapshot,))
+
+        self.assertIn(
+            "Action rejected: destination is not reachable from the current location.",
+            normal,
+        )
+        self.assertNotIn("event-0002", normal)
+        self.assertNotIn("committed_units", normal)
+
     def test_module_command_runs_normal_and_explicit_inspector_modes(self):
         normal = subprocess.run(
             [
                 sys.executable,
                 "-m",
-                "experiments.scenarios.first_day",
+                "twenty_eighty_four.scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",
@@ -464,7 +825,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "experiments.scenarios.first_day",
+                "twenty_eighty_four.scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",
@@ -693,6 +1054,11 @@ class LivingSimulationStepTests(unittest.TestCase):
                     attempt.kind == "speak"
                     and "private_belief_id" in attempt.parameters
                 )
+            ),
+            action_results=tuple(
+                result
+                for result in view.action_results
+                if result.action_kind != "speak"
             ),
             observations=weakened_observations,
         )

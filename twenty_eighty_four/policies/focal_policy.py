@@ -1,7 +1,7 @@
 """Restricted policy for the focal character."""
 
-from experiments.core.actions import ActionAttempt
-from experiments.core.agents import AgentView
+from twenty_eighty_four.core.actions import ActionAttempt
+from twenty_eighty_four.core.agents import AgentView
 
 
 def _number_word(value: int) -> str:
@@ -22,8 +22,8 @@ class FocalPolicy:
 
     def choose(self, view: AgentView) -> ActionAttempt:
         made_public_expression = any(
-            attempt.kind == "speak" and "private_belief_id" in attempt.parameters
-            for attempt in view.action_history
+            result.action_kind == "speak" and result.status == "completed"
+            for result in view.action_results
         )
         read_diary = any(
             observation.details.get("evidence_kind") == "diary_read_completed"
@@ -54,10 +54,12 @@ class FocalPolicy:
                 decision_reason="the private perspective can be written only with physical access to the diary at home",
             )
         if view.location == "workplace" and read_diary:
-            work_attempts = sum(
-                1 for attempt in view.action_history if attempt.kind == "work"
+            completed_work = sum(
+                1
+                for result in view.action_results
+                if result.action_kind == "work" and result.status == "completed"
             )
-            if work_attempts < 2:
+            if completed_work < 2:
                 return ActionAttempt(
                     actor_id=view.agent_id,
                     kind="work",
@@ -68,7 +70,17 @@ class FocalPolicy:
                 actor_id=view.agent_id,
                 kind="wait",
                 explanation="finish the ordinary workday",
-                decision_reason="both scheduled work periods and the household errand are complete",
+                decision_reason=(
+                    f"scheduled work is complete; {_number_word(view.remaining_required_units)} "
+                    "household allocation unit remains unmet"
+                    if view.remaining_required_units == 1
+                    else (
+                        f"scheduled work is complete; {view.remaining_required_units} "
+                        "household allocation units remain unmet"
+                        if view.remaining_required_units > 1
+                        else "scheduled work and the household allocation are complete"
+                    )
+                ),
             )
         if (
             view.location == "home"

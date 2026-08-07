@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Mapping, Protocol
 
-from experiments.core.actions import ActionAttempt
-from experiments.core.beliefs import Belief
-from experiments.core.events import Observation
+from twenty_eighty_four.core.actions import ActionAttempt, ActionResult
+from twenty_eighty_four.core.beliefs import Belief
+from twenty_eighty_four.core.events import Observation
 
 
 @dataclass(frozen=True)
@@ -27,10 +27,13 @@ class AgentState:
     role: str
     location: str
     aim: str
+    required_resource_id: str | None = None
     required_units: int = 0
+    resource_holdings: dict[str, int] = field(default_factory=dict)
     obligations: tuple[str, ...] = ()
     last_attempt: ActionAttempt | None = None
     action_history: list[ActionAttempt] = field(default_factory=list)
+    action_results: list[ActionResult] = field(default_factory=list)
     observations: list[Observation] = field(default_factory=list)
     beliefs: list[Belief] = field(default_factory=list)
 
@@ -43,10 +46,14 @@ class AgentView:
     agent_id: str
     location: str
     aim: str
+    required_resource_id: str | None
     required_units: int
+    resource_holdings: Mapping[str, int]
+    remaining_required_units: int
     obligations: tuple[str, ...]
     last_attempt: ActionAttempt | None
     action_history: tuple[ActionAttempt, ...]
+    action_results: tuple[ActionResult, ...]
     observations: tuple[Observation, ...]
     beliefs: tuple[Belief, ...]
     accessible_diary_id: str | None

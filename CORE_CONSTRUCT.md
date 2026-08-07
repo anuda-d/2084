@@ -94,6 +94,23 @@ AI may help choose, phrase, or explain behavior. It does not automatically know 
 
 World truth, perception, action validity, institutional access, and consequential resolution should remain governed by explicit simulation state and constraints. Simpler decision rules remain valuable wherever they answer the same question more clearly.
 
+### Current implementation status
+
+The first living slice currently uses transparent deterministic policies, not
+AI. Those policies receive restricted agent or institution views and return an
+attempted action; the simulation separately validates and resolves the attempt.
+Policies receive immutable completed or rejected results, so an unsuccessful
+attempt cannot silently advance their plan. This is enough to test knowledge
+boundaries and inspectable consequences before adding a less predictable
+decision layer.
+
+The implemented belief model is also deliberately narrow. It recognizes one
+structured allocation proposition, gives direct and official claims fixed
+confidence values, and links incompatible values without erasing either one.
+It does not yet model memory decay, reinterpretation, planning, or general
+language understanding. Public/private divergence currently occurs through one
+explicit social-pressure threshold.
+
 ## Observation and Playability
 
 Playability means embodied attention, not necessarily conventional control:

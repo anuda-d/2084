@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from experiments.core.events import Observation
+from twenty_eighty_four.core.events import Observation
 
 
 @dataclass(frozen=True)

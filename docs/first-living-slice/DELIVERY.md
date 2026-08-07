@@ -2,7 +2,7 @@
 
 ## 1. Implemented simulation
 
-The delivered experiment is a standard-library Python simulation with a reusable
+The delivered slice is a standard-library Python simulation with a reusable
 `Simulation.step()` and `Simulation.run()` boundary. One focal character and two
 supporting characters act autonomously for 24 ticks across home, workplace, and
 allocation office. The run includes scheduled work, time-consuming travel, a
@@ -16,6 +16,12 @@ validation, a hidden objective commitment, pressure 0.8, a conformity threshold
 of 0.7, and fixed action durations. It is not claimed to model consciousness,
 human fidelity, or unconstrained emergence.
 
+The hardened action boundary records immutable completed or rejected results.
+Policies advance from those results instead of assuming an attempt succeeded,
+and malformed actions fail without consequential mutation. The two-unit
+handover becomes a simple focal-character holding when delivered, leaving one
+household unit explicitly unmet.
+
 ## 2. Recovered starting point
 
 - Delivery branch: `codex/first-living-slice`
@@ -26,13 +32,19 @@ human fidelity, or unconstrained emergence.
 
 PR #3 was fetched through `refs/pull/3/head` onto a normal local branch. `main`
 was not overwritten or force-pushed. Details are in
-[`FIRST_LIVING_SLICE_BASELINE.md`](FIRST_LIVING_SLICE_BASELINE.md).
+[`BASELINE.md`](BASELINE.md).
 
 ## 3. Architectural changes
 
 - Added a run-scoped world, configuration, seed, tick, agent registry, action
   queue, completion condition, and deterministic event/observation identifiers.
 - Added immutable attempted actions and separate linked outcomes or rejections.
+- Added actor-safe terminal action results to restricted policy views and replay
+  records; rejected attempts no longer satisfy policy progress checks.
+- Added centralized per-action parameter, provenance, access, and belief
+  validation with safe linked rejections for malformed attempts.
+- Added simple per-agent resource holdings and remaining-need presentation at
+  the delayed handover boundary.
 - Added three-location travel constraints and tick-based work, travel, diary
   write, and diary read durations.
 - Added structured sourced beliefs with confidence, context, explicit conflict
@@ -45,20 +57,21 @@ was not overwritten or force-pushed. Details are in
 - Added a filtered snapshot-only terminal observer and a separately labelled
   omniscient inspector.
 - Added JSON-compatible complete history data and same-seed replay checks.
-- Preserved all recovered experiments and tests.
+- Preserved all recovered experiments and tests while promoting the reusable
+  engine to the `twenty_eighty_four` package.
 
 ## 4. Exact commands
 
 Normal observer:
 
 ```bash
-python3 -m experiments.scenarios.first_day --seed 42 --ticks 30
+python3 -m twenty_eighty_four.scenarios.first_day --seed 42 --ticks 30
 ```
 
 Development inspector:
 
 ```bash
-python3 -m experiments.scenarios.first_day --seed 42 --ticks 30 --inspect
+python3 -m twenty_eighty_four.scenarios.first_day --seed 42 --ticks 30 --inspect
 ```
 
 All tests:
@@ -70,6 +83,7 @@ All tests:
 Equivalent direct test command:
 
 ```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
 python3 -m unittest discover -s experiments/tests -p 'test_*.py'
 ```
 
@@ -77,21 +91,22 @@ No package installation is required.
 
 ## 5. Test results
 
-The recovered baseline was 63 passing tests. The final suite contains **88
+The recovered baseline was 63 passing tests. The hardened suite contains **101
 passing tests** with no failures. It covers step order, spatial and temporal
 constraints, knowledge boundaries, action/resolution separation, contradictions
 and pressure thresholds, supporting autonomy, diary authorization and
-immutability, presentation privacy, CLI execution, completion, JSON
-compatibility, and deterministic replay.
+immutability, malformed-action rejection, resolved-action knowledge, resource
+holdings, presentation privacy, CLI execution, completion, JSON compatibility,
+and deterministic replay.
 
 The suite passed both in the working tree and in an isolated clean copy without
 Git metadata, caches, or environment-specific files. In that clean copy,
-`./scripts/check.sh` ran 88 tests in 0.194 seconds; both documented simulation
+`./scripts/check.sh` ran 101 tests in 0.243 seconds; both documented simulation
 commands also exited successfully.
 
 Two seed-42 executions separated by unrelated global-random activity produced
 identical JSON history with SHA-256
-`e55190d6fefb8b70fa5f9ef12559315997cb6040bc4fa2ee9fd253077eebd017`.
+`971aed2e50101508e9779957e3fee2ec0ee90e814285b4f97fdff56afbf901d0`.
 
 ## 6. Short example transcript
 
@@ -107,6 +122,7 @@ Observed: official broadcast claimed 5 allocation units.
 
 Tick 09 | Allocation Office
 Allocation outcome: 2 granted and 1 unfilled.
+Household allocation: 2 held; 1 still needed.
 
 Tick 10 | Allocation Office
 Action: repeat the official 5-unit claim publicly
@@ -123,6 +139,8 @@ event stream, institution identifier, NPC-private records, and resolver inputs.
 
 - Scenario vocabulary, quantities, claim times, pressure, threshold, schedules,
   and durations are provisional.
+- Resource possession is an integer holding per agent, not a physical inventory
+  or model of transfer, storage, use, and consumption.
 - The default run uses deterministic rules and currently makes no random choice,
   although it owns and records a run-scoped seeded generator.
 - Belief updates cover one structured proposition with two confidence rules;

@@ -6,23 +6,23 @@ import random
 from dataclasses import dataclass
 from typing import Mapping
 
-from experiments.core.actions import ACTION_KINDS, ActionAttempt, PendingAction
-from experiments.core.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
-from experiments.core.beliefs import (
+from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
+from twenty_eighty_four.core.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
+from twenty_eighty_four.core.beliefs import (
     Belief,
     BeliefTransition,
     belief_from_claim_observation,
     link_conflicts,
 )
-from experiments.core.events import (
+from twenty_eighty_four.core.events import (
     Event,
     EventLog,
     Observation,
     freeze_mapping,
     to_plain_data,
 )
-from experiments.core.institutions import InstitutionDecisionPolicy, InstitutionView
-from experiments.core.world import DiaryEntry, PhysicalDiary, WorldState
+from twenty_eighty_four.core.institutions import InstitutionDecisionPolicy, InstitutionView
+from twenty_eighty_four.core.world import DiaryEntry, PhysicalDiary, WorldState
 
 
 @dataclass(frozen=True)
@@ -30,9 +30,13 @@ class FocalSnapshot:
     tick: int
     location: str
     aim: str
+    required_units: int
+    held_units: int
+    remaining_required_units: int
     current_action: str
     explanation: str
     new_observations: tuple[Observation, ...]
+    new_action_results: tuple[ActionResult, ...]
     beliefs: tuple[Belief, ...]
     accessible_diary_entry_count: int
     diary_entries: tuple[DiaryEntryKnowledge, ...]
@@ -79,6 +83,7 @@ class Simulation:
         self._action_count = 0
         self._belief_counts: dict[str, int] = {}
         self._belief_transitions: list[BeliefTransition] = []
+        self._action_results: list[ActionResult] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
 
@@ -134,15 +139,24 @@ class Simulation:
     def _view_for(self, agent_id: str) -> AgentView:
         agent = self.world.agents[agent_id]
         diary = self._accessible_diary(agent_id)
+        held_units = (
+            agent.resource_holdings.get(agent.required_resource_id, 0)
+            if agent.required_resource_id is not None
+            else 0
+        )
         return AgentView(
             tick=self.tick,
             agent_id=agent.agent_id,
             location=agent.location,
             aim=agent.aim,
+            required_resource_id=agent.required_resource_id,
             required_units=agent.required_units,
+            resource_holdings=freeze_mapping(agent.resource_holdings),
+            remaining_required_units=max(0, agent.required_units - held_units),
             obligations=agent.obligations,
             last_attempt=agent.last_attempt,
             action_history=tuple(agent.action_history),
+            action_results=tuple(agent.action_results),
             observations=tuple(agent.observations),
             beliefs=tuple(agent.beliefs),
             accessible_diary_id=diary.object_id if diary is not None else None,
@@ -167,11 +181,182 @@ class Simulation:
             raise ValueError(f"unknown agent_id: {agent_id}")
         return self._view_for(agent_id)
 
+    def _record_rejection(self, *, attempted: Event, actor_id: str, reason: str) -> Event:
+        rejected = self._event_log.record(
+            tick=self.tick,
+            kind="action_rejected",
+            actor_id=actor_id,
+            action_id=attempted.action_id,
+            caused_by=(attempted.event_id,),
+            details={"reason": reason},
+        )
+        self._append_action_result(
+            ActionResult(
+                action_id=attempted.action_id or "",
+                attempt_event_id=attempted.event_id,
+                outcome_event_id=rejected.event_id,
+                actor_id=actor_id,
+                action_kind=attempted.details["action_kind"],
+                status="rejected",
+                resolved_tick=self.tick,
+                reason=reason,
+            )
+        )
+        return rejected
+
+    def _append_action_result(self, result: ActionResult) -> None:
+        self._action_results.append(result)
+        actor = self.world.agents.get(result.actor_id)
+        if actor is not None:
+            actor.action_results.append(result)
+
+    def _record_completion(
+        self, *, attempted: Event, outcome: Event, actor_id: str, action_kind: str
+    ) -> None:
+        self._append_action_result(
+            ActionResult(
+                action_id=attempted.action_id or "",
+                attempt_event_id=attempted.event_id,
+                outcome_event_id=outcome.event_id,
+                actor_id=actor_id,
+                action_kind=action_kind,
+                status="completed",
+                resolved_tick=self.tick,
+            )
+        )
+
+    def _validate_speak(self, actor_id: str, attempt: ActionAttempt) -> str | None:
+        proposition = attempt.parameters.get("proposition")
+        if not isinstance(proposition, str) or not proposition.strip():
+            return "speak requires a non-empty proposition"
+        asserted_value = attempt.parameters.get("asserted_value")
+        if not isinstance(asserted_value, int) or isinstance(asserted_value, bool):
+            return "speak requires an integer asserted_value"
+        evidence_ids = attempt.parameters.get("evidence_observation_ids")
+        if (
+            not isinstance(evidence_ids, (tuple, list))
+            or not evidence_ids
+            or any(not isinstance(item, str) or not item for item in evidence_ids)
+        ):
+            return "speak requires delivered evidence observation identifiers"
+        if len(set(evidence_ids)) != len(evidence_ids):
+            return "speak evidence observation identifiers must be unique"
+        actor = self.world.agents[actor_id]
+        delivered_ids = {observation.observation_id for observation in actor.observations}
+        if not set(evidence_ids).issubset(delivered_ids):
+            return "speak evidence must have been delivered to the actor"
+        private_belief_id = attempt.parameters.get("private_belief_id")
+        if private_belief_id is not None:
+            belief = next(
+                (
+                    belief
+                    for belief in actor.beliefs
+                    if belief.belief_id == private_belief_id
+                ),
+                None,
+            )
+            if belief is None or belief.proposition != proposition:
+                return "speak private belief must belong to the actor and proposition"
+        pressure = attempt.parameters.get("pressure")
+        if pressure is not None:
+            if (
+                not isinstance(pressure, (int, float))
+                or isinstance(pressure, bool)
+                or not 0 < pressure <= 1
+            ):
+                return "speak pressure must be greater than zero and at most one"
+            pressure_reason = attempt.parameters.get("pressure_reason")
+            if not isinstance(pressure_reason, str) or not pressure_reason.strip():
+                return "speak pressure requires a non-empty reason"
+        return None
+
+    def _unexpected_parameter_error(self, attempt: ActionAttempt) -> str | None:
+        allowed_by_kind = {
+            "travel": {"destination"},
+            "work": set(),
+            "request_allocation": {"requested_units", "evidence_observation_ids"},
+            "speak": {
+                "proposition",
+                "asserted_value",
+                "private_belief_id",
+                "evidence_observation_ids",
+                "pressure_reason",
+                "pressure",
+            },
+            "write_diary": {
+                "object_id",
+                "proposition",
+                "asserted_value",
+                "source_observation_ids",
+            },
+            "read_diary": {"object_id", "entry_id"},
+            "wait": set(),
+        }
+        unexpected = sorted(set(attempt.parameters) - allowed_by_kind[attempt.kind])
+        if not unexpected:
+            return None
+        return f"{attempt.kind} contains unexpected parameters: " + ", ".join(
+            unexpected
+        )
+
+    def _evidence_id_error(
+        self,
+        *,
+        actor_id: str,
+        value: object,
+        label: str,
+        required: bool,
+    ) -> str | None:
+        if value is None and not required:
+            return None
+        if (
+            not isinstance(value, (tuple, list))
+            or (required and not value)
+            or any(not isinstance(item, str) or not item for item in value)
+        ):
+            return f"{label} must contain observation identifiers"
+        if len(set(value)) != len(value):
+            return f"{label} observation identifiers must be unique"
+        delivered_ids = {
+            observation.observation_id
+            for observation in self.world.agents[actor_id].observations
+        }
+        if not set(value).issubset(delivered_ids):
+            return f"{label} must have been delivered to the actor"
+        return None
+
+    def _validate_diary_write(self, actor_id: str, attempt: ActionAttempt) -> str | None:
+        proposition = attempt.parameters.get("proposition")
+        if not isinstance(proposition, str) or not proposition.strip():
+            return "diary write requires a non-empty proposition"
+        asserted_value = attempt.parameters.get("asserted_value")
+        if not isinstance(asserted_value, int) or isinstance(asserted_value, bool):
+            return "diary write requires an integer asserted_value"
+        evidence_ids = attempt.parameters.get("source_observation_ids")
+        evidence_error = self._evidence_id_error(
+            actor_id=actor_id,
+            value=evidence_ids,
+            label="diary sources",
+            required=True,
+        )
+        if evidence_error is not None:
+            return evidence_error
+        matching_belief = next(
+            (
+                belief
+                for belief in self.world.agents[actor_id].beliefs
+                if belief.proposition == proposition
+                and belief.asserted_value == asserted_value
+                and belief.source_observation_ids == tuple(evidence_ids)
+            ),
+            None,
+        )
+        if matching_belief is None:
+            return "diary perspective must match an actor belief and its sources"
+        return None
+
     def resolve_attempt(self, attempt: ActionAttempt) -> Event:
         """Record and validate an attempt; consequences remain a separate event."""
-        actor = self.world.agents[attempt.actor_id]
-        actor.last_attempt = attempt
-        actor.action_history.append(attempt)
         self._action_count += 1
         action_id = f"action-{self._action_count:04d}"
         attempted = self._event_log.record(
@@ -185,26 +370,40 @@ class Simulation:
                 **dict(attempt.parameters),
             },
         )
-        if attempt.actor_id in self._pending:
-            self._event_log.record(
-                tick=self.tick,
-                kind="action_rejected",
+        actor = self.world.agents.get(attempt.actor_id)
+        if actor is None:
+            self._record_rejection(
+                attempted=attempted,
                 actor_id=attempt.actor_id,
-                action_id=action_id,
-                caused_by=(attempted.event_id,),
-                details={"reason": "another action is already in progress"},
+                reason="action actor is not registered in the world",
+            )
+            return attempted
+        actor.last_attempt = attempt
+        actor.action_history.append(attempt)
+        parameter_error = self._unexpected_parameter_error(attempt)
+        if parameter_error is not None:
+            self._record_rejection(
+                attempted=attempted,
+                actor_id=attempt.actor_id,
+                reason=parameter_error,
+            )
+            return attempted
+        if attempt.actor_id in self._pending:
+            self._record_rejection(
+                attempted=attempted,
+                actor_id=attempt.actor_id,
+                reason="another action is already in progress",
             )
             return attempted
         if attempt.kind == "travel":
             destination = attempt.parameters.get("destination")
-            if not isinstance(destination, str) or not self.world.can_travel(actor.location, destination):
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+            if not isinstance(destination, str) or not self.world.can_travel(
+                actor.location, destination
+            ):
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": "destination is not reachable from the current location"},
+                    reason="destination is not reachable from the current location",
                 )
                 return attempted
             self._pending[attempt.actor_id] = PendingAction(
@@ -216,27 +415,37 @@ class Simulation:
             )
         elif attempt.kind == "request_allocation":
             if actor.location != self.rules.allocation_location:
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={
-                        "reason": "request_allocation requires presence at "
+                    reason=(
+                        "request_allocation requires presence at "
                         + self.rules.allocation_location
-                    },
+                    ),
                 )
             else:
                 requested = attempt.parameters.get("requested_units")
-                if not isinstance(requested, int) or isinstance(requested, bool) or requested <= 0:
-                    self._event_log.record(
-                        tick=self.tick,
-                        kind="action_rejected",
+                evidence_error = self._evidence_id_error(
+                    actor_id=attempt.actor_id,
+                    value=attempt.parameters.get("evidence_observation_ids"),
+                    label="request evidence",
+                    required=False,
+                )
+                if evidence_error is not None:
+                    self._record_rejection(
+                        attempted=attempted,
                         actor_id=attempt.actor_id,
-                        action_id=action_id,
-                        caused_by=(attempted.event_id,),
-                        details={"reason": "requested_units must be a positive integer"},
+                        reason=evidence_error,
+                    )
+                elif (
+                    not isinstance(requested, int)
+                    or isinstance(requested, bool)
+                    or requested <= 0
+                ):
+                    self._record_rejection(
+                        attempted=attempted,
+                        actor_id=attempt.actor_id,
+                        reason="requested_units must be a positive integer",
                     )
                 else:
                     available_before = self.world.resource.allocatable_units
@@ -254,7 +463,14 @@ class Simulation:
                             "unfilled_units": requested - granted,
                             "objective_allocatable_before": available_before,
                             "committed_units": self.world.resource.committed_units,
+                            "recipient_id": attempt.actor_id,
                         },
+                    )
+                    self._record_completion(
+                        attempted=attempted,
+                        outcome=outcome,
+                        actor_id=attempt.actor_id,
+                        action_kind=attempt.kind,
                     )
                     self._queued_observations.append(
                         {
@@ -262,6 +478,7 @@ class Simulation:
                             "agent_id": attempt.actor_id,
                             "event_id": outcome.event_id,
                             "source": "allocation counter handover",
+                            "resource_id": self.rules.resource_id,
                             "details": {
                                 "evidence_kind": "allocation_outcome",
                                 "granted_units": granted,
@@ -270,7 +487,10 @@ class Simulation:
                         }
                     )
                     for observer_id, observer in self.world.agents.items():
-                        if observer_id == attempt.actor_id or observer.location != actor.location:
+                        if (
+                            observer_id == attempt.actor_id
+                            or observer.location != actor.location
+                        ):
                             continue
                         self._queued_observations.append(
                             {
@@ -286,21 +506,15 @@ class Simulation:
                             }
                         )
         elif attempt.kind == "speak":
-            evidence_ids = attempt.parameters.get("evidence_observation_ids", ())
-            delivered_ids = {observation.observation_id for observation in actor.observations}
-            if (
-                not isinstance(evidence_ids, (tuple, list))
-                or not set(evidence_ids).issubset(delivered_ids)
-            ):
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+            validation_error = self._validate_speak(attempt.actor_id, attempt)
+            if validation_error is not None:
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": "speak evidence must have been delivered to the actor"},
+                    reason=validation_error,
                 )
             else:
+                evidence_ids = attempt.parameters["evidence_observation_ids"]
                 statement = self._event_log.record(
                     tick=self.tick,
                     kind="public_statement_made",
@@ -315,13 +529,21 @@ class Simulation:
                         "pressure_reason": attempt.parameters.get("pressure_reason"),
                     },
                 )
+                self._record_completion(
+                    attempted=attempted,
+                    outcome=statement,
+                    actor_id=attempt.actor_id,
+                    action_kind=attempt.kind,
+                )
                 for observer_id, observer in self.world.agents.items():
                     if observer_id == attempt.actor_id or observer.location != actor.location:
                         continue
                     pressure_level = attempt.parameters.get("pressure")
-                    is_pressure = isinstance(pressure_level, (int, float)) and not isinstance(
-                        pressure_level, bool
-                    ) and pressure_level > 0
+                    is_pressure = (
+                        isinstance(pressure_level, (int, float))
+                        and not isinstance(pressure_level, bool)
+                        and pressure_level > 0
+                    )
                     perceived_details = {
                         "evidence_kind": (
                             "social_pressure" if is_pressure else "public_statement"
@@ -348,26 +570,26 @@ class Simulation:
                     )
         elif attempt.kind == "write_diary":
             object_id = attempt.parameters.get("object_id")
-            diary = self.world.diaries.get(object_id) if isinstance(object_id, str) else None
-            evidence_ids = attempt.parameters.get("source_observation_ids", ())
-            delivered_ids = {observation.observation_id for observation in actor.observations}
+            diary = (
+                self.world.diaries.get(object_id)
+                if isinstance(object_id, str)
+                else None
+            )
             if diary is None or self._accessible_diary(actor.agent_id) is not diary:
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": "write_diary requires physical access to the diary"},
+                    reason="write_diary requires physical access to the diary",
                 )
-            elif not set(evidence_ids).issubset(delivered_ids):
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+            elif (
+                validation_error := self._validate_diary_write(
+                    attempt.actor_id, attempt
+                )
+            ) is not None:
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": "diary perspective must come from delivered evidence"},
+                    reason=validation_error,
                 )
             else:
                 self._pending[attempt.actor_id] = PendingAction(
@@ -379,7 +601,11 @@ class Simulation:
                 )
         elif attempt.kind == "read_diary":
             object_id = attempt.parameters.get("object_id")
-            diary = self.world.diaries.get(object_id) if isinstance(object_id, str) else None
+            diary = (
+                self.world.diaries.get(object_id)
+                if isinstance(object_id, str)
+                else None
+            )
             entry_id = attempt.parameters.get("entry_id")
             retained_entry = (
                 next((entry for entry in diary.entries if entry.entry_id == entry_id), None)
@@ -393,13 +619,10 @@ class Simulation:
             else:
                 reason = None
             if reason is not None:
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": reason},
+                    reason=reason,
                 )
             else:
                 self._pending[attempt.actor_id] = PendingAction(
@@ -410,7 +633,7 @@ class Simulation:
                     completes_tick=self.tick + self.rules.diary_read_duration_ticks,
                 )
         elif attempt.kind == "wait":
-            self._event_log.record(
+            outcome = self._event_log.record(
                 tick=self.tick,
                 kind="wait_completed",
                 actor_id=attempt.actor_id,
@@ -418,15 +641,18 @@ class Simulation:
                 caused_by=(attempted.event_id,),
                 details={"location": actor.location},
             )
+            self._record_completion(
+                attempted=attempted,
+                outcome=outcome,
+                actor_id=attempt.actor_id,
+                action_kind=attempt.kind,
+            )
         elif attempt.kind == "work":
             if actor.location != self.rules.work_location:
-                self._event_log.record(
-                    tick=self.tick,
-                    kind="action_rejected",
+                self._record_rejection(
+                    attempted=attempted,
                     actor_id=attempt.actor_id,
-                    action_id=action_id,
-                    caused_by=(attempted.event_id,),
-                    details={"reason": "work requires presence at " + self.rules.work_location},
+                    reason="work requires presence at " + self.rules.work_location,
                 )
             else:
                 self._pending[attempt.actor_id] = PendingAction(
@@ -525,6 +751,18 @@ class Simulation:
                         "read_tick": self.tick,
                     },
                 ))
+            outcome = completed[-1]
+            self._append_action_result(
+                ActionResult(
+                    action_id=pending.action_id,
+                    attempt_event_id=pending.attempt_event_id,
+                    outcome_event_id=outcome.event_id,
+                    actor_id=actor.agent_id,
+                    action_kind=pending.attempt.kind,
+                    status="completed",
+                    resolved_tick=self.tick,
+                )
+            )
             del self._pending[actor.agent_id]
         return tuple(completed)
 
@@ -719,6 +957,13 @@ class Simulation:
                 details=item["details"],
             )
             self.world.agents[observation.agent_id].observations.append(observation)
+            if observation.details.get("evidence_kind") == "allocation_outcome":
+                resource_id = item["resource_id"]
+                holdings = self.world.agents[observation.agent_id].resource_holdings
+                holdings[resource_id] = (
+                    holdings.get(resource_id, 0)
+                    + observation.details["granted_units"]
+                )
             delivered.append(observation)
         return tuple(delivered)
 
@@ -746,6 +991,11 @@ class Simulation:
                 focal_attempt = attempt
 
         focal = self.world.agents[self.focal_agent_id]
+        focal_held_units = (
+            focal.resource_holdings.get(focal.required_resource_id, 0)
+            if focal.required_resource_id is not None
+            else 0
+        )
         accessible_diary = self._accessible_diary(self.focal_agent_id)
         diary_entries = tuple(
             DiaryEntryKnowledge(
@@ -773,12 +1023,20 @@ class Simulation:
             tick=self.tick,
             location=focal.location,
             aim=focal.aim,
+            required_units=focal.required_units,
+            held_units=focal_held_units,
+            remaining_required_units=max(0, focal.required_units - focal_held_units),
             current_action=current_action,
             explanation=explanation,
             new_observations=tuple(
                 observation
                 for observation in delivered
                 if observation.agent_id == self.focal_agent_id
+            ),
+            new_action_results=tuple(
+                result
+                for result in focal.action_results
+                if result.resolved_tick == self.tick
             ),
             beliefs=tuple(focal.beliefs),
             accessible_diary_entry_count=(
@@ -799,6 +1057,7 @@ class Simulation:
 
     def history_data(self) -> dict[str, object]:
         """Return complete omniscient replay evidence as JSON-compatible data."""
+        action_results = sorted(self._action_results, key=lambda result: result.action_id)
         return {
             "configuration": {
                 "seed": self.world.seed,
@@ -830,6 +1089,23 @@ class Simulation:
                 }
                 for observation in self._event_log.observations
             ],
+            "action_results": [
+                {
+                    "action_id": result.action_id,
+                    "attempt_event_id": result.attempt_event_id,
+                    "outcome_event_id": result.outcome_event_id,
+                    "actor_id": result.actor_id,
+                    "action_kind": result.action_kind,
+                    "status": result.status,
+                    "resolved_tick": result.resolved_tick,
+                    "reason": result.reason,
+                }
+                for result in action_results
+            ],
+            "agent_resource_holdings": {
+                agent_id: dict(agent.resource_holdings)
+                for agent_id, agent in self.world.agents.items()
+            },
             "belief_transitions": [
                 {
                     "transition_id": transition.transition_id,
@@ -853,6 +1129,10 @@ class Simulation:
             "seed": self.world.seed,
             "agent_locations": {
                 agent_id: agent.location for agent_id, agent in self.world.agents.items()
+            },
+            "agent_resource_holdings": {
+                agent_id: dict(agent.resource_holdings)
+                for agent_id, agent in self.world.agents.items()
             },
             "objective_resources": {
                 "total_units": self.world.resource.total_units,

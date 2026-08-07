@@ -1,5 +1,9 @@
 # 2084: First Living Simulation Slice
 
+> Historical implementation brief. The completed reusable engine was later
+> promoted from `experiments/` to `twenty_eighty_four/`; use the commands in the
+> root `README.md` rather than the paths recorded below.
+
 ## Codex implementation goal
 
 Build the first reusable, deterministic, autonomous simulation loop for **2084** from the existing experimental implementation. The result should simulate one focal character completing a small ordinary sequence inside a partially observable authoritarian social world.

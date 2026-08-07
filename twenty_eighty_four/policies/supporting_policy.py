@@ -1,7 +1,7 @@
 """Small schedule/reactive policies for supporting characters."""
 
-from experiments.core.actions import ActionAttempt
-from experiments.core.agents import AgentView
+from twenty_eighty_four.core.actions import ActionAttempt
+from twenty_eighty_four.core.agents import AgentView
 
 
 class CoworkerPolicy:
@@ -25,7 +25,10 @@ class CoworkerPolicy:
 
 class AllocationClerkPolicy:
     def choose(self, view: AgentView) -> ActionAttempt:
-        if any(attempt.kind == "speak" for attempt in view.action_history):
+        if any(
+            result.action_kind == "speak" and result.status == "completed"
+            for result in view.action_results
+        ):
             return ActionAttempt(
                 actor_id=view.agent_id,
                 kind="wait",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from experiments.core.simulation import FocalSnapshot
+from twenty_eighty_four.core.simulation import FocalSnapshot
 
 
 def _location_label(location: str) -> str:
@@ -84,6 +84,15 @@ def render_terminal(snapshots: Iterable[FocalSnapshot]) -> str:
             line = _observation_line(snapshot, index)
             if line is not None:
                 lines.append(line)
+        for result in snapshot.new_action_results:
+            if result.status == "rejected" and result.reason:
+                lines.append("Action rejected: " + result.reason.rstrip(".") + ".")
+        if snapshot.held_units > 0:
+            lines.append(
+                "Household allocation: "
+                f"{snapshot.held_units} held; "
+                f"{snapshot.remaining_required_units} still needed."
+            )
         private = next(
             (belief for belief in reversed(snapshot.beliefs) if belief.context == "private"),
             None,

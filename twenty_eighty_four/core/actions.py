@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
-from experiments.core.events import freeze_mapping
+from twenty_eighty_four.core.events import freeze_mapping
 
 
 ACTION_KINDS = frozenset(
@@ -34,3 +34,17 @@ class PendingAction:
     attempt: ActionAttempt
     started_tick: int
     completes_tick: int
+
+
+@dataclass(frozen=True)
+class ActionResult:
+    """Actor-safe knowledge that an attempted action reached a terminal state."""
+
+    action_id: str
+    attempt_event_id: str
+    outcome_event_id: str
+    actor_id: str
+    action_kind: str
+    status: Literal["completed", "rejected"]
+    resolved_tick: int
+    reason: str | None = None

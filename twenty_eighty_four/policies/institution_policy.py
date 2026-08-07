@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from experiments.core.institutions import InstitutionView, OfficialClaim
+from twenty_eighty_four.core.institutions import InstitutionView, OfficialClaim
 
 
 class InstitutionPolicy:
