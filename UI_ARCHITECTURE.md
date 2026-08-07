@@ -17,6 +17,24 @@ The default experience should allow the simulation to advance autonomously while
 
 Manual steering is an open possibility, not a requirement for the project to feel playable.
 
+### Current implemented surface
+
+The first living slice currently has a read-only terminal observer. Each tick
+shows the focal character's location, aim, selected or ongoing action, a concise
+decision explanation, newly delivered observations, action rejections, a simple
+held-versus-needed resource summary, and a small belief summary. It receives
+only focal snapshots and cannot inspect the objective world or event history.
+
+A separate command renders an explicitly labelled omniscient development
+inspector containing objective state, institutional records, all beliefs, and
+source-linked history. This separation is implemented and tested, although it
+is not yet a visual interface boundary.
+
+There is currently no graphical or spatial view, pause/resume control, playback
+speed, selectable people or objects, intervention, or durable history browser.
+The surfaces below remain design directions unless identified above as already
+implemented.
+
 ## Main Perspective
 
 The focal character should remain easy to find and follow. A spatial view may eventually show their movement through a small district, but the first interface can be simpler if it still conveys place, time, and proximity.

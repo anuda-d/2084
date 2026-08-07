@@ -1,8 +1,10 @@
 # Architecture
 
-This document describes conceptual boundaries for 2084. It is not yet a technical specification.
+This document describes the conceptual boundaries for 2084 and how the current
+first living slice implements them. The package is a working feasibility slice,
+not a settled production specification.
 
-## Possible Simulation Loop
+## Implemented Simulation Loop
 
 ```text
 The world and its systems advance
@@ -20,7 +22,43 @@ Consequences affect people, institutions, and records
 The focal-character view presents only an appropriate projection
 ```
 
-The observer normally watches this loop through one focal character. Autoplay can repeatedly advance it, but the simulation should remain step-based and replayable underneath.
+`Simulation.step()` currently performs this loop in a stable order:
+
+1. Increment the world tick.
+2. Apply scheduled institutional claims and deliver their broadcasts.
+3. Complete actions whose duration has elapsed.
+4. Deliver completion perceptions and queued prior-action outcomes.
+5. Update structured beliefs from newly delivered claim observations.
+6. Ask each idle policy for one attempted action using a restricted view.
+7. Validate and resolve or schedule each attempt.
+8. Retain a focal-character snapshot containing only admitted information.
+
+`Simulation.run()` repeatedly calls this boundary. The terminal command advances
+the loop automatically, but the engine remains discrete and deterministic. The
+current run can reproduce identical history data from the same configuration
+and seed; it cannot yet load a durable save and resume or replay a complete run.
+
+## Current Implementation Map
+
+- `twenty_eighty_four/scenarios/first_day.py` is the composition boundary. It creates
+  the world, policies, rules, schedules, and completion conditions.
+- `twenty_eighty_four/core/world.py` contains mutable objective state.
+- `twenty_eighty_four/core/events.py` contains immutable append-only events and
+  agent-specific observations with source links.
+- `twenty_eighty_four/core/agents.py` separates mutable agent state from the immutable
+  restricted view supplied to a policy.
+- `twenty_eighty_four/core/beliefs.py` derives the currently supported structured
+  beliefs and contradiction links.
+- `twenty_eighty_four/core/actions.py` defines immutable action attempts, pending
+  actions, and actor-safe terminal results.
+- `twenty_eighty_four/policies/` selects attempts without receiving objective world
+  resources, hidden history, or private state belonging to other agents.
+- `twenty_eighty_four/core/simulation.py` currently centralizes scheduling,
+  validation, resolution, perception delivery, belief updates, history export,
+  completion, and focal projection.
+- `twenty_eighty_four/observer/terminal.py` accepts only focal snapshots. The separate
+  `twenty_eighty_four/observer/inspector.py` accepts the full simulation and is
+  explicitly omniscient.
 
 ## State Boundaries to Preserve
 
@@ -143,20 +181,52 @@ The normal experience need not look like a study dashboard, but the simulation s
 
 These records are development infrastructure. They help distinguish emergence from scripting and detect impossible knowledge, inconsistent state, or fabricated consequences.
 
-## Candidate First Slice
+The current slice exports detached JSON-compatible configuration, events,
+observations, and belief transitions through `history_data()`. Equal configured
+runs produce identical ordered records. This is replay evidence, not yet a
+portable persistence format, checkpoint system, or full-run replay executor.
 
-A small first slice could contain:
+## Implemented First Slice
+
+The current scenario contains:
 
 - one focal character;
-- a small supporting cast with schedules and relationships;
-- a home, workplace, and one shared social location;
-- one institution capable of broadcasting claims and limited observation;
-- one ordinary obligation or resource pressure;
-- one official claim that contradicts experience or an earlier record;
+- two supporting characters with small deterministic policies;
+- a home, workplace, and allocation office connected by a travel graph;
+- one institution with scheduled broadcasts and a small public record;
+- a workplace obligation and a three-unit household allocation need;
+- official five-unit and later one-unit claims that contradict direct sight of
+  three units;
 - a basic physical diary;
-- autonomous time advancement and a filtered focal-character view.
+- autonomous step advancement, action durations, and a filtered focal view.
 
-This is a feasibility target, not a fixed scenario. It should be reduced further if any component prevents the character's behavior from being understood.
+The scenario is a feasibility result rather than a general social simulation.
+Its starting need, route, claim schedule, hidden resource commitment, pressure
+value, conformity threshold, policy priorities, and action durations are
+authored. The policies choose from delivered information, but the resulting day
+should not be presented as an emergent plot.
+
+## Current Technical Limits
+
+- The decision layer uses deterministic rules, not AI.
+- The focal policy is tailored to this first day rather than driven by a general
+  planner, need system, or schedule model.
+- `Simulation` is a single large coordinator whose action-specific resolution
+  branches will need separation if the action vocabulary grows.
+- Action and observation payloads use immutable structured mappings rather than
+  action-specific schemas.
+- The world has one resource model with simple per-agent integer holdings, one
+  institution, three locations, three agents, and one diary. It does not yet
+  model physical resource lots, transfer logistics, use, or storage.
+- Belief creation recognizes one structured allocation proposition with fixed
+  confidence values. There is no memory decay or general inference.
+- Institutional reports and processing capacity are represented conceptually,
+  but the current institution only emits scheduled broadcasts. Those broadcasts
+  reach every agent.
+- A simulation-owned seeded random generator exists, but the current path makes
+  no random choice.
+- The normal observer is terminal-only and read-only. There is no graphical UI,
+  pause control, intervention, service layer, or always-running world.
 
 ## Open Architecture Questions
 
@@ -169,3 +239,7 @@ This is a feasibility target, not a fixed scenario. It should be reduced further
 - How should pauses, playback speed, and optional intervention affect time?
 - What needs to be deterministic or seeded for replay?
 - When should a new mechanism be removed rather than expanded?
+- Which responsibilities should leave `Simulation` first as additional actions
+  and world systems are introduced?
+- When does history need durable persistence or executable replay rather than
+  deterministic in-memory evidence?
