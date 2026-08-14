@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
-from twenty_eighty_four.core.events import freeze_mapping
+from simulation.events import freeze_mapping
 
 
 ACTION_KINDS = frozenset(

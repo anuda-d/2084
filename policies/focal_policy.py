@@ -1,7 +1,7 @@
 """Restricted policy for the focal character."""
 
-from twenty_eighty_four.core.actions import ActionAttempt
-from twenty_eighty_four.core.agents import AgentView
+from simulation.actions import ActionAttempt
+from simulation.agents import AgentView
 
 
 def _number_word(value: int) -> str:

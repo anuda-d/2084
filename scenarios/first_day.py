@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import argparse
 
-from twenty_eighty_four.core.agents import AgentState
-from twenty_eighty_four.core.institutions import InstitutionState
-from twenty_eighty_four.core.simulation import Simulation, SimulationRules
-from twenty_eighty_four.core.world import PhysicalDiary, ResourceState, WorldState
-from twenty_eighty_four.policies.focal_policy import FocalPolicy
-from twenty_eighty_four.policies.institution_policy import InstitutionPolicy
-from twenty_eighty_four.policies.supporting_policy import AllocationClerkPolicy, CoworkerPolicy
+from simulation.agents import AgentState
+from simulation.institutions import InstitutionState
+from simulation.engine import Simulation, SimulationRules
+from simulation.world import PhysicalDiary, ResourceState, WorldState
+from policies.focal_policy import FocalPolicy
+from policies.institution_policy import InstitutionPolicy
+from policies.supporting_policy import AllocationClerkPolicy, CoworkerPolicy
 
 
 FOCAL_AGENT_ID = "mara-vale"
@@ -139,11 +139,11 @@ def main(argv: list[str] | None = None) -> int:
     simulation = build_first_day(seed=args.seed)
     simulation.run(max_ticks=args.ticks)
     if args.inspect:
-        from twenty_eighty_four.observer.inspector import render_inspector
+        from observer.inspector import render_inspector
 
         output = render_inspector(simulation)
     else:
-        from twenty_eighty_four.observer.terminal import render_terminal
+        from observer.terminal import render_terminal
 
         output = render_terminal(simulation.snapshots)
     print(output, end="")

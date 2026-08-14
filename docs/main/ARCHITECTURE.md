@@ -1,8 +1,10 @@
 # Architecture
 
+Status: current description of the implemented boundaries and known limits.
+
 This document describes the conceptual boundaries for 2084 and how the current
-first living slice implements them. The package is a working feasibility slice,
-not a settled production specification.
+first living slice implements them. The implementation is a working feasibility
+slice, not a settled production specification.
 
 ## Implemented Simulation Loop
 
@@ -40,25 +42,46 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 
 ## Current Implementation Map
 
-- `twenty_eighty_four/scenarios/first_day.py` is the composition boundary. It creates
+- `scenarios/first_day.py` is the composition boundary. It creates
   the world, policies, rules, schedules, and completion conditions.
-- `twenty_eighty_four/core/world.py` contains mutable objective state.
-- `twenty_eighty_four/core/events.py` contains immutable append-only events and
+- `simulation/world.py` contains mutable objective state.
+- `simulation/events.py` contains immutable append-only events and
   agent-specific observations with source links.
-- `twenty_eighty_four/core/agents.py` separates mutable agent state from the immutable
+- `simulation/agents.py` separates mutable agent state from the immutable
   restricted view supplied to a policy.
-- `twenty_eighty_four/core/beliefs.py` derives the currently supported structured
+- `simulation/beliefs.py` derives the currently supported structured
   beliefs and contradiction links.
-- `twenty_eighty_four/core/actions.py` defines immutable action attempts, pending
+- `simulation/actions.py` defines immutable action attempts, pending
   actions, and actor-safe terminal results.
-- `twenty_eighty_four/policies/` selects attempts without receiving objective world
+- `policies/` selects attempts without receiving objective world
   resources, hidden history, or private state belonging to other agents.
-- `twenty_eighty_four/core/simulation.py` currently centralizes scheduling,
+- `simulation/engine.py` currently centralizes scheduling,
   validation, resolution, perception delivery, belief updates, history export,
   completion, and focal projection.
-- `twenty_eighty_four/observer/terminal.py` accepts only focal snapshots. The separate
-  `twenty_eighty_four/observer/inspector.py` accepts the full simulation and is
+- `observer/terminal.py` accepts only focal snapshots. The separate
+  `observer/inspector.py` accepts the full simulation and is
   explicitly omniscient.
+
+## Proposed Deepening Direction
+
+The next architecture is described in detail in
+[The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
+It is a proposal, not a description of currently implemented modules.
+
+- **Official Record** would own the institution's mutable current public
+  projection and bounded rewrite, suppression, and fabrication operations.
+- **Agent Understanding** would own source-linked memory traces, interpreted
+  claims, confidence, known conflicts, contextual stance, retrieval
+  accessibility, and inspectable suppression or resurfacing.
+- **Claim and Provenance** may be extracted only after Official Record and Agent
+  Understanding create two real uses for shared claim identity, comparison, and
+  lineage.
+- **Observation Delivery** would own channel, reach, access, delay, recipients,
+  and source attribution when events or official artifacts become agent-specific
+  observations.
+
+`EventLog` remains the append-only evidence of what actually occurred. Official
+Record sits beside it; it never replaces or edits it.
 
 ## State Boundaries to Preserve
 
@@ -74,11 +97,17 @@ Information delivered to a particular agent through perception, conversation, br
 
 An observation should have a source and arrival time. Being present near an event does not necessarily mean an agent noticed or understood it.
 
-### Memory and belief
+### Agent understanding
 
 What an agent currently retains or concludes. Memories and beliefs may have confidence, provenance, age, and context. They can be wrong without changing the world state.
 
 For initially supported contradictions, beliefs should use structured claims whose conflict is explicit. The system should not depend on an AI reliably discovering every contradiction in arbitrary prose.
+
+A later Agent Understanding module may make a memory less accessible or inhibit
+a contradiction from guiding one contextual stance. That transition must not
+delete its provenance from development evidence. Public expression remains a
+separate attempted action rather than a belief field silently overwritten by
+the institution.
 
 ### Public expression and action
 
@@ -91,6 +120,12 @@ An attempted action does not create its own outcome. The world resolves whether 
 Reports, sensor observations, evidence, suspicions, queues, decisions, and public claims available to institutions.
 
 Institutions act only on information they can access and process. Their official records may contradict world truth, private memory, or one another without gaining special authority over objective state.
+
+The institution's current public projection may stop showing an earlier
+official version, suppress references in controlled artifacts, or introduce an
+artifact attributed to the past. Each accepted operation is still a new
+objective event. Uncontrolled physical copies, private records, observations,
+and agent memories change only through valid world actions or delivery paths.
 
 ### Observer presentation
 
@@ -131,7 +166,8 @@ Resolution validates the attempt, applies costs and time, handles conflicts, and
 
 ## Contradictory Reality
 
-A small doublethink-inspired system can begin with a claim record containing:
+A small doublethink-inspired system can begin with a source-linked claim and
+memory trace containing:
 
 - the proposition or subject;
 - the asserted value;
@@ -143,7 +179,11 @@ A small doublethink-inspired system can begin with a claim record containing:
 
 This permits an agent to remember one ration amount, repeat another at work, and remain uncertain in private without collapsing all three into a single loyalty score.
 
-Possible later changes include memory decay, repetition effects, motivated reinterpretation, compartmentalization, and cognitive strain. These should be introduced one at a time and tied to visible behavior.
+Possible later changes include contextual stance, retrieval accessibility,
+repetition effects, motivated reinterpretation, compartmentalization,
+inhibition, resurfacing, memory decay, and cognitive strain. These should be
+introduced one at a time, retained as inspectable transitions, and tied to
+visible behavior. A conflict must not trigger automatic memory deletion.
 
 ## Bounded Institutions
 
@@ -158,6 +198,11 @@ Surveillance and enforcement should be modeled as processes rather than omniscie
 7. other agents observe some version of that response and update their beliefs.
 
 Not every step needs to exist in the first implementation. The invariant is that institutions cannot act from private state or information they never obtained.
+
+Official-record operations follow the same rule: a role must have authority and
+access to a known target, processing may consume time or capacity, and a record
+change does not itself broadcast the result. Observation Delivery separately
+determines who encounters the new projection.
 
 ## Physical Objects and the Diary
 
@@ -223,6 +268,14 @@ should not be presented as an emergent plot.
 - Institutional reports and processing capacity are represented conceptually,
   but the current institution only emits scheduled broadcasts. Those broadcasts
   reach every agent.
+- There is no deep Official Record module: the current public record is a generic
+  dictionary and revisions do not yet operate on structured official artifacts.
+- There is no deep Agent Understanding module: cognitive transitions remain split
+  between the belief helper, simulation coordinator, focal policy, and observer.
+- Claim and Provenance has not been extracted, and observation payloads still
+  repeat proposition, value, source, and revision fields as mappings.
+- There is no Observation Delivery module: reach, delay, co-location, and
+  recipient selection remain centralized in `Simulation`.
 - A simulation-owned seeded random generator exists, but the current path makes
   no random choice.
 - The normal observer is terminal-only and read-only. There is no graphical UI,
@@ -232,8 +285,11 @@ should not be presented as an emergent plot.
 
 - Which state must update every step, and which can update only when relevant?
 - What is the smallest useful action vocabulary?
-- How should agents update confidence without pretending to model full human cognition?
-- Which institutional limits belong in the first slice?
+- Which single Agent Understanding transition changes observable behavior without pretending to model full human cognition?
+- Which authority, access, time, and capacity limits belong in the first Official Record rewrite?
+- Should the first follow-up operation explore one suppressed reference or one fabricated artifact?
+- When do Official Record and Agent Understanding justify extracting Claim and Provenance?
+- Which delivery channel first needs stale or missed official versions?
 - How much independent NPC behavior is required to make the world feel alive?
 - What should the readable decision explanation expose?
 - How should pauses, playback speed, and optional intervention affect time?

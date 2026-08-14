@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from twenty_eighty_four.core.simulation import FocalSnapshot
+from simulation.engine import FocalSnapshot
 
 
 def _location_label(location: str) -> str:

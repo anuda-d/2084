@@ -1,4 +1,4 @@
-"""Reusable step container for the first living simulation slice."""
+"""Reusable engine for the first living simulation slice."""
 
 from __future__ import annotations
 
@@ -6,23 +6,23 @@ import random
 from dataclasses import dataclass
 from typing import Mapping
 
-from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
-from twenty_eighty_four.core.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
-from twenty_eighty_four.core.beliefs import (
+from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
+from simulation.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
+from simulation.beliefs import (
     Belief,
     BeliefTransition,
     belief_from_claim_observation,
     link_conflicts,
 )
-from twenty_eighty_four.core.events import (
+from simulation.events import (
     Event,
     EventLog,
     Observation,
     freeze_mapping,
     to_plain_data,
 )
-from twenty_eighty_four.core.institutions import InstitutionDecisionPolicy, InstitutionView
-from twenty_eighty_four.core.world import DiaryEntry, PhysicalDiary, WorldState
+from simulation.institutions import InstitutionDecisionPolicy, InstitutionView
+from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
 @dataclass(frozen=True)

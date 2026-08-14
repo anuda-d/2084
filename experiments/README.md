@@ -3,11 +3,12 @@
 This directory contains the small prototypes that preceded the reusable engine.
 They remain regression-tested evidence for decisions about source-linked history,
 deterministic transitions, replay, and the original fixed focal-life scenario.
-They are not the current application package.
+They are not the current application.
 
-The maintained engine now lives in [`twenty_eighty_four/`](../twenty_eighty_four/),
-with its tests in [`tests/`](../tests/). Run the current slice and the complete
-test suite using the commands in the repository [README](../README.md).
+The maintained application now lives in the top-level `simulation/`, `policies/`,
+`scenarios/`, and `observer/` directories, with its tests in
+[`tests/`](../tests/). Run the current slice and the complete test suite using
+the commands in the repository [README](../README.md).
 
 ## Source-linked history
 

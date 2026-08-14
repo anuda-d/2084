@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping, Protocol
 
-from twenty_eighty_four.core.actions import ActionAttempt, ActionResult
-from twenty_eighty_four.core.beliefs import Belief
-from twenty_eighty_four.core.events import Observation
+from simulation.actions import ActionAttempt, ActionResult
+from simulation.beliefs import Belief
+from simulation.events import Observation
 
 
 @dataclass(frozen=True)

@@ -4,15 +4,15 @@ import subprocess
 import sys
 from dataclasses import fields, replace
 
-from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult
-from twenty_eighty_four.core.agents import AgentView
-from twenty_eighty_four.core.institutions import InstitutionView
-from twenty_eighty_four.core.events import freeze_mapping
-from twenty_eighty_four.observer.inspector import render_inspector
-from twenty_eighty_four.observer.terminal import render_terminal
-from twenty_eighty_four.core.simulation import FocalSnapshot
-from twenty_eighty_four.policies.focal_policy import FocalPolicy
-from twenty_eighty_four.scenarios.first_day import (
+from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult
+from simulation.agents import AgentView
+from simulation.institutions import InstitutionView
+from simulation.events import freeze_mapping
+from observer.inspector import render_inspector
+from observer.terminal import render_terminal
+from simulation.engine import FocalSnapshot
+from policies.focal_policy import FocalPolicy
+from scenarios.first_day import (
     CLERK_ID,
     CO_WORKER_ID,
     FOCAL_AGENT_ID,
@@ -811,7 +811,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "twenty_eighty_four.scenarios.first_day",
+                "scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",
@@ -825,7 +825,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "twenty_eighty_four.scenarios.first_day",
+                "scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",

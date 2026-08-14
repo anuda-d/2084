@@ -1,5 +1,7 @@
 # UI Architecture
 
+Status: current interface direction; most described surfaces are not implemented.
+
 The interface should make an autonomous social simulation watchable through one focal character. It is not primarily a control panel, statistical dashboard, or conventional game HUD.
 
 ## Observer Role
@@ -60,6 +62,7 @@ A readable decision artifact may summarize:
 - relevant pressures and constraints;
 - what the character currently believes;
 - confidence and unresolved uncertainty;
+- which remembered claim is currently accessible or guiding this context;
 - alternatives they considered at an appropriate level;
 - what they expect to learn or check next.
 
@@ -73,6 +76,12 @@ The observer may inspect what the focal character knows or believes about anothe
 
 Broadcasts, notices, public records, rules, and institutional claims should appear as claims from identifiable sources. The interface must not silently present them as objective world truth.
 
+This surface should show the version of an official artifact that the focal
+character can currently access, not the complete Official Record or its hidden
+revision lineage. A changed central record does not automatically replace an
+earlier observation or a stale physical copy. The character must encounter the
+new version through an actual delivery or access path.
+
 ### Private record
 
 The diary should initially appear as a physical object the focal character can read or write. Its view shows recorded entries, not a complete memory database or omniscient event log.
@@ -81,7 +90,10 @@ Entries may expose earlier beliefs and contradictions, but the interface should 
 
 ### Development inspector
 
-A separate surface may expose objective events, hidden state, observation provenance, institutional processing, and decision traces. It exists for debugging, replay, and explaining surprising behavior.
+A separate surface may expose objective events, hidden state, Official Record
+operations and versions, Observation Delivery history, Agent Understanding
+transitions, institutional processing, and decision traces. It exists for
+debugging, replay, and explaining surprising behavior.
 
 This inspector must be visually and conceptually distinct from the normal main-character perspective.
 
@@ -92,9 +104,9 @@ The interface should let contradictions become experienced rather than reducing 
 For example, the observer might see:
 
 - an earlier diary entry;
-- a new official announcement;
+- a newly encountered official artifact or announcement;
 - the focal character publicly repeating the new account;
-- a private confidence change or unresolved doubt;
+- a private confidence, accessibility, or contextual-stance change;
 - another person's incompatible recollection.
 
 The UI may later help compare these sources, but it should preserve their provenance and avoid declaring which one the character ought to believe.
@@ -116,7 +128,7 @@ Any intervention should enter the simulation as an explicit input. It should not
 
 ## Working Principle
 
-The interface should reveal the simulation without becoming a second source of truth. Important statements should remain connected to actual events, observations, memories, or claims.
+The interface should reveal the simulation without becoming a second source of truth. Important statements should remain connected to actual events, official artifacts, delivered observations, memory traces, contextual stances, or claims.
 
 Visual polish is valuable when it strengthens embodied attention or makes causality clearer. It should not conceal an unclear simulation.
 
@@ -125,7 +137,8 @@ Visual polish is valuable when it strengthens embodied attention or makes causal
 - Does the first slice need a spatial map, or can place be conveyed more simply?
 - How much of the focal character's private state should the observer see?
 - Should the observer know when the character is rationalizing, or infer it from behavior?
-- How are memory confidence and contradictions shown without turning them into game meters?
+- How are confidence, accessibility, contextual stance, and contradictions shown without turning them into game meters?
+- How does the official-record surface distinguish a current artifact from a stale physical copy without revealing hidden revision history?
 - When should the diary surface appear, and should writing be visibly animated?
 - Is bounded steering useful, or does it weaken the observational experience?
 - How much recent history is necessary to understand delayed consequences?
