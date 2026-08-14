@@ -109,7 +109,7 @@ Current source-of-truth documents live in `docs/main/`:
 - [Architecture](docs/main/ARCHITECTURE.md) — boundaries between world truth, knowledge, decisions, institutions, and presentation.
 - [UI Architecture](docs/main/UI_ARCHITECTURE.md) — the focal-character perspective and ways to make autonomous behavior understandable.
 - [Design References](docs/main/DESIGN_REFERENCES.md) — what is being taken from Orwell, the world-modeling paper, and the reference simulation.
-- [Agentic Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the bounded scheduled-run contract, progress gates, and owner review boundary.
+- [Agentic Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the owner-triggered, fresh-task cycle, progress gates, and review boundary.
 
 Proposals and completed implementation records live in `docs/plans/`:
 

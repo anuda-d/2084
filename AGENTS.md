@@ -61,11 +61,13 @@ These are flexible working principles for coding agents and future contributors.
 
 For now, favor one autonomous focal life, a small living world, understandable agents, limited knowledge, and inspectable consequences over scale, conventional game systems, visual polish, or elaborate AI behavior.
 
-## Automated Development Loop
+## Owner-Triggered Development Loop
 
-- When working from the scheduled development loop, read
+- When working on a development cycle, read
   `docs/main/DEVELOPMENT_LOOP.md` and follow its run contract.
-- The active goal, not the automation itself, defines authorized product and
+- Start each cycle in a fresh top-level task only after the owner requests it.
+  Use the repository, not prior task conversation, as durable context.
+- The active goal, not the trigger or task, defines authorized product and
   implementation scope.
 - The main agent owns gap selection, implementation, integration, validation,
   and the final report. It may delegate bounded independent investigation or

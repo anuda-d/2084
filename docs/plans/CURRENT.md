@@ -33,9 +33,11 @@ No implementation run has yet been accepted for this goal.
 - Last accepted criterion: none
 - Result awaiting owner review: none
 
-Only owner-accepted evidence belongs in this file. A scheduled run may propose
-an update in its reviewable diff, but it must not treat proposed progress as
-accepted before owner review.
+Only owner-accepted evidence belongs in the Accepted Progress table and loop
+counters. A development cycle may record a pending result under Loop State,
+but it must not mark that result accepted before owner review. After approval,
+the same task records the accepted progress and clears the pending result before
+the owner commits the complete cycle.
 
 The broader Lie and Doublethink proposal is optional context for this goal. It
 does not supply additional requirements or authorize follow-on work.

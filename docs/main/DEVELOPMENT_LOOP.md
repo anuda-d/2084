@@ -1,10 +1,39 @@
 # Agentic Development Loop
 
-Status: current operating contract for scheduled development runs.
+Status: current operating contract for owner-triggered development cycles.
 
 This loop advances one owner-approved 2084 goal through small, reviewable
 changes. It does not choose the project's direction, authorize its own next
 goal, or require a code change every time it runs.
+
+Each cycle runs in a fresh top-level Codex task. The repository carries durable
+context between cycles; prior task conversation does not. A cycle starts only
+when the owner requests it after accepting or resolving the previous result.
+There is no clock-based or recurring automation in this contract.
+
+## Start and Continue the Loop
+
+Before the first cycle, commit the approved goal and loop documents and confirm
+that the checkout is clean. Then open a new Codex task for this repository and
+send:
+
+> Run one 2084 development cycle. Follow `AGENTS.md` and
+> `docs/main/DEVELOPMENT_LOOP.md`. Use the active goal in
+> `docs/plans/CURRENT.md`. Make at most one coherent change and stop at the
+> owner review gate.
+
+The task implements and validates one bounded result, then stops. Review
+feedback stays in that task because it is still the same cycle. When the result
+is acceptable:
+
+1. tell the task that the result is approved and ask it to record the accepted
+   progress in `CURRENT.md`;
+2. commit the complete accepted result, including the progress update;
+3. open another new task and use the same prompt for the next cycle.
+
+Do not start the next task from an uncommitted result. Optional subagents are
+side tasks inside one development cycle, not replacements for the fresh
+top-level task used by the next cycle.
 
 ## Sources of Authority
 
@@ -26,7 +55,7 @@ requires them. They are not backlogs or implementation checklists.
 
 ## Authority
 
-A scheduled run may:
+A development cycle may:
 
 - implement one coherent change that advances one unmet active-goal criterion;
 - add or change tests that prove the new behavior or protect an affected
@@ -36,7 +65,7 @@ A scheduled run may:
 - delegate bounded independent investigation or verification as described
   below.
 
-A scheduled run may not:
+A development cycle may not:
 
 - select, broaden, or replace the active goal;
 - settle an open product, worldbuilding, or lasting architecture decision;
@@ -55,7 +84,8 @@ Before implementation, confirm that:
 
 - `CURRENT.md` links exactly one active, owner-approved goal;
 - the active goal authorizes the proposed behavior;
-- no earlier development-loop result in this task is awaiting owner review;
+- the previous development-cycle result has been accepted and committed,
+  rejected and resolved, or does not exist;
 - the working checkout contains no unrelated unfinished changes;
 - the baseline repository check passes, or any pre-existing failure is recorded
   and clearly unrelated to the proposed change.
@@ -63,7 +93,7 @@ Before implementation, confirm that:
 If a precondition is not met, make no implementation change and report the
 specific condition.
 
-## One Scheduled Run
+## One Development Cycle
 
 ### 1. Orient
 
