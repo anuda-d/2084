@@ -899,13 +899,33 @@ class Simulation:
 
     def _apply_scheduled_institutional_events(self) -> tuple[Observation, ...]:
         institution = self.world.institution
-        claim = self._institution_policy.choose_claim(
-            InstitutionView(
-                tick=self.tick,
-                records=dict(institution.records),
-                reports=tuple(institution.reports),
-            )
+        view = InstitutionView(
+            tick=self.tick,
+            records=dict(institution.records),
+            reports=tuple(institution.reports),
         )
+        publication = self._institution_policy.choose_initial_publication(view)
+        if publication is not None:
+            version = institution.official_record.publish_initial(
+                artifact_id=publication.artifact_id,
+                version_id=publication.version_id,
+                period_id=publication.period_id,
+                entitlement_packets=publication.entitlement_packets,
+            )
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_published",
+                actor_id=institution.institution_id,
+                details={
+                    "artifact_id": version.artifact_id,
+                    "version_id": version.version_id,
+                    "period_id": version.period_id,
+                    "entitlement_packets": version.entitlement_packets,
+                    "previous_version_id": version.previous_version_id,
+                },
+            )
+
+        claim = self._institution_policy.choose_claim(view)
         if claim is None:
             return ()
         prior_claim = institution.last_public_claim_event_id
@@ -1066,6 +1086,7 @@ class Simulation:
                 "focal_agent_id": self.focal_agent_id,
                 "scenario": to_plain_data(self.scenario_configuration),
             },
+            "official_record": self.world.institution.official_record.to_data(),
             "events": [
                 {
                     "event_id": event.event_id,

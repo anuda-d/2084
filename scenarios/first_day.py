@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 
 from simulation.agents import AgentState
-from simulation.institutions import InstitutionState
+from simulation.institutions import InstitutionState, OfficialRecordPublication
 from simulation.engine import Simulation, SimulationRules
+from simulation.official_record import OfficialRecord
 from simulation.world import PhysicalDiary, ResourceState, WorldState
 from policies.focal_policy import FocalPolicy
 from policies.institution_policy import InstitutionPolicy
@@ -16,6 +17,9 @@ from policies.supporting_policy import AllocationClerkPolicy, CoworkerPolicy
 FOCAL_AGENT_ID = "mara-vale"
 CO_WORKER_ID = "ilan-reed"
 CLERK_ID = "sena-orr"
+RATION_SCHEDULE_ARTIFACT_ID = "weekly-household-ration-schedule"
+RATION_SCHEDULE_VERSION_ONE_ID = "weekly-household-ration-schedule-v1"
+RATION_SCHEDULE_PERIOD_ID = "first-day-week"
 
 
 def build_first_day(seed: int = 42) -> Simulation:
@@ -60,6 +64,7 @@ def build_first_day(seed: int = 42) -> Simulation:
         institution=InstitutionState(
             institution_id="civic-allocation-office",
             display_name="Civic Allocation Office",
+            official_record=OfficialRecord(artifact_id=RATION_SCHEDULE_ARTIFACT_ID),
             records={"public_claim_schedule_authorized": True},
         ),
         diaries={
@@ -76,7 +81,17 @@ def build_first_day(seed: int = 42) -> Simulation:
             CO_WORKER_ID: CoworkerPolicy(),
             CLERK_ID: AllocationClerkPolicy(),
         },
-        institution_policy=InstitutionPolicy({8: 5, 16: 1}),
+        institution_policy=InstitutionPolicy(
+            {8: 5, 16: 1},
+            initial_publication_schedule={
+                1: OfficialRecordPublication(
+                    artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+                    version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+                    period_id=RATION_SCHEDULE_PERIOD_ID,
+                    entitlement_packets=3,
+                )
+            },
+        ),
         rules=SimulationRules(
             work_location="workplace",
             allocation_location="allocation_office",
@@ -102,6 +117,13 @@ def build_first_day(seed: int = 42) -> Simulation:
             },
             "initial_resource": {"total_units": 3, "committed_units": 1},
             "official_claim_schedule": {8: 5, 16: 1},
+            "initial_official_record_publication": {
+                "tick": 1,
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                "period_id": RATION_SCHEDULE_PERIOD_ID,
+                "entitlement_packets": 3,
+            },
             "public_pressure": 0.8,
             "public_conformity_threshold": 0.7,
             "action_durations": {
