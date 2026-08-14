@@ -59,6 +59,7 @@ class AgentView:
     accessible_diary_id: str | None
     accessible_diary_entry_count: int
     accessible_diary_entries: tuple[DiaryEntryKnowledge, ...]
+    consultable_official_record_ids: tuple[str, ...]
     valid_actions: tuple[str, ...]
 
 

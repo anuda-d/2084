@@ -11,12 +11,12 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Accepted Progress
 
-One implementation run has been accepted for this goal.
+Two implementation runs have been accepted for this goal.
 
 | Criterion | Status |
 | --- | --- |
 | OR-1 Initial publication | Met — accepted three-packet version-one publication evidence |
-| OR-2 Valid delivery | Unmet |
+| OR-2 Valid delivery | Met — accepted location-gated, version-linked consultation evidence |
 | OR-3 Separate physical result | Unmet |
 | OR-4 Authorized rewrite | Unmet |
 | OR-5 Preserved evidence | Unmet |
@@ -28,9 +28,9 @@ One implementation run has been accepted for this goal.
 
 ## Loop State
 
-- Accepted implementation runs since the last alignment review: 1
+- Accepted implementation runs since the last alignment review: 2
 - Consecutive accepted runs on the same criterion: 1
-- Last accepted criterion: OR-1 Initial publication
+- Last accepted criterion: OR-2 Valid delivery
 - Result awaiting owner review: none
 
 Only owner-accepted evidence belongs in the Accepted Progress table and loop

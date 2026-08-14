@@ -9,7 +9,16 @@ from simulation.events import freeze_mapping
 
 
 ACTION_KINDS = frozenset(
-    {"travel", "work", "request_allocation", "speak", "write_diary", "read_diary", "wait"}
+    {
+        "travel",
+        "work",
+        "consult_official_record",
+        "request_allocation",
+        "speak",
+        "write_diary",
+        "read_diary",
+        "wait",
+    }
 )
 
 

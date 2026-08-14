@@ -181,7 +181,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(private.source_observation_ids, (direct.observation_id,))
         self.assertEqual(private.last_updated_tick, 7)
         self.assertEqual(private.confidence, 0.9)
-        self.assertEqual(snapshot.current_action, "wait for the allocation briefing")
+        self.assertEqual(snapshot.current_action, "consult the weekly ration schedule")
 
     def test_official_claim_conflicts_with_private_belief_and_drives_a_sourced_request(self):
         simulation = build_first_day(seed=42)
@@ -863,6 +863,9 @@ class LivingSimulationStepTests(unittest.TestCase):
             "objective_allocation",
             "event_history",
             "institution_records",
+            "official_record",
+            "official_record_versions",
+            "current_official_record_version",
         ):
             self.assertNotIn(forbidden, agent_fields)
         institution_fields = {field.name for field in fields(InstitutionView)}

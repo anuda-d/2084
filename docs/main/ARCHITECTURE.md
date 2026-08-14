@@ -71,8 +71,8 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 The possible deeper architecture is described in detail in
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 It is a proposal, not a description of currently implemented modules. The
-active bounded goal has begun only with the initial-publication seam described
-above.
+active bounded goal has begun with the initial-publication and narrow public
+consultation seams described above.
 
 - **Official Record** would own the institution's mutable current public
   projection and bounded rewrite, suppression, and fabrication operations.
@@ -275,10 +275,10 @@ should not be presented as an emergent plot.
 - Institutional reports and processing capacity are represented conceptually,
   but the current institution only applies the scheduled initial publication
   and emits legacy scheduled broadcasts. Those broadcasts reach every agent.
-- Official Record currently supports only one structured initial ration-schedule
-  publication. Consultation, rewrite validation, lineage beyond version one,
-  and a completed replacement of the legacy generic broadcasts are not yet
-  implemented.
+- Official Record currently supports one structured initial ration-schedule
+  publication and a location-gated consultation of its current version. Rewrite
+  validation, lineage beyond version one, and a completed replacement of the
+  legacy generic broadcasts are not yet implemented.
 - There is no deep Agent Understanding module: cognitive transitions remain split
   between the belief helper, simulation coordinator, focal policy, and observer.
 - Claim and Provenance has not been extracted, and observation payloads still

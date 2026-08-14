@@ -97,6 +97,8 @@ def build_first_day(seed: int = 42) -> Simulation:
             allocation_location="allocation_office",
             resource_id="household_allocation",
             resource_proposition="daily_allocation_units",
+            official_record_access_location="allocation_office",
+            official_record_artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
         ),
         focal_agent_id=FOCAL_AGENT_ID,
         max_ticks=30,
@@ -124,6 +126,7 @@ def build_first_day(seed: int = 42) -> Simulation:
                 "period_id": RATION_SCHEDULE_PERIOD_ID,
                 "entitlement_packets": 3,
             },
+            "official_record_access_location": "allocation_office",
             "public_pressure": 0.8,
             "public_conformity_threshold": 0.7,
             "action_durations": {
