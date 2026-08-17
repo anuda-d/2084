@@ -28,12 +28,47 @@ Six implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 3
-- Consecutive verified runs on the same criterion: 1
+- Verified implementation runs since the last alignment review: 0
+- Consecutive verified runs on the same criterion: 0
 - Last verified criterion: OR-6 No magical knowledge
 - Incomplete autonomous cycle: none
-- Next cycle requirement: perform and record a goal-level alignment review before
-  another implementation change
+- Next cycle requirement: select the smallest unmet criterion that creates new
+  goal-level behavioral evidence; OR-7 is the next justified candidate
+
+## Goal-Level Alignment Review — 2026-08-17 (Second)
+
+Observed behavior:
+
+- version one is published and delivered through the location-gated
+  consultation path, while the separate allocation resolution grants two
+  physical packets without changing the schedule;
+- the configured authorized rewrite retains version one, creates and publishes
+  version two, and creates no observation by itself;
+- a separate later valid consultation can deliver version two on the next tick
+  while retaining the focal character's earlier version-one observation;
+- the focused Official Record evidence remains covered by 8 tests, and the
+  repository check passes 46 simulation tests and 63 recovery tests.
+
+Interpretation:
+
+- OR-1 through OR-6 retain proportionate evidence and remain closed;
+- the implementation still consists of the narrow Official Record,
+  consultation, physical-consequence, and configured rewrite seams approved by
+  this goal; complexity has not outgrown its explanatory value, although the
+  scenario's autonomous path and presentation do not yet show the complete
+  experiment;
+- nothing should be removed before the rejection paths and end-to-end scenario
+  evidence are evaluated, because the existing seams are directly exercised by
+  the remaining criteria;
+- OR-7 is the next justified candidate: prove that an unauthorized attempt
+  targeting the current version leaves the projection unchanged and returns an
+  actor-safe rejected result. OR-8 should remain a separate stale-target case,
+  and OR-9 and OR-10 remain later end-to-end and reproduction evidence.
+
+This required alignment cycle changes no simulation behavior. The orchestrator
+self-review found no goal conflict, hidden-knowledge leak, authority expansion,
+append-only history violation, publication-delivery coupling, unnecessary new
+module, or reason to reopen a closed criterion.
 
 ## OR-6 Implementation Cycle — 2026-08-17
 
