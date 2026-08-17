@@ -280,9 +280,11 @@ should not be presented as an emergent plot.
 - Official Record currently supports one structured initial ration-schedule
   publication, a location-gated consultation of version one, and an authorized
   same-period rewrite that retains lineage and moves the current pointer to
-  version two. The consultation resolver does not yet recognize rewrite evidence,
-  so version two cannot yet be encountered; rejection evidence and replacement
-  of the legacy generic broadcasts are also incomplete.
+  version two. The consultation resolver recognizes accepted rewrite evidence,
+  so a later access-valid consultation can deliver version two without changing
+  the retained version-one observation. The autonomous focal path does not yet
+  perform that later consultation; rejection evidence and replacement of the
+  legacy generic broadcasts are also incomplete.
 - The allocation resolver records the two-unit physical handover as a separate,
   resource-identified objective consequence. Its later delivered outcome updates
   focal holdings without changing the published ration schedule.

@@ -140,12 +140,14 @@ resource-identified objective consequence and delivers that outcome separately;
 the handover does not itself change the schedule. A configured, authorized
 institutional attempt later appends a two-packet version for the same period and
 makes it current while retaining version one and both objective events. That
-rewrite does not deliver an observation, and consultation of version two is not
-implemented yet. Agent Understanding, Claim and Provenance, and Observation
-Delivery remain proposals. The version-one scenario still also uses its generic
-record dictionary and global scheduled broadcasts; the current belief logic
-appends fixed-confidence claims; and the focal policy still contains the
-scenario-specific conformity and diary decisions.
+rewrite does not deliver an observation. A later access-valid consultation can
+now deliver version two while leaving the earlier version-one observation
+unchanged, although the autonomous focal path does not yet perform that later
+consultation. Agent Understanding, Claim and Provenance, and Observation Delivery
+remain proposals. The version-one scenario still also uses its generic record
+dictionary and global scheduled broadcasts; the current belief logic appends
+fixed-confidence claims; and the focal policy still contains the scenario-specific
+conformity and diary decisions.
 
 ## Observation and Playability
 

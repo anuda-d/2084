@@ -11,7 +11,7 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Five implementation runs have been verified and recorded for this goal.
+Six implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -20,7 +20,7 @@ Five implementation runs have been verified and recorded for this goal.
 | OR-3 Separate physical result | Met — verified resource-identified two-packet handover evidence, delivered separately from the unchanged three-packet entitlement |
 | OR-4 Authorized rewrite | Met — verified configured authorized attempt, separate accepted result, and current two-packet version linked to version one |
 | OR-5 Preserved evidence | Met — verified both versions, lineage, and objective publication/rewrite evidence in detached history and the inspector |
-| OR-6 No magical knowledge | Unmet |
+| OR-6 No magical knowledge | Met — verified no rewrite delivery, separate access-valid consultation, next-tick version-two delivery, and retained version-one observation |
 | OR-7 Unauthorized rewrite rejected | Unmet |
 | OR-8 Stale-target rewrite rejected | Unmet |
 | OR-9 Understandable run | Unmet |
@@ -28,12 +28,46 @@ Five implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 2
+- Verified implementation runs since the last alignment review: 3
 - Consecutive verified runs on the same criterion: 1
-- Last verified criterion: OR-5 Preserved evidence
+- Last verified criterion: OR-6 No magical knowledge
 - Incomplete autonomous cycle: none
-- Next cycle requirement: none; the next implementation cycle may advance
-  OR-6 No magical knowledge
+- Next cycle requirement: perform and record a goal-level alignment review before
+  another implementation change
+
+## OR-6 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- the accepted rewrite leaves the focal character with only the earlier,
+  unchanged version-one observation and creates no version-two observation;
+- a separate access-valid consultation after the rewrite resolves against the
+  accepted version-two publication evidence without delivering knowledge
+  immediately;
+- the next simulation step delivers the two-packet version-two observation with
+  source, lineage, and rewrite-event links while retaining version one;
+- the focused Official Record suite passes 8 tests, the repository check passes
+  46 simulation tests and 63 recovery tests, and both normal and inspector runs
+  complete successfully.
+
+Interpretation:
+
+- OR-6 has proportionate evidence and is closed;
+- this cycle proves the engine's valid-delivery seam through an explicit later
+  consultation; the autonomous focal path still does not perform that later
+  consultation, so this is not OR-9 end-to-end evidence;
+- no general delivery module, policy knowledge of the hidden rewrite, or
+  automatic publication delivery was introduced;
+- a goal-level alignment review is required before the next implementation
+  cycle because three verified implementation runs have followed the last
+  alignment review.
+
+Independent review found no blocking goal mismatch, impossible knowledge or
+authority, append-only history violation, publication-delivery coupling,
+missing OR-6 evidence, false-positive test, unnecessary complexity, or unrelated
+scope. It confirmed that same-tick explicit consultation is causally later than
+the rewrite and that its next-tick observation proves only the engine seam, not
+the autonomous end-to-end scenario.
 
 ## OR-5 Implementation Cycle — 2026-08-17
 

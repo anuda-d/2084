@@ -460,7 +460,8 @@ class Simulation:
                     (
                         event
                         for event in reversed(self.events)
-                        if event.kind == "official_record_published"
+                        if event.kind
+                        in {"official_record_published", "official_record_rewritten"}
                         and event.details.get("artifact_id") == version.artifact_id
                         and event.details.get("version_id") == version.version_id
                     ),

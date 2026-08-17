@@ -336,6 +336,95 @@ class OfficialRecordTests(unittest.TestCase):
             )
         )
 
+    def test_version_two_requires_a_later_valid_consultation_to_be_delivered(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(10):
+            rewrite_tick = simulation.step()
+
+        rewritten = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewritten"
+        )
+        observations_before = simulation.observations_for(FOCAL_AGENT_ID)
+        record_observations_before = tuple(
+            observation
+            for observation in observations_before
+            if observation.details.get("evidence_kind") == "official_record_version"
+        )
+        self.assertEqual(len(record_observations_before), 1)
+        self.assertEqual(
+            record_observations_before[0].details["version_id"],
+            RATION_SCHEDULE_VERSION_ONE_ID,
+        )
+        self.assertFalse(
+            any(
+                observation.event_id == rewritten.event_id
+                or observation.details.get("version_id")
+                == RATION_SCHEDULE_VERSION_TWO_ID
+                for observation in rewrite_tick.new_observations
+            )
+        )
+
+        attempted = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="consult_official_record",
+                parameters={"artifact_id": RATION_SCHEDULE_ARTIFACT_ID},
+                explanation="consult the revised weekly ration schedule",
+            )
+        )
+        consultation = simulation.events[-1]
+        self.assertEqual(consultation.kind, "official_record_consulted")
+        self.assertEqual(consultation.action_id, attempted.action_id)
+        self.assertEqual(
+            consultation.caused_by, (attempted.event_id, rewritten.event_id)
+        )
+        self.assertEqual(
+            simulation.observations_for(FOCAL_AGENT_ID), observations_before
+        )
+        self.assertEqual(
+            tuple(
+                observation
+                for observation in simulation.observations_for(FOCAL_AGENT_ID)
+                if observation.details.get("evidence_kind")
+                == "official_record_version"
+            ),
+            record_observations_before,
+        )
+
+        delivery_tick = simulation.step()
+
+        delivered = next(
+            observation
+            for observation in delivery_tick.new_observations
+            if observation.details.get("version_id")
+            == RATION_SCHEDULE_VERSION_TWO_ID
+        )
+        self.assertEqual(delivered.agent_id, FOCAL_AGENT_ID)
+        self.assertEqual(delivered.event_id, consultation.event_id)
+        self.assertEqual(delivered.details["asserted_value"], 2)
+        self.assertEqual(
+            delivered.details["previous_version_id"],
+            RATION_SCHEDULE_VERSION_ONE_ID,
+        )
+        self.assertEqual(
+            delivered.details["publication_event_id"], rewritten.event_id
+        )
+        record_observations_after = tuple(
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "official_record_version"
+        )
+        self.assertEqual(
+            [
+                observation.details["version_id"]
+                for observation in record_observations_after
+            ],
+            [RATION_SCHEDULE_VERSION_ONE_ID, RATION_SCHEDULE_VERSION_TWO_ID],
+        )
+        self.assertEqual(record_observations_after[0], record_observations_before[0])
+
     def test_history_and_inspector_preserve_both_versions_and_rewrite_lineage(self):
         simulation = build_first_day(seed=42)
         for _ in range(10):
