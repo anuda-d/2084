@@ -9,15 +9,15 @@ Status: active.
 The owner approved this goal as an intentional evolution of the single
 `first_day` living scenario from `first_day_v1` to `first_day_v2`.
 
-## Accepted Progress
+## Verified Progress
 
-Two implementation runs have been accepted for this goal.
+Three implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
-| OR-1 Initial publication | Met — accepted three-packet version-one publication evidence |
-| OR-2 Valid delivery | Met — accepted location-gated, version-linked consultation evidence |
-| OR-3 Separate physical result | Unmet |
+| OR-1 Initial publication | Met — verified three-packet version-one publication evidence |
+| OR-2 Valid delivery | Met — verified location-gated, version-linked consultation evidence |
+| OR-3 Separate physical result | Met — verified resource-identified two-packet handover evidence, delivered separately from the unchanged three-packet entitlement |
 | OR-4 Authorized rewrite | Unmet |
 | OR-5 Preserved evidence | Unmet |
 | OR-6 No magical knowledge | Unmet |
@@ -28,19 +28,16 @@ Two implementation runs have been accepted for this goal.
 
 ## Loop State
 
-- Accepted implementation runs since the last alignment review: 2
-- Consecutive accepted runs on the same criterion: 1
-- Last accepted criterion: OR-2 Valid delivery
-- Result awaiting owner review: OR-3 Separate physical result — the
-  resource-identified two-unit handover is distinct from the unchanged
-  three-packet entitlement and reaches focal holdings only through its own
-  delivered outcome
+- Verified implementation runs since the last alignment review: 3
+- Consecutive verified runs on the same criterion: 1
+- Last verified criterion: OR-3 Separate physical result
+- Incomplete autonomous cycle: none
+- Next cycle requirement: perform the goal-level alignment review before
+  another implementation run
 
-Only owner-accepted evidence belongs in the Accepted Progress table and loop
-counters. A development cycle may record a pending result under Loop State,
-but it must not mark that result accepted before owner review. After approval,
-the same task records the accepted progress and clears the pending result before
-the owner commits the complete cycle.
+Only evidence that passed the loop's focused checks, full repository check, and
+self-review belongs in the Verified Progress table and loop counters. Record
+progress and commit it with the coherent implementation cycle that proved it.
 
 The broader Lie and Doublethink proposal is optional context for this goal. It
 does not supply additional requirements or authorize follow-on work.

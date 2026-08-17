@@ -219,30 +219,30 @@ The chocolate-ration-style maneuver in which a prior warning is fabricated and
 the reduced amount is announced as an increase is a possible later experiment.
 It is not part of this goal.
 
-## Stop and Review Conditions
+## Stop and Escalation Conditions
 
-Stop implementation and request owner review when:
+Stop implementation and request an owner decision when:
 
 - satisfying a criterion appears to require a new deep module listed as out of
   scope;
 - the implementation needs a product or worldbuilding decision not made here;
-- two consecutive implementation runs focus on the same criterion without
-  producing new goal-level behavioral evidence;
 - another round would only add edge cases or hardening to an already proven
   criterion;
 - the simplest working implementation conflicts with a current architectural
   invariant;
 - all completion criteria are satisfied.
 
-It is valid to finish a run without changing code when the goal is complete,
-blocked, awaiting review, or has no justified next change.
+After two consecutive implementation runs on the same criterion, move to a
+different criterion, demonstrate end-to-end behavior, or stop if neither is
+justified. It is valid to finish a run without changing code when the goal is
+complete, blocked, requires an owner decision, or has no justified next change.
 
 ## Completion Boundary
 
-This goal is complete when OR-1 through OR-10 have proportionate evidence and the
-owner accepts the resulting behavior and changes.
+This goal is complete when OR-1 through OR-10 have proportionate, validated
+evidence recorded in `CURRENT.md`.
 
 Completion does not authorize the next operation. The development loop must not
 continue automatically into suppression, fabrication, richer delivery, or
-deeper cognition. It may recommend a next experiment, but the owner chooses and
-approves the next active goal.
+deeper cognition. It may recommend a next experiment, but the owner still
+chooses and approves the next active goal.

@@ -109,12 +109,12 @@ Current source-of-truth documents live in `docs/main/`:
 - [Architecture](docs/main/ARCHITECTURE.md) — boundaries between world truth, knowledge, decisions, institutions, and presentation.
 - [UI Architecture](docs/main/UI_ARCHITECTURE.md) — the focal-character perspective and ways to make autonomous behavior understandable.
 - [Design References](docs/main/DESIGN_REFERENCES.md) — what is being taken from Orwell, the world-modeling paper, and the reference simulation.
-- [Agentic Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the owner-triggered, fresh-task cycle, progress gates, and review boundary.
+- [Agentic Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the scheduled autonomous cycle, progress gates, and escalation boundary.
 
 Proposals and completed implementation records live in `docs/plans/`:
 
 - [Lie and Doublethink architecture](docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md) — proposed next modules; these are not implemented yet.
-- [Current development objective](docs/plans/CURRENT.md) — the single owner-approved goal and accepted progress.
+- [Current development objective](docs/plans/CURRENT.md) — the single owner-approved goal and verified progress.
 - First living slice records — the completed [goal](docs/plans/first-living-slice/GOAL.md), [recovery baseline](docs/plans/first-living-slice/BASELINE.md), and [delivery report](docs/plans/first-living-slice/DELIVERY.md).
 
 Other repository guidance:
