@@ -21,9 +21,9 @@ The current center of gravity is a small authoritarian social world in which:
 - the wider world continues beyond what the focal character sees;
 - surprising outcomes should arise from interacting pressures rather than a prescribed story.
 
-This direction remains provisional. The next experiment should clarify one
-bounded official-record rewrite and its effect on agent understanding rather
-than attempt to reproduce an entire society.
+This direction remains provisional. The current slice now demonstrates one
+bounded official-record rewrite and its effect on delivered agent knowledge
+without attempting to reproduce an entire society.
 
 ## Repository layout
 

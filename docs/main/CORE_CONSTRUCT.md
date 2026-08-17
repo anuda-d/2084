@@ -131,7 +131,7 @@ reinterpretation, planning, or general language understanding. Public
 expression can still respond to an explicit social-pressure threshold without
 changing the retained private perspective.
 
-The active Official Record experiment now has four narrow seams. The institution
+The implemented Official Record experiment has four narrow seams. The institution
 can publish one immutable, structured three-packet ration-schedule version under
 a stable artifact identity without delivering it, and the focal character can
 later consult that current version through configured access at the allocation

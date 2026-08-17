@@ -1,8 +1,8 @@
 # Current Development Objective
 
-Status: active.
+Status: complete.
 
-## Active Goal
+## Completed Goal
 
 [Official Record Rewrite](official-record-rewrite/GOAL.md)
 
@@ -11,7 +11,8 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Nine implementation runs have been verified and recorded for this goal.
+Nine implementation runs and one completion-validation cycle have been verified
+and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -24,16 +25,48 @@ Nine implementation runs have been verified and recorded for this goal.
 | OR-7 Unauthorized rewrite rejected | Met — verified an unauthorized current-target attempt is rejected without changing the published version |
 | OR-8 Stale-target rewrite rejected | Met — verified an authorized stale-target attempt is rejected without changing the current two-packet version |
 | OR-9 Understandable run | Met — verified the autonomous promise, handover, hidden rewrite, later consultation, filtered focal view, and complete inspector chain |
-| OR-10 Reproduction | Unmet |
+| OR-10 Reproduction | Met — verified equal configured complete runs retain identical ordered detached history, event IDs, and observation IDs |
 
 ## Loop State
 
 - Verified implementation runs since the last alignment review: 0
 - Consecutive verified runs on the same criterion: 0
-- Last verified criterion: OR-9 Understandable run
+- Last verified criterion: OR-10 Reproduction
 - Incomplete autonomous cycle: none
-- Next cycle requirement: validate OR-10 reproduction evidence and perform an
-  independent goal-completion review before marking the goal complete
+- Next cycle requirement: none; the goal is complete and another goal requires
+  owner selection and approval
+
+## OR-10 Completion Validation Cycle — 2026-08-17
+
+Observed behavior:
+
+- two equally configured `first_day_v2` runs complete at tick 24 and produce
+  identical detached `history_data()` structures, ordered event identifiers,
+  and ordered observation identifiers;
+- the focused reproduction test passes, and the repository check passes 48
+  simulation tests and 63 recovery tests;
+- an independent cross-process check under Python hash seeds 1 and 777 produced
+  the same history digest with 130 events and 21 observations in each run;
+- the worktree remained clean before this factual completion update.
+
+Interpretation:
+
+- OR-10 has proportionate evidence and is closed;
+- OR-1 through OR-10 are all met, so the Official Record Rewrite goal is
+  complete;
+- no implementation or new test was needed because the existing full-run
+  reproduction test already exercises the final `first_day_v2` path and failed
+  evidence would have blocked completion;
+- the development loop must stop after this completion commit and must not
+  select or begin a follow-on experiment without owner approval.
+
+Fresh independent goal-completion review found no blocking criterion gap,
+hidden knowledge or impossible authority, append-only history violation,
+publication-delivery or entitlement-handover coupling, unsafe rejection,
+normal-view leak, false-positive reproduction evidence, scope creep, or stale
+implementation status after the recorded README correction. It independently
+passed 13 targeted tests and confirmed all ten criteria have proportionate
+evidence.
 
 ## Goal-Level Alignment Review — 2026-08-17 (Third)
 

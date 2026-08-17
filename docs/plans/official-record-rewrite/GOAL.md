@@ -1,6 +1,6 @@
 # Official Record Rewrite
 
-Status: active; approved by the owner.
+Status: complete; approved by the owner.
 
 This is the bounded implementation goal for the next 2084 experiment. It is
 narrower than the broader
