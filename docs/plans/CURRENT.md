@@ -28,12 +28,49 @@ Nine implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 3
-- Consecutive verified runs on the same criterion: 1
+- Verified implementation runs since the last alignment review: 0
+- Consecutive verified runs on the same criterion: 0
 - Last verified criterion: OR-9 Understandable run
 - Incomplete autonomous cycle: none
-- Next cycle requirement: perform and record a goal-level alignment review before
-  another implementation change
+- Next cycle requirement: validate OR-10 reproduction evidence and perform an
+  independent goal-completion review before marking the goal complete
+
+## Goal-Level Alignment Review — 2026-08-17 (Third)
+
+Observed behavior:
+
+- the default `first_day_v2` run now traverses the complete authored experiment:
+  version-one publication and valid encounters, separate two-packet handover,
+  authorized hidden rewrite, later autonomous reconsultation, and delayed
+  version-two delivery;
+- the normal projection exposes only focal encounters and their consequences,
+  while the inspector retains the objective operations, both versions, lineage,
+  observations, action results, and causal links;
+- unauthorized and stale-target attempts have focused rejection evidence, and
+  the full repository check passes 48 simulation tests and 63 recovery tests.
+
+Interpretation:
+
+- OR-1 through OR-9 retain proportionate evidence and remain closed;
+- the implementation remains inside the approved Official Record, consultation,
+  institutional resolver, policy, and presentation seams; no Agent
+  Understanding, Observation Delivery, shared claim, or general document module
+  was introduced;
+- the current policies and timing are deliberately scenario-specific and the
+  resulting sequence remains authored rather than emergent;
+- no active-goal mechanism should be removed before completion. The generic
+  broadcast engine is no longer configured by this scenario but predates this
+  goal, remains separately tested infrastructure, and is not authorized cleanup;
+- OR-10 is the only unmet criterion. Existing equal-seed full-run history
+  equality is a justified evidence candidate, but it must receive focused
+  validation and independent completion review before the goal is marked
+  complete.
+
+This required alignment cycle changes no simulation behavior. The orchestrator
+self-review found no reopened criterion, hidden-knowledge leak, authority
+expansion, entitlement/handover conflation, append-only history violation,
+publication-delivery coupling, unnecessary new module, or owner decision needed
+to evaluate OR-10.
 
 ## OR-9 Implementation Cycle — 2026-08-17
 
