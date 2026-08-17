@@ -11,7 +11,7 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Six implementation runs have been verified and recorded for this goal.
+Seven implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -21,19 +21,49 @@ Six implementation runs have been verified and recorded for this goal.
 | OR-4 Authorized rewrite | Met — verified configured authorized attempt, separate accepted result, and current two-packet version linked to version one |
 | OR-5 Preserved evidence | Met — verified both versions, lineage, and objective publication/rewrite evidence in detached history and the inspector |
 | OR-6 No magical knowledge | Met — verified no rewrite delivery, separate access-valid consultation, next-tick version-two delivery, and retained version-one observation |
-| OR-7 Unauthorized rewrite rejected | Unmet |
+| OR-7 Unauthorized rewrite rejected | Met — verified an unauthorized current-target attempt is rejected without changing the published version |
 | OR-8 Stale-target rewrite rejected | Unmet |
 | OR-9 Understandable run | Unmet |
 | OR-10 Reproduction | Unmet |
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 0
-- Consecutive verified runs on the same criterion: 0
-- Last verified criterion: OR-6 No magical knowledge
+- Verified implementation runs since the last alignment review: 1
+- Consecutive verified runs on the same criterion: 1
+- Last verified criterion: OR-7 Unauthorized rewrite rejected
 - Incomplete autonomous cycle: none
 - Next cycle requirement: select the smallest unmet criterion that creates new
-  goal-level behavioral evidence; OR-7 is the next justified candidate
+  goal-level behavioral evidence; OR-8 is the next justified candidate
+
+## OR-7 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- when the configured rewrite actor is absent from the institution's authorized
+  actor set, its scheduled attempt still targets the current version-one
+  publication and remains objective evidence;
+- the resolver appends a separate rejected result caused by that attempt, with
+  an actor-safe authorization reason;
+- the Official Record retains only version one as its immutable current
+  projection, the initial publication remains in objective history, no accepted
+  rewrite event exists, and neither rejection event becomes an observation;
+- the focused Official Record suite passes 9 tests, and the repository check
+  passes 47 simulation tests and 63 recovery tests.
+
+Interpretation:
+
+- OR-7 has proportionate evidence and is closed;
+- no production code was needed because the authority-first resolver branch
+  already enforced the goal boundary; this cycle adds the missing integration
+  evidence rather than expanding the rewrite mechanism;
+- OR-8 remains a distinct authorized stale-target case and is the next
+  justified candidate; OR-9 and OR-10 remain end-to-end and reproduction work.
+
+Independent review found no blocking or non-blocking goal mismatch, impossible
+knowledge or authority, append-only history violation, publication-delivery
+coupling, missing OR-7 evidence, false-positive test, unnecessary complexity,
+or unrelated scope. It independently reran all 9 focused tests and confirmed
+that the test exercises the authority check before Official Record mutation.
 
 ## Goal-Level Alignment Review — 2026-08-17 (Second)
 

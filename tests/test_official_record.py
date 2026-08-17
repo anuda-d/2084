@@ -336,6 +336,59 @@ class OfficialRecordTests(unittest.TestCase):
             )
         )
 
+    def test_unauthorized_current_target_rewrite_is_rejected_without_mutation(self):
+        simulation = build_first_day(seed=42)
+        simulation.step()
+
+        record = simulation.world.institution.official_record
+        version_one = record.current_version
+        publication = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_published"
+        )
+        simulation.world.institution.official_record_rewrite_authorized_actor_ids = ()
+
+        for _ in range(9):
+            simulation.step()
+
+        attempt = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewrite_attempted"
+        )
+        rejected = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewrite_rejected"
+        )
+
+        self.assertEqual(attempt.actor_id, "civic-allocation-office")
+        self.assertEqual(
+            attempt.details["expected_current_version_id"],
+            RATION_SCHEDULE_VERSION_ONE_ID,
+        )
+        self.assertEqual(rejected.actor_id, attempt.actor_id)
+        self.assertEqual(rejected.caused_by, (attempt.event_id,))
+        self.assertEqual(
+            dict(rejected.details),
+            {"reason": "actor is not authorized to rewrite this record"},
+        )
+        self.assertEqual(record.versions, (version_one,))
+        self.assertEqual(record.current_version, version_one)
+        self.assertEqual(record.current_version_id, RATION_SCHEDULE_VERSION_ONE_ID)
+        self.assertIn(publication, simulation.events)
+        self.assertFalse(
+            any(event.kind == "official_record_rewritten" for event in simulation.events)
+        )
+        rejection_event_ids = {attempt.event_id, rejected.event_id}
+        self.assertFalse(
+            any(
+                observation["event_id"] in rejection_event_ids
+                for observation in simulation.history_data()["observations"]
+            )
+        )
+
     def test_version_two_requires_a_later_valid_consultation_to_be_delivered(self):
         simulation = build_first_day(seed=42)
         for _ in range(10):
