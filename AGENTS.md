@@ -68,12 +68,19 @@ For now, favor one autonomous focal life, a small living world, understandable a
 - The daily scheduled task may run consecutive development cycles during its
   configured 6:00–9:00 PM America/Toronto window. Use the repository, not
   prior task conversation, as durable context.
+- Before a scheduled run touches the repository, it must confirm that no
+  other 2084 task, loop orchestrator, or subagent thread is still active. Any
+  active project task makes the new trigger a no-op.
+- The owner may request manual cycles in chat at any time. Manual runs follow
+  the same authority, validation, review, and no-overlap rules but are not
+  restricted to the scheduled window unless the request says otherwise.
 - The active goal, not the trigger or task, defines authorized product and
   implementation scope.
 - The main agent owns gap selection, implementation, integration, validation,
-  self-review, progress recording, commits, and the final report. It may
-  delegate bounded independent investigation or verification to subagents as
-  described by the loop contract.
+  progress recording, commits, and the final report. It may partition genuinely
+  independent implementation work between subagents with exclusive ownership,
+  and must use a fresh read-only subagent for independent review of an
+  implementation cycle, as described by the loop contract.
 - Treat `experiments/` as read-only historical evidence unless an approved goal
   explicitly targets it.
 - Do not select, broaden, or replace the active goal. Stop when the active goal
