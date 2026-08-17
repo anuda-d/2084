@@ -336,6 +336,61 @@ class OfficialRecordTests(unittest.TestCase):
             )
         )
 
+    def test_history_and_inspector_preserve_both_versions_and_rewrite_lineage(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(10):
+            simulation.step()
+
+        history = simulation.history_data()
+        official_record = history["official_record"]
+        publication = next(
+            event
+            for event in history["events"]
+            if event["kind"] == "official_record_published"
+        )
+        attempt = next(
+            event
+            for event in history["events"]
+            if event["kind"] == "official_record_rewrite_attempted"
+        )
+        rewritten = next(
+            event
+            for event in history["events"]
+            if event["kind"] == "official_record_rewritten"
+        )
+
+        self.assertEqual(
+            official_record,
+            {
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "current_version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                "versions": [
+                    {
+                        "version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                        "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                        "period_id": RATION_SCHEDULE_PERIOD_ID,
+                        "entitlement_packets": 3,
+                        "previous_version_id": None,
+                    },
+                    {
+                        "version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                        "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                        "period_id": RATION_SCHEDULE_PERIOD_ID,
+                        "entitlement_packets": 2,
+                        "previous_version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(
+            rewritten["caused_by"], [attempt["event_id"], publication["event_id"]]
+        )
+
+        inspector_lines = render_inspector(simulation).splitlines()
+        inspector_payload = json.loads("\n".join(inspector_lines[2:]))
+        self.assertEqual(inspector_payload["official_record"], official_record)
+        self.assertEqual(inspector_payload["history"], history)
+
 
 if __name__ == "__main__":
     unittest.main()

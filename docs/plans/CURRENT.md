@@ -11,7 +11,7 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Four implementation runs have been verified and recorded for this goal.
+Five implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -19,7 +19,7 @@ Four implementation runs have been verified and recorded for this goal.
 | OR-2 Valid delivery | Met — verified location-gated, version-linked consultation evidence |
 | OR-3 Separate physical result | Met — verified resource-identified two-packet handover evidence, delivered separately from the unchanged three-packet entitlement |
 | OR-4 Authorized rewrite | Met — verified configured authorized attempt, separate accepted result, and current two-packet version linked to version one |
-| OR-5 Preserved evidence | Unmet |
+| OR-5 Preserved evidence | Met — verified both versions, lineage, and objective publication/rewrite evidence in detached history and the inspector |
 | OR-6 No magical knowledge | Unmet |
 | OR-7 Unauthorized rewrite rejected | Unmet |
 | OR-8 Stale-target rewrite rejected | Unmet |
@@ -28,12 +28,44 @@ Four implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 1
+- Verified implementation runs since the last alignment review: 2
 - Consecutive verified runs on the same criterion: 1
-- Last verified criterion: OR-4 Authorized rewrite
+- Last verified criterion: OR-5 Preserved evidence
 - Incomplete autonomous cycle: none
 - Next cycle requirement: none; the next implementation cycle may advance
-  OR-5 Preserved evidence
+  OR-6 No magical knowledge
+
+## OR-5 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- after the accepted rewrite, detached history retains the immutable
+  three-packet version one and two-packet version two under the same artifact;
+- version two identifies version one as its predecessor, and the current pointer
+  identifies version two;
+- the initial publication, rewrite attempt, and accepted rewrite result all
+  remain in objective history, with the accepted result causally linked to both
+  the attempt and the initial publication;
+- the omniscient inspector exposes the same complete detached Official Record
+  and history, while the normal focal run contains none of the version
+  identifiers or rewrite event names;
+- the focused Official Record suite passes 7 tests, the repository check passes
+  45 simulation tests and 63 recovery tests, and both normal and inspector runs
+  complete successfully.
+
+Interpretation:
+
+- OR-5 has proportionate evidence and is closed;
+- no production code was needed because the preservation behavior introduced by
+  OR-4 already existed; this cycle adds the missing post-rewrite integration
+  evidence rather than hardening the implementation beyond the goal;
+- OR-6 remains open because consultation of version two is still rejected: the
+  consultation resolver recognizes only initial-publication evidence.
+
+Independent review found no blocking or non-blocking goal mismatch, authority
+or knowledge violation, objective-history mutation, publication-delivery
+coupling, missing OR-5 evidence, test gap, unnecessary complexity, or unrelated
+scope.
 
 ## OR-4 Implementation Cycle — 2026-08-17
 
