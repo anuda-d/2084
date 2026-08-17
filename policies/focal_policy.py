@@ -1,7 +1,7 @@
 """Restricted policy for the focal character."""
 
-from twenty_eighty_four.core.actions import ActionAttempt
-from twenty_eighty_four.core.agents import AgentView
+from simulation.actions import ActionAttempt
+from simulation.agents import AgentView
 
 
 def _number_word(value: int) -> str:
@@ -176,6 +176,11 @@ class FocalPolicy:
             observation.details.get("evidence_kind") == "allocation_outcome"
             for observation in view.observations
         )
+        consulted_record_ids = {
+            observation.details.get("artifact_id")
+            for observation in view.observations
+            if observation.details.get("evidence_kind") == "official_record_version"
+        }
         pressure = next(
             (
                 observation
@@ -229,6 +234,25 @@ class FocalPolicy:
                 kind="wait",
                 explanation="wait after the partial allocation",
                 decision_reason="the delivered handover leaves one household unit unfilled while the clerk responds",
+            )
+        consultable_record_id = next(
+            (
+                artifact_id
+                for artifact_id in view.consultable_official_record_ids
+                if artifact_id not in consulted_record_ids
+            ),
+            None,
+        )
+        if consultable_record_id is not None:
+            return ActionAttempt(
+                actor_id=view.agent_id,
+                kind="consult_official_record",
+                parameters={"artifact_id": consultable_record_id},
+                explanation="consult the weekly ration schedule",
+                decision_reason=(
+                    "the public schedule is accessible at the allocation office and "
+                    "has not yet been encountered"
+                ),
             )
         if (
             view.location == "allocation_office"

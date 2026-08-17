@@ -1,5 +1,7 @@
 # First living slice recovery baseline
 
+> Historical recovery record for the completed first living slice.
+
 This note records the implementation state recovered before work on the first
 living simulation slice began.
 

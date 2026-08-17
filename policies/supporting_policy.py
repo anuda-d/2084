@@ -1,7 +1,7 @@
 """Small schedule/reactive policies for supporting characters."""
 
-from twenty_eighty_four.core.actions import ActionAttempt
-from twenty_eighty_four.core.agents import AgentView
+from simulation.actions import ActionAttempt
+from simulation.agents import AgentView
 
 
 class CoworkerPolicy:

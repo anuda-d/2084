@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping, Protocol
 
-from twenty_eighty_four.core.actions import ActionAttempt, ActionResult
-from twenty_eighty_four.core.beliefs import Belief
-from twenty_eighty_four.core.events import Observation
+from simulation.actions import ActionAttempt, ActionResult
+from simulation.beliefs import Belief
+from simulation.events import Observation
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,7 @@ class AgentView:
     accessible_diary_id: str | None
     accessible_diary_entry_count: int
     accessible_diary_entries: tuple[DiaryEntryKnowledge, ...]
+    consultable_official_record_ids: tuple[str, ...]
     valid_actions: tuple[str, ...]
 
 

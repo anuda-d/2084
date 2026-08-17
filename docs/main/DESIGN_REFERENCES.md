@@ -1,5 +1,7 @@
 # Design References
 
+Status: current reference boundaries.
+
 This document records what 2084 is learning from its current references. It is not a requirement to reproduce them. Each idea still has to justify itself inside 2084's own central experience and scope.
 
 ## George Orwell's *Nineteen Eighty-Four*
@@ -20,6 +22,11 @@ Useful inspiration includes:
 - doublethink as active adaptation to contradiction, not ordinary accidental inconsistency.
 
 The strongest transfer is not an omniscient state. It is a feedback system in which incomplete but credible surveillance, mutable public reality, and social pressure affect what people say, remember, and dare to do.
+
+Architecturally, "mutable public reality" means a mutable institutional
+projection beside immutable objective history. Record revision never edits the
+simulation's evidence, and doublethink is represented through source-linked,
+context-sensitive understanding rather than an automatic memory overwrite.
 
 Supporting commentary:
 
@@ -57,7 +64,7 @@ The normal experience should not become a formal evaluation dashboard. The paper
 
 ## Reference Simulation: `/Users/anuda/Desktop/sim`
 
-The local reference project demonstrates a useful interaction model. Its current direction is described in the [reference README](../sim/README.md) and [Core Construct](../sim/CORE_CONSTRUCT.md).
+The local reference project demonstrates a useful interaction model. Its current direction is described in the [reference README](../../../sim/README.md) and [Core Construct](../../../sim/CORE_CONSTRUCT.md).
 
 The key transferable idea is **watchable agency**:
 
@@ -86,6 +93,11 @@ Together, the references suggest:
 > Follow one autonomous person through a small authoritarian social world. Let the wider society continue beyond their attention. Preserve the difference between what happened, what they experienced, what they remember, what the institution claims, what they say publicly, and what the observer is allowed to see.
 
 The simulation should be rigorous underneath and experiential on the surface. Its interest should come from watching pressure, limited knowledge, relationships, and contradiction alter a life—not from a victory condition, a prescribed plot, or a graph claiming to prove how people behave.
+
+The proposed implementation of this direction is divided into Official Record,
+Agent Understanding, Observation Delivery, and—only after two real uses
+exist—shared Claim and Provenance semantics. See
+[The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 
 ## Scope Test
 

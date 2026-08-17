@@ -1,5 +1,10 @@
 # First living slice delivery report
 
+> Historical delivery record. The later
+> [Lie and Doublethink architecture proposal](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md)
+> identifies proposed next modules and preserves the implementation described
+> here as the factual baseline; those modules were not part of this delivery.
+
 ## 1. Implemented simulation
 
 The delivered slice is a standard-library Python simulation with a reusable
@@ -58,20 +63,20 @@ was not overwritten or force-pushed. Details are in
   omniscient inspector.
 - Added JSON-compatible complete history data and same-seed replay checks.
 - Preserved all recovered experiments and tests while promoting the reusable
-  engine to the `twenty_eighty_four` package.
+  engine to the top-level simulation code.
 
 ## 4. Exact commands
 
 Normal observer:
 
 ```bash
-python3 -m twenty_eighty_four.scenarios.first_day --seed 42 --ticks 30
+python3 -m scenarios.first_day --seed 42 --ticks 30
 ```
 
 Development inspector:
 
 ```bash
-python3 -m twenty_eighty_four.scenarios.first_day --seed 42 --ticks 30 --inspect
+python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect
 ```
 
 All tests:

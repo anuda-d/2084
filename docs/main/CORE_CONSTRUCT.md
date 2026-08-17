@@ -1,5 +1,7 @@
 # Core Construct
 
+Status: current product direction.
+
 This document is a living guide to what 2084 is becoming. It describes the current direction without pretending that the setting, systems, or final form are settled.
 
 ## Central Idea
@@ -58,9 +60,25 @@ The doublethink-inspired mechanism should initially be modest. It can model cont
 
 Early contradictions should be structured and understandable, such as changing ration figures, revised production claims, altered rules, or conflicting accounts of a past event. Arbitrary language interpretation can wait.
 
+The proposed architecture separates this into four responsibilities. The
+**Official Record** owns the institution's mutable current public projection;
+**Observation Delivery** determines which version reaches which person and
+when; **Agent Understanding** owns source-linked memory, confidence, conflict,
+contextual stance, and inspectable suppression; and **Claim and Provenance** may
+later hold shared claim semantics once the first two modules provide two real
+uses. Objective events remain outside all four in the append-only history. See
+[The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
+
 ## Institutions
 
 Institutions may observe, broadcast, reward, investigate, ration, revise records, and punish. Their influence should come from rules, roles, resources, incentives, and social reach rather than direct access to private agent state.
+
+A revised official record changes only the institution's controlled public
+projection. It does not erase objective events, automatically alter private or
+uncontrolled physical records, or instantly grant the revision to every agent.
+Suppression and fabrication are therefore institutional operations with
+authority, access, processing, time, and evidence—not global edits to the
+simulation.
 
 Institutional limits matter. Surveillance can miss events. Reports can be false or delayed. Officials can misunderstand evidence. Processing capacity can become overloaded. Different parts of an institution can act from different information.
 
@@ -111,6 +129,21 @@ It does not yet model memory decay, reinterpretation, planning, or general
 language understanding. Public/private divergence currently occurs through one
 explicit social-pressure threshold.
 
+The active Official Record experiment now has three narrow seams: the institution
+can publish one immutable, structured three-packet ration-schedule version under
+a stable artifact identity without delivering it, and the focal character can
+later consult that current version through configured access at the allocation
+office. The consultation is recorded as an attempted and resolved action, with
+its version-linked observation delivered separately on the next tick. A later
+allocation resolution records the two-unit physical handover as its own
+resource-identified objective consequence and delivers that outcome separately,
+without changing the three-packet schedule. Rewrite is not implemented, and
+Agent Understanding, Claim and Provenance, and Observation Delivery remain
+proposals. The version-one scenario still also uses its generic record
+dictionary and global scheduled broadcasts; the current belief logic appends
+fixed-confidence claims; and the focal policy still contains the
+scenario-specific conformity and diary decisions.
+
 ## Observation and Playability
 
 Playability means embodied attention, not necessarily conventional control:
@@ -136,10 +169,12 @@ Authored material may seed people, places, pressures, and starting conditions. I
 - The original setting and historical background
 - The first small district and supporting population
 - How agent decisions combine rules and AI
-- How beliefs and confidence change over time
+- Which contextual stance, confidence, inhibition, or resurfacing rule is the
+  smallest useful Agent Understanding experiment
 - How much of the focal character's internal state the observer may inspect
 - Whether and how the observer can intervene
-- The initial institution and its actual capabilities
-- Which contradiction anchors the first working slice
+- Which institutional role may authorize and process the first Official Record rewrite
+- Whether the first record-operation follow-up explores one suppressed reference or one fabricated artifact
+- When Official Record and Agent Understanding provide enough evidence to extract shared Claim and Provenance semantics
 - Whether the diary becomes consequential beyond basic physical interaction
 - The eventual visual form and level of spatial detail

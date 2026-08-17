@@ -4,9 +4,14 @@ These are flexible working principles for coding agents and future contributors.
 
 ## Before Working
 
-- Read `README.md` and `CORE_CONSTRUCT.md` for the current direction.
-- Check `ARCHITECTURE.md` before introducing new responsibilities or sources of state.
-- Read `DESIGN_REFERENCES.md` before borrowing concepts from Orwell, the world-modeling paper, or `/Users/anuda/Desktop/sim`.
+- Read `README.md` and `docs/main/CORE_CONSTRUCT.md` for the current direction.
+- Check `docs/main/ARCHITECTURE.md` before introducing new responsibilities or sources of state.
+- Read `docs/plans/CURRENT.md` and its linked active goal before implementation
+  work. For the active Official Record experiment, its bounded `GOAL.md` is the
+  working authority. Use `docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md` only as
+  optional broader context or when no narrower approved goal governs the work;
+  do not treat its proposed modules as an implementation checklist.
+- Read `docs/main/DESIGN_REFERENCES.md` before borrowing concepts from Orwell, the world-modeling paper, or `/Users/anuda/Desktop/sim`.
 - Treat unanswered questions as open design space rather than silently deciding them.
 - Distinguish a temporary exploration from a lasting architectural choice.
 
@@ -19,11 +24,20 @@ These are flexible working principles for coding agents and future contributors.
 - Avoid treating AI output as automatically true, human, or internally consistent.
 - Consider whether a simpler rule-based approach could answer the same question.
 - Keep true world state, agent knowledge, and observer presentation conceptually distinct.
+- Preserve `EventLog` as append-only objective evidence. Official Record may
+  change a current public projection but must never rewrite objective history.
+- Do not treat an official-record change as automatic observation delivery.
+  Agents learn a version only through a channel they can actually access.
 - Do not add complexity only to imitate the full real world.
 - Treat the focal character as an autonomous participant, not a player puppet or privileged source of truth.
 - Keep the normal experience centered on watchable agency rather than conventional game objectives or a formal-study dashboard.
 - Use the reference simulation for transferable concepts, not as code, scenario, or interface to copy wholesale.
-- Model doublethink-inspired behavior through explicit contradictions, context, confidence, memory, and public/private divergence. Do not claim to simulate human consciousness.
+- Model doublethink-inspired behavior through source-linked memory, explicit
+  contradictions, confidence, contextual stance, accessibility, inspectable
+  inhibition or resurfacing, and public/private divergence. Do not erase source
+  evidence on conflict or claim to simulate human consciousness.
+- Keep public expression as an attempted action rather than silently equating it
+  with an agent's private or contextual understanding.
 - Keep the diary's initial scope physical and basic. Add discovery, concealment, or other consequences only when they create a necessary interaction.
 
 ## When Making Changes
@@ -46,3 +60,28 @@ These are flexible working principles for coding agents and future contributors.
 ## Current Bias
 
 For now, favor one autonomous focal life, a small living world, understandable agents, limited knowledge, and inspectable consequences over scale, conventional game systems, visual polish, or elaborate AI behavior.
+
+## Autonomous Development Loop
+
+- When working on a development cycle, read
+  `docs/main/DEVELOPMENT_LOOP.md` and follow its run contract.
+- The daily scheduled task may run consecutive development cycles during its
+  configured 6:00–9:00 PM America/Toronto window. Use the repository, not
+  prior task conversation, as durable context.
+- Before a scheduled run touches the repository, it must confirm that no
+  other 2084 task, loop orchestrator, or subagent thread is still active. Any
+  active project task makes the new trigger a no-op.
+- The owner may request manual cycles in chat at any time. Manual runs follow
+  the same authority, validation, review, and no-overlap rules but are not
+  restricted to the scheduled window unless the request says otherwise.
+- The active goal, not the trigger or task, defines authorized product and
+  implementation scope.
+- The main agent owns gap selection, implementation, integration, validation,
+  progress recording, commits, and the final report. It may partition genuinely
+  independent implementation work between subagents with exclusive ownership,
+  and must use a fresh read-only subagent for independent review of an
+  implementation cycle, as described by the loop contract.
+- Treat `experiments/` as read-only historical evidence unless an approved goal
+  explicitly targets it.
+- Do not select, broaden, or replace the active goal. Stop when the active goal
+  is complete or when continuing requires an owner decision.

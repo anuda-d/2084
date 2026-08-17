@@ -1,8 +1,12 @@
 # 2084: First Living Simulation Slice
 
 > Historical implementation brief. The completed reusable engine was later
-> promoted from `experiments/` to `twenty_eighty_four/`; use the commands in the
-> root `README.md` rather than the paths recorded below.
+> promoted from `experiments/` into the top-level `simulation/`, `policies/`,
+> `scenarios/`, and `observer/` directories. Use the commands in the root
+> [`README.md`](../../../README.md) rather than the historical paths below. The later
+> [Lie and Doublethink architecture proposal](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md)
+> describes the current deepening direction; it does not retroactively change
+> this completed milestone's requirements.
 
 ## Codex implementation goal
 
@@ -30,10 +34,10 @@ Repository: `anuda-d/2084`
 Before changing code, read these documents in full:
 
 1. `README.md`
-2. `CORE_CONSTRUCT.md`
-3. `ARCHITECTURE.md`
-4. `UI_ARCHITECTURE.md`
-5. `DESIGN_REFERENCES.md`
+2. `docs/main/CORE_CONSTRUCT.md`
+3. `docs/main/ARCHITECTURE.md`
+4. `docs/main/UI_ARCHITECTURE.md`
+5. `docs/main/DESIGN_REFERENCES.md`
 6. `AGENTS.md`
 
 Treat those documents as the source of product direction. Do not silently revise their core boundaries while implementing this goal.

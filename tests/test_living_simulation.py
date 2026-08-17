@@ -4,15 +4,15 @@ import subprocess
 import sys
 from dataclasses import fields, replace
 
-from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult
-from twenty_eighty_four.core.agents import AgentView
-from twenty_eighty_four.core.institutions import InstitutionView
-from twenty_eighty_four.core.events import freeze_mapping
-from twenty_eighty_four.observer.inspector import render_inspector
-from twenty_eighty_four.observer.terminal import render_terminal
-from twenty_eighty_four.core.simulation import FocalSnapshot
-from twenty_eighty_four.policies.focal_policy import FocalPolicy
-from twenty_eighty_four.scenarios.first_day import (
+from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult
+from simulation.agents import AgentView
+from simulation.institutions import InstitutionView
+from simulation.events import freeze_mapping
+from observer.inspector import render_inspector
+from observer.terminal import render_terminal
+from simulation.engine import FocalSnapshot
+from policies.focal_policy import FocalPolicy
+from scenarios.first_day import (
     CLERK_ID,
     CO_WORKER_ID,
     FOCAL_AGENT_ID,
@@ -181,7 +181,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(private.source_observation_ids, (direct.observation_id,))
         self.assertEqual(private.last_updated_tick, 7)
         self.assertEqual(private.confidence, 0.9)
-        self.assertEqual(snapshot.current_action, "wait for the allocation briefing")
+        self.assertEqual(snapshot.current_action, "consult the weekly ration schedule")
 
     def test_official_claim_conflicts_with_private_belief_and_drives_a_sourced_request(self):
         simulation = build_first_day(seed=42)
@@ -242,6 +242,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(resolution.caused_by, (request.event_id,))
         self.assertEqual(resolution.details["objective_allocatable_before"], 2)
         self.assertEqual(resolution.details["committed_units"], 1)
+        self.assertEqual(resolution.details["resource_id"], "household_allocation")
         self.assertEqual(resolution.details["granted_units"], 2)
         outcome = next(
             observation
@@ -250,6 +251,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
         self.assertEqual(dict(outcome.details), {
             "evidence_kind": "allocation_outcome",
+            "resource_id": "household_allocation",
             "granted_units": 2,
             "unfilled_units": 1,
         })
@@ -811,7 +813,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "twenty_eighty_four.scenarios.first_day",
+                "scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",
@@ -825,7 +827,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "twenty_eighty_four.scenarios.first_day",
+                "scenarios.first_day",
                 "--seed",
                 "42",
                 "--ticks",
@@ -863,6 +865,9 @@ class LivingSimulationStepTests(unittest.TestCase):
             "objective_allocation",
             "event_history",
             "institution_records",
+            "official_record",
+            "official_record_versions",
+            "current_official_record_version",
         ):
             self.assertNotIn(forbidden, agent_fields)
         institution_fields = {field.name for field in fields(InstitutionView)}

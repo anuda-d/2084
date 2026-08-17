@@ -1,4 +1,4 @@
-"""Reusable step container for the first living simulation slice."""
+"""Reusable engine for the first living simulation slice."""
 
 from __future__ import annotations
 
@@ -6,23 +6,23 @@ import random
 from dataclasses import dataclass
 from typing import Mapping
 
-from twenty_eighty_four.core.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
-from twenty_eighty_four.core.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
-from twenty_eighty_four.core.beliefs import (
+from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
+from simulation.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
+from simulation.beliefs import (
     Belief,
     BeliefTransition,
     belief_from_claim_observation,
     link_conflicts,
 )
-from twenty_eighty_four.core.events import (
+from simulation.events import (
     Event,
     EventLog,
     Observation,
     freeze_mapping,
     to_plain_data,
 )
-from twenty_eighty_four.core.institutions import InstitutionDecisionPolicy, InstitutionView
-from twenty_eighty_four.core.world import DiaryEntry, PhysicalDiary, WorldState
+from simulation.institutions import InstitutionDecisionPolicy, InstitutionView
+from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,8 @@ class SimulationRules:
     allocation_location: str
     resource_id: str
     resource_proposition: str
+    official_record_access_location: str
+    official_record_artifact_id: str
     travel_duration_ticks: int = 2
     work_duration_ticks: int = 2
     diary_write_duration_ticks: int = 2
@@ -172,6 +174,13 @@ class Simulation:
                 )
                 for entry in (diary.entries if diary is not None else ())
             ),
+            consultable_official_record_ids=(
+                (self.rules.official_record_artifact_id,)
+                if agent.location == self.rules.official_record_access_location
+                and self.rules.official_record_artifact_id
+                == self.world.institution.official_record.artifact_id
+                else ()
+            ),
             valid_actions=tuple(sorted(ACTION_KINDS)),
         )
 
@@ -274,6 +283,7 @@ class Simulation:
         allowed_by_kind = {
             "travel": {"destination"},
             "work": set(),
+            "consult_official_record": {"artifact_id"},
             "request_allocation": {"requested_units", "evidence_observation_ids"},
             "speak": {
                 "proposition",
@@ -413,6 +423,91 @@ class Simulation:
                 started_tick=self.tick,
                 completes_tick=self.tick + self.rules.travel_duration_ticks,
             )
+        elif attempt.kind == "consult_official_record":
+            artifact_id = attempt.parameters.get("artifact_id")
+            record = self.world.institution.official_record
+            if actor.location != self.rules.official_record_access_location:
+                self._record_rejection(
+                    attempted=attempted,
+                    actor_id=attempt.actor_id,
+                    reason=(
+                        "consult_official_record requires presence at "
+                        + self.rules.official_record_access_location
+                    ),
+                )
+            elif (
+                artifact_id != self.rules.official_record_artifact_id
+                or artifact_id != record.artifact_id
+            ):
+                self._record_rejection(
+                    attempted=attempted,
+                    actor_id=attempt.actor_id,
+                    reason="official record artifact is not available for consultation",
+                )
+            elif record.current_version is None:
+                self._record_rejection(
+                    attempted=attempted,
+                    actor_id=attempt.actor_id,
+                    reason="official record has no current published version",
+                )
+            else:
+                version = record.current_version
+                publication_event = next(
+                    (
+                        event
+                        for event in reversed(self.events)
+                        if event.kind == "official_record_published"
+                        and event.details.get("artifact_id") == version.artifact_id
+                        and event.details.get("version_id") == version.version_id
+                    ),
+                    None,
+                )
+                if publication_event is None:
+                    self._record_rejection(
+                        attempted=attempted,
+                        actor_id=attempt.actor_id,
+                        reason="official record version has no publication evidence",
+                    )
+                else:
+                    consultation = self._event_log.record(
+                        tick=self.tick,
+                        kind="official_record_consulted",
+                        actor_id=attempt.actor_id,
+                        action_id=action_id,
+                        caused_by=(attempted.event_id, publication_event.event_id),
+                        details={
+                            "artifact_id": version.artifact_id,
+                            "version_id": version.version_id,
+                            "period_id": version.period_id,
+                            "entitlement_packets": version.entitlement_packets,
+                            "previous_version_id": version.previous_version_id,
+                            "publication_event_id": publication_event.event_id,
+                        },
+                    )
+                    self._record_completion(
+                        attempted=attempted,
+                        outcome=consultation,
+                        actor_id=attempt.actor_id,
+                        action_kind=attempt.kind,
+                    )
+                    self._queued_observations.append(
+                        {
+                            "delivery_tick": self.tick + 1,
+                            "agent_id": attempt.actor_id,
+                            "event_id": consultation.event_id,
+                            "source": self.world.institution.display_name + " public record",
+                            "details": {
+                                "evidence_kind": "official_record_version",
+                                "artifact_id": version.artifact_id,
+                                "version_id": version.version_id,
+                                "period_id": version.period_id,
+                                "proposition": "weekly_household_ration_entitlement_packets",
+                                "asserted_value": version.entitlement_packets,
+                                "previous_version_id": version.previous_version_id,
+                                "publication_event_id": publication_event.event_id,
+                            },
+                        }
+                    )
         elif attempt.kind == "request_allocation":
             if actor.location != self.rules.allocation_location:
                 self._record_rejection(
@@ -458,6 +553,7 @@ class Simulation:
                         action_id=action_id,
                         caused_by=(attempted.event_id,),
                         details={
+                            "resource_id": self.rules.resource_id,
                             "requested_units": requested,
                             "granted_units": granted,
                             "unfilled_units": requested - granted,
@@ -481,6 +577,7 @@ class Simulation:
                             "resource_id": self.rules.resource_id,
                             "details": {
                                 "evidence_kind": "allocation_outcome",
+                                "resource_id": self.rules.resource_id,
                                 "granted_units": granted,
                                 "unfilled_units": requested - granted,
                             },
@@ -899,13 +996,33 @@ class Simulation:
 
     def _apply_scheduled_institutional_events(self) -> tuple[Observation, ...]:
         institution = self.world.institution
-        claim = self._institution_policy.choose_claim(
-            InstitutionView(
-                tick=self.tick,
-                records=dict(institution.records),
-                reports=tuple(institution.reports),
-            )
+        view = InstitutionView(
+            tick=self.tick,
+            records=dict(institution.records),
+            reports=tuple(institution.reports),
         )
+        publication = self._institution_policy.choose_initial_publication(view)
+        if publication is not None:
+            version = institution.official_record.publish_initial(
+                artifact_id=publication.artifact_id,
+                version_id=publication.version_id,
+                period_id=publication.period_id,
+                entitlement_packets=publication.entitlement_packets,
+            )
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_published",
+                actor_id=institution.institution_id,
+                details={
+                    "artifact_id": version.artifact_id,
+                    "version_id": version.version_id,
+                    "period_id": version.period_id,
+                    "entitlement_packets": version.entitlement_packets,
+                    "previous_version_id": version.previous_version_id,
+                },
+            )
+
+        claim = self._institution_policy.choose_claim(view)
         if claim is None:
             return ()
         prior_claim = institution.last_public_claim_event_id
@@ -1066,6 +1183,7 @@ class Simulation:
                 "focal_agent_id": self.focal_agent_id,
                 "scenario": to_plain_data(self.scenario_configuration),
             },
+            "official_record": self.world.institution.official_record.to_data(),
             "events": [
                 {
                     "event_id": event.event_id,
