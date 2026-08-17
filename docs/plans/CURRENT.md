@@ -11,7 +11,7 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Seven implementation runs have been verified and recorded for this goal.
+Eight implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -22,18 +22,51 @@ Seven implementation runs have been verified and recorded for this goal.
 | OR-5 Preserved evidence | Met — verified both versions, lineage, and objective publication/rewrite evidence in detached history and the inspector |
 | OR-6 No magical knowledge | Met — verified no rewrite delivery, separate access-valid consultation, next-tick version-two delivery, and retained version-one observation |
 | OR-7 Unauthorized rewrite rejected | Met — verified an unauthorized current-target attempt is rejected without changing the published version |
-| OR-8 Stale-target rewrite rejected | Unmet |
+| OR-8 Stale-target rewrite rejected | Met — verified an authorized stale-target attempt is rejected without changing the current two-packet version |
 | OR-9 Understandable run | Unmet |
 | OR-10 Reproduction | Unmet |
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 1
+- Verified implementation runs since the last alignment review: 2
 - Consecutive verified runs on the same criterion: 1
-- Last verified criterion: OR-7 Unauthorized rewrite rejected
+- Last verified criterion: OR-8 Stale-target rewrite rejected
 - Incomplete autonomous cycle: none
 - Next cycle requirement: select the smallest unmet criterion that creates new
-  goal-level behavioral evidence; OR-8 is the next justified candidate
+  goal-level behavioral evidence; OR-9 is the next justified candidate
+
+## OR-8 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- after the configured authorized rewrite makes version two current, a second
+  attempt by the same authorized actor targets the superseded version one;
+- the resolver records that attempt and a separate causally linked rejected
+  result whose generic reason does not expose the current version;
+- the Official Record retains the unchanged immutable version-one and
+  version-two tuple with version two current, no accepted version-three event
+  exists, and neither stale-attempt event becomes an observation;
+- the focused Official Record suite passes 10 tests, and the repository check
+  passes 48 simulation tests and 63 recovery tests.
+
+Interpretation:
+
+- OR-8 has proportionate evidence and is closed;
+- no production code was needed because Official Record already rejects a
+  mismatched expected-current version and the institutional resolver already
+  translates that failure into actor-safe evidence;
+- the focused test invokes the same resolver used by the scheduled policy after
+  establishing version two through the real scenario path; no general operation
+  API or test-only production seam was added;
+- OR-9 is the next justified candidate and should replace the remaining legacy
+  broadcast-driven path with one autonomous later consultation before OR-10
+  closes reproduction evidence.
+
+Independent review found no blocking or non-blocking goal mismatch, impossible
+knowledge or authority, append-only history violation, publication-delivery
+coupling, missing OR-8 evidence, false-positive test, unnecessary complexity,
+or unrelated scope. It independently reran the new test and confirmed that the
+private resolver call is proportionate focused evidence for this narrow case.
 
 ## OR-7 Implementation Cycle — 2026-08-17
 

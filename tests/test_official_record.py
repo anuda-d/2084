@@ -12,6 +12,7 @@ from scenarios.first_day import (
     build_first_day,
 )
 from simulation.actions import ActionAttempt
+from simulation.institutions import OfficialRecordRewrite
 from simulation.official_record import OfficialRecord
 
 
@@ -380,6 +381,59 @@ class OfficialRecordTests(unittest.TestCase):
         self.assertIn(publication, simulation.events)
         self.assertFalse(
             any(event.kind == "official_record_rewritten" for event in simulation.events)
+        )
+        rejection_event_ids = {attempt.event_id, rejected.event_id}
+        self.assertFalse(
+            any(
+                observation["event_id"] in rejection_event_ids
+                for observation in simulation.history_data()["observations"]
+            )
+        )
+
+    def test_authorized_stale_target_rewrite_is_rejected_without_mutation(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(10):
+            simulation.step()
+
+        record = simulation.world.institution.official_record
+        versions_before = record.versions
+        current_before = record.current_version
+        event_count_before = len(simulation.events)
+        stale_rewrite = OfficialRecordRewrite(
+            actor_id="civic-allocation-office",
+            reason="replace an already superseded schedule version",
+            artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+            expected_current_version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+            version_id="ration-schedule-week-14-v3",
+            period_id=RATION_SCHEDULE_PERIOD_ID,
+            entitlement_packets=1,
+        )
+
+        simulation._resolve_scheduled_official_record_rewrite(stale_rewrite)
+
+        attempt, rejected = simulation.events[event_count_before:]
+        self.assertEqual(attempt.kind, "official_record_rewrite_attempted")
+        self.assertEqual(attempt.actor_id, stale_rewrite.actor_id)
+        self.assertEqual(
+            attempt.details["expected_current_version_id"],
+            RATION_SCHEDULE_VERSION_ONE_ID,
+        )
+        self.assertEqual(rejected.kind, "official_record_rewrite_rejected")
+        self.assertEqual(rejected.actor_id, attempt.actor_id)
+        self.assertEqual(rejected.caused_by, (attempt.event_id,))
+        self.assertEqual(
+            dict(rejected.details),
+            {"reason": "official record rejected the requested rewrite"},
+        )
+        self.assertEqual(record.versions, versions_before)
+        self.assertEqual(record.current_version, current_before)
+        self.assertEqual(record.current_version_id, RATION_SCHEDULE_VERSION_TWO_ID)
+        self.assertFalse(
+            any(
+                event.kind == "official_record_rewritten"
+                and event.details.get("version_id") == stale_rewrite.version_id
+                for event in simulation.events
+            )
         )
         rejection_event_ids = {attempt.event_id, rejected.event_id}
         self.assertFalse(
