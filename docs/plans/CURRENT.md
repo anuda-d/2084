@@ -28,12 +28,42 @@ Three implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 3
-- Consecutive verified runs on the same criterion: 1
+- Verified implementation runs since the last alignment review: 0
+- Consecutive verified runs on the same criterion: 0
 - Last verified criterion: OR-3 Separate physical result
 - Incomplete autonomous cycle: none
-- Next cycle requirement: perform the goal-level alignment review before
-  another implementation run
+- Next cycle requirement: none; the next implementation cycle may advance
+  OR-4 Authorized rewrite
+
+## Goal-Level Alignment Review — 2026-08-16
+
+Observed behavior:
+
+- version one is published as an immutable three-packet schedule without
+  delivering knowledge to an agent;
+- the focal character encounters that version only through the configured
+  location-gated consultation, with source and version links intact;
+- the later two-packet physical handover is separate objective evidence and
+  does not change the three-packet schedule;
+- the full repository check passes, and the normal and omniscient views retain
+  their intended knowledge boundary.
+
+Interpretation:
+
+- OR-1 through OR-3 have proportionate evidence and remain correctly closed;
+- the changes add only the narrow Official Record, consultation, and physical
+  consequence seams authorized by this goal, so complexity has not yet grown
+  faster than explanatory value;
+- the experiment's central question is still unanswered because no rewrite
+  exists, version one remains current, and the legacy five-to-one broadcast
+  sequence still drives the later day;
+- nothing should be removed before the rewrite uses these seams.
+
+The next justified implementation candidate is OR-4: one authorized,
+expected-current-version rewrite that creates the two-packet version and makes
+it current. Rejection paths, later delivery, end-to-end presentation, and
+scenario-version cleanup remain separate later evidence unless the smallest
+coherent implementation necessarily overlaps them.
 
 Only evidence that passed the loop's focused checks, full repository check, and
 self-review belongs in the Verified Progress table and loop counters. Record
