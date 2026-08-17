@@ -21,7 +21,11 @@ from simulation.events import (
     freeze_mapping,
     to_plain_data,
 )
-from simulation.institutions import InstitutionDecisionPolicy, InstitutionView
+from simulation.institutions import (
+    InstitutionDecisionPolicy,
+    InstitutionView,
+    OfficialRecordRewrite,
+)
 from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
@@ -994,6 +998,84 @@ class Simulation:
                 )
             )
 
+    def _resolve_scheduled_official_record_rewrite(
+        self, rewrite: OfficialRecordRewrite
+    ) -> None:
+        institution = self.world.institution
+        attempted = self._event_log.record(
+            tick=self.tick,
+            kind="official_record_rewrite_attempted",
+            actor_id=rewrite.actor_id,
+            details={
+                "reason": rewrite.reason,
+                "artifact_id": rewrite.artifact_id,
+                "expected_current_version_id": rewrite.expected_current_version_id,
+                "version_id": rewrite.version_id,
+                "period_id": rewrite.period_id,
+                "entitlement_packets": rewrite.entitlement_packets,
+            },
+        )
+        if (
+            rewrite.actor_id
+            not in institution.official_record_rewrite_authorized_actor_ids
+        ):
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_rewrite_rejected",
+                actor_id=rewrite.actor_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": "actor is not authorized to rewrite this record"},
+            )
+            return
+
+        prior_publication = next(
+            (
+                event
+                for event in reversed(self.events)
+                if event.kind in {"official_record_published", "official_record_rewritten"}
+                and event.details.get("artifact_id") == rewrite.artifact_id
+                and event.details.get("version_id")
+                == rewrite.expected_current_version_id
+            ),
+            None,
+        )
+        try:
+            version = institution.official_record.rewrite(
+                artifact_id=rewrite.artifact_id,
+                expected_current_version_id=rewrite.expected_current_version_id,
+                version_id=rewrite.version_id,
+                period_id=rewrite.period_id,
+                entitlement_packets=rewrite.entitlement_packets,
+            )
+        except ValueError:
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_rewrite_rejected",
+                actor_id=rewrite.actor_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": "official record rejected the requested rewrite"},
+            )
+            return
+
+        self._event_log.record(
+            tick=self.tick,
+            kind="official_record_rewritten",
+            actor_id=rewrite.actor_id,
+            caused_by=(
+                (attempted.event_id, prior_publication.event_id)
+                if prior_publication is not None
+                else (attempted.event_id,)
+            ),
+            details={
+                "reason": rewrite.reason,
+                "artifact_id": version.artifact_id,
+                "version_id": version.version_id,
+                "period_id": version.period_id,
+                "entitlement_packets": version.entitlement_packets,
+                "previous_version_id": version.previous_version_id,
+            },
+        )
+
     def _apply_scheduled_institutional_events(self) -> tuple[Observation, ...]:
         institution = self.world.institution
         view = InstitutionView(
@@ -1021,6 +1103,10 @@ class Simulation:
                     "previous_version_id": version.previous_version_id,
                 },
             )
+
+        rewrite = self._institution_policy.choose_official_record_rewrite(view)
+        if rewrite is not None:
+            self._resolve_scheduled_official_record_rewrite(rewrite)
 
         claim = self._institution_policy.choose_claim(view)
         if claim is None:

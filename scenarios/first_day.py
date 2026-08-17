@@ -5,7 +5,11 @@ from __future__ import annotations
 import argparse
 
 from simulation.agents import AgentState
-from simulation.institutions import InstitutionState, OfficialRecordPublication
+from simulation.institutions import (
+    InstitutionState,
+    OfficialRecordPublication,
+    OfficialRecordRewrite,
+)
 from simulation.engine import Simulation, SimulationRules
 from simulation.official_record import OfficialRecord
 from simulation.world import PhysicalDiary, ResourceState, WorldState
@@ -19,6 +23,7 @@ CO_WORKER_ID = "ilan-reed"
 CLERK_ID = "sena-orr"
 RATION_SCHEDULE_ARTIFACT_ID = "weekly-household-ration-schedule"
 RATION_SCHEDULE_VERSION_ONE_ID = "weekly-household-ration-schedule-v1"
+RATION_SCHEDULE_VERSION_TWO_ID = "weekly-household-ration-schedule-v2"
 RATION_SCHEDULE_PERIOD_ID = "first-day-week"
 
 
@@ -66,6 +71,9 @@ def build_first_day(seed: int = 42) -> Simulation:
             display_name="Civic Allocation Office",
             official_record=OfficialRecord(artifact_id=RATION_SCHEDULE_ARTIFACT_ID),
             records={"public_claim_schedule_authorized": True},
+            official_record_rewrite_authorized_actor_ids=(
+                "civic-allocation-office",
+            ),
         ),
         diaries={
             "mara-private-diary": PhysicalDiary(
@@ -89,6 +97,17 @@ def build_first_day(seed: int = 42) -> Simulation:
                     version_id=RATION_SCHEDULE_VERSION_ONE_ID,
                     period_id=RATION_SCHEDULE_PERIOD_ID,
                     entitlement_packets=3,
+                )
+            },
+            official_record_rewrite_schedule={
+                10: OfficialRecordRewrite(
+                    actor_id="civic-allocation-office",
+                    reason="align the published schedule with the two-packet issue",
+                    artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+                    expected_current_version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+                    version_id=RATION_SCHEDULE_VERSION_TWO_ID,
+                    period_id=RATION_SCHEDULE_PERIOD_ID,
+                    entitlement_packets=2,
                 )
             },
         ),
@@ -127,6 +146,17 @@ def build_first_day(seed: int = 42) -> Simulation:
                 "entitlement_packets": 3,
             },
             "official_record_access_location": "allocation_office",
+            "official_record_rewrite": {
+                "tick": 10,
+                "actor_id": "civic-allocation-office",
+                "reason": "align the published schedule with the two-packet issue",
+                "authorized_actor_ids": ["civic-allocation-office"],
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "expected_current_version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                "version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                "period_id": RATION_SCHEDULE_PERIOD_ID,
+                "entitlement_packets": 2,
+            },
             "public_pressure": 0.8,
             "public_conformity_threshold": 0.7,
             "action_durations": {

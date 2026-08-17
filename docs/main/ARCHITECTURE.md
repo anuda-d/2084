@@ -27,9 +27,9 @@ The focal-character view presents only an appropriate projection
 `Simulation.step()` currently performs this loop in a stable order:
 
 1. Increment the world tick.
-2. Apply a scheduled initial official-record publication, then scheduled
-   institutional claims and their broadcasts. The initial publication creates
-   objective evidence but no observation.
+2. Apply a scheduled initial official-record publication, authorized record
+   rewrite, then scheduled institutional claims and their broadcasts. Publication
+   and rewrite create objective evidence but no observation.
 3. Complete actions whose duration has elapsed.
 4. Deliver completion perceptions and queued prior-action outcomes.
 5. Update structured beliefs from newly delivered claim observations.
@@ -50,7 +50,8 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 - `simulation/events.py` contains immutable append-only events and
   agent-specific observations with source links.
 - `simulation/official_record.py` currently owns one ration schedule's stable
-  artifact identity, immutable initial version, and current-version pointer.
+  artifact identity, immutable versions, same-period revision lineage, and
+  current-version pointer.
 - `simulation/agents.py` separates mutable agent state from the immutable
   restricted view supplied to a policy.
 - `simulation/beliefs.py` derives the currently supported structured
@@ -71,8 +72,8 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 The possible deeper architecture is described in detail in
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 It is a proposal, not a description of currently implemented modules. The
-active bounded goal has begun with the initial-publication and narrow public
-consultation seams described above.
+active bounded goal has begun with the initial-publication, narrow public
+consultation, and authorized rewrite seams described above.
 
 - **Official Record** would own the institution's mutable current public
   projection and bounded rewrite, suppression, and fabrication operations.
@@ -273,12 +274,15 @@ should not be presented as an emergent plot.
 - Belief creation recognizes one structured allocation proposition with fixed
   confidence values. There is no memory decay or general inference.
 - Institutional reports and processing capacity are represented conceptually,
-  but the current institution only applies the scheduled initial publication
-  and emits legacy scheduled broadcasts. Those broadcasts reach every agent.
+  but the current institution only applies the scheduled initial publication and
+  one authored authorized rewrite, and emits legacy scheduled broadcasts. Those
+  broadcasts reach every agent.
 - Official Record currently supports one structured initial ration-schedule
-  publication and a location-gated consultation of its current version. Rewrite
-  validation, lineage beyond version one, and a completed replacement of the
-  legacy generic broadcasts are not yet implemented.
+  publication, a location-gated consultation of version one, and an authorized
+  same-period rewrite that retains lineage and moves the current pointer to
+  version two. The consultation resolver does not yet recognize rewrite evidence,
+  so version two cannot yet be encountered; rejection evidence and replacement
+  of the legacy generic broadcasts are also incomplete.
 - The allocation resolver records the two-unit physical handover as a separate,
   resource-identified objective consequence. Its later delivered outcome updates
   focal holdings without changing the published ration schedule.

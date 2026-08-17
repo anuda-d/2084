@@ -8,12 +8,41 @@ from scenarios.first_day import (
     RATION_SCHEDULE_ARTIFACT_ID,
     RATION_SCHEDULE_PERIOD_ID,
     RATION_SCHEDULE_VERSION_ONE_ID,
+    RATION_SCHEDULE_VERSION_TWO_ID,
     build_first_day,
 )
 from simulation.actions import ActionAttempt
+from simulation.official_record import OfficialRecord
 
 
 class OfficialRecordTests(unittest.TestCase):
+    def test_rewrite_appends_same_period_version_and_moves_current_projection(self):
+        record = OfficialRecord(artifact_id=RATION_SCHEDULE_ARTIFACT_ID)
+        version_one = record.publish_initial(
+            artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+            version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+            period_id=RATION_SCHEDULE_PERIOD_ID,
+            entitlement_packets=3,
+        )
+
+        version_two = record.rewrite(
+            artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+            expected_current_version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+            version_id=RATION_SCHEDULE_VERSION_TWO_ID,
+            period_id=RATION_SCHEDULE_PERIOD_ID,
+            entitlement_packets=2,
+        )
+
+        self.assertEqual(record.versions, (version_one, version_two))
+        self.assertEqual(record.current_version, version_two)
+        self.assertEqual(record.current_version_id, RATION_SCHEDULE_VERSION_TWO_ID)
+        self.assertEqual(version_one.entitlement_packets, 3)
+        self.assertIsNone(version_one.previous_version_id)
+        self.assertEqual(version_two.entitlement_packets, 2)
+        self.assertEqual(
+            version_two.previous_version_id, RATION_SCHEDULE_VERSION_ONE_ID
+        )
+
     def test_initial_publication_sets_current_three_packet_weekly_version(self):
         simulation = build_first_day(seed=42)
 
@@ -234,6 +263,78 @@ class OfficialRecordTests(unittest.TestCase):
         )
         self.assertEqual(handover_tick.held_units, 2)
         self.assertEqual(handover_tick.remaining_required_units, 1)
+
+    def test_configured_authorized_rewrite_records_attempt_and_accepted_result(self):
+        simulation = build_first_day(seed=42)
+        for _ in range(10):
+            simulation.step()
+
+        record = simulation.world.institution.official_record
+        version_one, version_two = record.versions
+        attempt = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewrite_attempted"
+        )
+        rewritten = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewritten"
+        )
+        initial_publication = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_published"
+        )
+
+        self.assertEqual(attempt.tick, 10)
+        self.assertEqual(attempt.actor_id, "civic-allocation-office")
+        self.assertIn(
+            attempt.actor_id,
+            simulation.world.institution.official_record_rewrite_authorized_actor_ids,
+        )
+        self.assertEqual(
+            dict(attempt.details),
+            {
+                "reason": "align the published schedule with the two-packet issue",
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "expected_current_version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                "version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                "period_id": RATION_SCHEDULE_PERIOD_ID,
+                "entitlement_packets": 2,
+            },
+        )
+        self.assertEqual(rewritten.tick, 10)
+        self.assertEqual(rewritten.actor_id, attempt.actor_id)
+        self.assertEqual(
+            rewritten.caused_by, (attempt.event_id, initial_publication.event_id)
+        )
+        self.assertEqual(
+            dict(rewritten.details),
+            {
+                "reason": "align the published schedule with the two-packet issue",
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                "period_id": RATION_SCHEDULE_PERIOD_ID,
+                "entitlement_packets": 2,
+                "previous_version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+            },
+        )
+        self.assertEqual(version_one.version_id, RATION_SCHEDULE_VERSION_ONE_ID)
+        self.assertEqual(version_one.entitlement_packets, 3)
+        self.assertEqual(version_two.version_id, RATION_SCHEDULE_VERSION_TWO_ID)
+        self.assertEqual(version_two.entitlement_packets, 2)
+        self.assertEqual(
+            version_two.previous_version_id, RATION_SCHEDULE_VERSION_ONE_ID
+        )
+        self.assertEqual(record.current_version, version_two)
+        rewrite_event_ids = {attempt.event_id, rewritten.event_id}
+        self.assertFalse(
+            any(
+                observation["event_id"] in rewrite_event_ids
+                for observation in simulation.history_data()["observations"]
+            )
+        )
 
 
 if __name__ == "__main__":

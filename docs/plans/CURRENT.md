@@ -11,14 +11,14 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Three implementation runs have been verified and recorded for this goal.
+Four implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
 | OR-1 Initial publication | Met — verified three-packet version-one publication evidence |
 | OR-2 Valid delivery | Met — verified location-gated, version-linked consultation evidence |
 | OR-3 Separate physical result | Met — verified resource-identified two-packet handover evidence, delivered separately from the unchanged three-packet entitlement |
-| OR-4 Authorized rewrite | Unmet |
+| OR-4 Authorized rewrite | Met — verified configured authorized attempt, separate accepted result, and current two-packet version linked to version one |
 | OR-5 Preserved evidence | Unmet |
 | OR-6 No magical knowledge | Unmet |
 | OR-7 Unauthorized rewrite rejected | Unmet |
@@ -28,12 +28,45 @@ Three implementation runs have been verified and recorded for this goal.
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 0
-- Consecutive verified runs on the same criterion: 0
-- Last verified criterion: OR-3 Separate physical result
+- Verified implementation runs since the last alignment review: 1
+- Consecutive verified runs on the same criterion: 1
+- Last verified criterion: OR-4 Authorized rewrite
 - Incomplete autonomous cycle: none
 - Next cycle requirement: none; the next implementation cycle may advance
-  OR-4 Authorized rewrite
+  OR-5 Preserved evidence
+
+## OR-4 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- at tick 10, after the physical handover, the configured Civic Allocation
+  Office attempts the authored rewrite for the configured reason;
+- the engine records the attempt separately, verifies the actor against the
+  configured authority, and records a distinct accepted rewrite result;
+- the Official Record retains the immutable three-packet version one, appends a
+  two-packet version two for the same period with lineage to version one, and
+  makes version two current;
+- neither rewrite event creates an observation, the normal focal view exposes no
+  rewrite or version-two identifier, and the inspector exposes the complete
+  objective evidence and current projection;
+- the focused Official Record suite passes 6 tests, the repository check passes
+  44 simulation tests and 63 recovery tests, and both normal and inspector runs
+  complete successfully.
+
+Interpretation:
+
+- OR-4 has proportionate evidence and is closed;
+- the rewrite is an authored scheduled input, not an emergent institutional
+  choice, and its configured authority does not grant any agent hidden state;
+- OR-5 and OR-6 remain open: although the retained versions and events are now
+  inspectable, version-two consultation is not implemented because the
+  consultation resolver recognizes only initial-publication evidence;
+- the legacy broadcasts and `first_day_v1` identifier remain intentionally for
+  later end-to-end work.
+
+Independent review found no blocking goal mismatch, authority or knowledge
+violation, objective-history mutation, publication-delivery coupling, missing
+OR-4 evidence, unnecessary deep module, or unrelated scope.
 
 ## Goal-Level Alignment Review — 2026-08-16
 
