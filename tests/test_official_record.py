@@ -134,6 +134,7 @@ class OfficialRecordTests(unittest.TestCase):
             event
             for event in simulation.events
             if event.kind == "official_record_consulted"
+            and event.actor_id == FOCAL_AGENT_ID
         )
         self.assertEqual(attempt.details["artifact_id"], RATION_SCHEDULE_ARTIFACT_ID)
         self.assertEqual(
@@ -473,15 +474,26 @@ class OfficialRecordTests(unittest.TestCase):
             )
         )
 
-        attempted = simulation.resolve_attempt(
-            ActionAttempt(
-                actor_id=FOCAL_AGENT_ID,
-                kind="consult_official_record",
-                parameters={"artifact_id": RATION_SCHEDULE_ARTIFACT_ID},
-                explanation="consult the revised weekly ration schedule",
-            )
+        consultation_tick = simulation.step()
+        attempted = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.tick == 11
+            and event.details["action_kind"] == "consult_official_record"
         )
-        consultation = simulation.events[-1]
+        consultation = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_consulted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.details["version_id"] == RATION_SCHEDULE_VERSION_TWO_ID
+        )
+        self.assertEqual(
+            consultation_tick.current_action,
+            "consult the weekly ration schedule again",
+        )
         self.assertEqual(consultation.kind, "official_record_consulted")
         self.assertEqual(consultation.action_id, attempted.action_id)
         self.assertEqual(

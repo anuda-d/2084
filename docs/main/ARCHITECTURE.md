@@ -246,18 +246,19 @@ The current scenario contains:
 - two supporting characters with small deterministic policies;
 - a home, workplace, and allocation office connected by a travel graph;
 - one institution with a structured initial ration-schedule publication,
-  scheduled legacy broadcasts, and a small generic record;
+  one authored authorized rewrite, and no scheduled generic broadcast in the
+  current scenario;
 - a workplace obligation and a three-unit household allocation need;
-- official five-unit and later one-unit claims that contradict direct sight of
-  three units;
+- a three-packet published entitlement, a separate two-packet physical handover,
+  and a later two-packet published entitlement encountered through reconsultation;
 - a basic physical diary;
 - autonomous step advancement, action durations, and a filtered focal view.
 
 The scenario is a feasibility result rather than a general social simulation.
-Its starting need, route, claim schedule, hidden resource commitment, pressure
-value, conformity threshold, policy priorities, and action durations are
-authored. The policies choose from delivered information, but the resulting day
-should not be presented as an emergent plot.
+Its starting need, route, publication and rewrite timing, hidden resource
+commitment, pressure value, conformity threshold, policy priorities, and action
+durations are authored. The policies choose from delivered information, but the
+resulting day should not be presented as an emergent plot.
 
 ## Current Technical Limits
 
@@ -275,16 +276,16 @@ should not be presented as an emergent plot.
   confidence values. There is no memory decay or general inference.
 - Institutional reports and processing capacity are represented conceptually,
   but the current institution only applies the scheduled initial publication and
-  one authored authorized rewrite, and emits legacy scheduled broadcasts. Those
-  broadcasts reach every agent.
+  one authored authorized rewrite. The generic engine broadcast path remains,
+  but the current scenario does not configure it.
 - Official Record currently supports one structured initial ration-schedule
   publication, a location-gated consultation of version one, and an authorized
   same-period rewrite that retains lineage and moves the current pointer to
   version two. The consultation resolver recognizes accepted rewrite evidence,
-  so a later access-valid consultation can deliver version two without changing
-  the retained version-one observation. The autonomous focal path does not yet
-  perform that later consultation; rejection evidence and replacement of the
-  legacy generic broadcasts are also incomplete.
+  and the autonomous focal path later reconsults through configured access to
+  receive version two without changing the retained version-one observation.
+  Focused evidence also covers unauthorized and stale-target rejection without
+  changing the current projection.
 - The allocation resolver records the two-unit physical handover as a separate,
   resource-identified objective consequence. Its later delivered outcome updates
   focal holdings without changing the published ration schedule.

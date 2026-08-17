@@ -39,12 +39,24 @@ def _observation_line(snapshot: FocalSnapshot, index: int) -> str | None:
             f"Observed: official broadcast {verb} "
             f"{_units(details['asserted_value'], allocation=True)}."
         )
+    if kind == "official_record_version":
+        return (
+            "Official schedule encountered: weekly household entitlement is "
+            f"{details['asserted_value']} packets."
+        )
     if kind == "allocation_outcome":
         return (
-            "Allocation outcome: "
-            f"{details['granted_units']} granted and {details['unfilled_units']} unfilled."
+            "Physical handover: "
+            f"{details['granted_units']} packets received and "
+            f"{details['unfilled_units']} packet unfilled."
         )
     if kind == "social_pressure":
+        if details.get("proposition") == "weekly_household_ration_entitlement_packets":
+            return (
+                "Public pressure: the allocation clerk repeated the official "
+                f"{details['asserted_value']}-packet entitlement under "
+                f"{details['reason']}."
+            )
         return (
             "Public pressure: the allocation clerk repeated the official "
             f"{details['asserted_value']}-unit claim under {details['reason']}."

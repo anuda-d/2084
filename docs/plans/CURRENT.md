@@ -11,7 +11,7 @@ The owner approved this goal as an intentional evolution of the single
 
 ## Verified Progress
 
-Eight implementation runs have been verified and recorded for this goal.
+Nine implementation runs have been verified and recorded for this goal.
 
 | Criterion | Status |
 | --- | --- |
@@ -23,17 +23,63 @@ Eight implementation runs have been verified and recorded for this goal.
 | OR-6 No magical knowledge | Met — verified no rewrite delivery, separate access-valid consultation, next-tick version-two delivery, and retained version-one observation |
 | OR-7 Unauthorized rewrite rejected | Met — verified an unauthorized current-target attempt is rejected without changing the published version |
 | OR-8 Stale-target rewrite rejected | Met — verified an authorized stale-target attempt is rejected without changing the current two-packet version |
-| OR-9 Understandable run | Unmet |
+| OR-9 Understandable run | Met — verified the autonomous promise, handover, hidden rewrite, later consultation, filtered focal view, and complete inspector chain |
 | OR-10 Reproduction | Unmet |
 
 ## Loop State
 
-- Verified implementation runs since the last alignment review: 2
+- Verified implementation runs since the last alignment review: 3
 - Consecutive verified runs on the same criterion: 1
-- Last verified criterion: OR-8 Stale-target rewrite rejected
+- Last verified criterion: OR-9 Understandable run
 - Incomplete autonomous cycle: none
-- Next cycle requirement: select the smallest unmet criterion that creates new
-  goal-level behavioral evidence; OR-9 is the next justified candidate
+- Next cycle requirement: perform and record a goal-level alignment review before
+  another implementation change
+
+## OR-9 Implementation Cycle — 2026-08-17
+
+Observed behavior:
+
+- the allocation clerk separately consults version one through configured
+  access before using that delivered schedule as evidence for counter pressure;
+- the focal character consults version one, receives its three-packet entitlement
+  on the next tick, and separately receives a two-packet physical handover;
+- the tick-10 authored rewrite creates no observation, and the focal character
+  responds only to the version-one schedule and pressure already delivered;
+- the focal policy autonomously reconsults at tick 11 because the partial
+  handover and public interaction justify another check, not because it knows a
+  rewrite occurred; version two arrives separately at tick 12 while the
+  version-one observation remains unchanged;
+- the normal view shows the encountered three-packet and two-packet schedules,
+  physical handover, pressure, diary, and unfinished household need without
+  version identifiers or rewrite internals; the inspector retains publication,
+  both consultations, handover, rewrite attempt and result, versions, lineage,
+  observations, and causal links;
+- `first_day_v2` removes the configured five-to-one legacy broadcasts while
+  preserving the 24-tick movement, work, allocation, pressure, and diary path;
+- the focused living-simulation and Official Record suites pass 48 tests, the
+  repository check passes 48 simulation tests and 63 recovery tests, and both
+  normal and inspector commands complete successfully.
+
+Interpretation:
+
+- OR-9 has proportionate end-to-end evidence and is closed;
+- schedule entitlement and physical handover remain distinct propositions and
+  evidence paths; Official Record observations are not folded into the existing
+  physical-allocation belief model;
+- the second consultation and rewrite timing are authored scenario behavior,
+  not an emergent institutional choice, and no new delivery, belief, or claim
+  module was introduced;
+- OR-10 remains the only unmet criterion, but the contract requires a recorded
+  goal-level alignment review before another implementation change.
+
+Independent review found no blocking goal mismatch, hidden knowledge or
+authority, entitlement/handover conflation in structured state, append-only
+history violation, publication-delivery coupling, false emergence claim,
+normal-view leak, missing OR-9 evidence, weakened test, unnecessary complexity,
+or unrelated scope. Three non-blocking wording and leak-regression findings were
+resolved by separating the diary explanation's evidence sources, forbidding
+record identifiers and rewrite internals in the normal-view test, and correcting
+stale Architecture wording. Focused and full validation passed again afterward.
 
 ## OR-8 Implementation Cycle — 2026-08-17
 

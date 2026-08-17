@@ -25,6 +25,11 @@ class FocalPolicy:
             result.action_kind == "speak" and result.status == "completed"
             for result in view.action_results
         )
+        official_record_observations = tuple(
+            observation
+            for observation in view.observations
+            if observation.details.get("evidence_kind") == "official_record_version"
+        )
         read_diary = any(
             observation.details.get("evidence_kind") == "diary_read_completed"
             for observation in view.observations
@@ -36,6 +41,23 @@ class FocalPolicy:
                 parameters={"destination": "workplace"},
                 explanation="travel to workplace",
                 decision_reason="the scheduled workplace obligation comes before the allocation errand",
+            )
+        if (
+            view.location == "allocation_office"
+            and made_public_expression
+            and len(official_record_observations) == 1
+        ):
+            return ActionAttempt(
+                actor_id=view.agent_id,
+                kind="consult_official_record",
+                parameters={
+                    "artifact_id": official_record_observations[0].details["artifact_id"]
+                },
+                explanation="consult the weekly ration schedule again",
+                decision_reason=(
+                    "the partial handover and public counter pressure justify checking "
+                    "the accessible schedule again"
+                ),
             )
         if view.location == "allocation_office" and made_public_expression:
             return ActionAttempt(
@@ -101,12 +123,12 @@ class FocalPolicy:
                     "source_observation_ids": private.source_observation_ids,
                 },
                 explanation=f"write the private {private.asserted_value}-unit perspective",
-                decision_reason="the directly grounded private belief differs from the public claim and the diary is accessible",
+                decision_reason="the directly grounded counter perspective can be preserved while the diary is accessible",
             )
         if view.location == "home" and made_public_expression:
             revision_received = any(
-                observation.details.get("evidence_kind") == "official_resource_claim"
-                and observation.details.get("revises_event_id") is not None
+                observation.details.get("evidence_kind") == "official_record_version"
+                and observation.details.get("previous_version_id") is not None
                 for observation in view.observations
             )
             if (
@@ -124,7 +146,7 @@ class FocalPolicy:
                         "entry_id": entry.entry_id,
                     },
                     explanation="read the earlier private diary entry",
-                    decision_reason="the revised official claim conflicts with the earlier perspective preserved in the accessible diary",
+                    decision_reason="the newly encountered schedule gives reason to re-read the separately sourced counter perspective preserved in the diary",
                 )
             if read_diary:
                 return ActionAttempt(
@@ -168,19 +190,11 @@ class FocalPolicy:
             observation.details.get("evidence_kind") == "direct_resource_claim"
             for observation in view.observations
         )
-        official_claim_received = any(
-            observation.details.get("evidence_kind") == "official_resource_claim"
-            for observation in view.observations
-        )
+        official_record_received = bool(official_record_observations)
         allocation_outcome_received = any(
             observation.details.get("evidence_kind") == "allocation_outcome"
             for observation in view.observations
         )
-        consulted_record_ids = {
-            observation.details.get("artifact_id")
-            for observation in view.observations
-            if observation.details.get("evidence_kind") == "official_record_version"
-        }
         pressure = next(
             (
                 observation
@@ -200,12 +214,7 @@ class FocalPolicy:
             official = next(
                 observation
                 for observation in reversed(view.observations)
-                if observation.details.get("evidence_kind") == "official_resource_claim"
-            )
-            private = next(
-                belief
-                for belief in reversed(view.beliefs)
-                if belief.context == "private"
+                if observation.details.get("evidence_kind") == "official_record_version"
             )
             value = official.details["asserted_value"]
             return ActionAttempt(
@@ -214,18 +223,16 @@ class FocalPolicy:
                 parameters={
                     "proposition": official.details["proposition"],
                     "asserted_value": value,
-                    "private_belief_id": private.belief_id,
                     "evidence_observation_ids": (
                         official.observation_id,
                         pressure.observation_id,
                     ),
                     "pressure_reason": pressure.details["reason"],
                 },
-                explanation=f"repeat the official {value}-unit claim publicly",
+                explanation=f"repeat the official {value}-packet entitlement publicly",
                 decision_reason=(
-                    "public counter pressure favors repeating the delivered official "
-                    "claim while the private belief remains "
-                    f"{_number_word(private.asserted_value)} units"
+                    "public counter pressure favors repeating the delivered schedule "
+                    "while the physical handover remains separate"
                 ),
             )
         if view.location == "allocation_office" and allocation_outcome_received:
@@ -239,7 +246,7 @@ class FocalPolicy:
             (
                 artifact_id
                 for artifact_id in view.consultable_official_record_ids
-                if artifact_id not in consulted_record_ids
+                if not official_record_observations
             ),
             None,
         )
@@ -257,7 +264,7 @@ class FocalPolicy:
         if (
             view.location == "allocation_office"
             and direct_claim_received
-            and official_claim_received
+            and official_record_received
             and not allocation_outcome_received
         ):
             direct = next(
@@ -275,8 +282,8 @@ class FocalPolicy:
                 },
                 explanation=f"request {requested} allocation units",
                 decision_reason=(
-                    "direct sight supports three units for the household need, "
-                    "despite the incompatible official claim"
+                    "direct sight supports three units for the household need, and the "
+                    "encountered schedule separately promises three packets"
                 ),
             )
         if view.location == "allocation_office" and direct_claim_received:
@@ -284,7 +291,7 @@ class FocalPolicy:
                 actor_id=view.agent_id,
                 kind="wait",
                 explanation="wait for the allocation briefing",
-                decision_reason="direct sight established a quantity, but the known counter briefing has not occurred",
+                decision_reason="direct sight established a quantity, but the schedule consultation has not arrived",
             )
         return ActionAttempt(
             actor_id=view.agent_id,

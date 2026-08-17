@@ -70,7 +70,6 @@ def build_first_day(seed: int = 42) -> Simulation:
             institution_id="civic-allocation-office",
             display_name="Civic Allocation Office",
             official_record=OfficialRecord(artifact_id=RATION_SCHEDULE_ARTIFACT_ID),
-            records={"public_claim_schedule_authorized": True},
             official_record_rewrite_authorized_actor_ids=(
                 "civic-allocation-office",
             ),
@@ -90,7 +89,7 @@ def build_first_day(seed: int = 42) -> Simulation:
             CLERK_ID: AllocationClerkPolicy(),
         },
         institution_policy=InstitutionPolicy(
-            {8: 5, 16: 1},
+            {},
             initial_publication_schedule={
                 1: OfficialRecordPublication(
                     artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
@@ -123,7 +122,7 @@ def build_first_day(seed: int = 42) -> Simulation:
         max_ticks=30,
         completion_tick=24,
         scenario_configuration={
-            "scenario_id": "first_day_v1",
+            "scenario_id": "first_day_v2",
             "completion_tick": 24,
             "agent_ids": [FOCAL_AGENT_ID, CO_WORKER_ID, CLERK_ID],
             "starting_locations": {
@@ -137,7 +136,6 @@ def build_first_day(seed: int = 42) -> Simulation:
                 "allocation_office": ["workplace"],
             },
             "initial_resource": {"total_units": 3, "committed_units": 1},
-            "official_claim_schedule": {8: 5, 16: 1},
             "initial_official_record_publication": {
                 "tick": 1,
                 "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,

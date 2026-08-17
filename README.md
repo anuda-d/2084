@@ -51,7 +51,9 @@ It follows one autonomous focal character and two supporting characters through
 and a physical diary. Attempted actions resolve into explicit completed or
 rejected results, and the focal character retains two granted allocation units
 while one need remains unmet. The normal command is intentionally filtered to
-the focal character; a separate inspector exposes objective development records.
+the focal character; it shows the three-packet schedule and later two-packet
+schedule only after separate valid consultations. A separate inspector exposes
+the hidden rewrite and complete objective development records.
 
 Run it from the repository root:
 

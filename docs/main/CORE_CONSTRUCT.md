@@ -123,11 +123,13 @@ boundaries and inspectable consequences before adding a less predictable
 decision layer.
 
 The implemented belief model is also deliberately narrow. It recognizes one
-structured allocation proposition, gives direct and official claims fixed
-confidence values, and links incompatible values without erasing either one.
-It does not yet model memory decay, reinterpretation, planning, or general
-language understanding. Public/private divergence currently occurs through one
-explicit social-pressure threshold.
+structured direct-allocation proposition with fixed confidence and can link
+incompatible values without erasing either one. Official Record observations
+remain retained source-linked observations rather than being folded into that
+different physical-allocation belief. It does not yet model memory decay,
+reinterpretation, planning, or general language understanding. Public
+expression can still respond to an explicit social-pressure threshold without
+changing the retained private perspective.
 
 The active Official Record experiment now has four narrow seams. The institution
 can publish one immutable, structured three-packet ration-schedule version under
@@ -141,13 +143,15 @@ the handover does not itself change the schedule. A configured, authorized
 institutional attempt later appends a two-packet version for the same period and
 makes it current while retaining version one and both objective events. That
 rewrite does not deliver an observation. A later access-valid consultation can
-now deliver version two while leaving the earlier version-one observation
-unchanged, although the autonomous focal path does not yet perform that later
-consultation. Agent Understanding, Claim and Provenance, and Observation Delivery
-remain proposals. The version-one scenario still also uses its generic record
-dictionary and global scheduled broadcasts; the current belief logic appends
-fixed-confidence claims; and the focal policy still contains the scenario-specific
-conformity and diary decisions.
+deliver version two while leaving the earlier version-one observation unchanged.
+The autonomous focal path performs that second consultation only after the
+partial handover and delivered counter pressure; it does not receive hidden
+notice of the rewrite. The clerk separately consults version one through the
+same access boundary before using it as evidence for the pressure action. Agent
+Understanding, Claim and Provenance, and Observation Delivery remain proposals.
+The `first_day_v2` scenario no longer uses the generic scheduled broadcasts;
+the focal and supporting policies still contain scenario-specific consultation,
+pressure, and diary decisions.
 
 ## Observation and Playability
 
