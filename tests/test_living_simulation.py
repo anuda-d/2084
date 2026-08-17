@@ -242,6 +242,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(resolution.caused_by, (request.event_id,))
         self.assertEqual(resolution.details["objective_allocatable_before"], 2)
         self.assertEqual(resolution.details["committed_units"], 1)
+        self.assertEqual(resolution.details["resource_id"], "household_allocation")
         self.assertEqual(resolution.details["granted_units"], 2)
         outcome = next(
             observation
@@ -250,6 +251,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
         self.assertEqual(dict(outcome.details), {
             "evidence_kind": "allocation_outcome",
+            "resource_id": "household_allocation",
             "granted_units": 2,
             "unfilled_units": 1,
         })

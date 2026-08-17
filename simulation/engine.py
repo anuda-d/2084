@@ -553,6 +553,7 @@ class Simulation:
                         action_id=action_id,
                         caused_by=(attempted.event_id,),
                         details={
+                            "resource_id": self.rules.resource_id,
                             "requested_units": requested,
                             "granted_units": granted,
                             "unfilled_units": requested - granted,
@@ -576,6 +577,7 @@ class Simulation:
                             "resource_id": self.rules.resource_id,
                             "details": {
                                 "evidence_kind": "allocation_outcome",
+                                "resource_id": self.rules.resource_id,
                                 "granted_units": granted,
                                 "unfilled_units": requested - granted,
                             },

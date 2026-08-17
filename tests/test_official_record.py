@@ -170,6 +170,71 @@ class OfficialRecordTests(unittest.TestCase):
             (),
         )
 
+    def test_two_packet_handover_is_separate_from_three_packet_entitlement(self):
+        simulation = build_first_day(seed=42)
+
+        for _ in range(9):
+            handover_tick = simulation.step()
+
+        publication = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_published"
+        )
+        request = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.details["action_kind"] == "request_allocation"
+        )
+        handover = next(
+            event for event in simulation.events if event.kind == "allocation_resolved"
+        )
+
+        self.assertEqual(handover.actor_id, "civic-allocation-office")
+        self.assertEqual(handover.action_id, request.action_id)
+        self.assertEqual(handover.caused_by, (request.event_id,))
+        self.assertEqual(
+            dict(handover.details),
+            {
+                "resource_id": "household_allocation",
+                "requested_units": 3,
+                "granted_units": 2,
+                "unfilled_units": 1,
+                "objective_allocatable_before": 2,
+                "committed_units": 1,
+                "recipient_id": FOCAL_AGENT_ID,
+            },
+        )
+        self.assertNotEqual(handover.event_id, publication.event_id)
+        self.assertNotIn("artifact_id", handover.details)
+        self.assertNotIn("version_id", handover.details)
+        self.assertNotIn("entitlement_packets", handover.details)
+
+        record = simulation.world.institution.official_record
+        self.assertEqual(record.current_version_id, RATION_SCHEDULE_VERSION_ONE_ID)
+        self.assertEqual(record.current_version.entitlement_packets, 3)
+
+        delivered = next(
+            observation
+            for observation in handover_tick.new_observations
+            if observation.details.get("evidence_kind") == "allocation_outcome"
+        )
+        self.assertEqual(delivered.event_id, handover.event_id)
+        self.assertEqual(delivered.source, "allocation counter handover")
+        self.assertEqual(
+            dict(delivered.details),
+            {
+                "evidence_kind": "allocation_outcome",
+                "resource_id": "household_allocation",
+                "granted_units": 2,
+                "unfilled_units": 1,
+            },
+        )
+        self.assertEqual(handover_tick.held_units, 2)
+        self.assertEqual(handover_tick.remaining_required_units, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

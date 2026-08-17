@@ -279,6 +279,9 @@ should not be presented as an emergent plot.
   publication and a location-gated consultation of its current version. Rewrite
   validation, lineage beyond version one, and a completed replacement of the
   legacy generic broadcasts are not yet implemented.
+- The allocation resolver records the two-unit physical handover as a separate,
+  resource-identified objective consequence. Its later delivered outcome updates
+  focal holdings without changing the published ration schedule.
 - There is no deep Agent Understanding module: cognitive transitions remain split
   between the belief helper, simulation coordinator, focal policy, and observer.
 - Claim and Provenance has not been extracted, and observation payloads still

@@ -129,17 +129,20 @@ It does not yet model memory decay, reinterpretation, planning, or general
 language understanding. Public/private divergence currently occurs through one
 explicit social-pressure threshold.
 
-The active Official Record experiment now has two narrow seams: the institution
+The active Official Record experiment now has three narrow seams: the institution
 can publish one immutable, structured three-packet ration-schedule version under
 a stable artifact identity without delivering it, and the focal character can
 later consult that current version through configured access at the allocation
 office. The consultation is recorded as an attempted and resolved action, with
-its version-linked observation delivered separately on the next tick. Rewrite
-is not implemented, and Agent Understanding, Claim and Provenance, and
-Observation Delivery remain proposals. The version-one scenario still also uses
-its generic record dictionary and global scheduled broadcasts; the current
-belief logic appends fixed-confidence claims; and the focal policy still
-contains the scenario-specific conformity and diary decisions.
+its version-linked observation delivered separately on the next tick. A later
+allocation resolution records the two-unit physical handover as its own
+resource-identified objective consequence and delivers that outcome separately,
+without changing the three-packet schedule. Rewrite is not implemented, and
+Agent Understanding, Claim and Provenance, and Observation Delivery remain
+proposals. The version-one scenario still also uses its generic record
+dictionary and global scheduled broadcasts; the current belief logic appends
+fixed-confidence claims; and the focal policy still contains the
+scenario-specific conformity and diary decisions.
 
 ## Observation and Playability
 

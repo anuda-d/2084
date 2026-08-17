@@ -31,7 +31,10 @@ Two implementation runs have been accepted for this goal.
 - Accepted implementation runs since the last alignment review: 2
 - Consecutive accepted runs on the same criterion: 1
 - Last accepted criterion: OR-2 Valid delivery
-- Result awaiting owner review: none
+- Result awaiting owner review: OR-3 Separate physical result — the
+  resource-identified two-unit handover is distinct from the unchanged
+  three-packet entitlement and reaches focal holdings only through its own
+  delivered outcome
 
 Only owner-accepted evidence belongs in the Accepted Progress table and loop
 counters. A development cycle may record a pending result under Loop State,
