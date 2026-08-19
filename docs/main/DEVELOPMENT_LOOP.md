@@ -11,11 +11,12 @@ not choose project direction or authorize its own next goal.
 
 ## Schedule and Run Boundary
 
-The loop is launched by standalone scheduled tasks at 6:00 PM, 7:00 PM, and
-8:00 PM in `America/Toronto`. Each task works in the main 2084 checkout, handles
-one self-selected implementation task or one alignment review, and exits. If an
-earlier run is still active, the next trigger performs no repository work. The
-repository carries durable context; prior task conversation does not.
+The loop is launched by standalone scheduled tasks at 6:00 PM, 7:00 PM,
+8:00 PM, 9:00 PM, and 10:00 PM in `America/Toronto`. Each task works in the main
+2084 checkout, handles one self-selected implementation task or one alignment
+review, and exits. If an earlier run is still active, the next trigger performs
+no repository work. The repository carries durable context; prior task
+conversation does not.
 
 The owner may request a manual run in chat at any time. A manual run follows the
 same one-task, authority, validation, independent-review, and no-overlap rules.
@@ -47,9 +48,9 @@ keeps the active orchestrator visible to the next trigger for the full lifetime
 of its agent tree.
 
 At the start of each scheduled run, read the compact index in `CURRENT.md` and
-the just-in-time authority sources it routes. The 8:00 PM run must not begin an
+the just-in-time authority sources it routes. The 10:00 PM run must not begin an
 implementation that cannot be finished, validated, reviewed, documented, and
-committed by 9:00 PM.
+committed by 11:00 PM.
 
 The scheduled task uses this instruction:
 
