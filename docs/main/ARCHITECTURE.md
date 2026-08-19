@@ -27,9 +27,9 @@ The focal-character view presents only an appropriate projection
 `Simulation.step()` currently performs this loop in a stable order:
 
 1. Increment the world tick.
-2. Apply a scheduled initial official-record publication, then scheduled
-   institutional claims and their broadcasts. The initial publication creates
-   objective evidence but no observation.
+2. Apply a scheduled initial official-record publication, authorized record
+   rewrite, then scheduled institutional claims and their broadcasts. Publication
+   and rewrite create objective evidence but no observation.
 3. Complete actions whose duration has elapsed.
 4. Deliver completion perceptions and queued prior-action outcomes.
 5. Update structured beliefs from newly delivered claim observations.
@@ -50,7 +50,8 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 - `simulation/events.py` contains immutable append-only events and
   agent-specific observations with source links.
 - `simulation/official_record.py` currently owns one ration schedule's stable
-  artifact identity, immutable initial version, and current-version pointer.
+  artifact identity, immutable versions, same-period revision lineage, and
+  current-version pointer.
 - `simulation/agents.py` separates mutable agent state from the immutable
   restricted view supplied to a policy.
 - `simulation/beliefs.py` derives the currently supported structured
@@ -71,8 +72,11 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 The possible deeper architecture is described in detail in
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 It is a proposal, not a description of currently implemented modules. The
-active bounded goal has begun with the initial-publication and narrow public
-consultation seams described above.
+completed bounded Official Record goal established the initial-publication,
+narrow public-consultation, and authorized rewrite seams described above. The
+active bounded goal now begins Module 2 with source-linked memory traces,
+explicit official-version conflict, one contextual public stance, and one
+diary-cued resurfacing transition.
 
 - **Official Record** would own the institution's mutable current public
   projection and bounded rewrite, suppression, and fabrication operations.
@@ -245,18 +249,19 @@ The current scenario contains:
 - two supporting characters with small deterministic policies;
 - a home, workplace, and allocation office connected by a travel graph;
 - one institution with a structured initial ration-schedule publication,
-  scheduled legacy broadcasts, and a small generic record;
+  one authored authorized rewrite, and no scheduled generic broadcast in the
+  current scenario;
 - a workplace obligation and a three-unit household allocation need;
-- official five-unit and later one-unit claims that contradict direct sight of
-  three units;
+- a three-packet published entitlement, a separate two-packet physical handover,
+  and a later two-packet published entitlement encountered through reconsultation;
 - a basic physical diary;
 - autonomous step advancement, action durations, and a filtered focal view.
 
 The scenario is a feasibility result rather than a general social simulation.
-Its starting need, route, claim schedule, hidden resource commitment, pressure
-value, conformity threshold, policy priorities, and action durations are
-authored. The policies choose from delivered information, but the resulting day
-should not be presented as an emergent plot.
+Its starting need, route, publication and rewrite timing, hidden resource
+commitment, pressure value, conformity threshold, policy priorities, and action
+durations are authored. The policies choose from delivered information, but the
+resulting day should not be presented as an emergent plot.
 
 ## Current Technical Limits
 
@@ -273,12 +278,17 @@ should not be presented as an emergent plot.
 - Belief creation recognizes one structured allocation proposition with fixed
   confidence values. There is no memory decay or general inference.
 - Institutional reports and processing capacity are represented conceptually,
-  but the current institution only applies the scheduled initial publication
-  and emits legacy scheduled broadcasts. Those broadcasts reach every agent.
+  but the current institution only applies the scheduled initial publication and
+  one authored authorized rewrite. The generic engine broadcast path remains,
+  but the current scenario does not configure it.
 - Official Record currently supports one structured initial ration-schedule
-  publication and a location-gated consultation of its current version. Rewrite
-  validation, lineage beyond version one, and a completed replacement of the
-  legacy generic broadcasts are not yet implemented.
+  publication, a location-gated consultation of version one, and an authorized
+  same-period rewrite that retains lineage and moves the current pointer to
+  version two. The consultation resolver recognizes accepted rewrite evidence,
+  and the autonomous focal path later reconsults through configured access to
+  receive version two without changing the retained version-one observation.
+  Focused evidence also covers unauthorized and stale-target rejection without
+  changing the current projection.
 - The allocation resolver records the two-unit physical handover as a separate,
   resource-identified objective consequence. Its later delivered outcome updates
   focal holdings without changing the published ration schedule.
@@ -297,8 +307,10 @@ should not be presented as an emergent plot.
 
 - Which state must update every step, and which can update only when relevant?
 - What is the smallest useful action vocabulary?
-- Which single Agent Understanding transition changes observable behavior without pretending to model full human cognition?
-- Which authority, access, time, and capacity limits belong in the first Official Record rewrite?
+- Does the selected diary-cued resurfacing transition change observable
+  behavior without pretending to model full human cognition?
+- Which authority, access, time, or capacity limit would justify a later
+  Official Record experiment beyond the completed rewrite?
 - Should the first follow-up operation explore one suppressed reference or one fabricated artifact?
 - When do Official Record and Agent Understanding justify extracting Claim and Provenance?
 - Which delivery channel first needs stale or missed official versions?

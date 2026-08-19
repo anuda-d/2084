@@ -5,7 +5,11 @@ from __future__ import annotations
 import argparse
 
 from simulation.agents import AgentState
-from simulation.institutions import InstitutionState, OfficialRecordPublication
+from simulation.institutions import (
+    InstitutionState,
+    OfficialRecordPublication,
+    OfficialRecordRewrite,
+)
 from simulation.engine import Simulation, SimulationRules
 from simulation.official_record import OfficialRecord
 from simulation.world import PhysicalDiary, ResourceState, WorldState
@@ -19,6 +23,7 @@ CO_WORKER_ID = "ilan-reed"
 CLERK_ID = "sena-orr"
 RATION_SCHEDULE_ARTIFACT_ID = "weekly-household-ration-schedule"
 RATION_SCHEDULE_VERSION_ONE_ID = "weekly-household-ration-schedule-v1"
+RATION_SCHEDULE_VERSION_TWO_ID = "weekly-household-ration-schedule-v2"
 RATION_SCHEDULE_PERIOD_ID = "first-day-week"
 
 
@@ -65,7 +70,9 @@ def build_first_day(seed: int = 42) -> Simulation:
             institution_id="civic-allocation-office",
             display_name="Civic Allocation Office",
             official_record=OfficialRecord(artifact_id=RATION_SCHEDULE_ARTIFACT_ID),
-            records={"public_claim_schedule_authorized": True},
+            official_record_rewrite_authorized_actor_ids=(
+                "civic-allocation-office",
+            ),
         ),
         diaries={
             "mara-private-diary": PhysicalDiary(
@@ -82,13 +89,24 @@ def build_first_day(seed: int = 42) -> Simulation:
             CLERK_ID: AllocationClerkPolicy(),
         },
         institution_policy=InstitutionPolicy(
-            {8: 5, 16: 1},
+            {},
             initial_publication_schedule={
                 1: OfficialRecordPublication(
                     artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
                     version_id=RATION_SCHEDULE_VERSION_ONE_ID,
                     period_id=RATION_SCHEDULE_PERIOD_ID,
                     entitlement_packets=3,
+                )
+            },
+            official_record_rewrite_schedule={
+                10: OfficialRecordRewrite(
+                    actor_id="civic-allocation-office",
+                    reason="align the published schedule with the two-packet issue",
+                    artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+                    expected_current_version_id=RATION_SCHEDULE_VERSION_ONE_ID,
+                    version_id=RATION_SCHEDULE_VERSION_TWO_ID,
+                    period_id=RATION_SCHEDULE_PERIOD_ID,
+                    entitlement_packets=2,
                 )
             },
         ),
@@ -104,7 +122,7 @@ def build_first_day(seed: int = 42) -> Simulation:
         max_ticks=30,
         completion_tick=24,
         scenario_configuration={
-            "scenario_id": "first_day_v1",
+            "scenario_id": "first_day_v2",
             "completion_tick": 24,
             "agent_ids": [FOCAL_AGENT_ID, CO_WORKER_ID, CLERK_ID],
             "starting_locations": {
@@ -118,7 +136,6 @@ def build_first_day(seed: int = 42) -> Simulation:
                 "allocation_office": ["workplace"],
             },
             "initial_resource": {"total_units": 3, "committed_units": 1},
-            "official_claim_schedule": {8: 5, 16: 1},
             "initial_official_record_publication": {
                 "tick": 1,
                 "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
@@ -127,6 +144,17 @@ def build_first_day(seed: int = 42) -> Simulation:
                 "entitlement_packets": 3,
             },
             "official_record_access_location": "allocation_office",
+            "official_record_rewrite": {
+                "tick": 10,
+                "actor_id": "civic-allocation-office",
+                "reason": "align the published schedule with the two-packet issue",
+                "authorized_actor_ids": ["civic-allocation-office"],
+                "artifact_id": RATION_SCHEDULE_ARTIFACT_ID,
+                "expected_current_version_id": RATION_SCHEDULE_VERSION_ONE_ID,
+                "version_id": RATION_SCHEDULE_VERSION_TWO_ID,
+                "period_id": RATION_SCHEDULE_PERIOD_ID,
+                "entitlement_packets": 2,
+            },
             "public_pressure": 0.8,
             "public_conformity_threshold": 0.7,
             "action_durations": {

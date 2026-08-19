@@ -21,7 +21,12 @@ from simulation.events import (
     freeze_mapping,
     to_plain_data,
 )
-from simulation.institutions import InstitutionDecisionPolicy, InstitutionView
+from simulation.institutions import (
+    InstitutionDecisionPolicy,
+    InstitutionView,
+    OfficialRecordRewrite,
+)
+from simulation.understanding import trace_from_delivered_observation
 from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
@@ -85,6 +90,8 @@ class Simulation:
         self._action_count = 0
         self._belief_counts: dict[str, int] = {}
         self._belief_transitions: list[BeliefTransition] = []
+        self._memory_trace_counts: dict[str, int] = {}
+        self._interpreted_claim_counts: dict[str, int] = {}
         self._action_results: list[ActionResult] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
@@ -456,7 +463,8 @@ class Simulation:
                     (
                         event
                         for event in reversed(self.events)
-                        if event.kind == "official_record_published"
+                        if event.kind
+                        in {"official_record_published", "official_record_rewritten"}
                         and event.details.get("artifact_id") == version.artifact_id
                         and event.details.get("version_id") == version.version_id
                     ),
@@ -994,6 +1002,106 @@ class Simulation:
                 )
             )
 
+    def _update_understanding(self, observations: tuple[Observation, ...]) -> None:
+        for observation in observations:
+            if observation.agent_id != self.focal_agent_id:
+                continue
+            agent = self.world.agents[observation.agent_id]
+            trace_count = self._memory_trace_counts.get(observation.agent_id, 0) + 1
+            claim_count = self._interpreted_claim_counts.get(observation.agent_id, 0) + 1
+            interpreted = trace_from_delivered_observation(
+                observation,
+                trace_id=f"memory-trace-{observation.agent_id}-{trace_count:03d}",
+                claim_id=f"interpreted-claim-{observation.agent_id}-{claim_count:03d}",
+                existing_claims=agent.interpreted_claims,
+            )
+            if interpreted is None:
+                continue
+            trace, new_claim = interpreted
+            self._memory_trace_counts[observation.agent_id] = trace_count
+            agent.memory_traces += (trace,)
+            if new_claim is not None:
+                self._interpreted_claim_counts[observation.agent_id] = claim_count
+                agent.interpreted_claims += (new_claim,)
+
+    def _resolve_scheduled_official_record_rewrite(
+        self, rewrite: OfficialRecordRewrite
+    ) -> None:
+        institution = self.world.institution
+        attempted = self._event_log.record(
+            tick=self.tick,
+            kind="official_record_rewrite_attempted",
+            actor_id=rewrite.actor_id,
+            details={
+                "reason": rewrite.reason,
+                "artifact_id": rewrite.artifact_id,
+                "expected_current_version_id": rewrite.expected_current_version_id,
+                "version_id": rewrite.version_id,
+                "period_id": rewrite.period_id,
+                "entitlement_packets": rewrite.entitlement_packets,
+            },
+        )
+        if (
+            rewrite.actor_id
+            not in institution.official_record_rewrite_authorized_actor_ids
+        ):
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_rewrite_rejected",
+                actor_id=rewrite.actor_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": "actor is not authorized to rewrite this record"},
+            )
+            return
+
+        prior_publication = next(
+            (
+                event
+                for event in reversed(self.events)
+                if event.kind in {"official_record_published", "official_record_rewritten"}
+                and event.details.get("artifact_id") == rewrite.artifact_id
+                and event.details.get("version_id")
+                == rewrite.expected_current_version_id
+            ),
+            None,
+        )
+        try:
+            version = institution.official_record.rewrite(
+                artifact_id=rewrite.artifact_id,
+                expected_current_version_id=rewrite.expected_current_version_id,
+                version_id=rewrite.version_id,
+                period_id=rewrite.period_id,
+                entitlement_packets=rewrite.entitlement_packets,
+            )
+        except ValueError:
+            self._event_log.record(
+                tick=self.tick,
+                kind="official_record_rewrite_rejected",
+                actor_id=rewrite.actor_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": "official record rejected the requested rewrite"},
+            )
+            return
+
+        self._event_log.record(
+            tick=self.tick,
+            kind="official_record_rewritten",
+            actor_id=rewrite.actor_id,
+            caused_by=(
+                (attempted.event_id, prior_publication.event_id)
+                if prior_publication is not None
+                else (attempted.event_id,)
+            ),
+            details={
+                "reason": rewrite.reason,
+                "artifact_id": version.artifact_id,
+                "version_id": version.version_id,
+                "period_id": version.period_id,
+                "entitlement_packets": version.entitlement_packets,
+                "previous_version_id": version.previous_version_id,
+            },
+        )
+
     def _apply_scheduled_institutional_events(self) -> tuple[Observation, ...]:
         institution = self.world.institution
         view = InstitutionView(
@@ -1021,6 +1129,10 @@ class Simulation:
                     "previous_version_id": version.previous_version_id,
                 },
             )
+
+        rewrite = self._institution_policy.choose_official_record_rewrite(view)
+        if rewrite is not None:
+            self._resolve_scheduled_official_record_rewrite(rewrite)
 
         claim = self._institution_policy.choose_claim(view)
         if claim is None:
@@ -1098,6 +1210,7 @@ class Simulation:
             + self._deliver_queued_observations()
         )
         self._update_beliefs(delivered)
+        self._update_understanding(delivered)
         focal_attempt: ActionAttempt | None = None
         for agent_id in sorted(self._policies):
             if agent_id in self._pending:
@@ -1239,6 +1352,36 @@ class Simulation:
                 }
                 for transition in self._belief_transitions
             ],
+            "agent_understanding": {
+                agent_id: {
+                    "memory_traces": [
+                        {
+                            "trace_id": trace.trace_id,
+                            "source_observation_id": trace.source_observation_id,
+                            "source_event_id": trace.source_event_id,
+                            "source": trace.source,
+                            "evidence_kind": trace.evidence_kind,
+                            "interpreted_claim_id": trace.interpreted_claim_id,
+                            "proposition": trace.proposition,
+                            "asserted_value": trace.asserted_value,
+                            "delivery_tick": trace.delivery_tick,
+                            "period_id": trace.period_id,
+                        }
+                        for trace in agent.memory_traces
+                    ],
+                    "interpreted_claims": [
+                        {
+                            "claim_id": claim.claim_id,
+                            "proposition": claim.proposition,
+                            "asserted_value": claim.asserted_value,
+                            "period_id": claim.period_id,
+                            "origin_trace_id": claim.origin_trace_id,
+                        }
+                        for claim in agent.interpreted_claims
+                    ],
+                }
+                for agent_id, agent in self.world.agents.items()
+            },
         }
 
     def inspector_state(self) -> dict[str, object]:

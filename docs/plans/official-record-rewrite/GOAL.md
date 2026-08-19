@@ -1,6 +1,9 @@
 # Official Record Rewrite
 
-Status: active; approved by the owner.
+Status: complete; approved by the owner.
+
+The verified cycle record and completion evidence are retained in the
+[delivery record](DELIVERY.md).
 
 This is the bounded implementation goal for the next 2084 experiment. It is
 narrower than the broader

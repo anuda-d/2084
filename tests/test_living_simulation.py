@@ -16,6 +16,8 @@ from scenarios.first_day import (
     CLERK_ID,
     CO_WORKER_ID,
     FOCAL_AGENT_ID,
+    RATION_SCHEDULE_VERSION_ONE_ID,
+    RATION_SCHEDULE_VERSION_TWO_ID,
     build_first_day,
 )
 
@@ -183,7 +185,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(private.confidence, 0.9)
         self.assertEqual(snapshot.current_action, "consult the weekly ration schedule")
 
-    def test_official_claim_conflicts_with_private_belief_and_drives_a_sourced_request(self):
+    def test_encountered_schedule_and_direct_sight_drive_a_sourced_request(self):
         simulation = build_first_day(seed=42)
 
         snapshot = [simulation.step() for _ in range(8)][-1]
@@ -191,15 +193,18 @@ class LivingSimulationStepTests(unittest.TestCase):
         official = next(
             observation
             for observation in snapshot.new_observations
-            if observation.details.get("evidence_kind") == "official_resource_claim"
+            if observation.details.get("evidence_kind") == "official_record_version"
         )
-        self.assertEqual(official.details["asserted_value"], 5)
+        self.assertEqual(official.details["asserted_value"], 3)
+        self.assertEqual(
+            official.details["proposition"],
+            "weekly_household_ration_entitlement_packets",
+        )
         private = next(belief for belief in snapshot.beliefs if belief.context == "private")
-        public = next(belief for belief in snapshot.beliefs if belief.context == "public")
         self.assertEqual(private.asserted_value, 3)
-        self.assertEqual(public.asserted_value, 5)
-        self.assertEqual(private.conflicts_with, (public.belief_id,))
-        self.assertEqual(public.conflicts_with, (private.belief_id,))
+        self.assertEqual(private.proposition, "daily_allocation_units")
+        self.assertEqual(private.conflicts_with, ())
+        self.assertFalse(any(belief.context == "public" for belief in snapshot.beliefs))
         self.assertEqual(snapshot.current_action, "request 3 allocation units")
         request = next(
             event
@@ -324,7 +329,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(visible.details["actor_id"], CO_WORKER_ID)
         self.assertEqual(visible.details["action_kind"], "work")
 
-    def test_clerk_reacts_only_to_delivered_public_request_and_official_claim(self):
+    def test_clerk_reacts_only_to_delivered_request_and_consulted_schedule(self):
         simulation = build_first_day(seed=42)
 
         snapshots = [simulation.step() for _ in range(9)]
@@ -349,13 +354,13 @@ class LivingSimulationStepTests(unittest.TestCase):
         official = next(
             observation
             for observation in simulation.observations_for(CLERK_ID)
-            if observation.details.get("evidence_kind") == "official_resource_claim"
+            if observation.details.get("evidence_kind") == "official_record_version"
         )
         self.assertEqual(
             clerk_speech.details["evidence_observation_ids"],
             (visible_request.observation_id, official.observation_id),
         )
-        self.assertEqual(clerk_speech.details["asserted_value"], 5)
+        self.assertEqual(clerk_speech.details["asserted_value"], 3)
         self.assertFalse(
             any(
                 observation.details.get("evidence_kind") == "social_pressure"
@@ -363,7 +368,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
         )
 
-    def test_public_expression_diverges_from_private_belief_under_delivered_pressure(self):
+    def test_public_expression_repeats_only_the_delivered_schedule_under_pressure(self):
         simulation = build_first_day(seed=42)
 
         snapshot = [simulation.step() for _ in range(10)][-1]
@@ -374,7 +379,10 @@ class LivingSimulationStepTests(unittest.TestCase):
             if observation.details.get("evidence_kind") == "social_pressure"
         )
         self.assertEqual(pressure.details["pressure"], 0.8)
-        self.assertEqual(snapshot.current_action, "repeat the official 5-unit claim publicly")
+        self.assertEqual(
+            snapshot.current_action,
+            "repeat the official 3-packet entitlement publicly",
+        )
         private = next(belief for belief in snapshot.beliefs if belief.context == "private")
         self.assertEqual(private.asserted_value, 3)
         expression = next(
@@ -382,8 +390,12 @@ class LivingSimulationStepTests(unittest.TestCase):
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
         )
-        self.assertEqual(expression.details["asserted_value"], 5)
-        self.assertEqual(expression.details["private_belief_id"], private.belief_id)
+        self.assertEqual(expression.details["asserted_value"], 3)
+        self.assertEqual(
+            expression.details["proposition"],
+            "weekly_household_ration_entitlement_packets",
+        )
+        self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
         self.assertIn(pressure.observation_id, expression.details["evidence_observation_ids"])
 
@@ -446,7 +458,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
     def test_rejected_work_does_not_satisfy_the_remaining_work_obligation(self):
         simulation = build_first_day(seed=42)
-        for _ in range(18):
+        for _ in range(19):
             simulation.step()
         simulation.resolve_attempt(
             ActionAttempt(
@@ -614,25 +626,25 @@ class LivingSimulationStepTests(unittest.TestCase):
     def test_diary_write_requires_returning_home_and_completes_after_two_ticks(self):
         simulation = build_first_day(seed=42)
 
-        snapshots = [simulation.step() for _ in range(17)]
+        snapshots = [simulation.step() for _ in range(18)]
 
-        tick_fifteen = snapshots[14]
-        self.assertEqual(tick_fifteen.location, "home")
-        self.assertEqual(tick_fifteen.current_action, "write the private 3-unit perspective")
+        tick_sixteen = snapshots[15]
+        self.assertEqual(tick_sixteen.location, "home")
+        self.assertEqual(tick_sixteen.current_action, "write the private 3-unit perspective")
         self.assertEqual(
-            simulation.snapshot_at(15).accessible_diary_entry_count,
+            simulation.snapshot_at(16).accessible_diary_entry_count,
             0,
         )
         self.assertEqual(
-            simulation.snapshot_at(16).accessible_diary_entry_count,
+            simulation.snapshot_at(17).accessible_diary_entry_count,
             0,
         )
         diary = simulation.inspector_state()["diaries"]["mara-private-diary"]
         self.assertEqual(len(diary["entries"]), 1)
         entry = diary["entries"][0]
         self.assertEqual(entry["asserted_value"], 3)
-        self.assertEqual(entry["started_tick"], 15)
-        self.assertEqual(entry["completed_tick"], 17)
+        self.assertEqual(entry["started_tick"], 16)
+        self.assertEqual(entry["completed_tick"], 18)
         direct = next(
             observation
             for observation in simulation.observations_for(FOCAL_AGENT_ID)
@@ -643,21 +655,29 @@ class LivingSimulationStepTests(unittest.TestCase):
     def test_diary_read_returns_the_immutable_earlier_perspective_after_revision(self):
         simulation = build_first_day(seed=42)
 
-        snapshot = [simulation.step() for _ in range(18)][-1]
+        snapshot = [simulation.step() for _ in range(19)][-1]
 
-        official_events = [
-            event for event in simulation.events if event.kind == "official_claim_issued"
-        ]
-        self.assertEqual([event.details["asserted_value"] for event in official_events], [5, 1])
-        self.assertEqual(official_events[1].caused_by, (official_events[0].event_id,))
+        publication = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_published"
+        )
+        rewritten = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewritten"
+        )
+        self.assertEqual(publication.details["entitlement_packets"], 3)
+        self.assertEqual(rewritten.details["entitlement_packets"], 2)
+        self.assertIn(publication.event_id, rewritten.caused_by)
         read = next(
             observation
             for observation in snapshot.new_observations
             if observation.details.get("evidence_kind") == "diary_read_completed"
         )
         self.assertEqual(read.details["asserted_value"], 3)
-        self.assertEqual(read.details["started_tick"], 15)
-        self.assertEqual(read.details["completed_tick"], 17)
+        self.assertEqual(read.details["started_tick"], 16)
+        self.assertEqual(read.details["completed_tick"], 18)
         written = next(
             event for event in simulation.events if event.kind == "diary_write_completed"
         )
@@ -728,20 +748,28 @@ class LivingSimulationStepTests(unittest.TestCase):
         inspector = render_inspector(simulation)
 
         self.assertIn("directly saw 3 allocation units", normal)
-        self.assertIn("official broadcast claimed 5 allocation units", normal)
-        self.assertIn("2 granted and 1 unfilled", normal)
+        self.assertIn(
+            "Official schedule encountered: weekly household entitlement is 3 packets.",
+            normal,
+        )
+        self.assertIn("Physical handover: 2 packets received and 1 packet unfilled.", normal)
+        self.assertIn(
+            "Official schedule encountered: weekly household entitlement is 2 packets.",
+            normal,
+        )
         self.assertIn("Household allocation: 2 held; 1 still needed.", normal)
         self.assertIn("Private belief: 3 units", normal)
-        self.assertIn("repeat the official 5-unit claim publicly", normal)
+        self.assertIn("repeat the official 3-packet entitlement publicly", normal)
+        self.assertIn("consult the weekly ration schedule again", normal)
         self.assertIn("Diary read returned the earlier 3-unit perspective", normal)
         self.assertIn(
             "Reason: direct sight supports three units for the household need, "
-            "despite the incompatible official claim.",
+            "and the encountered schedule separately promises three packets.",
             normal,
         )
         self.assertIn(
-            "Reason: public counter pressure favors repeating the delivered "
-            "official claim while the private belief remains three units.",
+            "Reason: public counter pressure favors repeating the delivered schedule "
+            "while the physical handover remains separate.",
             normal,
         )
         for hidden_term in (
@@ -751,12 +779,19 @@ class LivingSimulationStepTests(unittest.TestCase):
             "event-",
             "observation-",
             "civic-allocation-office",
+            "weekly-household-ration-schedule-v1",
+            "weekly-household-ration-schedule-v2",
+            "official_record_rewrite",
+            "align the published schedule",
         ):
             self.assertNotIn(hidden_term, normal)
 
         self.assertIn("DEVELOPMENT INSPECTOR — OMNISCIENT", inspector)
         self.assertIn('"committed_units": 1', inspector)
         self.assertIn("allocation_resolved", inspector)
+        self.assertIn("official_record_rewrite_attempted", inspector)
+        self.assertIn("official_record_rewritten", inspector)
+        self.assertIn('"current_version_id": "weekly-household-ration-schedule-v2"', inspector)
         self.assertIn("event-", inspector)
         self.assertIn("observation-", inspector)
         self.assertIn("caused_by", inspector)
@@ -879,7 +914,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             any("diary" in key for key in simulation.world.institution.records)
         )
 
-    def test_default_run_demonstrates_the_complete_structured_acceptance_scenario(self):
+    def test_default_run_demonstrates_the_complete_official_record_rewrite(self):
         simulation = build_first_day(seed=42)
 
         snapshots = simulation.run(max_ticks=30)
@@ -902,16 +937,63 @@ class LivingSimulationStepTests(unittest.TestCase):
             for observation in simulation.observations_for(FOCAL_AGENT_ID)
             if observation.details.get("evidence_kind") == "direct_resource_claim"
         )
-        official = next(
+        official_versions = [
             observation
             for observation in simulation.observations_for(FOCAL_AGENT_ID)
-            if observation.details.get("evidence_kind") == "official_resource_claim"
-            and observation.details["asserted_value"] == 5
+            if observation.details.get("evidence_kind") == "official_record_version"
+        ]
+        self.assertEqual(
+            [observation.details["asserted_value"] for observation in official_versions],
+            [3, 2],
         )
-        self.assertEqual(direct.details["proposition"], official.details["proposition"])
-        self.assertNotEqual(direct.details["asserted_value"], official.details["asserted_value"])
+        self.assertNotEqual(
+            direct.details["proposition"], official_versions[0].details["proposition"]
+        )
         self.assertEqual(direct.delivery_tick, 7)
-        self.assertEqual(official.delivery_tick, 8)
+        self.assertEqual(
+            [observation.delivery_tick for observation in official_versions],
+            [8, 12],
+        )
+
+        publication = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_published"
+        )
+        rewrite_attempt = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewrite_attempted"
+        )
+        rewritten = next(
+            event
+            for event in simulation.events
+            if event.kind == "official_record_rewritten"
+        )
+        focal_consultations = [
+            event
+            for event in simulation.events
+            if event.kind == "official_record_consulted"
+            and event.actor_id == FOCAL_AGENT_ID
+        ]
+        self.assertEqual(
+            [event.details["version_id"] for event in focal_consultations],
+            [RATION_SCHEDULE_VERSION_ONE_ID, RATION_SCHEDULE_VERSION_TWO_ID],
+        )
+        self.assertEqual(rewrite_attempt.tick, 10)
+        self.assertEqual(rewritten.caused_by, (rewrite_attempt.event_id, publication.event_id))
+        self.assertEqual(
+            official_versions[1].details["publication_event_id"], rewritten.event_id
+        )
+        self.assertFalse(
+            any(
+                observation.event_id in {rewrite_attempt.event_id, rewritten.event_id}
+                for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            )
+        )
+        self.assertFalse(
+            any(event.kind == "official_claim_issued" for event in simulation.events)
+        )
 
         request = next(
             event
@@ -940,17 +1022,13 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
         self.assertIn("handover", tick_nine_wait.details["decision_explanation"])
 
-        private = next(
-            belief
-            for belief in simulation.world.agents[FOCAL_AGENT_ID].beliefs
-            if belief.context == "private"
-        )
         expression = next(
             event
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
         )
-        self.assertEqual((private.asserted_value, expression.details["asserted_value"]), (3, 5))
+        self.assertEqual(expression.details["asserted_value"], 3)
+        self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
 
         write = next(event for event in simulation.events if event.kind == "diary_write_completed")
@@ -982,11 +1060,11 @@ class LivingSimulationStepTests(unittest.TestCase):
         ]
         self.assertEqual(
             [transition["asserted_value"] for transition in focal_transitions],
-            [3, 5, 1],
+            [3],
         )
         self.assertEqual(
             [transition["tick"] for transition in focal_transitions],
-            [7, 8, 16],
+            [7],
         )
         for transition in focal_transitions:
             source = next(
@@ -996,7 +1074,6 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
             self.assertEqual(source.delivery_tick, transition["tick"])
         self.assertEqual(focal_transitions[0]["conflicts_with"], [])
-        self.assertTrue(focal_transitions[1]["conflicts_with"])
         self.assertIn("belief_transitions", render_inspector(simulation))
 
     def test_busy_actor_cannot_replace_an_action_already_in_progress(self):
@@ -1084,7 +1161,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
     def test_nonpossessor_cannot_read_or_write_the_physical_diary(self):
         simulation = build_first_day(seed=42)
-        for _ in range(17):
+        for _ in range(18):
             simulation.step()
         diary_before = simulation.inspector_state()["diaries"]["mara-private-diary"]
         entry_id = diary_before["entries"][0]["entry_id"]
@@ -1135,14 +1212,14 @@ class LivingSimulationStepTests(unittest.TestCase):
 
         self.assertEqual(configuration["seed"], 42)
         scenario = configuration["scenario"]
-        self.assertEqual(scenario["scenario_id"], "first_day_v1")
+        self.assertEqual(scenario["scenario_id"], "first_day_v2")
         self.assertEqual(scenario["completion_tick"], 24)
         self.assertEqual(scenario["travel_graph"]["home"], ["workplace"])
         self.assertEqual(
             scenario["initial_resource"],
             {"total_units": 3, "committed_units": 1},
         )
-        self.assertEqual(scenario["official_claim_schedule"], {"8": 5, "16": 1})
+        self.assertNotIn("official_claim_schedule", scenario)
         self.assertEqual(scenario["public_pressure"], 0.8)
         self.assertEqual(scenario["public_conformity_threshold"], 0.7)
         self.assertEqual(scenario["action_durations"]["travel"], 2)
@@ -1166,7 +1243,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(
             observed_expression.details["evidence_kind"], "public_statement"
         )
-        self.assertEqual(observed_expression.details["asserted_value"], 5)
+        self.assertEqual(observed_expression.details["asserted_value"], 3)
         self.assertNotIn("pressure", observed_expression.details)
 
 

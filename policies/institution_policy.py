@@ -8,6 +8,7 @@ from simulation.institutions import (
     InstitutionView,
     OfficialClaim,
     OfficialRecordPublication,
+    OfficialRecordRewrite,
 )
 
 
@@ -19,14 +20,25 @@ class InstitutionPolicy:
         initial_publication_schedule: (
             Mapping[int, OfficialRecordPublication] | None
         ) = None,
+        official_record_rewrite_schedule: (
+            Mapping[int, OfficialRecordRewrite] | None
+        ) = None,
     ) -> None:
         self._claim_schedule = dict(claim_schedule)
         self._initial_publication_schedule = dict(initial_publication_schedule or {})
+        self._official_record_rewrite_schedule = dict(
+            official_record_rewrite_schedule or {}
+        )
 
     def choose_initial_publication(
         self, view: InstitutionView
     ) -> OfficialRecordPublication | None:
         return self._initial_publication_schedule.get(view.tick)
+
+    def choose_official_record_rewrite(
+        self, view: InstitutionView
+    ) -> OfficialRecordRewrite | None:
+        return self._official_record_rewrite_schedule.get(view.tick)
 
     def choose_claim(self, view: InstitutionView) -> OfficialClaim | None:
         value = self._claim_schedule.get(view.tick)

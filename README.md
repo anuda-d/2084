@@ -21,9 +21,9 @@ The current center of gravity is a small authoritarian social world in which:
 - the wider world continues beyond what the focal character sees;
 - surprising outcomes should arise from interacting pressures rather than a prescribed story.
 
-This direction remains provisional. The next experiment should clarify one
-bounded official-record rewrite and its effect on agent understanding rather
-than attempt to reproduce an entire society.
+This direction remains provisional. The current slice now demonstrates one
+bounded official-record rewrite and its effect on delivered agent knowledge
+without attempting to reproduce an entire society.
 
 ## Repository layout
 
@@ -51,7 +51,9 @@ It follows one autonomous focal character and two supporting characters through
 and a physical diary. Attempted actions resolve into explicit completed or
 rejected results, and the focal character retains two granted allocation units
 while one need remains unmet. The normal command is intentionally filtered to
-the focal character; a separate inspector exposes objective development records.
+the focal character; it shows the three-packet schedule and later two-packet
+schedule only after separate valid consultations. A separate inspector exposes
+the hidden rewrite and complete objective development records.
 
 Run it from the repository root:
 
@@ -72,8 +74,8 @@ Run all tests:
 ```
 
 See [ARCHITECTURE.md](docs/main/ARCHITECTURE.md) for the tick order and state boundaries,
-the [Lie and Doublethink architecture proposal](docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md)
-for the proposed next deepening,
+the [current Agent Understanding goal](docs/plans/agent-understanding/GOAL.md)
+for the approved next deepening,
 and the [delivery report](docs/plans/first-living-slice/DELIVERY.md) for the scenario's
 rules and limitations. The implementation is an engine feasibility slice, not a
 claim of human realism or a complete society.
@@ -114,7 +116,10 @@ Current source-of-truth documents live in `docs/main/`:
 Proposals and completed implementation records live in `docs/plans/`:
 
 - [Lie and Doublethink architecture](docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md) — proposed next modules; these are not implemented yet.
-- [Current development objective](docs/plans/CURRENT.md) — the single owner-approved goal and verified progress.
+- [Current development index](docs/plans/CURRENT.md) — the compact entry point for one autonomous run.
+- [Agent Understanding goal](docs/plans/agent-understanding/GOAL.md) — the active bounded Module 2 outcome and invariants.
+- [Agent Understanding implementation state](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md) — verified progress with no future task queue.
+- Official Record Rewrite records — the completed [goal](docs/plans/official-record-rewrite/GOAL.md) and [delivery record](docs/plans/official-record-rewrite/DELIVERY.md).
 - First living slice records — the completed [goal](docs/plans/first-living-slice/GOAL.md), [recovery baseline](docs/plans/first-living-slice/BASELINE.md), and [delivery report](docs/plans/first-living-slice/DELIVERY.md).
 
 Other repository guidance:
@@ -125,10 +130,11 @@ Other repository guidance:
 ## Working Approach
 
 Continue through small living situations and one consequential contradiction at
-a time. The proposed next slice deepens the existing allocation contradiction:
-one official artifact is rewritten while objective history remains unchanged,
-agents encounter versions only through valid delivery paths, and a private or
-stale record can preserve an earlier account.
+a time. The approved next slice begins Module 2: Agent Understanding. It uses
+the existing allocation contradiction to retain both delivered official
+versions, select one bounded public stance under pressure, and let a physical
+diary resurface the earlier version strongly enough to prompt one ordinary
+recheck.
 
 The slice is working if the character responds intelligibly from their own limited knowledge, the world does not grant impossible information or authority, and the observer can trace important behavior without seeing a canned plot.
 

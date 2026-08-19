@@ -78,6 +78,45 @@ class OfficialRecord:
         self._current_version_id = version.version_id
         return version
 
+    def rewrite(
+        self,
+        *,
+        expected_current_version_id: str,
+        version_id: str,
+        artifact_id: str,
+        period_id: str,
+        entitlement_packets: int,
+    ) -> RationScheduleVersion:
+        current = self.current_version
+        if current is None:
+            raise ValueError("official record has no current version to rewrite")
+        if artifact_id != self.artifact_id:
+            raise ValueError("rewrite artifact_id does not match the official record")
+        if expected_current_version_id != current.version_id:
+            raise ValueError("rewrite expected current version is stale")
+        if not isinstance(version_id, str) or not version_id.strip():
+            raise ValueError("rewrite requires a non-empty version_id")
+        if any(version.version_id == version_id for version in self.versions):
+            raise ValueError("rewrite version_id already exists")
+        if period_id != current.period_id:
+            raise ValueError("rewrite period_id must match the current version")
+        if (
+            not isinstance(entitlement_packets, int)
+            or isinstance(entitlement_packets, bool)
+            or entitlement_packets <= 0
+        ):
+            raise ValueError("rewrite entitlement_packets must be positive")
+        version = RationScheduleVersion(
+            version_id=version_id,
+            artifact_id=artifact_id,
+            period_id=period_id,
+            entitlement_packets=entitlement_packets,
+            previous_version_id=current.version_id,
+        )
+        self._versions = (*self._versions, version)
+        self._current_version_id = version.version_id
+        return version
+
     def to_data(self) -> dict[str, object]:
         """Return detached, JSON-compatible inspector data."""
         return {
