@@ -5,15 +5,15 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: none
-- Verified implementation runs since alignment: 0
+- Last completed run: AU-1 memory traces from supported delivered evidence (2026-08-18)
+- Verified implementation runs since alignment: 1
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
-| AU-1 Memory traces | open | none |
+| AU-1 Memory traces | met | Focused and full checks verify immutable source-linked focal traces for delivered direct and official evidence, no trace from an undelivered rewrite, deduplicated claims on repeated delivery, empty supporting-agent understanding, and deterministic detached history. |
 | AU-2 Conflict | open | none |
 | AU-3 Public stance | open | none |
 | AU-4 Public action | open | none |
@@ -76,4 +76,16 @@ Alignment does not select, suggest, or record the next implementation task.
 
 ## Verified Run Log
 
-No implementation run has been completed for this goal.
+### 2026-08-18 — AU-1 Memory traces
+
+- Added focal-owned immutable memory traces and interpreted claims derived only
+  from delivered direct-resource and official schedule observations.
+- Verified an official rewrite alone creates no trace and repeated equivalent
+  delivery creates another trace without duplicating its interpreted claim.
+- Verified deterministic detached history export and empty understanding for
+  both supporting agents.
+- Focused validation passed 52 tests; `./scripts/check.sh` passed suites of 52
+  and 63 tests.
+- Fresh Sol-high review found one blocking supporting-agent scope leak; the
+  updater was restricted to the focal agent, regression coverage was added,
+  and re-review confirmed no blocking findings remain.

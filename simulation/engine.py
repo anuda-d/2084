@@ -26,6 +26,7 @@ from simulation.institutions import (
     InstitutionView,
     OfficialRecordRewrite,
 )
+from simulation.understanding import trace_from_delivered_observation
 from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
@@ -89,6 +90,8 @@ class Simulation:
         self._action_count = 0
         self._belief_counts: dict[str, int] = {}
         self._belief_transitions: list[BeliefTransition] = []
+        self._memory_trace_counts: dict[str, int] = {}
+        self._interpreted_claim_counts: dict[str, int] = {}
         self._action_results: list[ActionResult] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
@@ -999,6 +1002,28 @@ class Simulation:
                 )
             )
 
+    def _update_understanding(self, observations: tuple[Observation, ...]) -> None:
+        for observation in observations:
+            if observation.agent_id != self.focal_agent_id:
+                continue
+            agent = self.world.agents[observation.agent_id]
+            trace_count = self._memory_trace_counts.get(observation.agent_id, 0) + 1
+            claim_count = self._interpreted_claim_counts.get(observation.agent_id, 0) + 1
+            interpreted = trace_from_delivered_observation(
+                observation,
+                trace_id=f"memory-trace-{observation.agent_id}-{trace_count:03d}",
+                claim_id=f"interpreted-claim-{observation.agent_id}-{claim_count:03d}",
+                existing_claims=agent.interpreted_claims,
+            )
+            if interpreted is None:
+                continue
+            trace, new_claim = interpreted
+            self._memory_trace_counts[observation.agent_id] = trace_count
+            agent.memory_traces += (trace,)
+            if new_claim is not None:
+                self._interpreted_claim_counts[observation.agent_id] = claim_count
+                agent.interpreted_claims += (new_claim,)
+
     def _resolve_scheduled_official_record_rewrite(
         self, rewrite: OfficialRecordRewrite
     ) -> None:
@@ -1185,6 +1210,7 @@ class Simulation:
             + self._deliver_queued_observations()
         )
         self._update_beliefs(delivered)
+        self._update_understanding(delivered)
         focal_attempt: ActionAttempt | None = None
         for agent_id in sorted(self._policies):
             if agent_id in self._pending:
@@ -1326,6 +1352,36 @@ class Simulation:
                 }
                 for transition in self._belief_transitions
             ],
+            "agent_understanding": {
+                agent_id: {
+                    "memory_traces": [
+                        {
+                            "trace_id": trace.trace_id,
+                            "source_observation_id": trace.source_observation_id,
+                            "source_event_id": trace.source_event_id,
+                            "source": trace.source,
+                            "evidence_kind": trace.evidence_kind,
+                            "interpreted_claim_id": trace.interpreted_claim_id,
+                            "proposition": trace.proposition,
+                            "asserted_value": trace.asserted_value,
+                            "delivery_tick": trace.delivery_tick,
+                            "period_id": trace.period_id,
+                        }
+                        for trace in agent.memory_traces
+                    ],
+                    "interpreted_claims": [
+                        {
+                            "claim_id": claim.claim_id,
+                            "proposition": claim.proposition,
+                            "asserted_value": claim.asserted_value,
+                            "period_id": claim.period_id,
+                            "origin_trace_id": claim.origin_trace_id,
+                        }
+                        for claim in agent.interpreted_claims
+                    ],
+                }
+                for agent_id, agent in self.world.agents.items()
+            },
         }
 
     def inspector_state(self) -> dict[str, object]:

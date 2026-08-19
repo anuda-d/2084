@@ -8,6 +8,7 @@ from typing import Mapping, Protocol
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.beliefs import Belief
 from simulation.events import Observation
+from simulation.understanding import InterpretedClaim, MemoryTrace
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,8 @@ class AgentState:
     action_results: list[ActionResult] = field(default_factory=list)
     observations: list[Observation] = field(default_factory=list)
     beliefs: list[Belief] = field(default_factory=list)
+    memory_traces: tuple[MemoryTrace, ...] = ()
+    interpreted_claims: tuple[InterpretedClaim, ...] = ()
 
 
 @dataclass(frozen=True)
