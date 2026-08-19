@@ -23,8 +23,9 @@ code just in time, validates the result, obtains fresh read-only review, updates
 this file, commits one coherent change, and exits.
 
 After the batch, a separate alignment run evaluates observed behavior against
-the whole goal and plans at most three new tasks. It may revise assumptions,
-remove unnecessary work, or close criteria. It does not implement a task.
+the whole goal with a fresh Sol-high read-only reviewer and plans at most three
+new tasks. It may revise assumptions, remove unnecessary work, or close
+criteria. It does not implement a task.
 
 ## Current Batch
 
@@ -54,11 +55,13 @@ goal-level requirements, not a predetermined execution sequence.
 
 When alignment is due, use one fresh run to:
 
-1. compare verified behavior with every open goal criterion;
-2. identify the smallest next evidence-producing gap;
-3. plan no more than three one-context tasks;
-4. link each task to one relevant specification and focused evidence;
-5. mark exactly one task `next`, reset the counter, commit, and exit.
+1. ask a fresh `gpt-5.6-sol` high-reasoning reviewer to compare verified
+   behavior with every open goal criterion;
+2. resolve any blocking review finding;
+3. identify the smallest next evidence-producing gap;
+4. plan no more than three one-context tasks;
+5. link each task to one relevant specification and focused evidence;
+6. mark exactly one task `next`, reset the counter, commit, and exit.
 
 Do not implement during alignment. Do not pre-plan the rest of the goal.
 

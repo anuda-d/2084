@@ -9,6 +9,7 @@ Status: active.
 - Active work: the sole task marked `next`, or the required alignment run
 - Task specification: the document linked from the active task
 - Run boundary: exactly one current task or alignment review
+- Model routing: Terra high implements; Sol high reviews and aligns; no Luna
 - Incomplete run: none
 
 ## Required Read Order
@@ -42,8 +43,8 @@ unclear.
   before editing.
 - Load code just in time; the plan does not prescribe permanent file paths.
 - Run focused validation before the full check.
-- Use a fresh read-only reviewer after implementation; alignment is no-code
-  self-review.
+- Use a fresh Sol-high read-only reviewer after implementation and during
+  no-code alignment.
 - Update `IMPLEMENTATION_PLAN.md` with status and evidence.
 - Commit one coherent work unit.
 - Exit after the commit; do not start another work unit in this chat.

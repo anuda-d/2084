@@ -71,6 +71,9 @@ For now, favor one autonomous focal life, a small living world, understandable a
   implementation-plan task, commits it, and exits. A separate alignment run
   plans the next small batch from verified goal evidence.
 - A later standalone task loads fresh context from repository state.
+- Scheduled implementation and orchestration use `gpt-5.6-terra` with high
+  reasoning. Fresh independent review and goal alignment use `gpt-5.6-sol`
+  with high reasoning. Do not use Luna in this loop.
 - Before a scheduled run touches the repository, it must confirm that no
   other 2084 task, loop orchestrator, or subagent thread is still active. Any
   active project task makes the new trigger a no-op.

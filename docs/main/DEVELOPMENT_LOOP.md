@@ -22,6 +22,13 @@ same one-task, authority, validation, independent-review, and no-overlap rules.
 The scheduled time boundary does not apply unless the manual request supplies
 one.
 
+### Model routing
+
+The scheduled orchestrator uses `gpt-5.6-terra` with high reasoning for
+implementation and integration. Every independent implementation reviewer and
+goal-alignment reviewer uses a fresh `gpt-5.6-sol` agent with high reasoning.
+Luna is not authorized for this loop.
+
 ### No-overlap gate
 
 Before reading or changing repository state, a run must inspect the Codex task
@@ -55,10 +62,12 @@ The scheduled task uses this instruction:
 > Start with `docs/plans/CURRENT.md`. Read its active goal, implementation plan,
 > and only the specification linked by the active task. Locate code just in
 > time. For an implementation task, implement, validate, obtain fresh
-> independent review, update the shared plan, commit one coherent task, and
-> exit. For alignment, plan at most three tasks, commit the plan, and exit
-> without implementation. Do not begin another work unit, select a new goal,
-> push, merge, publish, or disturb unrelated user work.
+> independent `gpt-5.6-sol` high-reasoning review, update the shared plan,
+> commit one coherent task, and exit. For alignment, use a fresh
+> `gpt-5.6-sol` high-reasoning reviewer, plan at most three tasks, commit the
+> plan, and exit without implementation. Do not begin another work unit, select
+> a new goal, push, merge, publish, or disturb unrelated user work. Do not use
+> Luna.
 
 ## Sources of Authority
 
@@ -206,9 +215,9 @@ every implementation task. Give it the active goal, relevant project rules,
 the resulting diff, and validation results, but do not give it the
 implementer's reasoning or ask it to confirm the chosen approach. It must look
 for goal mismatch, impossible knowledge or authority, broken invariants,
-missing behavioral evidence, test gaps, and unnecessary complexity. A
-documentation-only or no-change alignment task may use orchestrator
-self-review.
+missing behavioral evidence, test gaps, and unnecessary complexity. The
+reviewer must use `gpt-5.6-sol` with high reasoning, including for a
+documentation-only or no-change alignment task.
 
 The orchestrator must resolve every blocking finding and repeat independent
 review after any material correction. Separate observed behavior from
