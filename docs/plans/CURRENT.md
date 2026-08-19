@@ -6,9 +6,9 @@ Status: active.
 
 - Goal: [Agent Understanding](agent-understanding/GOAL.md)
 - Shared plan: [Implementation Plan](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active task: the sole row marked `next` in the shared plan
-- Task specification: the document linked from that row
-- Run boundary: exactly one implementation task
+- Active work: the sole task marked `next`, or the required alignment run
+- Task specification: the document linked from the active task
+- Run boundary: exactly one current task or alignment review
 - Incomplete run: none
 
 ## Required Read Order
@@ -17,7 +17,7 @@ Status: active.
 2. this file
 3. the active goal
 4. the shared implementation plan
-5. only the specification linked by the active task
+5. for implementation, only the specification linked by the active task
 6. relevant implementation and tests located with `rg`
 
 Do not preload completed-goal records, historical experiments, the broader
@@ -36,14 +36,17 @@ unclear.
 ## Run Contract
 
 - Confirm the no-overlap gate before repository work.
-- Select only the active task.
-- State one criterion, one behavior, and one evidence claim before editing.
+- Select only the active task; if alignment is due, plan the next batch without
+  implementation.
+- For implementation, state one criterion, one behavior, and one evidence claim
+  before editing.
 - Load code just in time; the plan does not prescribe permanent file paths.
 - Run focused validation before the full check.
-- Use a fresh read-only reviewer after implementation.
+- Use a fresh read-only reviewer after implementation; alignment is no-code
+  self-review.
 - Update `IMPLEMENTATION_PLAN.md` with status and evidence.
-- Commit one coherent task.
-- Exit after the commit; do not start the next task in this chat.
+- Commit one coherent work unit.
+- Exit after the commit; do not start another work unit in this chat.
 
 ## Stop Conditions
 

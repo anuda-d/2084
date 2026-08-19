@@ -102,6 +102,6 @@ in [SELECTION.md](SELECTION.md) and is not required iteration input.
 
 ## Completion Boundary
 
-Complete AU-1 through AU-10 through the ordered one-run tasks. Then mark the
-goal complete, commit the final state update, and stop before selecting another
-goal.
+Complete AU-1 through AU-10 through rolling batches chosen from verified
+evidence. Then mark the goal complete, commit the final state update, and stop
+before selecting another goal.
