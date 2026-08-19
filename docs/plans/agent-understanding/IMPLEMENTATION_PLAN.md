@@ -1,70 +1,79 @@
-# Agent Understanding Rolling Plan
+# Agent Understanding Implementation State
 
-Status: active shared state.
+Status: active shared state; no future tasks are planned.
 
 ## Run State
 
-- Active work: the sole task marked `next` below
-- Current batch: 1
-- Last completed task: none
 - Incomplete run: none
-- Verified implementation tasks since alignment: 0
-- Alignment due: after the current three-task batch
+- Last completed run: none
+- Verified implementation runs since alignment: 0
+- Alignment due: after three verified implementation runs
 
-## Planning Contract
+## Goal Progress
 
-The goal and its completion criteria define the destination. This file plans
-only the next small batch from current evidence; it is not a full implementation
-blueprint.
+| Criterion | Status | Verified evidence |
+| --- | --- | --- |
+| AU-1 Memory traces | open | none |
+| AU-2 Conflict | open | none |
+| AU-3 Public stance | open | none |
+| AU-4 Public action | open | none |
+| AU-5 Diary record | open | none |
+| AU-6 Resurfacing | open | none |
+| AU-7 Recheck | open | none |
+| AU-8 Boundaries | open | none |
+| AU-9 Presentation | open | none |
+| AU-10 Reproduction | open | none |
 
-One Codex run completes at most one task below. A run reads the goal, this file,
-and only the specification linked by the active task. It locates implementation
-code just in time, validates the result, obtains fresh read-only review, updates
-this file, commits one coherent change, and exits.
+This table records only verified goal evidence. It is not a task backlog or an
+implementation sequence.
 
-After the batch, a separate alignment run evaluates observed behavior against
-the whole goal with a fresh Sol-high read-only reviewer and plans at most three
-new tasks. It may revise assumptions, remove unnecessary work, or close
-criteria. It does not implement a task.
+## Per-Run Selection
 
-## Current Batch
+Each fresh implementation run:
 
-| ID | Status | Criterion | One-iteration outcome | Read | Focused evidence |
-| --- | --- | --- | --- | --- | --- |
-| AU-01 | next | AU-1 | Represent delivered direct-resource evidence as one immutable memory trace. | [Memory Traces](specs/MEMORY_TRACES.md) | Focused trace unit test |
-| AU-02 | pending | AU-1 | Interpret one delivered official schedule version as one immutable memory trace. | [Memory Traces](specs/MEMORY_TRACES.md) | Focused official-trace unit test |
-| AU-03 | pending | AU-1 | Create focal traces only during delivered-observation processing. | [Memory Traces](specs/MEMORY_TRACES.md) | Delivery integration comparison |
+1. reads the goal and this verified state;
+2. locates only enough relevant code and tests to find the smallest useful gap;
+3. selects one bounded task that can produce new evidence for one open
+   criterion in one context window;
+4. records that task under `Current Run` and `Incomplete run` before changing
+   implementation;
+5. reads only the specification relevant to the selected task;
+6. states the intended behavior and focused evidence;
+7. implements, validates, obtains fresh Sol-high review, records verified
+   evidence, commits, and exits.
 
-No later implementation tasks are planned yet. The remaining AU criteria are
-goal-level requirements, not a predetermined execution sequence.
+Do not select or record a future task. Criteria order does not prescribe
+implementation order. If no honest task advances the goal, make no change.
 
-## Task Update Rules
+## Current Run
 
-- At run start, change the active task from `next` to `in_progress`.
-- After validation and review, change it to `complete`.
-- If another task remains in the current batch, mark exactly one `next`.
-- After the final batch task, set `Alignment due` to `now`; do not invent the
-  next task in the same run.
-- Record concise observed evidence below; repository history records commits.
-- If a task is too large, split only that task before implementation and exit.
-- If evidence invalidates a later batch task, set `Alignment due` to `now` and
-  leave that task unstarted.
-- If owner authority is required, leave code unchanged and record the decision.
+- Status: none
+- Criterion: none
+- Task: none
+- Specification: none
+- Expected evidence: none
 
-## Alignment Rules
+## Completion Rules
 
-When alignment is due, use one fresh run to:
+- Clear `Current Run` and `Incomplete run` only after validation, independent
+  review, state update, and commit preparation are complete.
+- Mark a criterion met only when proportionate verified evidence satisfies it.
+- Append concise observed evidence to the log below.
+- Increment the alignment counter after each verified implementation run.
+- If a selected task is too large, replace it with a smaller task before
+  implementation; do not create a future queue.
+- If owner authority is required, leave implementation unchanged and record the
+  decision needed.
 
-1. ask a fresh `gpt-5.6-sol` high-reasoning reviewer to compare verified
-   behavior with every open goal criterion;
-2. resolve any blocking review finding;
-3. identify the smallest next evidence-producing gap;
-4. plan no more than three one-context tasks;
-5. link each task to one relevant specification and focused evidence;
-6. mark exactly one task `next`, reset the counter, commit, and exit.
+## Alignment
 
-Do not implement during alignment. Do not pre-plan the rest of the goal.
+When alignment is due, a fresh Terra-high orchestrator asks a fresh Sol-high
+read-only reviewer to compare all verified evidence with the goal. Resolve
+blocking findings, update criterion status, record removal or simplification
+recommendations, reset the counter, commit, and exit.
 
-## Verified Task Log
+Alignment does not select, suggest, or record the next implementation task.
 
-No implementation task has been completed for this goal.
+## Verified Run Log
+
+No implementation run has been completed for this goal.

@@ -118,7 +118,7 @@ Proposals and completed implementation records live in `docs/plans/`:
 - [Lie and Doublethink architecture](docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md) — proposed next modules; these are not implemented yet.
 - [Current development index](docs/plans/CURRENT.md) — the compact entry point for one autonomous run.
 - [Agent Understanding goal](docs/plans/agent-understanding/GOAL.md) — the active bounded Module 2 outcome and invariants.
-- [Agent Understanding implementation plan](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md) — the current small task batch and verified shared state.
+- [Agent Understanding implementation state](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md) — verified progress with no future task queue.
 - Official Record Rewrite records — the completed [goal](docs/plans/official-record-rewrite/GOAL.md) and [delivery record](docs/plans/official-record-rewrite/DELIVERY.md).
 - First living slice records — the completed [goal](docs/plans/first-living-slice/GOAL.md), [recovery baseline](docs/plans/first-living-slice/BASELINE.md), and [delivery report](docs/plans/first-living-slice/DELIVERY.md).
 

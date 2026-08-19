@@ -5,9 +5,9 @@ These are flexible working principles for coding agents and future contributors.
 ## Before Working
 
 - Start with `docs/plans/CURRENT.md`; it is the compact operational index.
-- Read the linked active goal, implementation plan, and only the specification
-  linked by the active task.
-- Locate relevant implementation and tests just in time with repository search.
+- Read the linked active goal and implementation state, then locate only enough
+  relevant implementation and tests to select one smallest useful goal gap.
+- Read only the specification relevant to that selected task.
 - Read `README.md`, `docs/main/CORE_CONSTRUCT.md`, or
   `docs/main/ARCHITECTURE.md` only when the active specification routes there or
   an invariant is unclear.
@@ -67,9 +67,9 @@ For now, favor one autonomous focal life, a small living world, understandable a
 
 - Use the compact run contract in `docs/plans/CURRENT.md`; consult
   `docs/main/DEVELOPMENT_LOOP.md` when the full operating contract is needed.
-- Each scheduled or manual Codex task completes at most one current
-  implementation-plan task, commits it, and exits. A separate alignment run
-  plans the next small batch from verified goal evidence.
+- Each scheduled or manual Codex task selects and completes at most one small
+  task from the active goal, commits it, and exits. No future task is planned.
+- A separate alignment run reviews goal evidence without selecting later work.
 - A later standalone task loads fresh context from repository state.
 - Scheduled implementation and orchestration use `gpt-5.6-terra` with high
   reasoning. Fresh independent review and goal alignment use `gpt-5.6-sol`

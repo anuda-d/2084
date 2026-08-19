@@ -4,16 +4,16 @@ Status: current operating contract for scheduled autonomous development.
 
 This loop advances one owner-approved 2084 goal through small, independently
 validated tasks. Each Codex run completes at most one current task, records the
-verified result, commits the coherent change, and exits. Tasks are planned in
-small rolling batches from goal evidence rather than as a full implementation
-blueprint. The repository is the durable state between fresh runs. The loop
-does not choose project direction or authorize its own next goal.
+verified result, commits the coherent change, and exits. Each run selects its
+task from the active goal and current verified evidence; it does not plan later
+tasks. The repository is the durable state between fresh runs. The loop does
+not choose project direction or authorize its own next goal.
 
 ## Schedule and Run Boundary
 
 The loop is launched by standalone scheduled tasks at 6:00 PM, 7:00 PM, and
 8:00 PM in `America/Toronto`. Each task works in the main 2084 checkout, handles
-one current implementation task or one alignment review, and exits. If an
+one self-selected implementation task or one alignment review, and exits. If an
 earlier run is still active, the next trigger performs no repository work. The
 repository carries durable context; prior task conversation does not.
 
@@ -54,20 +54,21 @@ committed by 9:00 PM.
 The scheduled task uses this instruction:
 
 > Complete exactly one current work unit from the autonomous 2084 development
-> loop: either the sole task marked next or, when due, a no-code alignment that
-> plans the next small batch from verified goal evidence.
+> loop. If alignment is due, review verified goal evidence without selecting
+> future work. Otherwise select the smallest useful task from the active goal
+> and current evidence; do not use or create a future task queue.
 > Before touching the repository, inspect Codex task activity for this project.
 > If any other 2084 task, loop orchestrator, or subagent is active, make this run
 > a no-op as required by the contract.
-> Start with `docs/plans/CURRENT.md`. Read its active goal, implementation plan,
-> and only the specification linked by the active task. Locate code just in
-> time. For an implementation task, implement, validate, obtain fresh
-> independent `gpt-5.6-sol` high-reasoning review, update the shared plan,
+> Start with `docs/plans/CURRENT.md`. Read its active goal and implementation
+> state. Locate only enough code and tests to select one bounded task, then read
+> only its relevant specification. Implement, validate, obtain fresh
+> independent `gpt-5.6-sol` high-reasoning review, update the shared state,
 > commit one coherent task, and exit. For alignment, use a fresh
-> `gpt-5.6-sol` high-reasoning reviewer, plan at most three tasks, commit the
-> plan, and exit without implementation. Do not begin another work unit, select
-> a new goal, push, merge, publish, or disturb unrelated user work. Do not use
-> Luna.
+> `gpt-5.6-sol` high-reasoning reviewer, update verified goal state, commit, and
+> exit without implementation or task selection. Do not begin another work
+> unit, select a new goal, push, merge, publish, or disturb unrelated user work.
+> Do not use Luna.
 
 ## Sources of Authority
 
@@ -76,9 +77,9 @@ Read these in order before changing the repository:
 1. `AGENTS.md` — project-wide working constraints.
 2. `docs/plans/CURRENT.md` — compact index and current run boundary.
 3. The active goal linked from `CURRENT.md` — authorized outcome and invariants.
-4. The linked implementation plan — current small batch and verified state.
-5. Only the specification linked by the active task — detailed behavior.
-6. Relevant code and tests found just in time with repository search.
+4. The linked implementation state — verified progress and incomplete work.
+5. Relevant code and tests found just in time to select one task.
+6. Only the specification relevant to the selected task — detailed behavior.
 
 Read `README.md`, Core Construct, Architecture, UI Architecture, Design
 References, broader proposals, completed goals, and historical experiments only
@@ -125,10 +126,9 @@ authority for goal and product-direction decisions.
 Before implementation, confirm that:
 
 - `CURRENT.md` links exactly one active, owner-approved goal;
-- the linked implementation plan marks exactly one task `next`, or records
-  that alignment is due, but never both;
+- the linked implementation state contains no future task queue;
 - the active goal authorizes the proposed behavior;
-- no incomplete run is recorded in the implementation plan;
+- no incomplete run is recorded in the implementation state;
 - the working checkout contains no unrelated unfinished changes;
 - the baseline repository check passes, or any pre-existing failure is recorded
   and clearly unrelated to the proposed change.
@@ -142,17 +142,17 @@ condition.
 
 ### 1. Orient
 
-Read the compact index, goal, and implementation plan. If alignment is due,
+Read the compact index, goal, and implementation state. If alignment is due,
 perform section 7 without loading implementation or starting a task. Otherwise,
-read the active-task specification and relevant implementation, then change the
-active task from `next` to `in_progress`.
+locate only enough relevant implementation and tests to select one task.
 
 ### 2. Select one task
 
-Select only the task marked `next` from the current batch. Do not combine it
-with adjacent tasks or plan later work during implementation. If it cannot fit
-comfortably in a fresh context, split only that task in the implementation plan
-before editing and exit. State a progress claim:
+Choose the smallest unmet goal gap whose implementation can create new
+behavioral evidence in one fresh context. Record that single task in the
+implementation state, then read only its relevant specification. Do not select
+or record later work. If it cannot fit comfortably, replace it with a smaller
+task before editing. State a progress claim:
 
 > This task advances criterion X by producing behavior Y, verified by evidence
 > Z.
@@ -224,7 +224,9 @@ review after any material correction. Separate observed behavior from
 interpretation. Mark the task complete only when the evidence is proportionate,
 the focused and full checks pass, and independent review finds no unresolved
 blocking violation. Update `IMPLEMENTATION_PLAN.md` in the same run, including
-current-batch status, counters, evidence, and any alignment requirement.
+verified criterion status, counters, evidence, and any alignment requirement.
+Clear the current-run record during commit preparation; do not record a next
+task.
 
 Review the final staged diff, then create one commit containing the coherent
 implementation, validation evidence encoded in tests, and progress update. Do
@@ -236,31 +238,28 @@ known failing or partial result as verified progress.
 
 - A criterion with verified proportionate evidence is closed. Do not harden it
   further without a regression, an affected invariant, or owner direction.
-- Follow only the current small batch. Do not infer a full implementation path
-  from the goal criteria or specifications.
 - After at most three verified implementation tasks, perform a goal-level
   alignment review in a separate run before the next implementation task.
+- Never plan, suggest, or record a future implementation task.
 - Do not complete two infrastructure-only tasks without focused behavioral
   evidence.
 - It is valid for a run to make no code change.
 
 The goal-level alignment review asks what observable behavior changed, which
 criteria are proven, whether complexity grew faster than explanatory value,
-and whether anything should be removed. It then plans at most three small tasks
-from the smallest evidence-producing gaps, links each to one specification, and
-marks one `next`. It may revise or remove unstarted assumptions from the prior
-batch. Reset the alignment counter only after recording and committing that
-review. Do not implement during the alignment run or pre-plan the rest of the
-goal.
+and whether anything should be removed. It updates only verified state and
+recommendations about existing implementation. Reset the alignment counter only
+after recording and committing that review. Do not implement or select a later
+task during alignment.
 
 ## Terminal States
 
 After the one-task run, choose exactly one state:
 
 - **TASK COMPLETE** — the task is validated, recorded, and committed; exit
-  without starting the next task.
-- **ALIGNMENT COMPLETE** — verified goal evidence was reviewed, the next small
-  batch was committed, and no implementation was started.
+  without selecting another task.
+- **ALIGNMENT COMPLETE** — verified goal evidence was reviewed and recorded;
+  no implementation task was selected.
 - **ACTIVE RUN EXISTS** — another project task, orchestrator, or subagent is
   active, so this trigger performed no repository work.
 - **ACTIVE RUN STATUS UNKNOWN** — task activity could not be inspected reliably,
@@ -284,7 +283,7 @@ For each committed task, retain a concise report in the scheduled task run:
 4. focused and full validation results;
 5. implementation partition, subagents used, and independent-review findings;
 6. forced outcomes, special cases, risks, and unresolved assumptions;
-7. the next queued task or required alignment for a later standalone run.
+7. whether alignment is due; do not name a future implementation task.
 
 At a terminal state, report why work stopped and the exact repository state.
 Routine implementation results do not wait for owner review.

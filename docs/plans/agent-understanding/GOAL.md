@@ -74,7 +74,8 @@ prose.
 
 ## Specification Routing
 
-Read only the specification linked by the active task in
+After selecting one smallest useful goal gap, read only its relevant
+specification. Record the selection in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md):
 
 - [Memory Traces](specs/MEMORY_TRACES.md)
@@ -102,6 +103,6 @@ in [SELECTION.md](SELECTION.md) and is not required iteration input.
 
 ## Completion Boundary
 
-Complete AU-1 through AU-10 through rolling batches chosen from verified
-evidence. Then mark the goal complete, commit the final state update, and stop
-before selecting another goal.
+Complete AU-1 through AU-10 through single-run tasks chosen from current
+verified evidence. Do not plan future tasks. Then mark the goal complete,
+commit the final state update, and stop before selecting another goal.
