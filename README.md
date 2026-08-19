@@ -1,141 +1,169 @@
 # 2084
 
-2084 is an autonomous agent-based social simulation experienced primarily through one focal character's life.
+2084 is an early, terminal-based social simulation about following one
+autonomous person through a world they can only partly understand.
 
-The character is not a puppet waiting for constant input. The intended simulation lets them perceive a limited part of the world, form beliefs, remember imperfectly, make decisions, and live with consequences while other people and institutions continue to act. The current slice implements limited observations and structured beliefs, but not memory decay or a general model of imperfect recall. The observer follows this person closely, can inspect a readable account of their understanding, and may eventually have limited ways to redirect them.
+The long-term idea is to watch a life unfold inside a small society shaped by
+scarcity, institutions, relationships, limited information, and pressure. The
+focal character is not a player-controlled puppet and does not know everything
+the simulation knows. Other people and institutions continue acting while the
+observer sees the world mainly through that character's experience.
 
-2084 is not currently conceived as a conventional objective-driven game or as a formal study dashboard. Its intended form is a watchable, inspectable simulation. Rigorous state boundaries, append-only records, and deterministic reproduction make the current behavior trustworthy and understandable underneath the experience. Durable saves and full-run replay are not implemented yet.
+The project takes thematic inspiration from George Orwell's *Nineteen
+Eighty-Four*, especially the gap between lived experience, public behavior, and
+official accounts. It is not an adaptation of Orwell's plot, characters, or
+setting.
 
-## Current Direction
+## What exists today
 
-The setting takes substantial inspiration from the social pressures in George Orwell's *Nineteen Eighty-Four* without recreating its characters, plot, or world exactly.
+The repository contains one deterministic prototype scenario, `first_day_v2`.
+It follows Mara Vale and two supporting characters through a 24-tick workday.
+Mara:
 
-The current center of gravity is a small authoritarian social world in which:
+- travels between home, work, and a civic allocation office;
+- sees three allocation units but physically receives only two;
+- consults an official schedule that initially promises three packets;
+- experiences public pressure to repeat that three-packet entitlement;
+- consults the schedule again after the institution has revised it to two;
+- writes and later reads a physical diary entry; and
+- finishes the day with one household unit still unmet.
 
-- actual events and official accounts can contradict one another;
-- an institution may revise its current public record without changing the
-  simulation's append-only objective history;
-- surveillance is powerful but incomplete, and uncertainty can produce self-censorship;
-- the focal character may privately believe, publicly say, and contextually act on different versions of reality;
-- relationships, rumors, reports, status, scarcity, and institutional pressure affect behavior;
-- the wider world continues beyond what the focal character sees;
-- surprising outcomes should arise from interacting pressures rather than a prescribed story.
+The route is heavily authored, but the characters are not moved directly by a
+player. Transparent rule-based policies choose attempted actions from limited
+information. The simulation then checks whether each attempt is valid and
+records what actually happens.
 
-This direction remains provisional. The current slice now demonstrates one
-bounded official-record rewrite and its effect on delivered agent knowledge
-without attempting to reproduce an entire society.
+The current prototype also preserves an important separation:
 
-## Repository layout
+- **Objective history** records what happened and is append-only.
+- **Official records** can gain a new current version without rewriting that
+  objective history.
+- **Observations** determine what a particular character actually encounters
+  and when. Publishing or revising a record does not automatically tell every
+  character about it.
+- **Agent state** can contain source-linked beliefs and memory traces derived
+  from delivered observations.
+- **Presentation** keeps the normal view focused on Mara, while a separate
+  development inspector can reveal the complete underlying record.
 
-The runnable project is organized directly at the repository root:
+This is a feasibility prototype, not a finished game or a claim to model human
+psychology.
 
-```text
-simulation/   World state, events, actions, beliefs, and the engine
-policies/     Rules characters and institutions use to choose actions
-scenarios/    Authored starting worlds and runnable entry points
-observer/     Normal and development-facing output
-tests/        Tests for the current simulation
-experiments/  Older prototypes retained as historical evidence
-docs/         Current documents and future plans
-scripts/      Project checks
-```
+## Run the simulation
 
-There is no second 2084 package inside the 2084 repository. These directories
-are the current application unless explicitly described as experiments or plans.
-
-## Current runnable slice
-
-The repository now contains a deterministic, terminal-based first living slice.
-It follows one autonomous focal character and two supporting characters through
-24 ticks spanning work, travel, an allocation contradiction, public pressure,
-and a physical diary. Attempted actions resolve into explicit completed or
-rejected results, and the focal character retains two granted allocation units
-while one need remains unmet. The normal command is intentionally filtered to
-the focal character; it shows the three-packet schedule and later two-packet
-schedule only after separate valid consultations. A separate inspector exposes
-the hidden rewrite and complete objective development records.
-
-Run it from the repository root:
+The project uses Python's standard library and has no third-party runtime
+dependencies. From the repository root, run:
 
 ```bash
 python3 -m scenarios.first_day --seed 42 --ticks 30
 ```
 
-Use the explicitly omniscient inspector:
+The normal output shows only information deliberately admitted to Mara's view.
+The scenario completes at tick 24; `--ticks 30` simply gives it enough room to
+reach that completion condition.
+
+To see the explicitly omniscient development record, run:
 
 ```bash
 python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect
 ```
 
-Run all tests:
+The inspector is intentionally verbose. It includes objective events,
+agent-specific observations, action outcomes, official-record versions,
+physical state, beliefs, and the new Agent Understanding evidence.
+
+Useful options:
+
+```text
+--seed N       Choose the deterministic random seed.
+--ticks N      Limit how many ticks may run.
+--inspect      Show the omniscient development view.
+```
+
+Run the complete test suite with:
 
 ```bash
 ./scripts/check.sh
 ```
 
-See [ARCHITECTURE.md](docs/main/ARCHITECTURE.md) for the tick order and state boundaries,
-the [current Agent Understanding goal](docs/plans/agent-understanding/GOAL.md)
-for the approved next deepening,
-and the [delivery report](docs/plans/first-living-slice/DELIVERY.md) for the scenario's
-rules and limitations. The implementation is an engine feasibility slice, not a
-claim of human realism or a complete society.
+That command checks both the current engine and the older prototypes retained
+under `experiments/`.
 
-### How the current logic is divided
+## Current development status
 
-- `scenarios/first_day.py` assembles the authored world, agents,
-  schedules, thresholds, and action durations.
-- `simulation/world.py` owns objective locations, resources,
-  institutional state, and the physical diary.
-- `simulation/events.py` keeps objective events separate from the
-  observations delivered to particular agents.
-- `simulation/beliefs.py` creates source-linked structured beliefs and
-  retains explicit contradictions.
-- `policies/` contains deterministic decision rules. The current
-  slice does not use an LLM or other AI decision model.
-- `simulation/engine.py` advances time, supplies restricted policy
-  views, validates attempts, resolves consequences, and produces the focal
-  projection.
-- `observer/terminal.py` renders only focal-character knowledge;
-  `observer/inspector.py` is the separate omniscient development
-  view.
-
-The current first day is heavily authored. Policies react autonomously to
-delivered evidence, but the route through work, allocation pressure, public
-conformity, and the diary should not be described as an emergent story.
-
-## Documents
-
-Current source-of-truth documents live in `docs/main/`:
-
-- [Core Construct](docs/main/CORE_CONSTRUCT.md) — the experience, central tensions, and current conceptual pillars.
-- [Architecture](docs/main/ARCHITECTURE.md) — boundaries between world truth, knowledge, decisions, institutions, and presentation.
-- [UI Architecture](docs/main/UI_ARCHITECTURE.md) — the focal-character perspective and ways to make autonomous behavior understandable.
-- [Design References](docs/main/DESIGN_REFERENCES.md) — what is being taken from Orwell, the world-modeling paper, and the reference simulation.
-- [Agentic Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the scheduled autonomous cycle, progress gates, and escalation boundary.
-
-Proposals and completed implementation records live in `docs/plans/`:
-
-- [Lie and Doublethink architecture](docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md) — proposed next modules; these are not implemented yet.
-- [Current development index](docs/plans/CURRENT.md) — the compact entry point for one autonomous run.
-- [Agent Understanding goal](docs/plans/agent-understanding/GOAL.md) — the active bounded Module 2 outcome and invariants.
-- [Agent Understanding implementation state](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md) — verified progress with no future task queue.
-- Official Record Rewrite records — the completed [goal](docs/plans/official-record-rewrite/GOAL.md) and [delivery record](docs/plans/official-record-rewrite/DELIVERY.md).
-- First living slice records — the completed [goal](docs/plans/first-living-slice/GOAL.md), [recovery baseline](docs/plans/first-living-slice/BASELINE.md), and [delivery report](docs/plans/first-living-slice/DELIVERY.md).
-
-Other repository guidance:
-
-- [experiments/README.md](experiments/README.md) — retained prototypes that predate the reusable engine.
-- [AGENTS.md](AGENTS.md) — guidance for coding agents and future contributors.
-
-## Working Approach
-
-Continue through small living situations and one consequential contradiction at
-a time. The approved next slice begins Module 2: Agent Understanding. It uses
-the existing allocation contradiction to retain both delivered official
-versions, select one bounded public stance under pressure, and let a physical
-diary resurface the earlier version strongly enough to prompt one ordinary
+Work is currently focused on a bounded **Agent Understanding** experiment. Its
+question is whether Mara can retain two delivered official versions, use the
+revised version as a public working stance under pressure, and later have the
+earlier version resurfaced by her diary strongly enough to prompt one ordinary
 recheck.
 
-The slice is working if the character responds intelligibly from their own limited knowledge, the world does not grant impossible information or authority, and the observer can trace important behavior without seeing a canned plot.
+Only the first part of that goal is verified so far:
 
-Answers can remain uncertain. These documents should make uncertainty visible while preventing the project's established direction from being repeatedly rediscovered.
+- delivered direct-resource evidence creates an immutable, source-linked
+  memory trace and interpreted claim for Mara;
+- each delivered official schedule version creates its own trace;
+- a record revision that Mara has not encountered creates no memory for her;
+- repeated equivalent delivery can create another trace without duplicating
+  the interpreted claim; and
+- supporting characters do not receive this focal-only understanding state.
+
+The following parts are **not implemented yet**:
+
+- an explicit conflict connecting the three-packet and two-packet official
+  versions;
+- a context-specific public stance based on the revised version;
+- policy behavior driven by that new stance;
+- diary-cued resurfacing inside Agent Understanding;
+- the additional archive recheck required by the active goal; and
+- presentation of the complete new causal chain in the normal view.
+
+The older narrow belief model still supplies the “Private belief” line visible
+in the terminal output. It represents Mara's direct sight of three physical
+allocation units. It should not be mistaken for the unfinished official-version
+conflict and stance system.
+
+## Known limits
+
+- The scenario uses deterministic hand-written policies, not an LLM or other AI
+  decision model.
+- The first-day route, institutional rewrite timing, public pressure, and diary
+  opportunity are authored inputs. The result is bounded evidence, not an
+  emergent story.
+- Memory decay, forgetting, general language understanding, emotion,
+  personality, relationships, surveillance, punishment, and a broader living
+  society are not implemented.
+- There is no graphical interface, durable save system, executable replay, or
+  player intervention.
+- The inspector is a development tool, not the intended final experience.
+
+These limits are deliberate. The project is testing small, inspectable
+mechanisms before adding scale or less predictable behavior.
+
+## Repository guide
+
+```text
+scenarios/    Authored worlds and runnable entry points
+simulation/   Time, world state, actions, events, records, and understanding
+policies/     Deterministic character and institution decision rules
+observer/     The filtered terminal view and omniscient inspector
+tests/        Tests for the current engine and scenario
+experiments/  Older prototypes kept as historical evidence
+docs/         Product direction, architecture, goals, and verified progress
+scripts/      Repository checks
+```
+
+The most useful documents are:
+
+- [Core Construct](docs/main/CORE_CONSTRUCT.md) — the intended experience and
+  thematic direction.
+- [Architecture](docs/main/ARCHITECTURE.md) — the boundaries between world
+  truth, observations, decisions, institutions, and presentation.
+- [Current Development Index](docs/plans/CURRENT.md) — the active development
+  entry point.
+- [Agent Understanding Goal](docs/plans/agent-understanding/GOAL.md) — the
+  approved behavior currently being explored.
+- [Verified Implementation State](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md)
+  — what has actually been demonstrated so far.
+
+For coding agents and contributors, [AGENTS.md](AGENTS.md) describes the working
+agreements and the one-slice development loop.
