@@ -72,8 +72,11 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
 The possible deeper architecture is described in detail in
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 It is a proposal, not a description of currently implemented modules. The
-active bounded goal has begun with the initial-publication, narrow public
-consultation, and authorized rewrite seams described above.
+completed bounded Official Record goal established the initial-publication,
+narrow public-consultation, and authorized rewrite seams described above. The
+active bounded goal now begins Module 2 with source-linked memory traces,
+explicit official-version conflict, one contextual public stance, and one
+diary-cued resurfacing transition.
 
 - **Official Record** would own the institution's mutable current public
   projection and bounded rewrite, suppression, and fabrication operations.
@@ -304,8 +307,10 @@ resulting day should not be presented as an emergent plot.
 
 - Which state must update every step, and which can update only when relevant?
 - What is the smallest useful action vocabulary?
-- Which single Agent Understanding transition changes observable behavior without pretending to model full human cognition?
-- Which authority, access, time, and capacity limits belong in the first Official Record rewrite?
+- Does the selected diary-cued resurfacing transition change observable
+  behavior without pretending to model full human cognition?
+- Which authority, access, time, or capacity limit would justify a later
+  Official Record experiment beyond the completed rewrite?
 - Should the first follow-up operation explore one suppressed reference or one fabricated artifact?
 - When do Official Record and Agent Understanding justify extracting Claim and Provenance?
 - Which delivery channel first needs stale or missed official versions?

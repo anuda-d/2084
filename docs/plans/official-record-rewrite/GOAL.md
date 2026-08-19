@@ -2,6 +2,9 @@
 
 Status: complete; approved by the owner.
 
+The verified cycle record and completion evidence are retained in the
+[delivery record](DELIVERY.md).
+
 This is the bounded implementation goal for the next 2084 experiment. It is
 narrower than the broader
 [Lie and Doublethink architecture proposal](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md).

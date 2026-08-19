@@ -4,14 +4,16 @@ These are flexible working principles for coding agents and future contributors.
 
 ## Before Working
 
-- Read `README.md` and `docs/main/CORE_CONSTRUCT.md` for the current direction.
-- Check `docs/main/ARCHITECTURE.md` before introducing new responsibilities or sources of state.
-- Read `docs/plans/CURRENT.md` and its linked active goal before implementation
-  work. For the active Official Record experiment, its bounded `GOAL.md` is the
-  working authority. Use `docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md` only as
-  optional broader context or when no narrower approved goal governs the work;
-  do not treat its proposed modules as an implementation checklist.
-- Read `docs/main/DESIGN_REFERENCES.md` before borrowing concepts from Orwell, the world-modeling paper, or `/Users/anuda/Desktop/sim`.
+- Start with `docs/plans/CURRENT.md`; it is the compact operational index.
+- Read the linked active goal, implementation plan, and only the specification
+  linked by the active task.
+- Locate relevant implementation and tests just in time with repository search.
+- Read `README.md`, `docs/main/CORE_CONSTRUCT.md`, or
+  `docs/main/ARCHITECTURE.md` only when the active specification routes there or
+  an invariant is unclear.
+- Use `docs/plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md` only as optional broader
+  context; it is not an implementation checklist.
+- Read `docs/main/DESIGN_REFERENCES.md` only before borrowing from a reference.
 - Treat unanswered questions as open design space rather than silently deciding them.
 - Distinguish a temporary exploration from a lasting architectural choice.
 
@@ -63,24 +65,23 @@ For now, favor one autonomous focal life, a small living world, understandable a
 
 ## Autonomous Development Loop
 
-- When working on a development cycle, read
-  `docs/main/DEVELOPMENT_LOOP.md` and follow its run contract.
-- The daily scheduled task may run consecutive development cycles during its
-  configured 6:00–9:00 PM America/Toronto window. Use the repository, not
-  prior task conversation, as durable context.
+- Use the compact run contract in `docs/plans/CURRENT.md`; consult
+  `docs/main/DEVELOPMENT_LOOP.md` when the full operating contract is needed.
+- Each scheduled or manual Codex task completes at most one ordered
+  implementation-plan task, commits it, and exits.
+- A later standalone task loads fresh context from repository state.
 - Before a scheduled run touches the repository, it must confirm that no
   other 2084 task, loop orchestrator, or subagent thread is still active. Any
   active project task makes the new trigger a no-op.
-- The owner may request manual cycles in chat at any time. Manual runs follow
-  the same authority, validation, review, and no-overlap rules but are not
-  restricted to the scheduled window unless the request says otherwise.
+- Manual runs follow the same one-task, authority, validation, review, and
+  no-overlap rules.
 - The active goal, not the trigger or task, defines authorized product and
   implementation scope.
 - The main agent owns gap selection, implementation, integration, validation,
   progress recording, commits, and the final report. It may partition genuinely
   independent implementation work between subagents with exclusive ownership,
   and must use a fresh read-only subagent for independent review of an
-  implementation cycle, as described by the loop contract.
+  implementation task, as described by the loop contract.
 - Treat `experiments/` as read-only historical evidence unless an approved goal
   explicitly targets it.
 - Do not select, broaden, or replace the active goal. Stop when the active goal

@@ -3,28 +3,29 @@
 Status: current operating contract for scheduled autonomous development.
 
 This loop advances one owner-approved 2084 goal through small, independently
-validated changes. It is autonomous inside that goal: it selects the next gap,
-implements it, reviews the evidence, records verified progress, and commits the
-coherent result without waiting for owner acceptance after each cycle. It does
-not choose the project's direction or authorize its own next goal.
+validated tasks. Each Codex run completes at most one ordered task, records the
+verified result, commits the coherent change, and exits. The repository is the
+durable state between fresh runs. The loop does not choose project direction or
+authorize its own next goal.
 
 ## Schedule and Run Boundary
 
-The loop is launched by one standalone scheduled task every day at 6:00 PM in
-`America/Toronto`. The task works in the main 2084 checkout and may run
-consecutive cycles until 9:00 PM. The repository carries durable context
-between scheduled runs; prior task conversation does not.
+The loop is launched by standalone scheduled tasks at 6:00 PM, 7:00 PM, and
+8:00 PM in `America/Toronto`. Each task works in the main 2084 checkout, handles
+one ordered implementation task, and exits. If an earlier run is still active,
+the next trigger performs no repository work. The repository carries durable
+context; prior task conversation does not.
 
-The owner may also request one or more cycles in chat at any time. A manual run
-follows the same authority, validation, independent-review, and no-overlap
-rules. The 6:00–9:00 PM boundary applies only to the scheduled run unless the
-manual request supplies its own time boundary.
+The owner may request a manual run in chat at any time. A manual run follows the
+same one-task, authority, validation, independent-review, and no-overlap rules.
+The scheduled time boundary does not apply unless the manual request supplies
+one.
 
 ### No-overlap gate
 
 Before reading or changing repository state, a run must inspect the Codex task
 activity for this project. Ignore the just-started task itself. If any other
-2084 task is queued or running—including a manual cycle, an earlier scheduled
+2084 task is queued or running—including a manual run, an earlier scheduled
 orchestrator, or any subagent—stop at **ACTIVE RUN EXISTS** without touching the
 repository. If task activity cannot be inspected reliably, stop at
 **ACTIVE RUN STATUS UNKNOWN** rather than risk concurrent work.
@@ -37,39 +38,39 @@ for it, ask it to return, or stop it before reporting a terminal state. This
 keeps the active orchestrator visible to the next trigger for the full lifetime
 of its agent tree.
 
-At the start of each scheduled run, read this contract and the authority sources
-below. At 8:30 PM, do not begin another implementation change. Use the remaining
-time to finish, validate, document, and commit the current coherent cycle. Stop
-by 9:00 PM even when the active goal is unfinished; the next scheduled run
-continues from repository state.
+At the start of each scheduled run, read the compact index in `CURRENT.md` and
+the just-in-time authority sources it routes. The 8:00 PM run must not begin an
+implementation that cannot be finished, validated, reviewed, documented, and
+committed by 9:00 PM.
 
 The scheduled task uses this instruction:
 
-> Run the autonomous 2084 development loop until 9:00 PM America/Toronto.
+> Complete exactly one ordered task from the autonomous 2084 development loop.
 > Before touching the repository, inspect Codex task activity for this project.
 > If any other 2084 task, loop orchestrator, or subagent is active, make this run
 > a no-op as required by the contract.
-> Follow `AGENTS.md` and `docs/main/DEVELOPMENT_LOOP.md`, using the active goal
-> in `docs/plans/CURRENT.md`. Complete as many coherent, validated cycles as the
-> contract permits. Partition only genuinely independent work, obtain fresh
-> independent review, and commit each completed cycle. Do not select a new
-> goal, push, merge, publish, or disturb unrelated user work. Stop early only
-> at a contract terminal state.
+> Start with `docs/plans/CURRENT.md`. Read its active goal, implementation plan,
+> and only the specification linked by the active task. Locate code just in
+> time. Implement, validate, obtain fresh independent review, update the shared
+> plan, commit one coherent task, and exit. Do not begin the next task, select a
+> new goal, push, merge, publish, or disturb unrelated user work.
 
 ## Sources of Authority
 
 Read these in order before changing the repository:
 
 1. `AGENTS.md` — project-wide working constraints.
-2. `README.md` and `docs/main/CORE_CONSTRUCT.md` — current product direction.
-3. `docs/main/ARCHITECTURE.md` — implemented boundaries and known limits.
-4. `docs/plans/CURRENT.md` — the single active goal and verified progress.
-5. The active goal linked from `CURRENT.md` — authorized scope, invariants,
-   completion criteria, and stop conditions.
+2. `docs/plans/CURRENT.md` — compact index and current run boundary.
+3. The active goal linked from `CURRENT.md` — authorized outcome and invariants.
+4. The linked implementation plan — task order and verified state.
+5. Only the specification linked by the active task — detailed behavior.
+6. Relevant code and tests found just in time with repository search.
 
-The active goal narrows the higher-level documents; it does not override their
-invariants. Broader proposals are optional context unless the active goal
-explicitly requires them. They are not backlogs or implementation checklists.
+Read `README.md`, Core Construct, Architecture, UI Architecture, Design
+References, broader proposals, completed goals, and historical experiments only
+when the active specification routes to them or an invariant cannot otherwise
+be resolved. The active goal narrows higher-level documents but does not
+override their invariants.
 
 If the sources conflict in a way that changes product direction or lasting
 architecture, stop at **NEEDS OWNER DECISION**. Autonomy removes routine review,
@@ -88,7 +89,7 @@ The autonomous loop may:
   or verification as described below;
 - mark a criterion met when proportionate evidence passes validation and
   independent review;
-- commit each complete cycle, including its tests and progress update.
+- commit each complete task, including its tests and progress update.
 
 The autonomous loop may not:
 
@@ -110,8 +111,9 @@ authority for goal and product-direction decisions.
 Before implementation, confirm that:
 
 - `CURRENT.md` links exactly one active, owner-approved goal;
+- the linked implementation plan marks exactly one task `next`;
 - the active goal authorizes the proposed behavior;
-- no incomplete cycle is recorded in `CURRENT.md`;
+- no incomplete run is recorded in the implementation plan;
 - the working checkout contains no unrelated unfinished changes;
 - the baseline repository check passes, or any pre-existing failure is recorded
   and clearly unrelated to the proposed change.
@@ -121,22 +123,21 @@ discard them. Stop at **BASELINE BLOCKED** and report the exact paths. If anothe
 precondition is not met, make no implementation change and report the specific
 condition.
 
-## One Development Cycle
+## One Task Run
 
 ### 1. Orient
 
-Read the authority sources, inspect the relevant implementation and tests, and
-compare current behavior with the active goal's completion criteria. Perform a
-required goal-level alignment review before implementation when `CURRENT.md`
-says one is due. Record its conclusions in `CURRENT.md`; it may legitimately
-end without a code change.
+Read the compact index, goal, implementation plan, active-task specification,
+and relevant implementation. Change the active task from `next` to
+`in_progress`. Perform an alignment review first when the plan says one is due.
 
-### 2. Select one gap
+### 2. Select one task
 
-Choose the smallest unmet criterion whose implementation would create new
-goal-level behavioral evidence. Before editing, state a progress claim:
+Select only the task marked `next`. Do not combine it with adjacent tasks. If it
+cannot fit comfortably in a fresh context, split it in the implementation plan
+before editing and exit. State a progress claim:
 
-> This cycle advances criterion X by producing behavior Y, verified by evidence
+> This task advances criterion X by producing behavior Y, verified by evidence
 > Z.
 
 If no honest progress claim can be made, do not change code.
@@ -193,24 +194,24 @@ Review the diff for:
 ### 6. Obtain independent review, record, and commit
 
 After integration and validation, spawn a fresh read-only reviewer subagent for
-every implementation cycle. Give it the active goal, relevant project rules,
+every implementation task. Give it the active goal, relevant project rules,
 the resulting diff, and validation results, but do not give it the
 implementer's reasoning or ask it to confirm the chosen approach. It must look
 for goal mismatch, impossible knowledge or authority, broken invariants,
 missing behavioral evidence, test gaps, and unnecessary complexity. A
-documentation-only or no-change alignment cycle may use orchestrator
+documentation-only or no-change alignment task may use orchestrator
 self-review.
 
 The orchestrator must resolve every blocking finding and repeat independent
 review after any material correction. Separate observed behavior from
-interpretation. Mark the criterion met only when the evidence is proportionate,
+interpretation. Mark the task complete only when the evidence is proportionate,
 the focused and full checks pass, and independent review finds no unresolved
-blocking violation. Update `CURRENT.md` in the same cycle, including counters
-and any next alignment requirement.
+blocking violation. Update `IMPLEMENTATION_PLAN.md` in the same run, including
+the next task, counters, evidence, commit, and any alignment requirement.
 
 Review the final staged diff, then create one commit containing the coherent
 implementation, validation evidence encoded in tests, and progress update. Do
-not include unrelated files. If validation or review fails, fix the cycle or
+not include unrelated files. If validation or review fails, fix the task or
 restore only the loop's own incomplete changes before moving on; never commit a
 known failing or partial result as verified progress.
 
@@ -218,13 +219,13 @@ known failing or partial result as verified progress.
 
 - A criterion with verified proportionate evidence is closed. Do not harden it
   further without a regression, an affected invariant, or owner direction.
-- After two consecutive implementation cycles on the same criterion, the next
-  cycle must move to another criterion, demonstrate end-to-end behavior, or
-  stop with **NO JUSTIFIED CHANGE**.
-- After three verified implementation cycles, perform a goal-level alignment
-  review before another implementation change.
-- Do not perform two consecutive infrastructure-only cycles.
-- It is valid for a cycle to make no code change.
+- Follow the approved task order even when several small tasks advance one
+  criterion. Do not combine them.
+- After three verified implementation tasks, perform a goal-level alignment
+  review in a separate run before the next implementation task.
+- Do not complete two infrastructure-only tasks without focused behavioral
+  evidence.
+- It is valid for a run to make no code change.
 
 The goal-level alignment review asks what observable behavior changed, which
 criteria are proven, whether complexity grew faster than explanatory value,
@@ -233,15 +234,15 @@ recording that review.
 
 ## Terminal States
 
-After each cycle, choose exactly one state:
+After the one-task run, choose exactly one state:
 
-- **CONTINUE** — the cycle is validated, recorded, and committed; enough time
-  remains for another justified cycle.
+- **TASK COMPLETE** — the task is validated, recorded, and committed; exit
+  without starting the next task.
 - **ACTIVE RUN EXISTS** — another project task, orchestrator, or subagent is
   active, so this trigger performed no repository work.
 - **ACTIVE RUN STATUS UNKNOWN** — task activity could not be inspected reliably,
   so this trigger performed no repository work.
-- **TIME WINDOW COMPLETE** — the current coherent cycle is safely finished and
+- **TIME WINDOW COMPLETE** — the current coherent task is safely finished and
   the run has reached its daily stopping boundary.
 - **NEEDS OWNER DECISION** — continuing requires a product, worldbuilding,
   architecture, scope, or authority choice absent from the active goal.
@@ -250,9 +251,9 @@ After each cycle, choose exactly one state:
   begin another goal.
 - **NO JUSTIFIED CHANGE** — no change would honestly advance the active goal.
 - **BASELINE BLOCKED** — existing repository state prevents a safe autonomous
-  cycle.
+  task.
 
-For each committed cycle, retain a concise report in the scheduled task run:
+For each committed task, retain a concise report in the scheduled task run:
 
 1. criterion advanced and the progress claim;
 2. observed behavior and interpretation kept separate;
@@ -260,7 +261,7 @@ For each committed cycle, retain a concise report in the scheduled task run:
 4. focused and full validation results;
 5. implementation partition, subagents used, and independent-review findings;
 6. forced outcomes, special cases, risks, and unresolved assumptions;
-7. the next candidate criterion, if the run will continue.
+7. the next queued task for a later standalone run.
 
 At a terminal state, report why work stopped and the exact repository state.
 Routine implementation results do not wait for owner review.

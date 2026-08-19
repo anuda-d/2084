@@ -178,11 +178,13 @@ Authored material may seed people, places, pressures, and starting conditions. I
 - The original setting and historical background
 - The first small district and supporting population
 - How agent decisions combine rules and AI
-- Which contextual stance, confidence, inhibition, or resurfacing rule is the
-  smallest useful Agent Understanding experiment
+- Whether the selected public-counter stance and diary-cued resurfacing rule is
+  the smallest useful Agent Understanding experiment, or should be removed
+  after evaluation
 - How much of the focal character's internal state the observer may inspect
 - Whether and how the observer can intervene
-- Which institutional role may authorize and process the first Official Record rewrite
+- Which additional institutional limits, if any, are justified after the
+  completed bounded Official Record rewrite
 - Whether the first record-operation follow-up explores one suppressed reference or one fabricated artifact
 - When Official Record and Agent Understanding provide enough evidence to extract shared Claim and Provenance semantics
 - Whether the diary becomes consequential beyond basic physical interaction
