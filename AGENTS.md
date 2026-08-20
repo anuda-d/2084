@@ -67,17 +67,22 @@ For now, favor one autonomous focal life, a small living world, understandable a
 
 - Use the compact run contract in `docs/plans/CURRENT.md`; consult
   `docs/main/DEVELOPMENT_LOOP.md` when the full operating contract is needed.
-- Each scheduled or manual Codex task selects and completes at most one small
-  task from the active goal, commits it, and exits. No future task is planned.
-- A separate alignment run reviews goal evidence without selecting later work.
-- A later standalone task loads fresh context from repository state.
-- Scheduled implementation and orchestration use `gpt-5.6-terra` with high
-  reasoning. Fresh independent review and goal alignment use `gpt-5.6-sol`
-  with high reasoning. Do not use Luna in this loop.
-- Before a scheduled run touches the repository, it must confirm that no
-  other 2084 task, loop orchestrator, or subagent thread is still active. Any
-  active project task makes the new trigger a no-op.
-- Manual runs follow the same one-task, authority, validation, review, and
+- Continuous Goal mode is the primary loop while an owner-started goal is
+  active. It selects and completes one small task from the active goal, commits
+  it, then starts the next work unit from fresh repository state. It never
+  creates a future task queue.
+- Scheduled and manual one-shot runs remain limited to one committed work unit
+  and then exit. A separate work unit performs alignment without selecting
+  later work.
+- Continuous Goal and scheduled implementation and orchestration use
+  `gpt-5.6-terra` with high reasoning. Fresh independent review and goal
+  alignment use `gpt-5.6-sol` with high reasoning. Do not use Luna in this
+  loop.
+- Before a scheduled or Goal-mode run first touches the repository, it must
+  confirm that no other 2084 task, loop orchestrator, or subagent thread is
+  still active. Any active project task makes a new trigger a no-op. Iterations
+  inside the same active Goal-mode task are not overlap.
+- Manual runs follow the same work-unit, authority, validation, review, and
   no-overlap rules.
 - The active goal, not the trigger or task, defines authorized product and
   implementation scope.

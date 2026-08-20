@@ -1,22 +1,33 @@
 # Agentic Development Loop
 
-Status: current operating contract for scheduled autonomous development.
+Status: current operating contract for continuous and scheduled autonomous
+development.
 
 This loop advances one owner-approved 2084 goal through small, independently
-validated tasks. Each Codex run completes at most one current task, records the
-verified result, commits the coherent change, and exits. Each run selects its
-task from the active goal and current verified evidence; it does not plan later
-tasks. The repository is the durable state between fresh runs. The loop does
-not choose project direction or authorize its own next goal.
+validated tasks. Each work unit completes at most one current task, records the
+verified result, and commits the coherent change. An owner-started continuous
+Goal begins the next work unit from the updated repository state; scheduled and
+manual one-shot runs exit after one unit. Each work unit selects its task from
+the active goal and current verified evidence; it does not plan later tasks.
+The repository is the durable state between units. The loop does not choose
+project direction or authorize its own next goal.
 
-## Schedule and Run Boundary
+## Continuous Goal and Run Boundary
 
-The loop is launched by standalone scheduled tasks at 6:00 PM, 7:00 PM,
-8:00 PM, 9:00 PM, and 10:00 PM in `America/Toronto`. Each task works in the main
-2084 checkout, handles one self-selected implementation task or one alignment
-review, and exits. If an earlier run is still active, the next trigger performs
-no repository work. The repository carries durable context; prior task
-conversation does not.
+Continuous Goal mode is the primary operating mode when the owner asks the loop
+to keep working. One Codex task remains active, completes one fully validated
+and independently reviewed work unit, commits it, then selects the next unit
+from the updated repository state. It does not wait for a new trigger or retain
+a future task queue. The Goal stops at a terminal condition, when the active
+project goal is complete, or when the owner pauses or stops it.
+
+The standalone schedule is a fallback for periodic unattended work and should
+be paused while a continuous Goal owns the main checkout. When enabled, it
+launches tasks at 6:00 PM, 7:00 PM, 8:00 PM, 9:00 PM, and 10:00 PM in
+`America/Toronto`. Each scheduled task works in the main 2084 checkout, handles
+one self-selected implementation task or one alignment review, and exits. If a
+continuous Goal or earlier run is active, the trigger performs no repository
+work.
 
 The owner may request a manual run in chat at any time. A manual run follows the
 same one-task, authority, validation, independent-review, and no-overlap rules.
@@ -25,19 +36,25 @@ one.
 
 ### Model routing
 
-The scheduled orchestrator uses `gpt-5.6-terra` with high reasoning for
-implementation and integration. Every independent implementation reviewer and
-goal-alignment reviewer uses a fresh `gpt-5.6-sol` agent with high reasoning.
-Luna is not authorized for this loop.
+The continuous Goal and scheduled orchestrators use `gpt-5.6-terra` with high
+reasoning for orchestration, implementation, and integration. Every independent
+implementation reviewer and goal-alignment reviewer uses a fresh `gpt-5.6-sol`
+agent with high reasoning. Luna is not authorized for this loop.
 
 ### No-overlap gate
 
-Before reading or changing repository state, a run must inspect the Codex task
-activity for this project. Ignore the just-started task itself. If any other
+Before reading or changing repository state, a newly triggered run or Goal must
+inspect the Codex task activity for this project. Ignore the just-started task
+itself. If any other
 2084 task is queued or running—including a manual run, an earlier scheduled
 orchestrator, or any subagent—stop at **ACTIVE RUN EXISTS** without touching the
 repository. If task activity cannot be inspected reliably, stop at
 **ACTIVE RUN STATUS UNKNOWN** rather than risk concurrent work.
+
+After this gate passes, later work units inside the same continuous Goal do not
+repeat the external task-activity gate; the still-active Goal is the single
+visible owner of the checkout. Each unit must still wait for or stop all of its
+subagents before the next unit begins.
 
 The application may still create a scheduled run at the trigger time; this gate
 defines whether that run may begin work. Do not assume the scheduler suppresses
@@ -240,7 +257,8 @@ known failing or partial result as verified progress.
 - A criterion with verified proportionate evidence is closed. Do not harden it
   further without a regression, an affected invariant, or owner direction.
 - After at most three verified implementation tasks, perform a goal-level
-  alignment review in a separate run before the next implementation task.
+  alignment review in a separate work unit before the next implementation
+  task. In continuous Goal mode this remains inside the same Goal task.
 - Never plan, suggest, or record a future implementation task.
 - Do not complete two infrastructure-only tasks without focused behavioral
   evidence.
@@ -253,12 +271,15 @@ recommendations about existing implementation. Reset the alignment counter only
 after recording and committing that review. Do not implement or select a later
 task during alignment.
 
-## Terminal States
+## Work-Unit and Terminal States
 
-After the one-task run, choose exactly one state:
+After one work unit, choose exactly one state. In continuous Goal mode,
+**TASK COMPLETE** and **ALIGNMENT COMPLETE** are internal checkpoints followed
+by the next work unit; all other states stop the Goal. In a one-shot run, every
+state ends the run.
 
-- **TASK COMPLETE** — the task is validated, recorded, and committed; exit
-  without selecting another task.
+- **TASK COMPLETE** — the task is validated, recorded, and committed. Continue
+  only when an owner-started continuous Goal is active; otherwise exit.
 - **ALIGNMENT COMPLETE** — verified goal evidence was reviewed and recorded;
   no implementation task was selected.
 - **ACTIVE RUN EXISTS** — another project task, orchestrator, or subagent is
@@ -276,7 +297,8 @@ After the one-task run, choose exactly one state:
 - **BASELINE BLOCKED** — existing repository state prevents a safe autonomous
   task.
 
-For each committed task, retain a concise report in the scheduled task run:
+For each committed task, retain a concise report in the active Goal or
+scheduled task run:
 
 1. criterion advanced and the progress claim;
 2. observed behavior and interpretation kept separate;
@@ -286,5 +308,5 @@ For each committed task, retain a concise report in the scheduled task run:
 6. forced outcomes, special cases, risks, and unresolved assumptions;
 7. whether alignment is due; do not name a future implementation task.
 
-At a terminal state, report why work stopped and the exact repository state.
-Routine implementation results do not wait for owner review.
+When the Goal or one-shot run stops, report why and the exact repository state.
+Routine implementation checkpoints do not wait for owner review.

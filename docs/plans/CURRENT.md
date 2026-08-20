@@ -8,8 +8,11 @@ Status: active.
 - Shared state: [Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
 - Active work: select one smallest useful goal gap, or run required alignment
 - Task specification: selected just in time after the goal gap is identified
-- Run boundary: exactly one selected task or alignment review
-- Model routing: Terra high implements; Sol high reviews and aligns; no Luna
+- Work-unit boundary: exactly one selected task or alignment review at a time
+- Loop mode: an active owner-started Goal continues with the next work unit
+  after each commit; scheduled and manual one-shot runs exit after one unit
+- Model routing: Terra high orchestrates and implements; Sol high reviews and
+  aligns; no Luna
 
 ## Required Read Order
 
@@ -46,7 +49,8 @@ unclear.
   no-code alignment.
 - Update `IMPLEMENTATION_PLAN.md` with verified status and evidence only.
 - Commit one coherent work unit.
-- Exit after the commit; do not start another work unit in this chat.
+- In continuous Goal mode, begin the next work unit only after the commit and
+  from the updated repository state. In a one-shot run, exit after the commit.
 
 ## Stop Conditions
 
