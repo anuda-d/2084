@@ -42,23 +42,6 @@ class FocalPolicy:
                 explanation="travel to workplace",
                 decision_reason="the scheduled workplace obligation comes before the allocation errand",
             )
-        if (
-            view.location == "allocation_office"
-            and made_public_expression
-            and len(official_record_observations) == 1
-        ):
-            return ActionAttempt(
-                actor_id=view.agent_id,
-                kind="consult_official_record",
-                parameters={
-                    "artifact_id": official_record_observations[0].details["artifact_id"]
-                },
-                explanation="consult the weekly ration schedule again",
-                decision_reason=(
-                    "the partial handover and public counter pressure justify checking "
-                    "the accessible schedule again"
-                ),
-            )
         if view.location == "allocation_office" and made_public_expression:
             return ActionAttempt(
                 actor_id=view.agent_id,
@@ -205,33 +188,68 @@ class FocalPolicy:
         )
         if (
             view.location == "allocation_office"
+            and not made_public_expression
             and allocation_outcome_received
+            and view.contextual_stance is None
+            and len(official_record_observations) == 1
             and pressure is not None
             and pressure.details.get("pressure", 0)
             >= self._public_conformity_threshold
-            and (view.last_attempt is None or view.last_attempt.kind != "speak")
         ):
-            official = next(
-                observation
-                for observation in reversed(view.observations)
-                if observation.details.get("evidence_kind") == "official_record_version"
+            return ActionAttempt(
+                actor_id=view.agent_id,
+                kind="consult_official_record",
+                parameters={
+                    "artifact_id": official_record_observations[0].details["artifact_id"]
+                },
+                explanation="consult the weekly ration schedule again",
+                decision_reason=(
+                    "the partial handover and public counter pressure justify checking "
+                    "the accessible schedule again"
+                ),
             )
-            value = official.details["asserted_value"]
+        stance = (
+            view.contextual_stance
+            if view.contextual_stance is not None
+            and view.contextual_stance.context == "public_counter"
+            else None
+        )
+        stance_pressure = (
+            next(
+                (
+                    observation
+                    for observation in view.observations
+                    if stance is not None
+                    and observation.observation_id
+                    == stance.pressure_observation_id
+                ),
+                None,
+            )
+            if stance is not None
+            else None
+        )
+        if (
+            view.location == "allocation_office"
+            and not made_public_expression
+            and allocation_outcome_received
+            and stance is not None
+            and stance_pressure is not None
+        ):
             return ActionAttempt(
                 actor_id=view.agent_id,
                 kind="speak",
                 parameters={
-                    "proposition": official.details["proposition"],
-                    "asserted_value": value,
-                    "evidence_observation_ids": (
-                        official.observation_id,
-                        pressure.observation_id,
-                    ),
-                    "pressure_reason": pressure.details["reason"],
+                    "proposition": stance.proposition,
+                    "asserted_value": stance.asserted_value,
+                    "evidence_observation_ids": stance.source_observation_ids,
+                    "pressure_reason": stance_pressure.details["reason"],
                 },
-                explanation=f"repeat the official {value}-packet entitlement publicly",
+                explanation=(
+                    f"repeat the official {stance.asserted_value}-packet entitlement "
+                    "publicly"
+                ),
                 decision_reason=(
-                    "public counter pressure favors repeating the delivered schedule "
+                    "the public-counter stance supplies the revised delivered schedule "
                     "while the physical handover remains separate"
                 ),
             )

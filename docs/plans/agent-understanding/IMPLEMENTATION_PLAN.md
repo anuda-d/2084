@@ -5,8 +5,8 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal-level alignment after AU-3 (2026-08-19)
-- Verified implementation runs since alignment: 0
+- Last completed run: AU-4 revised public action from restricted stance input (2026-08-19)
+- Verified implementation runs since alignment: 1
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
@@ -16,7 +16,7 @@ Status: active shared state; no future tasks are planned.
 | AU-1 Memory traces | met | Focused and full checks verify immutable source-linked focal traces for delivered direct and official evidence, no trace from an undelivered rewrite, deduplicated claims on repeated delivery, empty supporting-agent understanding, and deterministic detached history. |
 | AU-2 Conflict | met | Focused and full checks verify one reciprocal conflict between the two delivered official versions for the same period, while the equal-valued direct-resource claim remains outside it; the undelivered rewrite cannot participate and detached history is deterministic. |
 | AU-3 Public stance | met | Focused and full checks verify a source-linked version-two `public_counter` stance only after the conflicting revised schedule and sufficient protocol pressure are delivered at the allocation office; it clears on departure while deterministic detached transitions retain selection and clearing causality. |
-| AU-4 Public action | open | none |
+| AU-4 Public action | met | Focused and full checks verify exactly one focal two-packet public statement selected from restricted `public_counter` stance value and source IDs while raw observation order cannot override it; world validation and resolution remain separate, and rejection leaves understanding unchanged. |
 | AU-5 Diary record | open | none |
 | AU-6 Resurfacing | open | none |
 | AU-7 Recheck | open | none |
@@ -136,3 +136,20 @@ Alignment does not select, suggest, or record the next implementation task.
 - The behavior remains bounded authored rule execution, not general semantic
   inference, cognition, or emergence. The implementation counter resets to
   zero without selecting later work.
+
+### 2026-08-19 — AU-4 Revised public action
+
+- Changed the pressure-driven flow to re-consult the accessible schedule from
+  delivered local evidence before public expression, without exposing the
+  undelivered rewrite to the focal policy.
+- The focal policy now takes the public proposition, two-packet value, and
+  evidence identifiers from restricted `public_counter` stance input; changing
+  that supplied stance changes selection while reversing raw observations does
+  not.
+- Verified exactly one focal public statement, a continuing private three-unit
+  belief, separate world validation and resolution, and no understanding
+  mutation after rejected speech.
+- Relevant validation passed 60 tests; `./scripts/check.sh` passed suites of 60
+  and 63 tests. Fresh Sol-high review found no blocking findings; its
+  non-blocking uniqueness observation was encoded as an explicit regression
+  assertion before final validation.

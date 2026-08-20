@@ -368,36 +368,43 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
         )
 
-    def test_public_expression_repeats_only_the_delivered_schedule_under_pressure(self):
+    def test_public_expression_uses_revised_restricted_stance_under_pressure(self):
         simulation = build_first_day(seed=42)
 
-        snapshot = [simulation.step() for _ in range(10)][-1]
+        snapshot = [simulation.step() for _ in range(11)][-1]
 
         pressure = next(
             observation
-            for observation in snapshot.new_observations
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
             if observation.details.get("evidence_kind") == "social_pressure"
         )
         self.assertEqual(pressure.details["pressure"], 0.8)
         self.assertEqual(
             snapshot.current_action,
-            "repeat the official 3-packet entitlement publicly",
+            "repeat the official 2-packet entitlement publicly",
         )
         private = next(belief for belief in snapshot.beliefs if belief.context == "private")
         self.assertEqual(private.asserted_value, 3)
-        expression = next(
+        expressions = [
             event
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
-        )
-        self.assertEqual(expression.details["asserted_value"], 3)
+        ]
+        self.assertEqual(len(expressions), 1)
+        expression = expressions[0]
+        self.assertEqual(expression.details["asserted_value"], 2)
         self.assertEqual(
             expression.details["proposition"],
             "weekly_household_ration_entitlement_packets",
         )
         self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
-        self.assertIn(pressure.observation_id, expression.details["evidence_observation_ids"])
+        stance = simulation.agent_view(FOCAL_AGENT_ID).contextual_stance
+        self.assertIsNotNone(stance)
+        self.assertEqual(
+            expression.details["evidence_observation_ids"],
+            stance.source_observation_ids,
+        )
 
     def test_malformed_public_statement_is_rejected_without_mutation_or_policy_crash(self):
         simulation = build_first_day(seed=42)
@@ -759,7 +766,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
         self.assertIn("Household allocation: 2 held; 1 still needed.", normal)
         self.assertIn("Private belief: 3 units", normal)
-        self.assertIn("repeat the official 3-packet entitlement publicly", normal)
+        self.assertIn("repeat the official 2-packet entitlement publicly", normal)
         self.assertIn("consult the weekly ration schedule again", normal)
         self.assertIn("Diary read returned the earlier 3-unit perspective", normal)
         self.assertIn(
@@ -768,7 +775,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             normal,
         )
         self.assertIn(
-            "Reason: public counter pressure favors repeating the delivered schedule "
+            "Reason: the public-counter stance supplies the revised delivered schedule "
             "while the physical handover remains separate.",
             normal,
         )
@@ -952,7 +959,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(direct.delivery_tick, 7)
         self.assertEqual(
             [observation.delivery_tick for observation in official_versions],
-            [8, 12],
+            [8, 11],
         )
 
         publication = next(
@@ -1027,7 +1034,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
         )
-        self.assertEqual(expression.details["asserted_value"], 3)
+        self.assertEqual(expression.details["asserted_value"], 2)
         self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
 
@@ -1227,7 +1234,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
     def test_public_statement_observation_is_not_misclassified_as_social_pressure(self):
         simulation = build_first_day(seed=42)
-        for _ in range(11):
+        for _ in range(12):
             simulation.step()
 
         expression = next(
@@ -1243,7 +1250,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(
             observed_expression.details["evidence_kind"], "public_statement"
         )
-        self.assertEqual(observed_expression.details["asserted_value"], 3)
+        self.assertEqual(observed_expression.details["asserted_value"], 2)
         self.assertNotIn("pressure", observed_expression.details)
 
 

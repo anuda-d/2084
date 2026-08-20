@@ -1,7 +1,9 @@
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
+from policies.focal_policy import FocalPolicy
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
+from simulation.actions import ActionAttempt
 from simulation.events import Observation, freeze_mapping
 from simulation.understanding import (
     select_public_counter_stance,
@@ -160,13 +162,13 @@ class AgentUnderstandingTests(unittest.TestCase):
 
     def test_public_counter_stance_requires_revision_delivery_and_threshold(self):
         before_revision = build_first_day(seed=42)
-        before_revision.run(max_ticks=11)
+        before_revision.run(max_ticks=10)
         self.assertIsNone(
             before_revision.world.agents[FOCAL_AGENT_ID].contextual_stance
         )
 
         simulation = build_first_day(seed=42)
-        simulation.run(max_ticks=12)
+        simulation.run(max_ticks=11)
         focal = simulation.world.agents[FOCAL_AGENT_ID]
         self.assertIsNone(
             select_public_counter_stance(
@@ -199,7 +201,7 @@ class AgentUnderstandingTests(unittest.TestCase):
         transitions = simulation.history_data()["stance_transitions"]
         self.assertEqual(
             [(item["tick"], item["active"]) for item in transitions],
-            [(12, True), (14, False)],
+            [(11, True), (14, False)],
         )
         self.assertEqual(
             [item["asserted_value"] for item in transitions],
@@ -222,6 +224,76 @@ class AgentUnderstandingTests(unittest.TestCase):
         )
         self.assertIsNone(
             simulation.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
+    def test_focal_policy_selects_revised_speech_from_restricted_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertIsNotNone(view.contextual_stance)
+        policy_view = replace(
+            view,
+            last_attempt=view.action_history[-2],
+            action_history=view.action_history[:-1],
+            action_results=tuple(
+                result
+                for result in view.action_results
+                if result.action_kind != "speak"
+            ),
+        )
+
+        selected = FocalPolicy().choose(policy_view)
+        changed = FocalPolicy().choose(
+            replace(
+                policy_view,
+                contextual_stance=replace(
+                    policy_view.contextual_stance,
+                    asserted_value=7,
+                ),
+            )
+        )
+        reordered = FocalPolicy().choose(
+            replace(policy_view, observations=tuple(reversed(policy_view.observations)))
+        )
+
+        self.assertEqual(selected.kind, "speak")
+        self.assertEqual(selected.parameters["asserted_value"], 2)
+        self.assertEqual(changed.parameters["asserted_value"], 7)
+        self.assertEqual(reordered.parameters, selected.parameters)
+        self.assertEqual(
+            selected.parameters["evidence_observation_ids"],
+            policy_view.contextual_stance.source_observation_ids,
+        )
+
+    def test_rejected_stance_speech_does_not_change_agent_understanding(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        traces_before = focal.memory_traces
+        claims_before = focal.interpreted_claims
+        stance_before = focal.contextual_stance
+        transitions_before = simulation.history_data()["stance_transitions"]
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="speak",
+                parameters={
+                    "proposition": stance_before.proposition,
+                    "asserted_value": stance_before.asserted_value,
+                    "evidence_observation_ids": ("observation-not-delivered",),
+                },
+                explanation="attempt unsupported stance speech",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertEqual(focal.memory_traces, traces_before)
+        self.assertEqual(focal.interpreted_claims, claims_before)
+        self.assertEqual(focal.contextual_stance, stance_before)
+        self.assertEqual(
+            simulation.history_data()["stance_transitions"],
+            transitions_before,
         )
 
     def test_repeated_delivery_reuses_the_interpreted_claim(self):

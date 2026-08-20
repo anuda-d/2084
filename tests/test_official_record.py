@@ -474,13 +474,13 @@ class OfficialRecordTests(unittest.TestCase):
             )
         )
 
-        consultation_tick = simulation.step()
+        consultation_tick = rewrite_tick
         attempted = next(
             event
             for event in simulation.events
             if event.kind == "action_attempted"
             and event.actor_id == FOCAL_AGENT_ID
-            and event.tick == 11
+            and event.tick == 10
             and event.details["action_kind"] == "consult_official_record"
         )
         consultation = next(
