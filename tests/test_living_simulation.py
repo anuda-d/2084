@@ -741,17 +741,27 @@ class LivingSimulationStepTests(unittest.TestCase):
             "start toward the public archive through the workplace",
         )
 
-    def test_run_completes_at_tick_28_and_same_seed_serializes_identically(self):
+    def test_first_day_v3_completes_at_tick_28_and_reproduces_full_history(self):
+        before_boundary = build_first_day(seed=42)
         first = build_first_day(seed=42)
         second = build_first_day(seed=42)
 
+        before_boundary.run(max_ticks=27)
         first.run(max_ticks=30)
         second.run(max_ticks=30)
 
+        self.assertFalse(before_boundary.is_complete)
+        self.assertEqual(before_boundary.tick, 27)
         self.assertTrue(first.is_complete)
         self.assertEqual(first.tick, 28)
         self.assertEqual(first.history_data(), second.history_data())
-        encoded = json.dumps(first.history_data(), sort_keys=True)
+        history = first.history_data()
+        self.assertEqual(
+            history["configuration"]["scenario"]["scenario_id"],
+            "first_day_v3",
+        )
+        encoded = json.dumps(history, sort_keys=True)
+        self.assertEqual(json.loads(encoded), history)
         self.assertIn('"seed": 42', encoded)
         self.assertEqual(
             [event.event_id for event in first.events],
@@ -1523,7 +1533,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
         self.assertEqual(configuration["seed"], 42)
         scenario = configuration["scenario"]
-        self.assertEqual(scenario["scenario_id"], "first_day_v2")
+        self.assertEqual(scenario["scenario_id"], "first_day_v3")
         self.assertEqual(scenario["completion_tick"], 28)
         self.assertEqual(scenario["travel_graph"]["home"], ["workplace"])
         self.assertEqual(

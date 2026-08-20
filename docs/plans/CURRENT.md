@@ -1,27 +1,25 @@
 # Current Development Index
 
-Status: active.
+Status: no active goal; Agent Understanding was verified complete on 2026-08-19.
 
 ## Active Work
 
-- Goal: [Agent Understanding](agent-understanding/GOAL.md)
-- Shared state: [Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: select one smallest useful goal gap, or run required alignment
-- Task specification: selected just in time after the goal gap is identified
-- Work-unit boundary: exactly one selected task or alignment review at a time
-- Loop mode: an active owner-started Goal continues with the next work unit
-  after each commit; scheduled and manual one-shot runs exit after one unit
-- Model routing: Terra high orchestrates and implements; Sol high reviews and
-  aligns; no Luna
+- Goal: none; do not select or infer a replacement goal
+- Completed goal: [Agent Understanding](agent-understanding/GOAL.md)
+- Verified state: [Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
+- Active work: stop until the owner approves another goal
 
 ## Required Read Order
 
 1. `AGENTS.md`
 2. this file
-3. the active goal
-4. the shared implementation state
+3. if one exists, the owner-approved active goal
+4. its shared implementation state
 5. relevant implementation and tests located with `rg` for task selection
 6. only the specification relevant to the selected task
+
+If this index reports no active goal, stop after reading it. Do not turn a
+completed goal, open question, or improvement idea into active work.
 
 Do not preload completed-goal records, historical experiments, the broader
 architecture proposal, or unrelated specifications. Read a main architecture

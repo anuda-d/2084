@@ -16,16 +16,18 @@ setting.
 
 ## What exists today
 
-The repository contains one deterministic prototype scenario, `first_day_v2`.
-It follows Mara Vale and two supporting characters through a 24-tick workday.
+The repository contains one deterministic prototype scenario, `first_day_v3`.
+It follows Mara Vale and two supporting characters through a 28-tick workday.
 Mara:
 
 - travels between home, work, and a civic allocation office;
 - sees three allocation units but physically receives only two;
 - consults an official schedule that initially promises three packets;
-- experiences public pressure to repeat that three-packet entitlement;
-- consults the schedule again after the institution has revised it to two;
-- writes and later reads a physical diary entry; and
+- experiences public pressure, encounters the revised two-packet schedule, and
+  repeats that revised entitlement publicly while retaining separate evidence;
+- writes the earlier three-packet schedule claim into a physical diary;
+- reads that entry later and makes one ordinary trip to recheck the public
+  schedule; and
 - finishes the day with one household unit still unmet.
 
 The route is heavily authored, but the characters are not moved directly by a
@@ -59,7 +61,7 @@ python3 -m scenarios.first_day --seed 42 --ticks 30
 ```
 
 The normal output shows only information deliberately admitted to Mara's view.
-The scenario completes at tick 24; `--ticks 30` simply gives it enough room to
+The scenario completes at tick 28; `--ticks 30` simply gives it enough room to
 reach that completion condition.
 
 To see the explicitly omniscient development record, run:
@@ -91,36 +93,27 @@ under `experiments/`.
 
 ## Current development status
 
-Work is currently focused on a bounded **Agent Understanding** experiment. Its
-question is whether Mara can retain two delivered official versions, use the
-revised version as a public working stance under pressure, and later have the
-earlier version resurfaced by her diary strongly enough to prompt one ordinary
-recheck.
+The bounded **Agent Understanding** experiment now demonstrates that Mara can
+retain two delivered official versions, link their conflict, use the revised
+version as a public working stance under pressure, and later resurface the
+earlier version through a physical diary strongly enough to prompt one ordinary
+public-schedule recheck.
 
-Only the first part of that goal is verified so far:
+The evidence remains deliberately inspectable and limited:
 
-- delivered direct-resource evidence creates an immutable, source-linked
-  memory trace and interpreted claim for Mara;
-- each delivered official schedule version creates its own trace;
-- a record revision that Mara has not encountered creates no memory for her;
-- repeated equivalent delivery can create another trace without duplicating
-  the interpreted claim; and
-- supporting characters do not receive this focal-only understanding state.
-
-The following parts are **not implemented yet**:
-
-- an explicit conflict connecting the three-packet and two-packet official
-  versions;
-- a context-specific public stance based on the revised version;
-- policy behavior driven by that new stance;
-- diary-cued resurfacing inside Agent Understanding;
-- the additional archive recheck required by the active goal; and
-- presentation of the complete new causal chain in the normal view.
+- only delivered observations create source-linked memory traces and claims;
+- the public and diary stances retain their exact sources and transition
+  history;
+- supporting characters and institutions receive no focal-private diary
+  understanding;
+- the normal transcript explains the encountered behavior without omniscient
+  identifiers; and
+- the development inspector exposes the detached causal record.
 
 The older narrow belief model still supplies the “Private belief” line visible
 in the terminal output. It represents Mara's direct sight of three physical
-allocation units. It should not be mistaken for the unfinished official-version
-conflict and stance system.
+allocation units. It remains separate from the official-version conflict and
+stance system.
 
 ## Known limits
 

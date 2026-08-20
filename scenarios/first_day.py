@@ -123,7 +123,7 @@ def build_first_day(seed: int = 42) -> Simulation:
         max_ticks=30,
         completion_tick=28,
         scenario_configuration={
-            "scenario_id": "first_day_v2",
+            "scenario_id": "first_day_v3",
             "completion_tick": 28,
             "agent_ids": [FOCAL_AGENT_ID, CO_WORKER_ID, CLERK_ID],
             "starting_locations": {

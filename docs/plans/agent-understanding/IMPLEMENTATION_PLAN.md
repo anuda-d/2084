@@ -1,13 +1,14 @@
 # Agent Understanding Implementation State
 
-Status: active shared state; no future tasks are planned.
+Status: complete shared state; the owner-approved goal is verified and no
+future task is planned.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-9 filtered explanation and inspectable causality (2026-08-19)
-- Verified implementation runs since alignment: 0
-- Alignment due: after three verified implementation runs
+- Last completed run: AU-10 `first_day_v3` deterministic reproduction (2026-08-19)
+- Verified implementation runs since alignment: 1
+- Alignment due: not applicable; goal complete
 
 ## Goal Progress
 
@@ -22,7 +23,7 @@ Status: active shared state; no future tasks are planned.
 | AU-7 Recheck | met | A causal policy comparison verifies the supplied `private_diary` stance alone starts the ordinary archive route; the integration run resolves two travel legs, completes exactly one post-diary consultation, delivers its result, and clears the recheck stance before returning to finish work. |
 | AU-8 Boundaries | met | Full-run regression evidence verifies stance selection is pure; supporting views receive no focal stance, diary access, or diary observations; institution reports/records remain empty; resources and Official Record versions do not change; and handover evidence remains separate from the official proposition. |
 | AU-9 Presentation | met | Normal-output regressions require the encountered 3→2→2 schedule sequence, pressure-sensitive speech, earlier diary perspective, and later recheck while forbidding hidden identifiers; parsed inspector regressions reconstruct the exact trace/claim/observation/transition/action/result causal graph. |
-| AU-10 Reproduction | open | none |
+| AU-10 Reproduction | met | Scenario configuration identifies `first_day_v3`; tick 27 is incomplete and tick 28 complete; equal seeded runs retain equal ordered full histories; detached history round-trips through JSON; both documented commands and the full repository check pass. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,7 +48,7 @@ implementation order. If no honest task advances the goal, make no change.
 
 ## Current Run
 
-None. No future task is selected.
+None. The active goal is complete and no future task is selected.
 
 ## Completion Rules
 
@@ -278,3 +279,27 @@ Alignment does not select, suggest, or record the next implementation task.
 - `./scripts/check.sh` passed suites of 67 and 63 tests; documented normal and
   inspector commands completed; `git diff --check` passed. The counter resets
   to zero.
+
+### 2026-08-19 — AU-10 `first_day_v3` reproduction
+
+- Renamed the completed authored scenario from `first_day_v2` to
+  `first_day_v3` without changing simulation behavior, and updated README to
+  describe the verified bounded experiment and tick-28 completion boundary.
+- Strengthened complete-run evidence: tick 27 remains incomplete, tick 28 is
+  complete, equal seed/configuration runs produce equal full detached history,
+  and that history round-trips through JSON without loss.
+- Both documented normal and inspector commands completed successfully;
+  `./scripts/check.sh` passed suites of 67 and 63 tests; `git diff --check`
+  passed. Fresh Sol-high implementation review found AU-10 met with no blocker.
+
+### 2026-08-19 — Final goal completion audit
+
+- A separate fresh Sol-high read-only audit verified AU-1 through AU-10 and the
+  Goal Result with no remaining required work or invariant violation.
+- The audit confirmed four focal traces, three claims, four source-linked stance
+  transitions, one focal revised speech attempt/outcome, one post-diary
+  consultation, empty supporting understanding and institution reports/records,
+  equal JSON-compatible histories, and the tick-28 `first_day_v3` boundary.
+- Completion is limited to the approved deterministic authored experiment. It
+  is not evidence of general cognition, emergence, a permanent randomness
+  contract, durable replay, or broader world simulation.
