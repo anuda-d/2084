@@ -5,8 +5,8 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-7 private stance prompts one ordinary archive recheck (2026-08-19)
-- Verified implementation runs since alignment: 1
+- Last completed run: AU-8 private understanding remains focal-only (2026-08-19)
+- Verified implementation runs since alignment: 2
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
@@ -20,7 +20,7 @@ Status: active shared state; no future tasks are planned.
 | AU-5 Diary record | met | Focused and full checks verify the immutable physical diary entry preserves the delivered version-one official schedule proposition, three-packet value, and exact source observation after a location-gated two-tick write; unsupported claim/source combinations are rejected without mutation. |
 | AU-6 Resurfacing | met | Focused and full checks verify only the delivered read of the source-linked earlier official entry selects an immutable `private_diary` stance and transition; a rejected read creates none, while existing traces, reciprocal conflict, and belief confidence remain unchanged. |
 | AU-7 Recheck | met | A causal policy comparison verifies the supplied `private_diary` stance alone starts the ordinary archive route; the integration run resolves two travel legs, completes exactly one post-diary consultation, delivers its result, and clears the recheck stance before returning to finish work. |
-| AU-8 Boundaries | open | none |
+| AU-8 Boundaries | met | Full-run regression evidence verifies stance selection is pure; supporting views receive no focal stance, diary access, or diary observations; institution reports/records remain empty; resources and Official Record versions do not change; and handover evidence remains separate from the official proposition. |
 | AU-9 Presentation | open | none |
 | AU-10 Reproduction | open | none |
 
@@ -219,3 +219,20 @@ Alignment does not select, suggest, or record the next implementation task.
   deterministic run at tick 28, and filtered normal versus complete inspector
   evidence. `./scripts/check.sh` passed suites of 65 and 63 tests; fresh
   Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-8 Focal-only understanding boundaries
+
+- Added a full-run regression proving private stance selection is pure: direct
+  selection changes no event, observation, resource, diary, record, or other
+  inspector state.
+- Verified both supporting-agent views receive no focal contextual stance,
+  physical diary access or entries, diary observations, traces, or interpreted
+  claims. Institution reports and records remain exactly empty.
+- Verified the stance-driven recheck changes neither objective resources nor
+  Official Record versions, and the physical handover retains distinct fields
+  from the official entitlement proposition despite their equal numeric value.
+- Initial Sol-high review found missing assertions for supporting diary-view
+  fields and overly permissive institution-record matching. Both were tightened
+  to exact state assertions; fresh re-review found no blockers.
+- Focused validation passed 17 understanding tests; `./scripts/check.sh` passed
+  suites of 66 and 63 tests. No production behavior changed in this run.
