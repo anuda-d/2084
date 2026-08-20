@@ -366,18 +366,31 @@ class Simulation:
         )
         if evidence_error is not None:
             return evidence_error
-        matching_belief = next(
+        actor = self.world.agents[actor_id]
+        matches_belief = any(
+            belief.proposition == proposition
+            and belief.asserted_value == asserted_value
+            and belief.source_observation_ids == tuple(evidence_ids)
+            for belief in actor.beliefs
+        )
+        matching_trace = next(
             (
-                belief
-                for belief in self.world.agents[actor_id].beliefs
-                if belief.proposition == proposition
-                and belief.asserted_value == asserted_value
-                and belief.source_observation_ids == tuple(evidence_ids)
+                trace
+                for trace in actor.memory_traces
+                if trace.proposition == proposition
+                and trace.asserted_value == asserted_value
+                and (trace.source_observation_id,) == tuple(evidence_ids)
             ),
             None,
         )
-        if matching_belief is None:
-            return "diary perspective must match an actor belief and its sources"
+        matches_interpreted_claim = matching_trace is not None and any(
+            claim.claim_id == matching_trace.interpreted_claim_id
+            and claim.proposition == proposition
+            and claim.asserted_value == asserted_value
+            for claim in actor.interpreted_claims
+        )
+        if not matches_belief and not matches_interpreted_claim:
+            return "diary perspective must match actor understanding and its sources"
         return None
 
     def resolve_attempt(self, attempt: ActionAttempt) -> Event:

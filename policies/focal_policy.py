@@ -93,20 +93,27 @@ class FocalPolicy:
             and view.accessible_diary_id is not None
             and view.accessible_diary_entry_count == 0
         ):
-            private = next(
-                belief for belief in reversed(view.beliefs) if belief.context == "private"
+            superseded_version_ids = {
+                observation.details.get("previous_version_id")
+                for observation in official_record_observations
+                if observation.details.get("previous_version_id") is not None
+            }
+            earlier_schedule = next(
+                observation
+                for observation in official_record_observations
+                if observation.details.get("version_id") in superseded_version_ids
             )
             return ActionAttempt(
                 actor_id=view.agent_id,
                 kind="write_diary",
                 parameters={
                     "object_id": view.accessible_diary_id,
-                    "proposition": private.proposition,
-                    "asserted_value": private.asserted_value,
-                    "source_observation_ids": private.source_observation_ids,
+                    "proposition": earlier_schedule.details["proposition"],
+                    "asserted_value": earlier_schedule.details["asserted_value"],
+                    "source_observation_ids": (earlier_schedule.observation_id,),
                 },
-                explanation=f"write the private {private.asserted_value}-unit perspective",
-                decision_reason="the directly grounded counter perspective can be preserved while the diary is accessible",
+                explanation="write the earlier three-packet schedule",
+                decision_reason="the delivered earlier official schedule can be preserved while the diary is accessible",
             )
         if view.location == "home" and made_public_expression:
             revision_received = any(

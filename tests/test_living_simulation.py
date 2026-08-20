@@ -2,7 +2,7 @@ import unittest
 import json
 import subprocess
 import sys
-from dataclasses import fields, replace
+from dataclasses import FrozenInstanceError, fields, replace
 
 from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult
 from simulation.agents import AgentView
@@ -573,7 +573,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             diary_before,
         )
 
-    def test_diary_write_rejects_a_claim_that_does_not_match_the_cited_belief(self):
+    def test_diary_write_rejects_a_claim_that_does_not_match_the_cited_understanding(self):
         simulation = build_first_day(seed=42)
         for _ in range(8):
             simulation.step()
@@ -600,10 +600,42 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
 
         self.assertEqual(simulation.events[-1].kind, "action_rejected")
-        self.assertIn("match an actor belief", simulation.events[-1].details["reason"])
+        self.assertIn("match actor understanding", simulation.events[-1].details["reason"])
         self.assertEqual(
             simulation.inspector_state()["diaries"]["mara-private-diary"],
             diary_before,
+        )
+
+    def test_diary_write_rejects_mixing_earlier_claim_with_revised_source(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        simulation.world.agents[FOCAL_AGENT_ID].location = "home"
+        revised = next(
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "official_record_version"
+            and observation.details.get("previous_version_id") is not None
+        )
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="write_diary",
+                parameters={
+                    "object_id": "mara-private-diary",
+                    "proposition": "weekly_household_ration_entitlement_packets",
+                    "asserted_value": 3,
+                    "source_observation_ids": (revised.observation_id,),
+                },
+                explanation="misattribute the earlier schedule to the revision",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertIn("match actor understanding", simulation.events[-1].details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["diaries"]["mara-private-diary"]["entries"],
+            [],
         )
 
     def test_unknown_actor_is_rejected_without_raising_or_mutating_agents(self):
@@ -637,7 +669,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
         tick_sixteen = snapshots[15]
         self.assertEqual(tick_sixteen.location, "home")
-        self.assertEqual(tick_sixteen.current_action, "write the private 3-unit perspective")
+        self.assertEqual(tick_sixteen.current_action, "write the earlier three-packet schedule")
         self.assertEqual(
             simulation.snapshot_at(16).accessible_diary_entry_count,
             0,
@@ -649,15 +681,26 @@ class LivingSimulationStepTests(unittest.TestCase):
         diary = simulation.inspector_state()["diaries"]["mara-private-diary"]
         self.assertEqual(len(diary["entries"]), 1)
         entry = diary["entries"][0]
+        self.assertEqual(
+            entry["proposition"],
+            "weekly_household_ration_entitlement_packets",
+        )
         self.assertEqual(entry["asserted_value"], 3)
         self.assertEqual(entry["started_tick"], 16)
         self.assertEqual(entry["completed_tick"], 18)
-        direct = next(
+        earlier_schedule = next(
             observation
             for observation in simulation.observations_for(FOCAL_AGENT_ID)
-            if observation.details.get("evidence_kind") == "direct_resource_claim"
+            if observation.details.get("evidence_kind") == "official_record_version"
+            and observation.details.get("previous_version_id") is None
         )
-        self.assertEqual(entry["source_observation_ids"], [direct.observation_id])
+        self.assertEqual(
+            entry["source_observation_ids"],
+            [earlier_schedule.observation_id],
+        )
+        physical_entry = simulation.world.diaries["mara-private-diary"].entries[0]
+        with self.assertRaises(FrozenInstanceError):
+            physical_entry.asserted_value = 99
 
     def test_diary_read_returns_the_immutable_earlier_perspective_after_revision(self):
         simulation = build_first_day(seed=42)
@@ -768,7 +811,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("Private belief: 3 units", normal)
         self.assertIn("repeat the official 2-packet entitlement publicly", normal)
         self.assertIn("consult the weekly ration schedule again", normal)
-        self.assertIn("Diary read returned the earlier 3-unit perspective", normal)
+        self.assertIn("Diary read returned the earlier 3-packet schedule claim", normal)
         self.assertIn(
             "Reason: direct sight supports three units for the household need, "
             "and the encountered schedule separately promises three packets.",

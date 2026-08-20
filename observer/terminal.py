@@ -62,11 +62,21 @@ def _observation_line(snapshot: FocalSnapshot, index: int) -> str | None:
             f"{details['asserted_value']}-unit claim under {details['reason']}."
         )
     if kind == "diary_write_completed":
+        if details.get("proposition") == "weekly_household_ration_entitlement_packets":
+            return (
+                "Diary write completed: retained the earlier "
+                f"{details['asserted_value']}-packet schedule claim."
+            )
         return (
             "Diary write completed: retained the private "
             f"{details['asserted_value']}-unit perspective."
         )
     if kind == "diary_read_completed":
+        if details.get("proposition") == "weekly_household_ration_entitlement_packets":
+            return (
+                "Diary read returned the earlier "
+                f"{details['asserted_value']}-packet schedule claim."
+            )
         return (
             "Diary read returned the earlier "
             f"{details['asserted_value']}-unit perspective."

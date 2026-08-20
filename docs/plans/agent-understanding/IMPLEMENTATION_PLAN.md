@@ -5,8 +5,8 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-4 revised public action from restricted stance input (2026-08-19)
-- Verified implementation runs since alignment: 1
+- Last completed run: AU-5 earlier official schedule preserved in the physical diary (2026-08-19)
+- Verified implementation runs since alignment: 2
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
@@ -17,7 +17,7 @@ Status: active shared state; no future tasks are planned.
 | AU-2 Conflict | met | Focused and full checks verify one reciprocal conflict between the two delivered official versions for the same period, while the equal-valued direct-resource claim remains outside it; the undelivered rewrite cannot participate and detached history is deterministic. |
 | AU-3 Public stance | met | Focused and full checks verify a source-linked version-two `public_counter` stance only after the conflicting revised schedule and sufficient protocol pressure are delivered at the allocation office; it clears on departure while deterministic detached transitions retain selection and clearing causality. |
 | AU-4 Public action | met | Focused and full checks verify exactly one focal two-packet public statement selected from restricted `public_counter` stance value and source IDs while raw observation order cannot override it; world validation and resolution remain separate, and rejection leaves understanding unchanged. |
-| AU-5 Diary record | open | none |
+| AU-5 Diary record | met | Focused and full checks verify the immutable physical diary entry preserves the delivered version-one official schedule proposition, three-packet value, and exact source observation after a location-gated two-tick write; unsupported claim/source combinations are rejected without mutation. |
 | AU-6 Resurfacing | open | none |
 | AU-7 Recheck | open | none |
 | AU-8 Boundaries | open | none |
@@ -47,11 +47,7 @@ implementation order. If no honest task advances the goal, make no change.
 
 ## Current Run
 
-- Status: none
-- Criterion: none
-- Task: none
-- Specification: none
-- Expected evidence: none
+None. No future task is selected.
 
 ## Completion Rules
 
@@ -153,3 +149,18 @@ Alignment does not select, suggest, or record the next implementation task.
   and 63 tests. Fresh Sol-high review found no blocking findings; its
   non-blocking uniqueness observation was encoded as an explicit regression
   assertion before final validation.
+
+### 2026-08-19 — AU-5 Earlier official schedule diary record
+
+- Changed the existing physical diary write to preserve the superseded,
+  delivered version-one schedule proposition, three-packet value, and exact
+  source observation rather than the separate direct-resource belief.
+- Diary validation now accepts only a proposition/value/source tuple backed by
+  the actor's delivered belief or source-linked interpreted claim and trace;
+  mixing the earlier value with the revised source is rejected without diary
+  mutation.
+- Verified the entry remains home-gated, takes ticks 16 through 18 to complete,
+  is immutable, and returns the same stored source on read. Normal observer
+  prose identifies the earlier schedule claim without exposing hidden state.
+- Focused validation passed 4 diary tests; `./scripts/check.sh` passed suites of
+  61 and 63 tests. Fresh Sol-high review found no blocking findings.
