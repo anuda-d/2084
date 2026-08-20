@@ -815,6 +815,30 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("repeat the official 2-packet entitlement publicly", normal)
         self.assertIn("consult the weekly ration schedule again", normal)
         self.assertIn("Diary read returned the earlier 3-packet schedule claim", normal)
+        self.assertIn("start toward the public archive through the workplace", normal)
+        self.assertIn("recheck the public weekly ration schedule", normal)
+        self.assertIn(
+            "Reason: the diary-resurfaced earlier version prompts one ordinary "
+            "consultation of the accessible public archive.",
+            normal,
+        )
+        self.assertIn(
+            "Reason: the delivered archive recheck clears the private diary "
+            "intention and the remaining work obligation is at the workplace.",
+            normal,
+        )
+        self.assertEqual(
+            [
+                line
+                for line in normal.splitlines()
+                if line.startswith("Official schedule encountered:")
+            ],
+            [
+                "Official schedule encountered: weekly household entitlement is 3 packets.",
+                "Official schedule encountered: weekly household entitlement is 2 packets.",
+                "Official schedule encountered: weekly household entitlement is 2 packets.",
+            ],
+        )
         self.assertIn(
             "Reason: direct sight supports three units for the household need, "
             "and the encountered schedule separately promises three packets.",
@@ -836,6 +860,11 @@ class LivingSimulationStepTests(unittest.TestCase):
             "weekly-household-ration-schedule-v2",
             "official_record_rewrite",
             "align the published schedule",
+            "previous_version_id",
+            "publication_event_id",
+            "memory-trace-",
+            "interpreted-claim-",
+            "stance-transition-",
         ):
             self.assertNotIn(hidden_term, normal)
 
@@ -848,6 +877,223 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("event-", inspector)
         self.assertIn("observation-", inspector)
         self.assertIn("caused_by", inspector)
+
+    def test_inspector_reconstructs_complete_understanding_causality(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+        lines = render_inspector(simulation).splitlines()
+        payload = json.loads("\n".join(lines[2:]))
+        history = payload["history"]
+        focal = history["agent_understanding"][FOCAL_AGENT_ID]
+        events = history["events"]
+        observations_by_id = {
+            observation["observation_id"]: observation
+            for observation in history["observations"]
+            if observation["agent_id"] == FOCAL_AGENT_ID
+        }
+        traces_by_id = {
+            trace["trace_id"]: trace for trace in focal["memory_traces"]
+        }
+        claims_by_id = {
+            claim["claim_id"]: claim for claim in focal["interpreted_claims"]
+        }
+
+        self.assertEqual(len(focal["memory_traces"]), 4)
+        self.assertEqual(len(focal["interpreted_claims"]), 3)
+        self.assertTrue(
+            all(
+                trace["source_observation_id"] in observations_by_id
+                for trace in focal["memory_traces"]
+            )
+        )
+        official_claims = [
+            claim
+            for claim in focal["interpreted_claims"]
+            if claim["proposition"]
+            == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual(
+            [claim["asserted_value"] for claim in official_claims],
+            [3, 2],
+        )
+        self.assertEqual(
+            official_claims[0]["conflicts_with"],
+            [official_claims[1]["claim_id"]],
+        )
+        self.assertEqual(
+            official_claims[1]["conflicts_with"],
+            [official_claims[0]["claim_id"]],
+        )
+        self.assertEqual(
+            [
+                (transition["context"], transition["tick"], transition["active"])
+                for transition in history["stance_transitions"]
+            ],
+            [
+                ("public_counter", 11, True),
+                ("public_counter", 14, False),
+                ("private_diary", 19, True),
+                ("private_diary", 24, False),
+            ],
+        )
+
+        public_activation = history["stance_transitions"][0]
+        revised_trace = traces_by_id[public_activation["source_trace_id"]]
+        revised_claim = claims_by_id[public_activation["source_claim_id"]]
+        revised_observation = observations_by_id[
+            public_activation["source_observation_ids"][0]
+        ]
+        pressure_observation = observations_by_id[
+            public_activation["pressure_observation_id"]
+        ]
+        self.assertEqual(
+            revised_trace["interpreted_claim_id"],
+            revised_claim["claim_id"],
+        )
+        self.assertEqual(
+            revised_claim["origin_trace_id"],
+            revised_trace["trace_id"],
+        )
+        self.assertEqual(
+            revised_trace["source_observation_id"],
+            revised_observation["observation_id"],
+        )
+        self.assertEqual(revised_trace["asserted_value"], 2)
+        self.assertEqual(
+            revised_observation["details"]["evidence_kind"],
+            "official_record_version",
+        )
+        self.assertIsNotNone(
+            revised_observation["details"]["previous_version_id"]
+        )
+        self.assertEqual(
+            pressure_observation["details"]["evidence_kind"],
+            "social_pressure",
+        )
+        self.assertEqual(
+            public_activation["source_observation_ids"],
+            [
+                revised_observation["observation_id"],
+                pressure_observation["observation_id"],
+            ],
+        )
+        speech_attempts = [
+            event
+            for event in events
+            if event["kind"] == "action_attempted"
+            and event["actor_id"] == FOCAL_AGENT_ID
+            and event["details"].get("action_kind") == "speak"
+        ]
+        self.assertEqual(len(speech_attempts), 1)
+        speech_attempt = speech_attempts[0]
+        self.assertEqual(
+            speech_attempt["details"]["evidence_observation_ids"],
+            public_activation["source_observation_ids"],
+        )
+        self.assertEqual(speech_attempt["details"]["asserted_value"], 2)
+        speech_outcome = next(
+            event
+            for event in events
+            if event["kind"] == "public_statement_made"
+            and event["action_id"] == speech_attempt["action_id"]
+        )
+        speech_result = next(
+            result
+            for result in history["action_results"]
+            if result["action_id"] == speech_attempt["action_id"]
+        )
+        self.assertEqual(
+            speech_result["outcome_event_id"],
+            speech_outcome["event_id"],
+        )
+
+        diary_entry = payload["objective_state"]["diaries"][
+            "mara-private-diary"
+        ]["entries"][0]
+        earlier_trace = next(
+            trace
+            for trace in focal["memory_traces"]
+            if trace["asserted_value"] == 3
+            and trace["evidence_kind"] == "official_record_version"
+        )
+        private_activation = history["stance_transitions"][2]
+        private_trace = traces_by_id[private_activation["source_trace_id"]]
+        private_claim = claims_by_id[private_activation["source_claim_id"]]
+        self.assertEqual(
+            private_trace["interpreted_claim_id"],
+            private_claim["claim_id"],
+        )
+        self.assertEqual(private_trace["trace_id"], earlier_trace["trace_id"])
+        self.assertEqual(
+            private_claim["origin_trace_id"],
+            earlier_trace["trace_id"],
+        )
+        self.assertEqual(
+            private_trace["source_observation_id"],
+            earlier_trace["source_observation_id"],
+        )
+        self.assertEqual(
+            diary_entry["source_observation_ids"],
+            [earlier_trace["source_observation_id"]],
+        )
+        self.assertEqual(
+            private_activation["source_observation_ids"][0],
+            earlier_trace["source_observation_id"],
+        )
+        diary_read = next(
+            observation
+            for observation in history["observations"]
+            if observation["details"].get("evidence_kind")
+            == "diary_read_completed"
+        )
+        self.assertEqual(
+            private_activation["source_observation_ids"][1],
+            diary_read["observation_id"],
+        )
+
+        recheck_attempts = [
+            event
+            for event in events
+            if event["kind"] == "action_attempted"
+            and event["actor_id"] == FOCAL_AGENT_ID
+            and event["details"].get("action_kind")
+            == "consult_official_record"
+            and event["tick"] > diary_read["delivery_tick"]
+        ]
+        self.assertEqual(len(recheck_attempts), 1)
+        recheck_attempt = recheck_attempts[0]
+        recheck_outcome = next(
+            event
+            for event in events
+            if event["kind"] == "official_record_consulted"
+            and event["action_id"] == recheck_attempt["action_id"]
+        )
+        recheck_result = next(
+            result
+            for result in history["action_results"]
+            if result["action_id"] == recheck_attempt["action_id"]
+        )
+        self.assertEqual(recheck_outcome["tick"], 23)
+        self.assertEqual(recheck_result["status"], "completed")
+        self.assertEqual(
+            recheck_result["outcome_event_id"],
+            recheck_outcome["event_id"],
+        )
+        recheck_deliveries = [
+            observation
+            for observation in history["observations"]
+            if observation["agent_id"] == FOCAL_AGENT_ID
+            and observation["event_id"] == recheck_outcome["event_id"]
+            and observation["details"].get("evidence_kind")
+            == "official_record_version"
+        ]
+        self.assertEqual(len(recheck_deliveries), 1)
+        private_deactivation = history["stance_transitions"][3]
+        self.assertEqual(
+            recheck_deliveries[0]["delivery_tick"],
+            private_deactivation["tick"],
+        )
+        self.assertFalse(private_deactivation["active"])
 
     def test_final_workday_explanation_preserves_the_unmet_household_need(self):
         simulation = build_first_day(seed=42)

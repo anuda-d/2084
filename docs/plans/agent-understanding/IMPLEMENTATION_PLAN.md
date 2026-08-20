@@ -5,9 +5,9 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-8 private understanding remains focal-only (2026-08-19)
-- Verified implementation runs since alignment: 2
-- Alignment due: after three verified implementation runs
+- Last completed run: AU-9 filtered explanation and inspectable causality (2026-08-19)
+- Verified implementation runs since alignment: 3
+- Alignment due: now
 
 ## Goal Progress
 
@@ -21,7 +21,7 @@ Status: active shared state; no future tasks are planned.
 | AU-6 Resurfacing | met | Focused and full checks verify only the delivered read of the source-linked earlier official entry selects an immutable `private_diary` stance and transition; a rejected read creates none, while existing traces, reciprocal conflict, and belief confidence remain unchanged. |
 | AU-7 Recheck | met | A causal policy comparison verifies the supplied `private_diary` stance alone starts the ordinary archive route; the integration run resolves two travel legs, completes exactly one post-diary consultation, delivers its result, and clears the recheck stance before returning to finish work. |
 | AU-8 Boundaries | met | Full-run regression evidence verifies stance selection is pure; supporting views receive no focal stance, diary access, or diary observations; institution reports/records remain empty; resources and Official Record versions do not change; and handover evidence remains separate from the official proposition. |
-| AU-9 Presentation | open | none |
+| AU-9 Presentation | met | Normal-output regressions require the encountered 3→2→2 schedule sequence, pressure-sensitive speech, earlier diary perspective, and later recheck while forbidding hidden identifiers; parsed inspector regressions reconstruct the exact trace/claim/observation/transition/action/result causal graph. |
 | AU-10 Reproduction | open | none |
 
 This table records only verified goal evidence. It is not a task backlog or an
@@ -236,3 +236,22 @@ Alignment does not select, suggest, or record the next implementation task.
   to exact state assertions; fresh re-review found no blockers.
 - Focused validation passed 17 understanding tests; `./scripts/check.sh` passed
   suites of 66 and 63 tests. No production behavior changed in this run.
+
+### 2026-08-19 — AU-9 Filtered and inspectable presentation
+
+- Strengthened normal-output regression evidence for the exact encountered
+  schedule sequence 3 → 2 → 2, the pressure-sensitive revised statement, the
+  earlier diary claim, and the later public-archive recheck and clearing reason.
+  Version, event, observation, trace, claim, transition, publication, and
+  rewrite identifiers remain forbidden from normal output.
+- Parsed inspector JSON now reconstructs public activation through the exact
+  revised trace, claim, source and pressure observations into one speech
+  attempt/result/outcome; private activation through the exact earlier diary
+  source, trace, claim, and delivered read; and one structured post-diary
+  consultation through its result, outcome, delivery, and deactivation tick.
+- Two Sol-high reviews found incomplete causal joins and prose-dependent
+  selection in earlier test drafts. The assertions were replaced with exact
+  identifiers, uniqueness counts, origin/source equality, and delivered-event
+  links; final fresh review found no blockers or production gap.
+- Both documented normal and inspector commands completed. `./scripts/check.sh`
+  passed suites of 67 and 63 tests. No production behavior changed in this run.
