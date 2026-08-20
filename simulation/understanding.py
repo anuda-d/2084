@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from simulation.events import Observation
 
@@ -14,6 +14,7 @@ class InterpretedClaim:
     asserted_value: int
     period_id: str | None
     origin_trace_id: str
+    conflicts_with: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -85,4 +86,45 @@ def trace_from_delivered_observation(
         asserted_value=asserted_value,
         period_id=period_id,
         origin_trace_id=trace_id,
+    )
+
+
+def link_official_version_conflicts(
+    existing_claims: tuple[InterpretedClaim, ...],
+    existing_traces: tuple[MemoryTrace, ...],
+    new_claim: InterpretedClaim,
+    new_trace: MemoryTrace,
+) -> tuple[InterpretedClaim, ...]:
+    """Link only delivered official versions that disagree about one period."""
+    if new_trace.evidence_kind != "official_record_version":
+        return existing_claims + (new_claim,)
+
+    trace_by_claim_id = {
+        trace.interpreted_claim_id: trace for trace in existing_traces
+    }
+    conflicting_claim_ids = tuple(
+        claim.claim_id
+        for claim in existing_claims
+        if (
+            (trace := trace_by_claim_id.get(claim.claim_id)) is not None
+            and trace.evidence_kind == "official_record_version"
+            and claim.proposition == new_claim.proposition
+            and claim.period_id == new_claim.period_id
+            and claim.asserted_value != new_claim.asserted_value
+        )
+    )
+    if not conflicting_claim_ids:
+        return existing_claims + (new_claim,)
+
+    linked_existing_claims = tuple(
+        replace(
+            claim,
+            conflicts_with=claim.conflicts_with + (new_claim.claim_id,),
+        )
+        if claim.claim_id in conflicting_claim_ids
+        else claim
+        for claim in existing_claims
+    )
+    return linked_existing_claims + (
+        replace(new_claim, conflicts_with=conflicting_claim_ids),
     )

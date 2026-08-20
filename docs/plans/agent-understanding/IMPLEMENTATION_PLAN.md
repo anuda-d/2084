@@ -5,8 +5,8 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-1 memory traces from supported delivered evidence (2026-08-18)
-- Verified implementation runs since alignment: 1
+- Last completed run: AU-2 explicit delivered official-version conflict (2026-08-19)
+- Verified implementation runs since alignment: 2
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
@@ -14,7 +14,7 @@ Status: active shared state; no future tasks are planned.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AU-1 Memory traces | met | Focused and full checks verify immutable source-linked focal traces for delivered direct and official evidence, no trace from an undelivered rewrite, deduplicated claims on repeated delivery, empty supporting-agent understanding, and deterministic detached history. |
-| AU-2 Conflict | open | none |
+| AU-2 Conflict | met | Focused and full checks verify one reciprocal conflict between the two delivered official versions for the same period, while the equal-valued direct-resource claim remains outside it; the undelivered rewrite cannot participate and detached history is deterministic. |
 | AU-3 Public stance | open | none |
 | AU-4 Public action | open | none |
 | AU-5 Diary record | open | none |
@@ -89,3 +89,16 @@ Alignment does not select, suggest, or record the next implementation task.
 - Fresh Sol-high review found one blocking supporting-agent scope leak; the
   updater was restricted to the focal agent, regression coverage was added,
   and re-review confirmed no blocking findings remain.
+
+### 2026-08-19 — AU-2 Official-version conflict
+
+- Added immutable interpreted-claim conflict links only when separately
+  delivered official-version claims have the same proposition and period but
+  different asserted values.
+- Verified the direct-resource claim, though it has the same numeric value as
+  version one, remains outside the official conflict; the rewritten but
+  undelivered version cannot participate.
+- Exported deterministic detached conflict data without mutating observations,
+  EventLog entries, or Official Record versions.
+- Focused validation passed 6 tests; `./scripts/check.sh` passed suites of 54
+  and 63 tests. Fresh Sol-high review found no blocking findings.

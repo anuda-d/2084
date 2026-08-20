@@ -26,7 +26,10 @@ from simulation.institutions import (
     InstitutionView,
     OfficialRecordRewrite,
 )
-from simulation.understanding import trace_from_delivered_observation
+from simulation.understanding import (
+    link_official_version_conflicts,
+    trace_from_delivered_observation,
+)
 from simulation.world import DiaryEntry, PhysicalDiary, WorldState
 
 
@@ -1022,7 +1025,12 @@ class Simulation:
             agent.memory_traces += (trace,)
             if new_claim is not None:
                 self._interpreted_claim_counts[observation.agent_id] = claim_count
-                agent.interpreted_claims += (new_claim,)
+                agent.interpreted_claims = link_official_version_conflicts(
+                    agent.interpreted_claims,
+                    agent.memory_traces[:-1],
+                    new_claim,
+                    trace,
+                )
 
     def _resolve_scheduled_official_record_rewrite(
         self, rewrite: OfficialRecordRewrite
@@ -1376,6 +1384,7 @@ class Simulation:
                             "asserted_value": claim.asserted_value,
                             "period_id": claim.period_id,
                             "origin_trace_id": claim.origin_trace_id,
+                            "conflicts_with": list(claim.conflicts_with),
                         }
                         for claim in agent.interpreted_claims
                     ],

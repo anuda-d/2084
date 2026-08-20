@@ -65,6 +65,67 @@ class AgentUnderstandingTests(unittest.TestCase):
             any(trace.asserted_value == 2 for trace in focal.memory_traces)
         )
 
+    def test_delivered_official_versions_form_one_reciprocal_conflict(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        direct_claim = next(
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "daily_allocation_units"
+        )
+        official_claims = [
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual([claim.asserted_value for claim in official_claims], [3, 2])
+        self.assertEqual(
+            official_claims[0].conflicts_with,
+            (official_claims[1].claim_id,),
+        )
+        self.assertEqual(
+            official_claims[1].conflicts_with,
+            (official_claims[0].claim_id,),
+        )
+        self.assertEqual(direct_claim.conflicts_with, ())
+
+        official_observations = [
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "official_record_version"
+        ]
+        self.assertEqual(
+            [observation.details["asserted_value"] for observation in official_observations],
+            [3, 2],
+        )
+        record = simulation.world.institution.official_record
+        self.assertEqual(
+            [version.version_id for version in record.versions],
+            [
+                "weekly-household-ration-schedule-v1",
+                "weekly-household-ration-schedule-v2",
+            ],
+        )
+
+    def test_undelivered_official_version_cannot_form_a_conflict(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=10)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        official_claims = [
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual(len(official_claims), 1)
+        self.assertEqual(official_claims[0].conflicts_with, ())
+        self.assertEqual(
+            simulation.world.institution.official_record.current_version.version_id,
+            "weekly-household-ration-schedule-v2",
+        )
+
     def test_repeated_delivery_reuses_the_interpreted_claim(self):
         details = freeze_mapping(
             {
