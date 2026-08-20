@@ -108,9 +108,29 @@ Consequences should remain connected to understandable world responses. Delayed 
 
 ## AI
 
-AI may help choose, phrase, or explain behavior. It does not automatically know the world, speak truthfully, remain consistent, or deserve authority over consequences.
+The intended direction is to make the focal character model-backed first. The
+model will be the character's decision and expression process: its validated
+choices become the focal character's attempted actions, rather than suggestions
+for a separate scripted actor.
+
+The persistent character is not reducible to one model call. Identity, body,
+location, aims, relationships, delivered observations, source-linked memory,
+current plans, and prior outcomes remain explicit simulation state. The model
+receives only a restricted character view and chooses what to attempt next.
+
+AI does not automatically know the world, speak truthfully, remain consistent,
+or deserve authority over consequences. It may reason, plan, choose, phrase, or
+explain behavior, but it may not inspect hidden state, directly mutate the
+world, or declare its own success.
 
 World truth, perception, action validity, institutional access, and consequential resolution should remain governed by explicit simulation state and constraints. Simpler decision rules remain valuable wherever they answer the same question more clearly.
+
+Begin with the focal character only. Supporting characters should become
+model-backed only after the focal boundary demonstrates limited knowledge,
+persistent identity, inspectable decisions, safe failure handling, and recorded
+reproduction. Agent Understanding remains the canonical, inspectable substrate
+for delivered evidence and structured memory; opaque model conversation history
+must not become the character's only memory.
 
 ### Current implementation status
 
@@ -177,7 +197,12 @@ Authored material may seed people, places, pressures, and starting conditions. I
 - The focal character's identity, work, household, and initial situation
 - The original setting and historical background
 - The first small district and supporting population
-- How agent decisions combine rules and AI
+- Which bounded focal-character model interface, failure policy, and recorded
+  reproduction format should implement the approved model-backed direction
+- Which interpretations or plans may later be proposed by the model while
+  delivered evidence, source provenance, and world consequences remain explicit
+- What evidence should be required before supporting characters also become
+  model-backed
 - Whether the selected public-counter stance and diary-cued resurfacing rule is
   the smallest useful Agent Understanding experiment, or should be removed
   after evaluation

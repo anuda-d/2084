@@ -117,13 +117,14 @@ def build_first_day(seed: int = 42) -> Simulation:
             resource_proposition="daily_allocation_units",
             official_record_access_location="allocation_office",
             official_record_artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+            public_conformity_threshold=0.7,
         ),
         focal_agent_id=FOCAL_AGENT_ID,
         max_ticks=30,
-        completion_tick=24,
+        completion_tick=28,
         scenario_configuration={
-            "scenario_id": "first_day_v2",
-            "completion_tick": 24,
+            "scenario_id": "first_day_v3",
+            "completion_tick": 28,
             "agent_ids": [FOCAL_AGENT_ID, CO_WORKER_ID, CLERK_ID],
             "starting_locations": {
                 FOCAL_AGENT_ID: "home",

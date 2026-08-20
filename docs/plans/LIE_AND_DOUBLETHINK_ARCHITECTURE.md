@@ -1,6 +1,9 @@
 # The Lie and Doublethink: Proposed Architecture
 
 Status: proposal for exploration, not a settled interface or permanent architecture.
+The owner-approved direction is to begin model-backed character decisions with
+the focal character. It is now bounded by the active
+[Model-Backed Focal Character goal](model-backed-focal-character/GOAL.md).
 
 This document describes how a mutable official history and a doublethink-inspired agent model can fit into 2084 without allowing propaganda to overwrite the simulation's actual past.
 
@@ -56,7 +59,7 @@ flowchart TD
     E --> D
     D --> O[Agent-scoped observations]
     O --> U[Agent Understanding]
-    U --> Q[Decision policy]
+    U --> Q["Character decision policy: rule or model"]
     Q --> A[Attempted action]
     A --> W
     A --> E
@@ -75,6 +78,37 @@ The normal causal direction is:
 5. Agent Understanding updates only from observations delivered to that agent.
 6. A decision policy chooses an attempted action from the agent's limited current understanding.
 7. World rules resolve the attempt and record its consequences.
+
+## Model-Backed Focal Character Boundary
+
+A model-backed focal character is not an AI adviser attached to a separately
+scripted actor. When the focal character uses a model-backed decision policy,
+the model's validated choices become that character's attempted actions and
+expressions.
+
+The persistent character is larger than any one model call. Character identity,
+embodied state, delivered observations, source-linked memory, relationships,
+aims, plans, and prior outcomes remain explicit simulation state. The model
+receives a restricted projection of that state and decides what the character
+attempts next.
+
+The model may reason about the current situation, weigh aims and risks, choose
+an action, and phrase speech. It may not inspect objective hidden state, another
+character's private state, or the development inspector. It may not directly
+mutate memory, records, resources, locations, or relationships, and it may not
+declare that an attempt succeeded. World rules validate and resolve its choices.
+
+Agent Understanding remains the shared, inspectable cognitive substrate. It
+owns facts such as which observations were delivered, where a memory came from,
+which structured claims conflict, and which transitions were retained. A model
+may use that understanding and may later propose bounded interpretations or
+plans, but opaque model conversation history must not become the only canonical
+memory of the character.
+
+Begin with the focal character only. Generalize model-backed decisions to
+supporting characters only after the focal implementation demonstrates limited
+knowledge, persistent identity, inspectable decisions, safe failure handling,
+and recorded reproduction without granting the model authority over the world.
 
 ## Core Invariants
 
@@ -688,11 +722,43 @@ Choose either one suppressed reference or one fabricated official artifact. Do n
 
 The experiment must create a decision, uncertainty, interaction, or consequence visible through the focal character. If it produces only inspector data, it is not yet earning its complexity.
 
-### Phase 3: Deepen Agent Understanding
+### Phase 3A: Establish Bounded Agent Understanding
 
 Move confidence, contextual stance, inhibition, and diary-triggered resurfacing out of scenario-specific policy branches and into one agent-owned implementation.
 
 Keep the decision policy responsible for action choice and public expression.
+
+The completed Agent Understanding goal established a bounded foundation:
+source-linked memory traces, explicit official-version conflicts, contextual
+public and private stances, diary-triggered resurfacing, and stance-sensitive
+action choice. Confidence change, general retrieval accessibility, inhibition,
+and supporting-agent understanding remain deferred rather than implicitly
+complete.
+
+### Phase 3B: Embody the Focal Character With a Model
+
+Replace the focal character's hand-written action selection with one
+model-backed decision policy. The model is the focal character's decision and
+expression process, not a narrator or suggestion generator whose output is
+ignored by a separate scripted actor.
+
+The first bounded implementation should:
+
+- serialize only the focal character's restricted decision view;
+- include persistent authored identity, aims, and relevant agent-owned state;
+- require one structured attempted action from the existing allowed vocabulary;
+- pass every attempt through existing world validation and resolution;
+- deliver completed or rejected outcomes back through normal agent-safe state;
+- record the model configuration, restricted input, structured response,
+  validation result, and accepted attempt for inspection;
+- provide a safe timeout, malformed-output, and unavailable-model fallback;
+- support tests with a deterministic fake model and reproduction from recorded
+  decisions without requiring a live model call.
+
+Success is not merely plausible prose. The same restricted situation must lead
+to an inspectable model-selected attempt that can fail normally, affect the
+world only through resolution, and be explained from information the focal
+character actually possessed.
 
 ### Phase 4: Extract Claim and Provenance
 
@@ -719,6 +785,7 @@ This is a responsibility map, not a proposed concrete interface.
 | `simulation/agents.py` | Hold agent-owned understanding state and expose a restricted decision view. |
 | `simulation/engine.py` | Preserve tick order and coordination while releasing official-record, understanding, and delivery implementation details. |
 | `policies/focal_policy.py` | Consume contextual understanding rather than reconstructing cognition from raw mappings. |
+| model-policy adapter | Turn a restricted focal view into one structured attempted action; own no world state or consequences. |
 | `simulation/world.py` | Continue to own objective physical state, including physical copies and diaries. |
 | `observer/terminal.py` | Render only deliberately projected focal understanding and encountered official artifacts. |
 | `observer/inspector.py` | Show objective events, official operations and versions, delivery history, and understanding transitions as distinct records. |
@@ -778,6 +845,22 @@ This removes provenance, prevents resurfacing, and reduces doublethink to assign
 ### Putting cognition inside each policy
 
 This duplicates psychological rules and makes different agents impossible to compare through one test surface.
+
+A model-backed policy may reason, plan, and phrase behavior, but it must consume
+the shared agent-owned evidence and understanding rather than privately
+reconstructing canonical memory from an uninspectable prompt history.
+
+### Using AI as a cosmetic narrator
+
+If a model only describes a choice already made by a hand-written policy, it is
+not the character's decision process. In the model-backed focal phase, the
+model's valid structured choice must become the focal character's attempted
+action.
+
+### Giving the model world authority
+
+A fluent model response is not an observation, successful action, or objective
+event. Models propose attempts; world rules determine consequences and delivery.
 
 ### Giving the institution omniscient targets
 

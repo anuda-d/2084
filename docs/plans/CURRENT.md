@@ -1,24 +1,30 @@
 # Current Development Index
 
-Status: active.
+Status: Model-Backed Focal Character is the active owner-approved goal as of
+2026-08-19.
 
 ## Active Work
 
-- Goal: [Agent Understanding](agent-understanding/GOAL.md)
-- Shared state: [Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: select one smallest useful goal gap, or run required alignment
-- Task specification: selected just in time after the goal gap is identified
-- Run boundary: exactly one selected task or alignment review
-- Model routing: Terra high implements; Sol high reviews and aligns; no Luna
+- Goal: [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
+- Shared implementation state:
+  [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
+- Completed goal: [Agent Understanding](agent-understanding/GOAL.md)
+- Completed-goal evidence:
+  [Agent Understanding Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
+- Active work: select at most one fresh, bounded work unit from verified gaps in
+  the active goal; do not pre-plan later work
 
 ## Required Read Order
 
 1. `AGENTS.md`
 2. this file
-3. the active goal
-4. the shared implementation state
+3. if one exists, the owner-approved active goal
+4. its shared implementation state
 5. relevant implementation and tests located with `rg` for task selection
 6. only the specification relevant to the selected task
+
+If this index reports no active goal, stop after reading it. Do not turn a
+completed goal, open question, or improvement idea into active work.
 
 Do not preload completed-goal records, historical experiments, the broader
 architecture proposal, or unrelated specifications. Read a main architecture
@@ -46,7 +52,8 @@ unclear.
   no-code alignment.
 - Update `IMPLEMENTATION_PLAN.md` with verified status and evidence only.
 - Commit one coherent work unit.
-- Exit after the commit; do not start another work unit in this chat.
+- In continuous Goal mode, begin the next work unit only after the commit and
+  from the updated repository state. In a one-shot run, exit after the commit.
 
 ## Stop Conditions
 

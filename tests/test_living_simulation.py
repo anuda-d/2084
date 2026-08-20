@@ -2,7 +2,7 @@ import unittest
 import json
 import subprocess
 import sys
-from dataclasses import fields, replace
+from dataclasses import FrozenInstanceError, fields, replace
 
 from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult
 from simulation.agents import AgentView
@@ -368,36 +368,43 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
         )
 
-    def test_public_expression_repeats_only_the_delivered_schedule_under_pressure(self):
+    def test_public_expression_uses_revised_restricted_stance_under_pressure(self):
         simulation = build_first_day(seed=42)
 
-        snapshot = [simulation.step() for _ in range(10)][-1]
+        snapshot = [simulation.step() for _ in range(11)][-1]
 
         pressure = next(
             observation
-            for observation in snapshot.new_observations
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
             if observation.details.get("evidence_kind") == "social_pressure"
         )
         self.assertEqual(pressure.details["pressure"], 0.8)
         self.assertEqual(
             snapshot.current_action,
-            "repeat the official 3-packet entitlement publicly",
+            "repeat the official 2-packet entitlement publicly",
         )
         private = next(belief for belief in snapshot.beliefs if belief.context == "private")
         self.assertEqual(private.asserted_value, 3)
-        expression = next(
+        expressions = [
             event
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
-        )
-        self.assertEqual(expression.details["asserted_value"], 3)
+        ]
+        self.assertEqual(len(expressions), 1)
+        expression = expressions[0]
+        self.assertEqual(expression.details["asserted_value"], 2)
         self.assertEqual(
             expression.details["proposition"],
             "weekly_household_ration_entitlement_packets",
         )
         self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
-        self.assertIn(pressure.observation_id, expression.details["evidence_observation_ids"])
+        stance = simulation.agent_view(FOCAL_AGENT_ID).contextual_stance
+        self.assertIsNotNone(stance)
+        self.assertEqual(
+            expression.details["evidence_observation_ids"],
+            stance.source_observation_ids,
+        )
 
     def test_malformed_public_statement_is_rejected_without_mutation_or_policy_crash(self):
         simulation = build_first_day(seed=42)
@@ -468,8 +475,8 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
         )
 
-        simulation.step()
-        arrival = simulation.step()
+        simulation.run(max_ticks=26)
+        arrival = simulation.snapshot_at(26)
 
         self.assertTrue(
             any(
@@ -566,7 +573,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             diary_before,
         )
 
-    def test_diary_write_rejects_a_claim_that_does_not_match_the_cited_belief(self):
+    def test_diary_write_rejects_a_claim_that_does_not_match_the_cited_understanding(self):
         simulation = build_first_day(seed=42)
         for _ in range(8):
             simulation.step()
@@ -593,10 +600,42 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
 
         self.assertEqual(simulation.events[-1].kind, "action_rejected")
-        self.assertIn("match an actor belief", simulation.events[-1].details["reason"])
+        self.assertIn("match actor understanding", simulation.events[-1].details["reason"])
         self.assertEqual(
             simulation.inspector_state()["diaries"]["mara-private-diary"],
             diary_before,
+        )
+
+    def test_diary_write_rejects_mixing_earlier_claim_with_revised_source(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        simulation.world.agents[FOCAL_AGENT_ID].location = "home"
+        revised = next(
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "official_record_version"
+            and observation.details.get("previous_version_id") is not None
+        )
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="write_diary",
+                parameters={
+                    "object_id": "mara-private-diary",
+                    "proposition": "weekly_household_ration_entitlement_packets",
+                    "asserted_value": 3,
+                    "source_observation_ids": (revised.observation_id,),
+                },
+                explanation="misattribute the earlier schedule to the revision",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertIn("match actor understanding", simulation.events[-1].details["reason"])
+        self.assertEqual(
+            simulation.inspector_state()["diaries"]["mara-private-diary"]["entries"],
+            [],
         )
 
     def test_unknown_actor_is_rejected_without_raising_or_mutating_agents(self):
@@ -630,7 +669,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
         tick_sixteen = snapshots[15]
         self.assertEqual(tick_sixteen.location, "home")
-        self.assertEqual(tick_sixteen.current_action, "write the private 3-unit perspective")
+        self.assertEqual(tick_sixteen.current_action, "write the earlier three-packet schedule")
         self.assertEqual(
             simulation.snapshot_at(16).accessible_diary_entry_count,
             0,
@@ -642,15 +681,26 @@ class LivingSimulationStepTests(unittest.TestCase):
         diary = simulation.inspector_state()["diaries"]["mara-private-diary"]
         self.assertEqual(len(diary["entries"]), 1)
         entry = diary["entries"][0]
+        self.assertEqual(
+            entry["proposition"],
+            "weekly_household_ration_entitlement_packets",
+        )
         self.assertEqual(entry["asserted_value"], 3)
         self.assertEqual(entry["started_tick"], 16)
         self.assertEqual(entry["completed_tick"], 18)
-        direct = next(
+        earlier_schedule = next(
             observation
             for observation in simulation.observations_for(FOCAL_AGENT_ID)
-            if observation.details.get("evidence_kind") == "direct_resource_claim"
+            if observation.details.get("evidence_kind") == "official_record_version"
+            and observation.details.get("previous_version_id") is None
         )
-        self.assertEqual(entry["source_observation_ids"], [direct.observation_id])
+        self.assertEqual(
+            entry["source_observation_ids"],
+            [earlier_schedule.observation_id],
+        )
+        physical_entry = simulation.world.diaries["mara-private-diary"].entries[0]
+        with self.assertRaises(FrozenInstanceError):
+            physical_entry.asserted_value = 99
 
     def test_diary_read_returns_the_immutable_earlier_perspective_after_revision(self):
         simulation = build_first_day(seed=42)
@@ -686,19 +736,32 @@ class LivingSimulationStepTests(unittest.TestCase):
             read.details["source_observation_ids"],
             written.details["source_observation_ids"],
         )
-        self.assertEqual(snapshot.current_action, "travel to workplace after reading the diary")
+        self.assertEqual(
+            snapshot.current_action,
+            "start toward the public archive through the workplace",
+        )
 
-    def test_run_completes_at_tick_24_and_same_seed_serializes_identically(self):
+    def test_first_day_v3_completes_at_tick_28_and_reproduces_full_history(self):
+        before_boundary = build_first_day(seed=42)
         first = build_first_day(seed=42)
         second = build_first_day(seed=42)
 
+        before_boundary.run(max_ticks=27)
         first.run(max_ticks=30)
         second.run(max_ticks=30)
 
+        self.assertFalse(before_boundary.is_complete)
+        self.assertEqual(before_boundary.tick, 27)
         self.assertTrue(first.is_complete)
-        self.assertEqual(first.tick, 24)
+        self.assertEqual(first.tick, 28)
         self.assertEqual(first.history_data(), second.history_data())
-        encoded = json.dumps(first.history_data(), sort_keys=True)
+        history = first.history_data()
+        self.assertEqual(
+            history["configuration"]["scenario"]["scenario_id"],
+            "first_day_v3",
+        )
+        encoded = json.dumps(history, sort_keys=True)
+        self.assertEqual(json.loads(encoded), history)
         self.assertIn('"seed": 42', encoded)
         self.assertEqual(
             [event.event_id for event in first.events],
@@ -759,16 +822,40 @@ class LivingSimulationStepTests(unittest.TestCase):
         )
         self.assertIn("Household allocation: 2 held; 1 still needed.", normal)
         self.assertIn("Private belief: 3 units", normal)
-        self.assertIn("repeat the official 3-packet entitlement publicly", normal)
+        self.assertIn("repeat the official 2-packet entitlement publicly", normal)
         self.assertIn("consult the weekly ration schedule again", normal)
-        self.assertIn("Diary read returned the earlier 3-unit perspective", normal)
+        self.assertIn("Diary read returned the earlier 3-packet schedule claim", normal)
+        self.assertIn("start toward the public archive through the workplace", normal)
+        self.assertIn("recheck the public weekly ration schedule", normal)
+        self.assertIn(
+            "Reason: the diary-resurfaced earlier version prompts one ordinary "
+            "consultation of the accessible public archive.",
+            normal,
+        )
+        self.assertIn(
+            "Reason: the delivered archive recheck clears the private diary "
+            "intention and the remaining work obligation is at the workplace.",
+            normal,
+        )
+        self.assertEqual(
+            [
+                line
+                for line in normal.splitlines()
+                if line.startswith("Official schedule encountered:")
+            ],
+            [
+                "Official schedule encountered: weekly household entitlement is 3 packets.",
+                "Official schedule encountered: weekly household entitlement is 2 packets.",
+                "Official schedule encountered: weekly household entitlement is 2 packets.",
+            ],
+        )
         self.assertIn(
             "Reason: direct sight supports three units for the household need, "
             "and the encountered schedule separately promises three packets.",
             normal,
         )
         self.assertIn(
-            "Reason: public counter pressure favors repeating the delivered schedule "
+            "Reason: the public-counter stance supplies the revised delivered schedule "
             "while the physical handover remains separate.",
             normal,
         )
@@ -783,6 +870,11 @@ class LivingSimulationStepTests(unittest.TestCase):
             "weekly-household-ration-schedule-v2",
             "official_record_rewrite",
             "align the published schedule",
+            "previous_version_id",
+            "publication_event_id",
+            "memory-trace-",
+            "interpreted-claim-",
+            "stance-transition-",
         ):
             self.assertNotIn(hidden_term, normal)
 
@@ -795,6 +887,223 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertIn("event-", inspector)
         self.assertIn("observation-", inspector)
         self.assertIn("caused_by", inspector)
+
+    def test_inspector_reconstructs_complete_understanding_causality(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+        lines = render_inspector(simulation).splitlines()
+        payload = json.loads("\n".join(lines[2:]))
+        history = payload["history"]
+        focal = history["agent_understanding"][FOCAL_AGENT_ID]
+        events = history["events"]
+        observations_by_id = {
+            observation["observation_id"]: observation
+            for observation in history["observations"]
+            if observation["agent_id"] == FOCAL_AGENT_ID
+        }
+        traces_by_id = {
+            trace["trace_id"]: trace for trace in focal["memory_traces"]
+        }
+        claims_by_id = {
+            claim["claim_id"]: claim for claim in focal["interpreted_claims"]
+        }
+
+        self.assertEqual(len(focal["memory_traces"]), 4)
+        self.assertEqual(len(focal["interpreted_claims"]), 3)
+        self.assertTrue(
+            all(
+                trace["source_observation_id"] in observations_by_id
+                for trace in focal["memory_traces"]
+            )
+        )
+        official_claims = [
+            claim
+            for claim in focal["interpreted_claims"]
+            if claim["proposition"]
+            == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual(
+            [claim["asserted_value"] for claim in official_claims],
+            [3, 2],
+        )
+        self.assertEqual(
+            official_claims[0]["conflicts_with"],
+            [official_claims[1]["claim_id"]],
+        )
+        self.assertEqual(
+            official_claims[1]["conflicts_with"],
+            [official_claims[0]["claim_id"]],
+        )
+        self.assertEqual(
+            [
+                (transition["context"], transition["tick"], transition["active"])
+                for transition in history["stance_transitions"]
+            ],
+            [
+                ("public_counter", 11, True),
+                ("public_counter", 14, False),
+                ("private_diary", 19, True),
+                ("private_diary", 24, False),
+            ],
+        )
+
+        public_activation = history["stance_transitions"][0]
+        revised_trace = traces_by_id[public_activation["source_trace_id"]]
+        revised_claim = claims_by_id[public_activation["source_claim_id"]]
+        revised_observation = observations_by_id[
+            public_activation["source_observation_ids"][0]
+        ]
+        pressure_observation = observations_by_id[
+            public_activation["pressure_observation_id"]
+        ]
+        self.assertEqual(
+            revised_trace["interpreted_claim_id"],
+            revised_claim["claim_id"],
+        )
+        self.assertEqual(
+            revised_claim["origin_trace_id"],
+            revised_trace["trace_id"],
+        )
+        self.assertEqual(
+            revised_trace["source_observation_id"],
+            revised_observation["observation_id"],
+        )
+        self.assertEqual(revised_trace["asserted_value"], 2)
+        self.assertEqual(
+            revised_observation["details"]["evidence_kind"],
+            "official_record_version",
+        )
+        self.assertIsNotNone(
+            revised_observation["details"]["previous_version_id"]
+        )
+        self.assertEqual(
+            pressure_observation["details"]["evidence_kind"],
+            "social_pressure",
+        )
+        self.assertEqual(
+            public_activation["source_observation_ids"],
+            [
+                revised_observation["observation_id"],
+                pressure_observation["observation_id"],
+            ],
+        )
+        speech_attempts = [
+            event
+            for event in events
+            if event["kind"] == "action_attempted"
+            and event["actor_id"] == FOCAL_AGENT_ID
+            and event["details"].get("action_kind") == "speak"
+        ]
+        self.assertEqual(len(speech_attempts), 1)
+        speech_attempt = speech_attempts[0]
+        self.assertEqual(
+            speech_attempt["details"]["evidence_observation_ids"],
+            public_activation["source_observation_ids"],
+        )
+        self.assertEqual(speech_attempt["details"]["asserted_value"], 2)
+        speech_outcome = next(
+            event
+            for event in events
+            if event["kind"] == "public_statement_made"
+            and event["action_id"] == speech_attempt["action_id"]
+        )
+        speech_result = next(
+            result
+            for result in history["action_results"]
+            if result["action_id"] == speech_attempt["action_id"]
+        )
+        self.assertEqual(
+            speech_result["outcome_event_id"],
+            speech_outcome["event_id"],
+        )
+
+        diary_entry = payload["objective_state"]["diaries"][
+            "mara-private-diary"
+        ]["entries"][0]
+        earlier_trace = next(
+            trace
+            for trace in focal["memory_traces"]
+            if trace["asserted_value"] == 3
+            and trace["evidence_kind"] == "official_record_version"
+        )
+        private_activation = history["stance_transitions"][2]
+        private_trace = traces_by_id[private_activation["source_trace_id"]]
+        private_claim = claims_by_id[private_activation["source_claim_id"]]
+        self.assertEqual(
+            private_trace["interpreted_claim_id"],
+            private_claim["claim_id"],
+        )
+        self.assertEqual(private_trace["trace_id"], earlier_trace["trace_id"])
+        self.assertEqual(
+            private_claim["origin_trace_id"],
+            earlier_trace["trace_id"],
+        )
+        self.assertEqual(
+            private_trace["source_observation_id"],
+            earlier_trace["source_observation_id"],
+        )
+        self.assertEqual(
+            diary_entry["source_observation_ids"],
+            [earlier_trace["source_observation_id"]],
+        )
+        self.assertEqual(
+            private_activation["source_observation_ids"][0],
+            earlier_trace["source_observation_id"],
+        )
+        diary_read = next(
+            observation
+            for observation in history["observations"]
+            if observation["details"].get("evidence_kind")
+            == "diary_read_completed"
+        )
+        self.assertEqual(
+            private_activation["source_observation_ids"][1],
+            diary_read["observation_id"],
+        )
+
+        recheck_attempts = [
+            event
+            for event in events
+            if event["kind"] == "action_attempted"
+            and event["actor_id"] == FOCAL_AGENT_ID
+            and event["details"].get("action_kind")
+            == "consult_official_record"
+            and event["tick"] > diary_read["delivery_tick"]
+        ]
+        self.assertEqual(len(recheck_attempts), 1)
+        recheck_attempt = recheck_attempts[0]
+        recheck_outcome = next(
+            event
+            for event in events
+            if event["kind"] == "official_record_consulted"
+            and event["action_id"] == recheck_attempt["action_id"]
+        )
+        recheck_result = next(
+            result
+            for result in history["action_results"]
+            if result["action_id"] == recheck_attempt["action_id"]
+        )
+        self.assertEqual(recheck_outcome["tick"], 23)
+        self.assertEqual(recheck_result["status"], "completed")
+        self.assertEqual(
+            recheck_result["outcome_event_id"],
+            recheck_outcome["event_id"],
+        )
+        recheck_deliveries = [
+            observation
+            for observation in history["observations"]
+            if observation["agent_id"] == FOCAL_AGENT_ID
+            and observation["event_id"] == recheck_outcome["event_id"]
+            and observation["details"].get("evidence_kind")
+            == "official_record_version"
+        ]
+        self.assertEqual(len(recheck_deliveries), 1)
+        private_deactivation = history["stance_transitions"][3]
+        self.assertEqual(
+            recheck_deliveries[0]["delivery_tick"],
+            private_deactivation["tick"],
+        )
+        self.assertFalse(private_deactivation["active"])
 
     def test_final_workday_explanation_preserves_the_unmet_household_need(self):
         simulation = build_first_day(seed=42)
@@ -944,7 +1253,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         ]
         self.assertEqual(
             [observation.details["asserted_value"] for observation in official_versions],
-            [3, 2],
+            [3, 2, 2],
         )
         self.assertNotEqual(
             direct.details["proposition"], official_versions[0].details["proposition"]
@@ -952,7 +1261,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(direct.delivery_tick, 7)
         self.assertEqual(
             [observation.delivery_tick for observation in official_versions],
-            [8, 12],
+            [8, 11, 24],
         )
 
         publication = next(
@@ -978,7 +1287,11 @@ class LivingSimulationStepTests(unittest.TestCase):
         ]
         self.assertEqual(
             [event.details["version_id"] for event in focal_consultations],
-            [RATION_SCHEDULE_VERSION_ONE_ID, RATION_SCHEDULE_VERSION_TWO_ID],
+            [
+                RATION_SCHEDULE_VERSION_ONE_ID,
+                RATION_SCHEDULE_VERSION_TWO_ID,
+                RATION_SCHEDULE_VERSION_TWO_ID,
+            ],
         )
         self.assertEqual(rewrite_attempt.tick, 10)
         self.assertEqual(rewritten.caused_by, (rewrite_attempt.event_id, publication.event_id))
@@ -1027,7 +1340,7 @@ class LivingSimulationStepTests(unittest.TestCase):
             for event in simulation.events
             if event.kind == "public_statement_made" and event.actor_id == FOCAL_AGENT_ID
         )
-        self.assertEqual(expression.details["asserted_value"], 3)
+        self.assertEqual(expression.details["asserted_value"], 2)
         self.assertIsNone(expression.details["private_belief_id"])
         self.assertEqual(expression.details["pressure_reason"], "public counter protocol")
 
@@ -1074,6 +1387,14 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
             self.assertEqual(source.delivery_tick, transition["tick"])
         self.assertEqual(focal_transitions[0]["conflicts_with"], [])
+        self.assertEqual(
+            sum(
+                observation.details.get("evidence_kind")
+                == "direct_resource_claim"
+                for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            ),
+            1,
+        )
         self.assertIn("belief_transitions", render_inspector(simulation))
 
     def test_busy_actor_cannot_replace_an_action_already_in_progress(self):
@@ -1212,8 +1533,8 @@ class LivingSimulationStepTests(unittest.TestCase):
 
         self.assertEqual(configuration["seed"], 42)
         scenario = configuration["scenario"]
-        self.assertEqual(scenario["scenario_id"], "first_day_v2")
-        self.assertEqual(scenario["completion_tick"], 24)
+        self.assertEqual(scenario["scenario_id"], "first_day_v3")
+        self.assertEqual(scenario["completion_tick"], 28)
         self.assertEqual(scenario["travel_graph"]["home"], ["workplace"])
         self.assertEqual(
             scenario["initial_resource"],
@@ -1227,7 +1548,7 @@ class LivingSimulationStepTests(unittest.TestCase):
 
     def test_public_statement_observation_is_not_misclassified_as_social_pressure(self):
         simulation = build_first_day(seed=42)
-        for _ in range(11):
+        for _ in range(12):
             simulation.step()
 
         expression = next(
@@ -1243,7 +1564,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(
             observed_expression.details["evidence_kind"], "public_statement"
         )
-        self.assertEqual(observed_expression.details["asserted_value"], 3)
+        self.assertEqual(observed_expression.details["asserted_value"], 2)
         self.assertNotIn("pressure", observed_expression.details)
 
 

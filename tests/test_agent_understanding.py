@@ -1,9 +1,15 @@
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
+from policies.focal_policy import FocalPolicy
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
+from simulation.actions import ActionAttempt
 from simulation.events import Observation, freeze_mapping
-from simulation.understanding import trace_from_delivered_observation
+from simulation.understanding import (
+    select_private_diary_stance,
+    select_public_counter_stance,
+    trace_from_delivered_observation,
+)
 
 
 class AgentUnderstandingTests(unittest.TestCase):
@@ -65,6 +71,475 @@ class AgentUnderstandingTests(unittest.TestCase):
             any(trace.asserted_value == 2 for trace in focal.memory_traces)
         )
 
+    def test_delivered_official_versions_form_one_reciprocal_conflict(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        direct_claim = next(
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "daily_allocation_units"
+        )
+        official_claims = [
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual([claim.asserted_value for claim in official_claims], [3, 2])
+        self.assertEqual(
+            official_claims[0].conflicts_with,
+            (official_claims[1].claim_id,),
+        )
+        self.assertEqual(
+            official_claims[1].conflicts_with,
+            (official_claims[0].claim_id,),
+        )
+        self.assertEqual(direct_claim.conflicts_with, ())
+
+        official_observations = [
+            observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            if observation.details.get("evidence_kind") == "official_record_version"
+        ]
+        self.assertEqual(
+            [observation.details["asserted_value"] for observation in official_observations],
+            [3, 2],
+        )
+        record = simulation.world.institution.official_record
+        self.assertEqual(
+            [version.version_id for version in record.versions],
+            [
+                "weekly-household-ration-schedule-v1",
+                "weekly-household-ration-schedule-v2",
+            ],
+        )
+
+    def test_undelivered_official_version_cannot_form_a_conflict(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=10)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        official_claims = [
+            claim
+            for claim in focal.interpreted_claims
+            if claim.proposition == "weekly_household_ration_entitlement_packets"
+        ]
+        self.assertEqual(len(official_claims), 1)
+        self.assertEqual(official_claims[0].conflicts_with, ())
+        self.assertEqual(
+            simulation.world.institution.official_record.current_version.version_id,
+            "weekly-household-ration-schedule-v2",
+        )
+
+    def test_delivered_revision_and_protocol_pressure_select_public_counter_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        stance = focal.contextual_stance
+        self.assertIsNotNone(stance)
+        self.assertEqual(stance.context, "public_counter")
+        self.assertEqual(stance.asserted_value, 2)
+        self.assertEqual(
+            stance.proposition,
+            "weekly_household_ration_entitlement_packets",
+        )
+        sources = {
+            observation.observation_id: observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+        }
+        revised = sources[stance.source_observation_ids[0]]
+        pressure = sources[stance.pressure_observation_id]
+        self.assertEqual(revised.details["asserted_value"], stance.asserted_value)
+        self.assertIsNotNone(revised.details["previous_version_id"])
+        self.assertEqual(pressure.details["asserted_value"], 3)
+        self.assertEqual(pressure.details["pressure"], 0.8)
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).contextual_stance, stance)
+        for supporting_agent_id in (CO_WORKER_ID, CLERK_ID):
+            self.assertIsNone(
+                simulation.agent_view(supporting_agent_id).contextual_stance
+            )
+
+    def test_public_counter_stance_requires_revision_delivery_and_threshold(self):
+        before_revision = build_first_day(seed=42)
+        before_revision.run(max_ticks=10)
+        self.assertIsNone(
+            before_revision.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        self.assertIsNone(
+            select_public_counter_stance(
+                location=focal.location,
+                counter_location="allocation_office",
+                pressure_threshold=0.9,
+                claims=focal.interpreted_claims,
+                traces=focal.memory_traces,
+                observations=tuple(focal.observations),
+            )
+        )
+
+    def test_leaving_allocation_office_clears_public_counter_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+        self.assertIsNotNone(
+            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
+        simulation.run(max_ticks=14)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        self.assertEqual(focal.location, "workplace")
+        self.assertIsNone(focal.contextual_stance)
+
+    def test_full_run_retains_source_linked_stance_selection_and_clearing(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+
+        transitions = [
+            transition
+            for transition in simulation.history_data()["stance_transitions"]
+            if transition["context"] == "public_counter"
+        ]
+        self.assertEqual(
+            [(item["tick"], item["active"]) for item in transitions],
+            [(11, True), (14, False)],
+        )
+        self.assertEqual(
+            [item["asserted_value"] for item in transitions],
+            [2, 2],
+        )
+        self.assertEqual(
+            transitions[0]["source_observation_ids"],
+            transitions[1]["source_observation_ids"],
+        )
+        self.assertEqual(
+            transitions[0]["pressure_observation_id"],
+            transitions[1]["pressure_observation_id"],
+        )
+        delivered_ids = {
+            observation.observation_id
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+        }
+        self.assertTrue(
+            set(transitions[0]["source_observation_ids"]).issubset(delivered_ids)
+        )
+        self.assertEqual(
+            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance,
+            None,
+        )
+
+    def test_delivered_diary_read_selects_earlier_source_linked_private_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=18)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        traces_before = focal.memory_traces
+        claims_before = focal.interpreted_claims
+        beliefs_before = tuple(focal.beliefs)
+        self.assertIsNone(focal.contextual_stance)
+
+        simulation.run(max_ticks=19)
+
+        stance = focal.contextual_stance
+        self.assertIsNotNone(stance)
+        self.assertEqual(stance.context, "private_diary")
+        self.assertEqual(
+            stance.proposition,
+            "weekly_household_ration_entitlement_packets",
+        )
+        self.assertEqual(stance.asserted_value, 3)
+        self.assertIsNone(stance.pressure_observation_id)
+        observations = {
+            observation.observation_id: observation
+            for observation in focal.observations
+        }
+        source = observations[stance.source_observation_ids[0]]
+        read = observations[stance.source_observation_ids[1]]
+        trace = next(
+            trace
+            for trace in focal.memory_traces
+            if trace.source_observation_id == source.observation_id
+        )
+        claim = next(
+            claim
+            for claim in focal.interpreted_claims
+            if claim.claim_id == trace.interpreted_claim_id
+        )
+        self.assertEqual(source.details["previous_version_id"], None)
+        self.assertEqual(read.details["evidence_kind"], "diary_read_completed")
+        self.assertEqual(stance.source_trace_id, trace.trace_id)
+        self.assertEqual(stance.source_claim_id, claim.claim_id)
+        self.assertTrue(claim.conflicts_with)
+        self.assertEqual(
+            read.details["source_observation_ids"],
+            (source.observation_id,),
+        )
+        self.assertEqual(focal.memory_traces, traces_before)
+        self.assertEqual(focal.interpreted_claims, claims_before)
+        self.assertEqual(tuple(focal.beliefs), beliefs_before)
+        transition = simulation.history_data()["stance_transitions"][-1]
+        self.assertEqual(
+            (transition["tick"], transition["context"], transition["active"]),
+            (19, "private_diary", True),
+        )
+
+    def test_rejected_diary_read_creates_no_private_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=18)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        entry = simulation.world.diaries["mara-private-diary"].entries[0]
+        transitions_before = simulation.history_data()["stance_transitions"]
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="read_diary",
+                parameters={
+                    "object_id": "mara-private-diary",
+                    "entry_id": entry.entry_id,
+                },
+                explanation="start a second read while the first remains in progress",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertIsNone(focal.contextual_stance)
+        self.assertEqual(
+            simulation.history_data()["stance_transitions"],
+            transitions_before,
+        )
+        self.assertIsNone(
+            select_private_diary_stance(
+                claims=focal.interpreted_claims,
+                traces=focal.memory_traces,
+                observations=tuple(focal.observations),
+            )
+        )
+
+    def test_private_stance_changes_next_attempt_into_archive_route(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=19)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertEqual(view.contextual_stance.context, "private_diary")
+
+        selected = FocalPolicy().choose(view)
+        without_stance = FocalPolicy().choose(
+            replace(view, contextual_stance=None)
+        )
+
+        self.assertEqual(selected.kind, "travel")
+        self.assertEqual(selected.parameters["destination"], "workplace")
+        self.assertEqual(
+            selected.explanation,
+            "start toward the public archive through the workplace",
+        )
+        self.assertEqual(without_stance.kind, "wait")
+        self.assertNotEqual(without_stance.explanation, selected.explanation)
+
+    def test_private_stance_routes_to_one_recheck_and_clears_on_delivery(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        read = next(
+            observation
+            for observation in focal.observations
+            if observation.details.get("evidence_kind") == "diary_read_completed"
+        )
+        later_consultations = [
+            result
+            for result in focal.action_results
+            if result.action_kind == "consult_official_record"
+            and result.resolved_tick > read.delivery_tick
+        ]
+
+        self.assertEqual(len(later_consultations), 1)
+        recheck = next(
+            event
+            for event in simulation.events
+            if event.action_id == later_consultations[0].action_id
+            and event.kind == "official_record_consulted"
+        )
+        route_attempts = [
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.details.get("action_kind") == "travel"
+            and read.delivery_tick <= event.tick < recheck.tick
+        ]
+        self.assertEqual(
+            [attempt.details["destination"] for attempt in route_attempts],
+            ["workplace", "allocation_office"],
+        )
+        private_transitions = [
+            transition
+            for transition in simulation.history_data()["stance_transitions"]
+            if transition["context"] == "private_diary"
+        ]
+        self.assertEqual(
+            [(item["tick"], item["active"]) for item in private_transitions],
+            [(19, True), (24, False)],
+        )
+        self.assertIsNone(focal.contextual_stance)
+        self.assertEqual(simulation.tick, 28)
+
+    def test_private_understanding_stays_out_of_world_and_other_actor_inputs(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=19)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        events_before_selection = simulation.events
+        observations_before_selection = {
+            agent_id: simulation.observations_for(agent_id)
+            for agent_id in simulation.world.agents
+        }
+        inspector_before_selection = simulation.inspector_state()
+
+        selected = select_private_diary_stance(
+            claims=focal.interpreted_claims,
+            traces=focal.memory_traces,
+            observations=tuple(focal.observations),
+        )
+
+        self.assertEqual(selected, focal.contextual_stance)
+        self.assertEqual(simulation.events, events_before_selection)
+        self.assertEqual(
+            {
+                agent_id: simulation.observations_for(agent_id)
+                for agent_id in simulation.world.agents
+            },
+            observations_before_selection,
+        )
+        self.assertEqual(simulation.inspector_state(), inspector_before_selection)
+
+        resources_before_route = simulation.inspector_state()["objective_resources"]
+        official_versions_before_route = simulation.history_data()["official_record"][
+            "versions"
+        ]
+        simulation.run(max_ticks=30)
+
+        self.assertEqual(
+            simulation.inspector_state()["objective_resources"],
+            resources_before_route,
+        )
+        self.assertEqual(
+            simulation.history_data()["official_record"]["versions"],
+            official_versions_before_route,
+        )
+        for supporting_agent_id in (CO_WORKER_ID, CLERK_ID):
+            supporting = simulation.world.agents[supporting_agent_id]
+            supporting_view = simulation.agent_view(supporting_agent_id)
+            self.assertIsNone(supporting_view.contextual_stance)
+            self.assertIsNone(supporting_view.accessible_diary_id)
+            self.assertEqual(supporting_view.accessible_diary_entry_count, 0)
+            self.assertEqual(supporting_view.accessible_diary_entries, ())
+            self.assertEqual(supporting.memory_traces, ())
+            self.assertEqual(supporting.interpreted_claims, ())
+            self.assertFalse(
+                any(
+                    observation.details.get("evidence_kind")
+                    in {"diary_write_completed", "diary_read_completed"}
+                    or "entry_id" in observation.details
+                    or "source_observation_ids" in observation.details
+                    for observation in supporting_view.observations
+                )
+            )
+        institution = simulation.world.institution
+        self.assertEqual(institution.reports, [])
+        self.assertEqual(institution.records, {})
+        self.assertFalse(any("stance" in event.kind for event in simulation.events))
+
+        handover = next(
+            observation
+            for observation in focal.observations
+            if observation.details.get("evidence_kind") == "allocation_outcome"
+        )
+        schedule = next(
+            observation
+            for observation in reversed(focal.observations)
+            if observation.details.get("evidence_kind")
+            == "official_record_version"
+        )
+        self.assertNotIn("proposition", handover.details)
+        self.assertEqual(handover.details["granted_units"], 2)
+        self.assertEqual(
+            schedule.details["proposition"],
+            "weekly_household_ration_entitlement_packets",
+        )
+        self.assertEqual(schedule.details["asserted_value"], 2)
+
+    def test_focal_policy_selects_revised_speech_from_restricted_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertIsNotNone(view.contextual_stance)
+        policy_view = replace(
+            view,
+            last_attempt=view.action_history[-2],
+            action_history=view.action_history[:-1],
+            action_results=tuple(
+                result
+                for result in view.action_results
+                if result.action_kind != "speak"
+            ),
+        )
+
+        selected = FocalPolicy().choose(policy_view)
+        changed = FocalPolicy().choose(
+            replace(
+                policy_view,
+                contextual_stance=replace(
+                    policy_view.contextual_stance,
+                    asserted_value=7,
+                ),
+            )
+        )
+        reordered = FocalPolicy().choose(
+            replace(policy_view, observations=tuple(reversed(policy_view.observations)))
+        )
+
+        self.assertEqual(selected.kind, "speak")
+        self.assertEqual(selected.parameters["asserted_value"], 2)
+        self.assertEqual(changed.parameters["asserted_value"], 7)
+        self.assertEqual(reordered.parameters, selected.parameters)
+        self.assertEqual(
+            selected.parameters["evidence_observation_ids"],
+            policy_view.contextual_stance.source_observation_ids,
+        )
+
+    def test_rejected_stance_speech_does_not_change_agent_understanding(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=11)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        traces_before = focal.memory_traces
+        claims_before = focal.interpreted_claims
+        stance_before = focal.contextual_stance
+        transitions_before = simulation.history_data()["stance_transitions"]
+
+        simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="speak",
+                parameters={
+                    "proposition": stance_before.proposition,
+                    "asserted_value": stance_before.asserted_value,
+                    "evidence_observation_ids": ("observation-not-delivered",),
+                },
+                explanation="attempt unsupported stance speech",
+            )
+        )
+
+        self.assertEqual(simulation.events[-1].kind, "action_rejected")
+        self.assertEqual(focal.memory_traces, traces_before)
+        self.assertEqual(focal.interpreted_claims, claims_before)
+        self.assertEqual(focal.contextual_stance, stance_before)
+        self.assertEqual(
+            simulation.history_data()["stance_transitions"],
+            transitions_before,
+        )
+
     def test_repeated_delivery_reuses_the_interpreted_claim(self):
         details = freeze_mapping(
             {
@@ -122,11 +597,16 @@ class AgentUnderstandingTests(unittest.TestCase):
         focal_history = history["agent_understanding"][FOCAL_AGENT_ID]
         self.assertEqual(len(focal_history["memory_traces"]), 3)
         focal_history["memory_traces"][0]["asserted_value"] = 99
+        history["stance_transitions"][0]["asserted_value"] = 99
         self.assertEqual(
             first.history_data()["agent_understanding"][FOCAL_AGENT_ID][
                 "memory_traces"
             ][0]["asserted_value"],
             3,
+        )
+        self.assertEqual(
+            first.history_data()["stance_transitions"][0]["asserted_value"],
+            2,
         )
 
 

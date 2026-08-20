@@ -1,28 +1,29 @@
 # Agent Understanding Implementation State
 
-Status: active shared state; no future tasks are planned.
+Status: complete shared state; the owner-approved goal is verified and no
+future task is planned.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-1 memory traces from supported delivered evidence (2026-08-18)
+- Last completed run: AU-10 `first_day_v3` deterministic reproduction (2026-08-19)
 - Verified implementation runs since alignment: 1
-- Alignment due: after three verified implementation runs
+- Alignment due: not applicable; goal complete
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AU-1 Memory traces | met | Focused and full checks verify immutable source-linked focal traces for delivered direct and official evidence, no trace from an undelivered rewrite, deduplicated claims on repeated delivery, empty supporting-agent understanding, and deterministic detached history. |
-| AU-2 Conflict | open | none |
-| AU-3 Public stance | open | none |
-| AU-4 Public action | open | none |
-| AU-5 Diary record | open | none |
-| AU-6 Resurfacing | open | none |
-| AU-7 Recheck | open | none |
-| AU-8 Boundaries | open | none |
-| AU-9 Presentation | open | none |
-| AU-10 Reproduction | open | none |
+| AU-2 Conflict | met | Focused and full checks verify one reciprocal conflict between the two delivered official versions for the same period, while the equal-valued direct-resource claim remains outside it; the undelivered rewrite cannot participate and detached history is deterministic. |
+| AU-3 Public stance | met | Focused and full checks verify a source-linked version-two `public_counter` stance only after the conflicting revised schedule and sufficient protocol pressure are delivered at the allocation office; it clears on departure while deterministic detached transitions retain selection and clearing causality. |
+| AU-4 Public action | met | Focused and full checks verify exactly one focal two-packet public statement selected from restricted `public_counter` stance value and source IDs while raw observation order cannot override it; world validation and resolution remain separate, and rejection leaves understanding unchanged. |
+| AU-5 Diary record | met | Focused and full checks verify the immutable physical diary entry preserves the delivered version-one official schedule proposition, three-packet value, and exact source observation after a location-gated two-tick write; unsupported claim/source combinations are rejected without mutation. |
+| AU-6 Resurfacing | met | Focused and full checks verify only the delivered read of the source-linked earlier official entry selects an immutable `private_diary` stance and transition; a rejected read creates none, while existing traces, reciprocal conflict, and belief confidence remain unchanged. |
+| AU-7 Recheck | met | A causal policy comparison verifies the supplied `private_diary` stance alone starts the ordinary archive route; the integration run resolves two travel legs, completes exactly one post-diary consultation, delivers its result, and clears the recheck stance before returning to finish work. |
+| AU-8 Boundaries | met | Full-run regression evidence verifies stance selection is pure; supporting views receive no focal stance, diary access, or diary observations; institution reports/records remain empty; resources and Official Record versions do not change; and handover evidence remains separate from the official proposition. |
+| AU-9 Presentation | met | Normal-output regressions require the encountered 3→2→2 schedule sequence, pressure-sensitive speech, earlier diary perspective, and later recheck while forbidding hidden identifiers; parsed inspector regressions reconstruct the exact trace/claim/observation/transition/action/result causal graph. |
+| AU-10 Reproduction | met | Scenario configuration identifies `first_day_v3`; tick 27 is incomplete and tick 28 complete; equal seeded runs retain equal ordered full histories; detached history round-trips through JSON; both documented commands and the full repository check pass. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,11 +48,7 @@ implementation order. If no honest task advances the goal, make no change.
 
 ## Current Run
 
-- Status: none
-- Criterion: none
-- Task: none
-- Specification: none
-- Expected evidence: none
+None. The active goal is complete and no future task is selected.
 
 ## Completion Rules
 
@@ -89,3 +86,220 @@ Alignment does not select, suggest, or record the next implementation task.
 - Fresh Sol-high review found one blocking supporting-agent scope leak; the
   updater was restricted to the focal agent, regression coverage was added,
   and re-review confirmed no blocking findings remain.
+
+### 2026-08-19 — AU-2 Official-version conflict
+
+- Added immutable interpreted-claim conflict links only when separately
+  delivered official-version claims have the same proposition and period but
+  different asserted values.
+- Verified the direct-resource claim, though it has the same numeric value as
+  version one, remains outside the official conflict; the rewritten but
+  undelivered version cannot participate.
+- Exported deterministic detached conflict data without mutating observations,
+  EventLog entries, or Official Record versions.
+- Focused validation passed 6 tests; `./scripts/check.sh` passed suites of 54
+  and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-3 Public-counter stance
+
+- Added a focal-owned `public_counter` stance selected from the delivered
+  conflicting revised official trace only when delivered protocol pressure
+  meets the configured threshold at the allocation office.
+- Verified the pressure assertion does not supply the stance value, supporting
+  agents receive no stance, insufficient or undelivered evidence creates none,
+  and leaving the office clears the live stance.
+- Retained deterministic detached selection and clearing transitions so the
+  completed inspector run reconstructs the temporary stance from delivered
+  source identifiers without mutating source evidence or changing policy
+  action selection.
+- Focused validation passed 10 tests; `./scripts/check.sh` passed suites of 58
+  and 63 tests. Initial Sol-high review found missing full-run transition
+  history; after correction, fresh re-review found no blocking findings.
+
+### 2026-08-19 — Goal-level alignment after AU-3
+
+- Fresh Sol-high review confirmed AU-1, AU-2, and AU-3 remain proportionately
+  supported and found no blocking boundary, evidence, or observer-leakage issue.
+- Complexity remains proportionate: traces preserve deliveries, claims
+  deduplicate their meaning, live stance represents current context, and
+  detached transitions preserve historical explanation after the context ends.
+- No existing AU-1 through AU-3 component should be removed or simplified at
+  this alignment.
+- Retained assumptions: pressure locality is authored by the scenario rather
+  than independently proven by the selector; delivered historical pressure
+  could reactivate on later counter re-entry; source delivery time and stance
+  activation time remain distinct; and the focal policy's older raw-pressure
+  path is not evidence for AU-3.
+- The behavior remains bounded authored rule execution, not general semantic
+  inference, cognition, or emergence. The implementation counter resets to
+  zero without selecting later work.
+
+### 2026-08-19 — AU-4 Revised public action
+
+- Changed the pressure-driven flow to re-consult the accessible schedule from
+  delivered local evidence before public expression, without exposing the
+  undelivered rewrite to the focal policy.
+- The focal policy now takes the public proposition, two-packet value, and
+  evidence identifiers from restricted `public_counter` stance input; changing
+  that supplied stance changes selection while reversing raw observations does
+  not.
+- Verified exactly one focal public statement, a continuing private three-unit
+  belief, separate world validation and resolution, and no understanding
+  mutation after rejected speech.
+- Relevant validation passed 60 tests; `./scripts/check.sh` passed suites of 60
+  and 63 tests. Fresh Sol-high review found no blocking findings; its
+  non-blocking uniqueness observation was encoded as an explicit regression
+  assertion before final validation.
+
+### 2026-08-19 — AU-5 Earlier official schedule diary record
+
+- Changed the existing physical diary write to preserve the superseded,
+  delivered version-one schedule proposition, three-packet value, and exact
+  source observation rather than the separate direct-resource belief.
+- Diary validation now accepts only a proposition/value/source tuple backed by
+  the actor's delivered belief or source-linked interpreted claim and trace;
+  mixing the earlier value with the revised source is rejected without diary
+  mutation.
+- Verified the entry remains home-gated, takes ticks 16 through 18 to complete,
+  is immutable, and returns the same stored source on read. Normal observer
+  prose identifies the earlier schedule claim without exposing hidden state.
+- Focused validation passed 4 diary tests; `./scripts/check.sh` passed suites of
+  61 and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-6 Delivered diary resurfacing
+
+- Added a `private_diary` stance selected only when the focal character
+  receives a completed diary-read observation whose stored source resolves to
+  the conflicting earlier official trace and interpreted claim.
+- The private stance retains both the original schedule observation and the
+  delivered read as sources, records no social-pressure source, and is
+  preserved as a detached transition for full-run inspection.
+- Verified a rejected read creates no stance or transition, the source claim
+  and trace remain exact, and existing traces, reciprocal conflict, beliefs,
+  and confidence remain unchanged. No route or consultation behavior changed.
+- Focused validation passed 14 understanding tests; `./scripts/check.sh` passed
+  suites of 63 and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — Goal-level alignment after AU-6
+
+- A fresh Terra-high orchestrator commissioned a separate fresh Sol-high
+  read-only reviewer; both found AU-1 through AU-6 proportionately supported
+  with no blocking boundary, source-causality, observer-leakage, hidden-world-
+  consequence, or determinism issue.
+- `EventLog` remains append-only objective evidence; stance selection changes
+  only focal-owned contextual state and detached inspector history; supporting
+  agents and institutions receive no private understanding.
+- No AU-1 through AU-6 component should be removed. Legacy beliefs and
+  interpreted claims remain deliberately separate because they cover distinct
+  evidence and proposition scopes.
+- Retained assumptions: pressure locality remains scenario-authored and prior
+  delivered pressure could reactivate on counter return; version order relies
+  on structured `previous_version_id`; speech semantics are enforced by focal
+  policy selection; and `private_diary` persistence currently proves only AU-6.
+- A duplicated conformity-threshold configuration in the engine and focal
+  policy remains a non-blocking simplification candidate; alignment made no
+  implementation change and selected no future task.
+- `./scripts/check.sh` passed suites of 63 and 63 tests. Normal and inspector
+  runs completed successfully. The alignment counter resets to zero.
+
+### 2026-08-19 — AU-7 One ordinary archive recheck
+
+- The supplied `private_diary` stance now changes the next focal attempt into
+  the first ordinary travel leg toward the accessible public schedule; an
+  otherwise identical restricted view without the stance waits at the diary.
+- Existing two-tick travel actions route home through the workplace to the
+  allocation office. One existing consultation action completes at tick 23,
+  its revised-version observation is delivered at tick 24, and that delivery
+  clears the private stance before the focal character returns to finish work.
+- The authored diary phase suppresses reactivation from older public pressure,
+  and counter re-entry does not repeat the already delivered direct-resource
+  sight. The repeated revised schedule delivery creates another trace but no
+  duplicate claim or conflict. These are bounded scenario rules, not claims of
+  emergence.
+- Verified exactly one post-diary consultation, no new action kind, a complete
+  deterministic run at tick 28, and filtered normal versus complete inspector
+  evidence. `./scripts/check.sh` passed suites of 65 and 63 tests; fresh
+  Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-8 Focal-only understanding boundaries
+
+- Added a full-run regression proving private stance selection is pure: direct
+  selection changes no event, observation, resource, diary, record, or other
+  inspector state.
+- Verified both supporting-agent views receive no focal contextual stance,
+  physical diary access or entries, diary observations, traces, or interpreted
+  claims. Institution reports and records remain exactly empty.
+- Verified the stance-driven recheck changes neither objective resources nor
+  Official Record versions, and the physical handover retains distinct fields
+  from the official entitlement proposition despite their equal numeric value.
+- Initial Sol-high review found missing assertions for supporting diary-view
+  fields and overly permissive institution-record matching. Both were tightened
+  to exact state assertions; fresh re-review found no blockers.
+- Focused validation passed 17 understanding tests; `./scripts/check.sh` passed
+  suites of 66 and 63 tests. No production behavior changed in this run.
+
+### 2026-08-19 — AU-9 Filtered and inspectable presentation
+
+- Strengthened normal-output regression evidence for the exact encountered
+  schedule sequence 3 → 2 → 2, the pressure-sensitive revised statement, the
+  earlier diary claim, and the later public-archive recheck and clearing reason.
+  Version, event, observation, trace, claim, transition, publication, and
+  rewrite identifiers remain forbidden from normal output.
+- Parsed inspector JSON now reconstructs public activation through the exact
+  revised trace, claim, source and pressure observations into one speech
+  attempt/result/outcome; private activation through the exact earlier diary
+  source, trace, claim, and delivered read; and one structured post-diary
+  consultation through its result, outcome, delivery, and deactivation tick.
+- Two Sol-high reviews found incomplete causal joins and prose-dependent
+  selection in earlier test drafts. The assertions were replaced with exact
+  identifiers, uniqueness counts, origin/source equality, and delivered-event
+  links; final fresh review found no blockers or production gap.
+- Both documented normal and inspector commands completed. `./scripts/check.sh`
+  passed suites of 67 and 63 tests. No production behavior changed in this run.
+
+### 2026-08-19 — Goal-level alignment after AU-9
+
+- A fresh Terra-high orchestrator commissioned a separate fresh Sol-high
+  read-only reviewer; both found AU-1 through AU-9 met with no blocking
+  boundary, proportionality, presentation, causality, or determinism issue.
+- EventLog remains append-only frozen evidence; Official Record versions and
+  current projection remain distinct from delivery; understanding is focal-
+  only; diary access is physical; one post-diary consultation clears the
+  private stance; normal and inspector projections remain separated.
+- No AU-1 through AU-9 component should be removed. Legacy beliefs and Agent
+  Understanding retain distinct evidence scopes. The duplicated conformity
+  threshold remains the sole non-blocking simplification candidate.
+- Retained assumptions: pressure locality and recheck opportunity are authored;
+  version ordering relies on `previous_version_id`; policy supplies speech
+  semantics beyond world-form validation; diary privacy is scenario-bounded;
+  and diary-read/recheck clearing rules are not general cognition.
+- The audit selected no future task. It observed only the still-open goal
+  boundary already represented by AU-10: scenario configuration continues to
+  identify `first_day_v2` while the approved result requires `first_day_v3`.
+- `./scripts/check.sh` passed suites of 67 and 63 tests; documented normal and
+  inspector commands completed; `git diff --check` passed. The counter resets
+  to zero.
+
+### 2026-08-19 — AU-10 `first_day_v3` reproduction
+
+- Renamed the completed authored scenario from `first_day_v2` to
+  `first_day_v3` without changing simulation behavior, and updated README to
+  describe the verified bounded experiment and tick-28 completion boundary.
+- Strengthened complete-run evidence: tick 27 remains incomplete, tick 28 is
+  complete, equal seed/configuration runs produce equal full detached history,
+  and that history round-trips through JSON without loss.
+- Both documented normal and inspector commands completed successfully;
+  `./scripts/check.sh` passed suites of 67 and 63 tests; `git diff --check`
+  passed. Fresh Sol-high implementation review found AU-10 met with no blocker.
+
+### 2026-08-19 — Final goal completion audit
+
+- A separate fresh Sol-high read-only audit verified AU-1 through AU-10 and the
+  Goal Result with no remaining required work or invariant violation.
+- The audit confirmed four focal traces, three claims, four source-linked stance
+  transitions, one focal revised speech attempt/outcome, one post-diary
+  consultation, empty supporting understanding and institution reports/records,
+  equal JSON-compatible histories, and the tick-28 `first_day_v3` boundary.
+- Completion is limited to the approved deterministic authored experiment. It
+  is not evidence of general cognition, emergence, a permanent randomness
+  contract, durable replay, or broader world simulation.
