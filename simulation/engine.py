@@ -29,6 +29,7 @@ from simulation.institutions import (
 from simulation.understanding import (
     StanceTransition,
     link_official_version_conflicts,
+    select_private_diary_stance,
     select_public_counter_stance,
     trace_from_delivered_observation,
 )
@@ -1053,14 +1054,20 @@ class Simulation:
     def _update_contextual_stance(self) -> None:
         focal = self.world.agents[self.focal_agent_id]
         previous = focal.contextual_stance
-        selected = select_public_counter_stance(
-            location=focal.location,
-            counter_location=self.rules.allocation_location,
-            pressure_threshold=self.rules.public_conformity_threshold,
+        selected = select_private_diary_stance(
             claims=focal.interpreted_claims,
             traces=focal.memory_traces,
             observations=tuple(focal.observations),
         )
+        if selected is None:
+            selected = select_public_counter_stance(
+                location=focal.location,
+                counter_location=self.rules.allocation_location,
+                pressure_threshold=self.rules.public_conformity_threshold,
+                claims=focal.interpreted_claims,
+                traces=focal.memory_traces,
+                observations=tuple(focal.observations),
+            )
         if selected == previous:
             return
         focal.contextual_stance = selected

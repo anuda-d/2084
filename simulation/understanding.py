@@ -39,7 +39,7 @@ class ContextualStance:
     source_claim_id: str
     source_trace_id: str
     source_observation_ids: tuple[str, ...]
-    pressure_observation_id: str
+    pressure_observation_id: str | None
     selected_tick: int
 
 
@@ -55,7 +55,7 @@ class StanceTransition:
     source_claim_id: str
     source_trace_id: str
     source_observation_ids: tuple[str, ...]
-    pressure_observation_id: str
+    pressure_observation_id: str | None
     stance_selected_tick: int
 
 
@@ -234,4 +234,70 @@ def select_public_counter_stance(
         ),
         pressure_observation_id=pressure.observation_id,
         selected_tick=max(trace.delivery_tick, pressure.delivery_tick),
+    )
+
+
+def select_private_diary_stance(
+    *,
+    claims: tuple[InterpretedClaim, ...],
+    traces: tuple[MemoryTrace, ...],
+    observations: tuple[Observation, ...],
+) -> ContextualStance | None:
+    """Resurface an earlier official claim only through its delivered diary read."""
+    observation_by_id = {
+        observation.observation_id: observation for observation in observations
+    }
+    trace_by_source_id = {
+        trace.source_observation_id: trace for trace in traces
+    }
+    claim_by_id = {claim.claim_id: claim for claim in claims}
+    candidates: list[tuple[Observation, InterpretedClaim, MemoryTrace]] = []
+    for read in observations:
+        if read.details.get("evidence_kind") != "diary_read_completed":
+            continue
+        source_ids = read.details.get("source_observation_ids")
+        if (
+            not isinstance(source_ids, (tuple, list))
+            or len(source_ids) != 1
+            or not isinstance(source_ids[0], str)
+        ):
+            continue
+        trace = trace_by_source_id.get(source_ids[0])
+        claim = (
+            claim_by_id.get(trace.interpreted_claim_id)
+            if trace is not None
+            else None
+        )
+        source = observation_by_id.get(source_ids[0])
+        if (
+            trace is None
+            or claim is None
+            or trace.evidence_kind != "official_record_version"
+            or not claim.conflicts_with
+            or source is None
+            or source.details.get("previous_version_id") is not None
+            or read.details.get("proposition") != claim.proposition
+            or read.details.get("asserted_value") != claim.asserted_value
+        ):
+            continue
+        candidates.append((read, claim, trace))
+    if not candidates:
+        return None
+
+    read, claim, trace = max(
+        candidates,
+        key=lambda item: (
+            item[0].delivery_tick,
+            item[0].observation_id,
+        ),
+    )
+    return ContextualStance(
+        context="private_diary",
+        proposition=claim.proposition,
+        asserted_value=claim.asserted_value,
+        source_claim_id=claim.claim_id,
+        source_trace_id=trace.trace_id,
+        source_observation_ids=(trace.source_observation_id, read.observation_id),
+        pressure_observation_id=None,
+        selected_tick=read.delivery_tick,
     )

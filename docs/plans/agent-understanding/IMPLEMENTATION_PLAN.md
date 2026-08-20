@@ -5,9 +5,9 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-5 earlier official schedule preserved in the physical diary (2026-08-19)
-- Verified implementation runs since alignment: 2
-- Alignment due: after three verified implementation runs
+- Last completed run: AU-6 source-linked private diary stance after delivered read (2026-08-19)
+- Verified implementation runs since alignment: 3
+- Alignment due: now
 
 ## Goal Progress
 
@@ -18,7 +18,7 @@ Status: active shared state; no future tasks are planned.
 | AU-3 Public stance | met | Focused and full checks verify a source-linked version-two `public_counter` stance only after the conflicting revised schedule and sufficient protocol pressure are delivered at the allocation office; it clears on departure while deterministic detached transitions retain selection and clearing causality. |
 | AU-4 Public action | met | Focused and full checks verify exactly one focal two-packet public statement selected from restricted `public_counter` stance value and source IDs while raw observation order cannot override it; world validation and resolution remain separate, and rejection leaves understanding unchanged. |
 | AU-5 Diary record | met | Focused and full checks verify the immutable physical diary entry preserves the delivered version-one official schedule proposition, three-packet value, and exact source observation after a location-gated two-tick write; unsupported claim/source combinations are rejected without mutation. |
-| AU-6 Resurfacing | open | none |
+| AU-6 Resurfacing | met | Focused and full checks verify only the delivered read of the source-linked earlier official entry selects an immutable `private_diary` stance and transition; a rejected read creates none, while existing traces, reciprocal conflict, and belief confidence remain unchanged. |
 | AU-7 Recheck | open | none |
 | AU-8 Boundaries | open | none |
 | AU-9 Presentation | open | none |
@@ -164,3 +164,17 @@ Alignment does not select, suggest, or record the next implementation task.
   prose identifies the earlier schedule claim without exposing hidden state.
 - Focused validation passed 4 diary tests; `./scripts/check.sh` passed suites of
   61 and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-6 Delivered diary resurfacing
+
+- Added a `private_diary` stance selected only when the focal character
+  receives a completed diary-read observation whose stored source resolves to
+  the conflicting earlier official trace and interpreted claim.
+- The private stance retains both the original schedule observation and the
+  delivered read as sources, records no social-pressure source, and is
+  preserved as a detached transition for full-run inspection.
+- Verified a rejected read creates no stance or transition, the source claim
+  and trace remain exact, and existing traces, reciprocal conflict, beliefs,
+  and confidence remain unchanged. No route or consultation behavior changed.
+- Focused validation passed 14 understanding tests; `./scripts/check.sh` passed
+  suites of 63 and 63 tests. Fresh Sol-high review found no blocking findings.
