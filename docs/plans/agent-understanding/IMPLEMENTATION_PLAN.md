@@ -5,9 +5,9 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-3 public-counter stance selection (2026-08-19)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes, before another implementation run
+- Last completed run: goal-level alignment after AU-3 (2026-08-19)
+- Verified implementation runs since alignment: 0
+- Alignment due: after three verified implementation runs
 
 ## Goal Progress
 
@@ -118,3 +118,21 @@ Alignment does not select, suggest, or record the next implementation task.
 - Focused validation passed 10 tests; `./scripts/check.sh` passed suites of 58
   and 63 tests. Initial Sol-high review found missing full-run transition
   history; after correction, fresh re-review found no blocking findings.
+
+### 2026-08-19 — Goal-level alignment after AU-3
+
+- Fresh Sol-high review confirmed AU-1, AU-2, and AU-3 remain proportionately
+  supported and found no blocking boundary, evidence, or observer-leakage issue.
+- Complexity remains proportionate: traces preserve deliveries, claims
+  deduplicate their meaning, live stance represents current context, and
+  detached transitions preserve historical explanation after the context ends.
+- No existing AU-1 through AU-3 component should be removed or simplified at
+  this alignment.
+- Retained assumptions: pressure locality is authored by the scenario rather
+  than independently proven by the selector; delivered historical pressure
+  could reactivate on later counter re-entry; source delivery time and stance
+  activation time remain distinct; and the focal policy's older raw-pressure
+  path is not evidence for AU-3.
+- The behavior remains bounded authored rule execution, not general semantic
+  inference, cognition, or emergence. The implementation counter resets to
+  zero without selecting later work.
