@@ -6,8 +6,8 @@ Status: active shared state; no future tasks are planned.
 
 - Incomplete run: none
 - Last completed run: AU-9 filtered explanation and inspectable causality (2026-08-19)
-- Verified implementation runs since alignment: 3
-- Alignment due: now
+- Verified implementation runs since alignment: 0
+- Alignment due: after three verified implementation runs
 
 ## Goal Progress
 
@@ -255,3 +255,26 @@ Alignment does not select, suggest, or record the next implementation task.
   links; final fresh review found no blockers or production gap.
 - Both documented normal and inspector commands completed. `./scripts/check.sh`
   passed suites of 67 and 63 tests. No production behavior changed in this run.
+
+### 2026-08-19 — Goal-level alignment after AU-9
+
+- A fresh Terra-high orchestrator commissioned a separate fresh Sol-high
+  read-only reviewer; both found AU-1 through AU-9 met with no blocking
+  boundary, proportionality, presentation, causality, or determinism issue.
+- EventLog remains append-only frozen evidence; Official Record versions and
+  current projection remain distinct from delivery; understanding is focal-
+  only; diary access is physical; one post-diary consultation clears the
+  private stance; normal and inspector projections remain separated.
+- No AU-1 through AU-9 component should be removed. Legacy beliefs and Agent
+  Understanding retain distinct evidence scopes. The duplicated conformity
+  threshold remains the sole non-blocking simplification candidate.
+- Retained assumptions: pressure locality and recheck opportunity are authored;
+  version ordering relies on `previous_version_id`; policy supplies speech
+  semantics beyond world-form validation; diary privacy is scenario-bounded;
+  and diary-read/recheck clearing rules are not general cognition.
+- The audit selected no future task. It observed only the still-open goal
+  boundary already represented by AU-10: scenario configuration continues to
+  identify `first_day_v2` while the approved result requires `first_day_v3`.
+- `./scripts/check.sh` passed suites of 67 and 63 tests; documented normal and
+  inspector commands completed; `git diff --check` passed. The counter resets
+  to zero.
