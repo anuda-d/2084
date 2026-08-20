@@ -6,8 +6,8 @@ Status: active shared state; no future tasks are planned.
 
 - Incomplete run: none
 - Last completed run: AU-6 source-linked private diary stance after delivered read (2026-08-19)
-- Verified implementation runs since alignment: 3
-- Alignment due: now
+- Verified implementation runs since alignment: 0
+- Alignment due: after three verified implementation runs
 
 ## Goal Progress
 
@@ -178,3 +178,25 @@ Alignment does not select, suggest, or record the next implementation task.
   and confidence remain unchanged. No route or consultation behavior changed.
 - Focused validation passed 14 understanding tests; `./scripts/check.sh` passed
   suites of 63 and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — Goal-level alignment after AU-6
+
+- A fresh Terra-high orchestrator commissioned a separate fresh Sol-high
+  read-only reviewer; both found AU-1 through AU-6 proportionately supported
+  with no blocking boundary, source-causality, observer-leakage, hidden-world-
+  consequence, or determinism issue.
+- `EventLog` remains append-only objective evidence; stance selection changes
+  only focal-owned contextual state and detached inspector history; supporting
+  agents and institutions receive no private understanding.
+- No AU-1 through AU-6 component should be removed. Legacy beliefs and
+  interpreted claims remain deliberately separate because they cover distinct
+  evidence and proposition scopes.
+- Retained assumptions: pressure locality remains scenario-authored and prior
+  delivered pressure could reactivate on counter return; version order relies
+  on structured `previous_version_id`; speech semantics are enforced by focal
+  policy selection; and `private_diary` persistence currently proves only AU-6.
+- A duplicated conformity-threshold configuration in the engine and focal
+  policy remains a non-blocking simplification candidate; alignment made no
+  implementation change and selected no future task.
+- `./scripts/check.sh` passed suites of 63 and 63 tests. Normal and inspector
+  runs completed successfully. The alignment counter resets to zero.
