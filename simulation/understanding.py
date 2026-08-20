@@ -31,6 +31,34 @@ class MemoryTrace:
     period_id: str | None
 
 
+@dataclass(frozen=True)
+class ContextualStance:
+    context: str
+    proposition: str
+    asserted_value: int
+    source_claim_id: str
+    source_trace_id: str
+    source_observation_ids: tuple[str, ...]
+    pressure_observation_id: str
+    selected_tick: int
+
+
+@dataclass(frozen=True)
+class StanceTransition:
+    transition_id: str
+    agent_id: str
+    tick: int
+    context: str
+    active: bool
+    proposition: str
+    asserted_value: int
+    source_claim_id: str
+    source_trace_id: str
+    source_observation_ids: tuple[str, ...]
+    pressure_observation_id: str
+    stance_selected_tick: int
+
+
 def trace_from_delivered_observation(
     observation: Observation,
     *,
@@ -127,4 +155,83 @@ def link_official_version_conflicts(
     )
     return linked_existing_claims + (
         replace(new_claim, conflicts_with=conflicting_claim_ids),
+    )
+
+
+def select_public_counter_stance(
+    *,
+    location: str,
+    counter_location: str,
+    pressure_threshold: float,
+    claims: tuple[InterpretedClaim, ...],
+    traces: tuple[MemoryTrace, ...],
+    observations: tuple[Observation, ...],
+) -> ContextualStance | None:
+    """Derive the revised public stance from only delivered agent evidence."""
+    if not isinstance(pressure_threshold, (int, float)) or isinstance(
+        pressure_threshold, bool
+    ):
+        raise ValueError("pressure_threshold must be numeric")
+    if not 0 <= pressure_threshold <= 1:
+        raise ValueError("pressure_threshold must be between zero and one")
+    if location != counter_location:
+        return None
+
+    qualifying_pressure = tuple(
+        observation
+        for observation in observations
+        if observation.details.get("evidence_kind") == "social_pressure"
+        and isinstance(observation.details.get("pressure"), (int, float))
+        and not isinstance(observation.details.get("pressure"), bool)
+        and observation.details["pressure"] >= pressure_threshold
+    )
+    if not qualifying_pressure:
+        return None
+    pressure = max(
+        qualifying_pressure,
+        key=lambda observation: (
+            observation.delivery_tick,
+            observation.observation_id,
+        ),
+    )
+
+    observation_by_id = {
+        observation.observation_id: observation for observation in observations
+    }
+    trace_by_id = {trace.trace_id: trace for trace in traces}
+    revised_candidates: list[tuple[InterpretedClaim, MemoryTrace]] = []
+    for claim in claims:
+        trace = trace_by_id.get(claim.origin_trace_id)
+        if trace is None or trace.evidence_kind != "official_record_version":
+            continue
+        source = observation_by_id.get(trace.source_observation_id)
+        if (
+            not claim.conflicts_with
+            or source is None
+            or source.details.get("previous_version_id") is None
+        ):
+            continue
+        revised_candidates.append((claim, trace))
+    if not revised_candidates:
+        return None
+
+    claim, trace = max(
+        revised_candidates,
+        key=lambda item: (
+            item[1].delivery_tick,
+            item[1].trace_id,
+        ),
+    )
+    return ContextualStance(
+        context="public_counter",
+        proposition=trace.proposition,
+        asserted_value=trace.asserted_value,
+        source_claim_id=claim.claim_id,
+        source_trace_id=trace.trace_id,
+        source_observation_ids=(
+            trace.source_observation_id,
+            pressure.observation_id,
+        ),
+        pressure_observation_id=pressure.observation_id,
+        selected_tick=max(trace.delivery_tick, pressure.delivery_tick),
     )

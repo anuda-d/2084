@@ -8,7 +8,7 @@ from typing import Mapping, Protocol
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.beliefs import Belief
 from simulation.events import Observation
-from simulation.understanding import InterpretedClaim, MemoryTrace
+from simulation.understanding import ContextualStance, InterpretedClaim, MemoryTrace
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,7 @@ class AgentState:
     beliefs: list[Belief] = field(default_factory=list)
     memory_traces: tuple[MemoryTrace, ...] = ()
     interpreted_claims: tuple[InterpretedClaim, ...] = ()
+    contextual_stance: ContextualStance | None = None
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class AgentView:
     action_results: tuple[ActionResult, ...]
     observations: tuple[Observation, ...]
     beliefs: tuple[Belief, ...]
+    contextual_stance: ContextualStance | None
     accessible_diary_id: str | None
     accessible_diary_entry_count: int
     accessible_diary_entries: tuple[DiaryEntryKnowledge, ...]

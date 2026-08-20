@@ -27,7 +27,9 @@ from simulation.institutions import (
     OfficialRecordRewrite,
 )
 from simulation.understanding import (
+    StanceTransition,
     link_official_version_conflicts,
+    select_public_counter_stance,
     trace_from_delivered_observation,
 )
 from simulation.world import DiaryEntry, PhysicalDiary, WorldState
@@ -58,6 +60,7 @@ class SimulationRules:
     resource_proposition: str
     official_record_access_location: str
     official_record_artifact_id: str
+    public_conformity_threshold: float = 0.7
     travel_duration_ticks: int = 2
     work_duration_ticks: int = 2
     diary_write_duration_ticks: int = 2
@@ -95,6 +98,7 @@ class Simulation:
         self._belief_transitions: list[BeliefTransition] = []
         self._memory_trace_counts: dict[str, int] = {}
         self._interpreted_claim_counts: dict[str, int] = {}
+        self._stance_transitions: list[StanceTransition] = []
         self._action_results: list[ActionResult] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
@@ -171,6 +175,7 @@ class Simulation:
             action_results=tuple(agent.action_results),
             observations=tuple(agent.observations),
             beliefs=tuple(agent.beliefs),
+            contextual_stance=agent.contextual_stance,
             accessible_diary_id=diary.object_id if diary is not None else None,
             accessible_diary_entry_count=len(diary.entries) if diary is not None else 0,
             accessible_diary_entries=tuple(
@@ -1032,6 +1037,42 @@ class Simulation:
                     trace,
                 )
 
+    def _update_contextual_stance(self) -> None:
+        focal = self.world.agents[self.focal_agent_id]
+        previous = focal.contextual_stance
+        selected = select_public_counter_stance(
+            location=focal.location,
+            counter_location=self.rules.allocation_location,
+            pressure_threshold=self.rules.public_conformity_threshold,
+            claims=focal.interpreted_claims,
+            traces=focal.memory_traces,
+            observations=tuple(focal.observations),
+        )
+        if selected == previous:
+            return
+        focal.contextual_stance = selected
+        source_stance = selected if selected is not None else previous
+        if source_stance is None:
+            return
+        self._stance_transitions.append(
+            StanceTransition(
+                transition_id=(
+                    f"stance-transition-{len(self._stance_transitions) + 1:04d}"
+                ),
+                agent_id=focal.agent_id,
+                tick=self.tick,
+                context=source_stance.context,
+                active=selected is not None,
+                proposition=source_stance.proposition,
+                asserted_value=source_stance.asserted_value,
+                source_claim_id=source_stance.source_claim_id,
+                source_trace_id=source_stance.source_trace_id,
+                source_observation_ids=source_stance.source_observation_ids,
+                pressure_observation_id=source_stance.pressure_observation_id,
+                stance_selected_tick=source_stance.selected_tick,
+            )
+        )
+
     def _resolve_scheduled_official_record_rewrite(
         self, rewrite: OfficialRecordRewrite
     ) -> None:
@@ -1219,6 +1260,7 @@ class Simulation:
         )
         self._update_beliefs(delivered)
         self._update_understanding(delivered)
+        self._update_contextual_stance()
         focal_attempt: ActionAttempt | None = None
         for agent_id in sorted(self._policies):
             if agent_id in self._pending:
@@ -1360,6 +1402,27 @@ class Simulation:
                 }
                 for transition in self._belief_transitions
             ],
+            "stance_transitions": [
+                {
+                    "transition_id": transition.transition_id,
+                    "agent_id": transition.agent_id,
+                    "tick": transition.tick,
+                    "context": transition.context,
+                    "active": transition.active,
+                    "proposition": transition.proposition,
+                    "asserted_value": transition.asserted_value,
+                    "source_claim_id": transition.source_claim_id,
+                    "source_trace_id": transition.source_trace_id,
+                    "source_observation_ids": list(
+                        transition.source_observation_ids
+                    ),
+                    "pressure_observation_id": (
+                        transition.pressure_observation_id
+                    ),
+                    "stance_selected_tick": transition.stance_selected_tick,
+                }
+                for transition in self._stance_transitions
+            ],
             "agent_understanding": {
                 agent_id: {
                     "memory_traces": [
@@ -1388,6 +1451,24 @@ class Simulation:
                         }
                         for claim in agent.interpreted_claims
                     ],
+                    "contextual_stance": (
+                        {
+                            "context": agent.contextual_stance.context,
+                            "proposition": agent.contextual_stance.proposition,
+                            "asserted_value": agent.contextual_stance.asserted_value,
+                            "source_claim_id": agent.contextual_stance.source_claim_id,
+                            "source_trace_id": agent.contextual_stance.source_trace_id,
+                            "source_observation_ids": list(
+                                agent.contextual_stance.source_observation_ids
+                            ),
+                            "pressure_observation_id": (
+                                agent.contextual_stance.pressure_observation_id
+                            ),
+                            "selected_tick": agent.contextual_stance.selected_tick,
+                        }
+                        if agent.contextual_stance is not None
+                        else None
+                    ),
                 }
                 for agent_id, agent in self.world.agents.items()
             },

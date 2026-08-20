@@ -5,9 +5,9 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-2 explicit delivered official-version conflict (2026-08-19)
-- Verified implementation runs since alignment: 2
-- Alignment due: after three verified implementation runs
+- Last completed run: AU-3 public-counter stance selection (2026-08-19)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes, before another implementation run
 
 ## Goal Progress
 
@@ -15,7 +15,7 @@ Status: active shared state; no future tasks are planned.
 | --- | --- | --- |
 | AU-1 Memory traces | met | Focused and full checks verify immutable source-linked focal traces for delivered direct and official evidence, no trace from an undelivered rewrite, deduplicated claims on repeated delivery, empty supporting-agent understanding, and deterministic detached history. |
 | AU-2 Conflict | met | Focused and full checks verify one reciprocal conflict between the two delivered official versions for the same period, while the equal-valued direct-resource claim remains outside it; the undelivered rewrite cannot participate and detached history is deterministic. |
-| AU-3 Public stance | open | none |
+| AU-3 Public stance | met | Focused and full checks verify a source-linked version-two `public_counter` stance only after the conflicting revised schedule and sufficient protocol pressure are delivered at the allocation office; it clears on departure while deterministic detached transitions retain selection and clearing causality. |
 | AU-4 Public action | open | none |
 | AU-5 Diary record | open | none |
 | AU-6 Resurfacing | open | none |
@@ -102,3 +102,19 @@ Alignment does not select, suggest, or record the next implementation task.
   EventLog entries, or Official Record versions.
 - Focused validation passed 6 tests; `./scripts/check.sh` passed suites of 54
   and 63 tests. Fresh Sol-high review found no blocking findings.
+
+### 2026-08-19 — AU-3 Public-counter stance
+
+- Added a focal-owned `public_counter` stance selected from the delivered
+  conflicting revised official trace only when delivered protocol pressure
+  meets the configured threshold at the allocation office.
+- Verified the pressure assertion does not supply the stance value, supporting
+  agents receive no stance, insufficient or undelivered evidence creates none,
+  and leaving the office clears the live stance.
+- Retained deterministic detached selection and clearing transitions so the
+  completed inspector run reconstructs the temporary stance from delivered
+  source identifiers without mutating source evidence or changing policy
+  action selection.
+- Focused validation passed 10 tests; `./scripts/check.sh` passed suites of 58
+  and 63 tests. Initial Sol-high review found missing full-run transition
+  history; after correction, fresh re-review found no blocking findings.

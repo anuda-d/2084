@@ -3,7 +3,10 @@ from dataclasses import FrozenInstanceError
 
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
 from simulation.events import Observation, freeze_mapping
-from simulation.understanding import trace_from_delivered_observation
+from simulation.understanding import (
+    select_public_counter_stance,
+    trace_from_delivered_observation,
+)
 
 
 class AgentUnderstandingTests(unittest.TestCase):
@@ -126,6 +129,101 @@ class AgentUnderstandingTests(unittest.TestCase):
             "weekly-household-ration-schedule-v2",
         )
 
+    def test_delivered_revision_and_protocol_pressure_select_public_counter_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        stance = focal.contextual_stance
+        self.assertIsNotNone(stance)
+        self.assertEqual(stance.context, "public_counter")
+        self.assertEqual(stance.asserted_value, 2)
+        self.assertEqual(
+            stance.proposition,
+            "weekly_household_ration_entitlement_packets",
+        )
+        sources = {
+            observation.observation_id: observation
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+        }
+        revised = sources[stance.source_observation_ids[0]]
+        pressure = sources[stance.pressure_observation_id]
+        self.assertEqual(revised.details["asserted_value"], stance.asserted_value)
+        self.assertIsNotNone(revised.details["previous_version_id"])
+        self.assertEqual(pressure.details["asserted_value"], 3)
+        self.assertEqual(pressure.details["pressure"], 0.8)
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).contextual_stance, stance)
+        for supporting_agent_id in (CO_WORKER_ID, CLERK_ID):
+            self.assertIsNone(
+                simulation.agent_view(supporting_agent_id).contextual_stance
+            )
+
+    def test_public_counter_stance_requires_revision_delivery_and_threshold(self):
+        before_revision = build_first_day(seed=42)
+        before_revision.run(max_ticks=11)
+        self.assertIsNone(
+            before_revision.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        self.assertIsNone(
+            select_public_counter_stance(
+                location=focal.location,
+                counter_location="allocation_office",
+                pressure_threshold=0.9,
+                claims=focal.interpreted_claims,
+                traces=focal.memory_traces,
+                observations=tuple(focal.observations),
+            )
+        )
+
+    def test_leaving_allocation_office_clears_public_counter_stance(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=12)
+        self.assertIsNotNone(
+            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
+        simulation.run(max_ticks=14)
+
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        self.assertEqual(focal.location, "workplace")
+        self.assertIsNone(focal.contextual_stance)
+
+    def test_full_run_retains_source_linked_stance_selection_and_clearing(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+
+        transitions = simulation.history_data()["stance_transitions"]
+        self.assertEqual(
+            [(item["tick"], item["active"]) for item in transitions],
+            [(12, True), (14, False)],
+        )
+        self.assertEqual(
+            [item["asserted_value"] for item in transitions],
+            [2, 2],
+        )
+        self.assertEqual(
+            transitions[0]["source_observation_ids"],
+            transitions[1]["source_observation_ids"],
+        )
+        self.assertEqual(
+            transitions[0]["pressure_observation_id"],
+            transitions[1]["pressure_observation_id"],
+        )
+        delivered_ids = {
+            observation.observation_id
+            for observation in simulation.observations_for(FOCAL_AGENT_ID)
+        }
+        self.assertTrue(
+            set(transitions[0]["source_observation_ids"]).issubset(delivered_ids)
+        )
+        self.assertIsNone(
+            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance
+        )
+
     def test_repeated_delivery_reuses_the_interpreted_claim(self):
         details = freeze_mapping(
             {
@@ -183,11 +281,16 @@ class AgentUnderstandingTests(unittest.TestCase):
         focal_history = history["agent_understanding"][FOCAL_AGENT_ID]
         self.assertEqual(len(focal_history["memory_traces"]), 3)
         focal_history["memory_traces"][0]["asserted_value"] = 99
+        history["stance_transitions"][0]["asserted_value"] = 99
         self.assertEqual(
             first.history_data()["agent_understanding"][FOCAL_AGENT_ID][
                 "memory_traces"
             ][0]["asserted_value"],
             3,
+        )
+        self.assertEqual(
+            first.history_data()["stance_transitions"][0]["asserted_value"],
+            2,
         )
 
 

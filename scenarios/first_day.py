@@ -117,6 +117,7 @@ def build_first_day(seed: int = 42) -> Simulation:
             resource_proposition="daily_allocation_units",
             official_record_access_location="allocation_office",
             official_record_artifact_id=RATION_SCHEDULE_ARTIFACT_ID,
+            public_conformity_threshold=0.7,
         ),
         focal_agent_id=FOCAL_AGENT_ID,
         max_ticks=30,
