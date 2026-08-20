@@ -174,6 +174,24 @@ The decision process may recommend an action and give a concise, user-facing exp
 
 Resolution validates the attempt, applies costs and time, handles conflicts, and produces consequences. Important resolutions should preserve enough evidence to explain what happened.
 
+### Planned model-backed focal policy
+
+The approved direction is to begin AI character decisions with the focal
+character. A model-backed focal policy will be the character's decision and
+expression process: its valid structured output becomes the character's
+attempted action, rather than commentary on a choice made elsewhere.
+
+Persistent identity, embodied state, delivered observations, source-linked
+understanding, relationships, aims, plans, and prior outcomes remain explicit
+agent or world state. The model receives only the restricted agent view. It
+cannot inspect the development inspector or hidden state, mutate the world, or
+declare success; existing world resolution remains authoritative.
+
+Live model output will not be assumed deterministic. Reproduction therefore
+requires recording the restricted decision input, model configuration,
+structured response, validation result, and accepted attempt so a recorded run
+can be inspected or replayed without another live model call.
+
 ## Contradictory Reality
 
 A small doublethink-inspired system can begin with a source-linked claim and
@@ -266,6 +284,9 @@ resulting day should not be presented as an emergent plot.
 ## Current Technical Limits
 
 - The decision layer uses deterministic rules, not AI.
+- The approved model-backed focal-character direction is not implemented yet;
+  there is no model adapter, failure policy, decision recording, or executable
+  replay path.
 - The focal policy is tailored to this first day rather than driven by a general
   planner, need system, or schedule model.
 - `Simulation` is a single large coordinator whose action-specific resolution

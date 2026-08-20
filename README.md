@@ -118,7 +118,10 @@ stance system.
 ## Known limits
 
 - The scenario uses deterministic hand-written policies, not an LLM or other AI
-  decision model.
+  decision model. The approved architectural direction is to begin with one
+  model-backed focal character whose structured choices become attempted
+  actions, while the simulation retains authority over knowledge boundaries and
+  consequences; this is not implemented yet.
 - The first-day route, institutional rewrite timing, public pressure, and diary
   opportunity are authored inputs. The result is bounded evidence, not an
   emergent story.
@@ -153,10 +156,14 @@ The most useful documents are:
   truth, observations, decisions, institutions, and presentation.
 - [Current Development Index](docs/plans/CURRENT.md) — the active development
   entry point.
+- [Model-Backed Focal Character Goal](docs/plans/model-backed-focal-character/GOAL.md)
+  — the active bounded Phase 3B goal.
+- [Model-Backed Focal Character Implementation State](docs/plans/model-backed-focal-character/IMPLEMENTATION_PLAN.md)
+  — verified progress for the active goal.
 - [Agent Understanding Goal](docs/plans/agent-understanding/GOAL.md) — the
-  approved behavior currently being explored.
+  completed Phase 3A foundation.
 - [Verified Implementation State](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md)
-  — what has actually been demonstrated so far.
+  — evidence retained from the completed Agent Understanding goal.
 
 For coding agents and contributors, [AGENTS.md](AGENTS.md) describes the working
 agreements and the one-slice development loop.

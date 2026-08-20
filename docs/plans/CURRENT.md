@@ -1,13 +1,18 @@
 # Current Development Index
 
-Status: no active goal; Agent Understanding was verified complete on 2026-08-19.
+Status: Model-Backed Focal Character is the active owner-approved goal as of
+2026-08-19.
 
 ## Active Work
 
-- Goal: none; do not select or infer a replacement goal
+- Goal: [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
+- Shared implementation state:
+  [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
 - Completed goal: [Agent Understanding](agent-understanding/GOAL.md)
-- Verified state: [Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: stop until the owner approves another goal
+- Completed-goal evidence:
+  [Agent Understanding Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
+- Active work: select at most one fresh, bounded work unit from verified gaps in
+  the active goal; do not pre-plan later work
 
 ## Required Read Order
 
