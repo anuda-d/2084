@@ -5,8 +5,8 @@ Status: active shared state; no future tasks are planned.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AU-6 source-linked private diary stance after delivered read (2026-08-19)
-- Verified implementation runs since alignment: 0
+- Last completed run: AU-7 private stance prompts one ordinary archive recheck (2026-08-19)
+- Verified implementation runs since alignment: 1
 - Alignment due: after three verified implementation runs
 
 ## Goal Progress
@@ -19,7 +19,7 @@ Status: active shared state; no future tasks are planned.
 | AU-4 Public action | met | Focused and full checks verify exactly one focal two-packet public statement selected from restricted `public_counter` stance value and source IDs while raw observation order cannot override it; world validation and resolution remain separate, and rejection leaves understanding unchanged. |
 | AU-5 Diary record | met | Focused and full checks verify the immutable physical diary entry preserves the delivered version-one official schedule proposition, three-packet value, and exact source observation after a location-gated two-tick write; unsupported claim/source combinations are rejected without mutation. |
 | AU-6 Resurfacing | met | Focused and full checks verify only the delivered read of the source-linked earlier official entry selects an immutable `private_diary` stance and transition; a rejected read creates none, while existing traces, reciprocal conflict, and belief confidence remain unchanged. |
-| AU-7 Recheck | open | none |
+| AU-7 Recheck | met | A causal policy comparison verifies the supplied `private_diary` stance alone starts the ordinary archive route; the integration run resolves two travel legs, completes exactly one post-diary consultation, delivers its result, and clears the recheck stance before returning to finish work. |
 | AU-8 Boundaries | open | none |
 | AU-9 Presentation | open | none |
 | AU-10 Reproduction | open | none |
@@ -200,3 +200,22 @@ Alignment does not select, suggest, or record the next implementation task.
   implementation change and selected no future task.
 - `./scripts/check.sh` passed suites of 63 and 63 tests. Normal and inspector
   runs completed successfully. The alignment counter resets to zero.
+
+### 2026-08-19 — AU-7 One ordinary archive recheck
+
+- The supplied `private_diary` stance now changes the next focal attempt into
+  the first ordinary travel leg toward the accessible public schedule; an
+  otherwise identical restricted view without the stance waits at the diary.
+- Existing two-tick travel actions route home through the workplace to the
+  allocation office. One existing consultation action completes at tick 23,
+  its revised-version observation is delivered at tick 24, and that delivery
+  clears the private stance before the focal character returns to finish work.
+- The authored diary phase suppresses reactivation from older public pressure,
+  and counter re-entry does not repeat the already delivered direct-resource
+  sight. The repeated revised schedule delivery creates another trace but no
+  duplicate claim or conflict. These are bounded scenario rules, not claims of
+  emergence.
+- Verified exactly one post-diary consultation, no new action kind, a complete
+  deterministic run at tick 28, and filtered normal versus complete inspector
+  evidence. `./scripts/check.sh` passed suites of 65 and 63 tests; fresh
+  Sol-high review found no blocking findings.

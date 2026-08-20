@@ -228,8 +228,8 @@ class AgentUnderstandingTests(unittest.TestCase):
             set(transitions[0]["source_observation_ids"]).issubset(delivered_ids)
         )
         self.assertEqual(
-            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance.context,
-            "private_diary",
+            simulation.world.agents[FOCAL_AGENT_ID].contextual_stance,
+            None,
         )
 
     def test_delivered_diary_read_selects_earlier_source_linked_private_stance(self):
@@ -318,6 +318,73 @@ class AgentUnderstandingTests(unittest.TestCase):
                 observations=tuple(focal.observations),
             )
         )
+
+    def test_private_stance_changes_next_attempt_into_archive_route(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=19)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        self.assertEqual(view.contextual_stance.context, "private_diary")
+
+        selected = FocalPolicy().choose(view)
+        without_stance = FocalPolicy().choose(
+            replace(view, contextual_stance=None)
+        )
+
+        self.assertEqual(selected.kind, "travel")
+        self.assertEqual(selected.parameters["destination"], "workplace")
+        self.assertEqual(
+            selected.explanation,
+            "start toward the public archive through the workplace",
+        )
+        self.assertEqual(without_stance.kind, "wait")
+        self.assertNotEqual(without_stance.explanation, selected.explanation)
+
+    def test_private_stance_routes_to_one_recheck_and_clears_on_delivery(self):
+        simulation = build_first_day(seed=42)
+        simulation.run(max_ticks=30)
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        read = next(
+            observation
+            for observation in focal.observations
+            if observation.details.get("evidence_kind") == "diary_read_completed"
+        )
+        later_consultations = [
+            result
+            for result in focal.action_results
+            if result.action_kind == "consult_official_record"
+            and result.resolved_tick > read.delivery_tick
+        ]
+
+        self.assertEqual(len(later_consultations), 1)
+        recheck = next(
+            event
+            for event in simulation.events
+            if event.action_id == later_consultations[0].action_id
+            and event.kind == "official_record_consulted"
+        )
+        route_attempts = [
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.details.get("action_kind") == "travel"
+            and read.delivery_tick <= event.tick < recheck.tick
+        ]
+        self.assertEqual(
+            [attempt.details["destination"] for attempt in route_attempts],
+            ["workplace", "allocation_office"],
+        )
+        private_transitions = [
+            transition
+            for transition in simulation.history_data()["stance_transitions"]
+            if transition["context"] == "private_diary"
+        ]
+        self.assertEqual(
+            [(item["tick"], item["active"]) for item in private_transitions],
+            [(19, True), (24, False)],
+        )
+        self.assertIsNone(focal.contextual_stance)
+        self.assertEqual(simulation.tick, 28)
 
     def test_focal_policy_selects_revised_speech_from_restricted_stance(self):
         simulation = build_first_day(seed=42)

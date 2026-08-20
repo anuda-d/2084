@@ -475,8 +475,8 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
         )
 
-        simulation.step()
-        arrival = simulation.step()
+        simulation.run(max_ticks=26)
+        arrival = simulation.snapshot_at(26)
 
         self.assertTrue(
             any(
@@ -736,9 +736,12 @@ class LivingSimulationStepTests(unittest.TestCase):
             read.details["source_observation_ids"],
             written.details["source_observation_ids"],
         )
-        self.assertEqual(snapshot.current_action, "travel to workplace after reading the diary")
+        self.assertEqual(
+            snapshot.current_action,
+            "start toward the public archive through the workplace",
+        )
 
-    def test_run_completes_at_tick_24_and_same_seed_serializes_identically(self):
+    def test_run_completes_at_tick_28_and_same_seed_serializes_identically(self):
         first = build_first_day(seed=42)
         second = build_first_day(seed=42)
 
@@ -746,7 +749,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         second.run(max_ticks=30)
 
         self.assertTrue(first.is_complete)
-        self.assertEqual(first.tick, 24)
+        self.assertEqual(first.tick, 28)
         self.assertEqual(first.history_data(), second.history_data())
         encoded = json.dumps(first.history_data(), sort_keys=True)
         self.assertIn('"seed": 42', encoded)
@@ -994,7 +997,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         ]
         self.assertEqual(
             [observation.details["asserted_value"] for observation in official_versions],
-            [3, 2],
+            [3, 2, 2],
         )
         self.assertNotEqual(
             direct.details["proposition"], official_versions[0].details["proposition"]
@@ -1002,7 +1005,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(direct.delivery_tick, 7)
         self.assertEqual(
             [observation.delivery_tick for observation in official_versions],
-            [8, 11],
+            [8, 11, 24],
         )
 
         publication = next(
@@ -1028,7 +1031,11 @@ class LivingSimulationStepTests(unittest.TestCase):
         ]
         self.assertEqual(
             [event.details["version_id"] for event in focal_consultations],
-            [RATION_SCHEDULE_VERSION_ONE_ID, RATION_SCHEDULE_VERSION_TWO_ID],
+            [
+                RATION_SCHEDULE_VERSION_ONE_ID,
+                RATION_SCHEDULE_VERSION_TWO_ID,
+                RATION_SCHEDULE_VERSION_TWO_ID,
+            ],
         )
         self.assertEqual(rewrite_attempt.tick, 10)
         self.assertEqual(rewritten.caused_by, (rewrite_attempt.event_id, publication.event_id))
@@ -1124,6 +1131,14 @@ class LivingSimulationStepTests(unittest.TestCase):
             )
             self.assertEqual(source.delivery_tick, transition["tick"])
         self.assertEqual(focal_transitions[0]["conflicts_with"], [])
+        self.assertEqual(
+            sum(
+                observation.details.get("evidence_kind")
+                == "direct_resource_claim"
+                for observation in simulation.observations_for(FOCAL_AGENT_ID)
+            ),
+            1,
+        )
         self.assertIn("belief_transitions", render_inspector(simulation))
 
     def test_busy_actor_cannot_replace_an_action_already_in_progress(self):
@@ -1263,7 +1278,7 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(configuration["seed"], 42)
         scenario = configuration["scenario"]
         self.assertEqual(scenario["scenario_id"], "first_day_v2")
-        self.assertEqual(scenario["completion_tick"], 24)
+        self.assertEqual(scenario["completion_tick"], 28)
         self.assertEqual(scenario["travel_graph"]["home"], ["workplace"])
         self.assertEqual(
             scenario["initial_resource"],

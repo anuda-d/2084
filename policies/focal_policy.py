@@ -30,9 +30,31 @@ class FocalPolicy:
             for observation in view.observations
             if observation.details.get("evidence_kind") == "official_record_version"
         )
-        read_diary = any(
-            observation.details.get("evidence_kind") == "diary_read_completed"
-            for observation in view.observations
+        diary_read_observation = next(
+            (
+                observation
+                for observation in reversed(view.observations)
+                if observation.details.get("evidence_kind")
+                == "diary_read_completed"
+            ),
+            None,
+        )
+        read_diary = diary_read_observation is not None
+        private_diary_stance = (
+            view.contextual_stance
+            if view.contextual_stance is not None
+            and view.contextual_stance.context == "private_diary"
+            else None
+        )
+        archive_recheck_received = (
+            diary_read_observation is not None
+            and any(
+                observation.details.get("evidence_kind")
+                == "official_record_version"
+                and observation.delivery_tick
+                > diary_read_observation.delivery_tick
+                for observation in official_record_observations
+            )
         )
         if view.location == "home" and not made_public_expression:
             return ActionAttempt(
@@ -43,12 +65,33 @@ class FocalPolicy:
                 decision_reason="the scheduled workplace obligation comes before the allocation errand",
             )
         if view.location == "allocation_office" and made_public_expression:
+            if (
+                private_diary_stance is not None
+                and view.consultable_official_record_ids
+            ):
+                return ActionAttempt(
+                    actor_id=view.agent_id,
+                    kind="consult_official_record",
+                    parameters={
+                        "artifact_id": view.consultable_official_record_ids[0]
+                    },
+                    explanation="recheck the public weekly ration schedule",
+                    decision_reason="the diary-resurfaced earlier version prompts one ordinary consultation of the accessible public archive",
+                )
             return ActionAttempt(
                 actor_id=view.agent_id,
                 kind="travel",
                 parameters={"destination": "workplace"},
-                explanation="travel back through the workplace",
-                decision_reason="the private diary is at home and the permitted route passes through the workplace",
+                explanation=(
+                    "travel back to the workplace after the archive recheck"
+                    if archive_recheck_received
+                    else "travel back through the workplace"
+                ),
+                decision_reason=(
+                    "the delivered archive recheck clears the private diary intention and the remaining work obligation is at the workplace"
+                    if archive_recheck_received
+                    else "the private diary is at home and the permitted route passes through the workplace"
+                ),
             )
         if view.location == "workplace" and made_public_expression and not read_diary:
             return ActionAttempt(
@@ -59,6 +102,14 @@ class FocalPolicy:
                 decision_reason="the private perspective can be written only with physical access to the diary at home",
             )
         if view.location == "workplace" and read_diary:
+            if private_diary_stance is not None:
+                return ActionAttempt(
+                    actor_id=view.agent_id,
+                    kind="travel",
+                    parameters={"destination": "allocation_office"},
+                    explanation="continue to the public archive",
+                    decision_reason="the completed trip to the workplace supplies the ordinary next route step toward the accessible schedule",
+                )
             completed_work = sum(
                 1
                 for result in view.action_results
@@ -139,12 +190,19 @@ class FocalPolicy:
                     decision_reason="the newly encountered schedule gives reason to re-read the separately sourced counter perspective preserved in the diary",
                 )
             if read_diary:
+                if private_diary_stance is not None:
+                    return ActionAttempt(
+                        actor_id=view.agent_id,
+                        kind="travel",
+                        parameters={"destination": "workplace"},
+                        explanation="start toward the public archive through the workplace",
+                        decision_reason="the delivered private-diary stance prompts the first ordinary route step toward the accessible schedule",
+                    )
                 return ActionAttempt(
                     actor_id=view.agent_id,
-                    kind="travel",
-                    parameters={"destination": "workplace"},
-                    explanation="travel to workplace after reading the diary",
-                    decision_reason="the earlier perspective has been checked and the remaining ordinary obligation is at work",
+                    kind="wait",
+                    explanation="wait beside the diary after reading",
+                    decision_reason="without a supplied private-diary stance there is no archive-recheck intention",
                 )
             return ActionAttempt(
                 actor_id=view.agent_id,

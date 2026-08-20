@@ -269,6 +269,13 @@ def select_private_diary_stance(
             else None
         )
         source = observation_by_id.get(source_ids[0])
+        later_recheck = any(
+            observation.details.get("evidence_kind") == "official_record_version"
+            and observation.delivery_tick > read.delivery_tick
+            and observation.details.get("proposition")
+            == read.details.get("proposition")
+            for observation in observations
+        )
         if (
             trace is None
             or claim is None
@@ -278,6 +285,7 @@ def select_private_diary_stance(
             or source.details.get("previous_version_id") is not None
             or read.details.get("proposition") != claim.proposition
             or read.details.get("asserted_value") != claim.asserted_value
+            or later_recheck
         ):
             continue
         candidates.append((read, claim, trace))

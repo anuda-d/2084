@@ -130,10 +130,22 @@ class Simulation:
             event.kind == "diary_read_completed" and event.actor_id == self.focal_agent_id
             for event in self.events
         )
+        archive_was_rechecked = any(
+            event.kind == "official_record_consulted"
+            and event.actor_id == self.focal_agent_id
+            and any(
+                read.kind == "diary_read_completed"
+                and read.actor_id == self.focal_agent_id
+                and read.tick < event.tick
+                for read in self.events
+            )
+            for event in self.events
+        )
         return (
             self.tick >= self.completion_tick
             and focal_work_completions >= 2
             and diary_was_read
+            and archive_was_rechecked
         )
 
     def snapshot_at(self, tick: int) -> FocalSnapshot:
@@ -968,6 +980,11 @@ class Simulation:
             if (
                 event.kind == "travel_completed"
                 and event.details["destination"] == self.rules.allocation_location
+                and not any(
+                    observation.details.get("evidence_kind")
+                    == "direct_resource_claim"
+                    for observation in self.world.agents[event.actor_id].observations
+                )
             ):
                 visible_resource_event = self._event_log.record(
                     tick=self.tick,
@@ -1059,7 +1076,11 @@ class Simulation:
             traces=focal.memory_traces,
             observations=tuple(focal.observations),
         )
-        if selected is None:
+        diary_was_read = any(
+            observation.details.get("evidence_kind") == "diary_read_completed"
+            for observation in focal.observations
+        )
+        if selected is None and not diary_was_read:
             selected = select_public_counter_stance(
                 location=focal.location,
                 counter_location=self.rules.allocation_location,
