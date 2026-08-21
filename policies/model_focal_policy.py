@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
-from simulation.actions import ActionAttempt
+from simulation.actions import (
+    ActionAttempt,
+    action_parameter_contract_data,
+    action_parameter_shape_error,
+)
 from simulation.agents import AgentView, PolicyDecisionRecord
 from simulation.events import to_plain_data
 
@@ -171,6 +175,9 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
         },
         "action_contract": {
             "supported_kinds": list(view.valid_actions),
+            "parameters_by_kind": action_parameter_contract_data(
+                view.valid_actions
+            ),
         },
     }
 
@@ -315,6 +322,8 @@ def structured_choice_to_attempt(
         raise _InvalidStructuredAttemptError(
             "structured choice parameter nesting is too deep"
         ) from error
+    if parameter_error := action_parameter_shape_error(kind, parameters):
+        raise _InvalidStructuredAttemptError(parameter_error)
 
     explanation = response["explanation"]
     if not isinstance(explanation, str) or not explanation.strip():

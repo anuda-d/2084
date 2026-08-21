@@ -6,7 +6,13 @@ import random
 from dataclasses import dataclass
 from typing import Mapping
 
-from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
+from simulation.actions import (
+    ACTION_KINDS,
+    ACTION_PARAMETER_CONTRACTS,
+    ActionAttempt,
+    ActionResult,
+    PendingAction,
+)
 from simulation.agents import (
     AgentView,
     DecisionPolicy,
@@ -324,29 +330,9 @@ class Simulation:
         return None
 
     def _unexpected_parameter_error(self, attempt: ActionAttempt) -> str | None:
-        allowed_by_kind = {
-            "travel": {"destination"},
-            "work": set(),
-            "consult_official_record": {"artifact_id"},
-            "request_allocation": {"requested_units", "evidence_observation_ids"},
-            "speak": {
-                "proposition",
-                "asserted_value",
-                "private_belief_id",
-                "evidence_observation_ids",
-                "pressure_reason",
-                "pressure",
-            },
-            "write_diary": {
-                "object_id",
-                "proposition",
-                "asserted_value",
-                "source_observation_ids",
-            },
-            "read_diary": {"object_id", "entry_id"},
-            "wait": set(),
-        }
-        unexpected = sorted(set(attempt.parameters) - allowed_by_kind[attempt.kind])
+        contract = ACTION_PARAMETER_CONTRACTS[attempt.kind]
+        allowed = set(contract.required) | set(contract.optional)
+        unexpected = sorted(set(attempt.parameters) - allowed)
         if not unexpected:
             return None
         return f"{attempt.kind} contains unexpected parameters: " + ", ".join(

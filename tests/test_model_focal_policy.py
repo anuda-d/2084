@@ -37,6 +37,113 @@ class StructuredModelChoiceTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             attempt.parameters["destination"] = "home"
 
+    def test_every_action_kind_has_an_enforced_parameter_shape(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        state_before = simulation.inspector_state()
+        events_before = simulation.events
+        valid_parameters = {
+            "travel": {"destination": "workplace"},
+            "work": {},
+            "consult_official_record": {"artifact_id": "weekly-schedule"},
+            "request_allocation": {
+                "requested_units": 1,
+                "evidence_observation_ids": [],
+            },
+            "speak": {
+                "proposition": "daily_allocation_units",
+                "asserted_value": 2,
+                "evidence_observation_ids": ["observation-0001"],
+                "pressure": 0.5,
+                "pressure_reason": "public protocol",
+            },
+            "write_diary": {
+                "object_id": "mara-private-diary",
+                "proposition": "daily_allocation_units",
+                "asserted_value": 2,
+                "source_observation_ids": ["observation-0001"],
+            },
+            "read_diary": {
+                "object_id": "mara-private-diary",
+                "entry_id": "entry-0001",
+            },
+            "wait": {},
+        }
+        for kind, parameters in valid_parameters.items():
+            with self.subTest(valid_kind=kind):
+                attempt = structured_choice_to_attempt(
+                    view,
+                    {
+                        "kind": kind,
+                        "parameters": parameters,
+                        "explanation": f"attempt {kind}",
+                        "decision_reason": "choose one supported action",
+                    },
+                )
+                self.assertEqual(attempt.kind, kind)
+
+        invalid_parameters = (
+            ("travel", {}),
+            ("travel", {"destination": 7}),
+            ("work", {"duration": 1}),
+            ("consult_official_record", {"artifact_id": ""}),
+            ("request_allocation", {"requested_units": 0}),
+            (
+                "request_allocation",
+                {"requested_units": 1, "evidence_observation_ids": "obs"},
+            ),
+            (
+                "speak",
+                {
+                    "proposition": "claim",
+                    "asserted_value": True,
+                    "evidence_observation_ids": ["observation-0001"],
+                },
+            ),
+            (
+                "speak",
+                {
+                    "proposition": "claim",
+                    "asserted_value": 2,
+                    "evidence_observation_ids": [],
+                },
+            ),
+            (
+                "speak",
+                {
+                    "proposition": "claim",
+                    "asserted_value": 2,
+                    "evidence_observation_ids": ["observation-0001"],
+                    "pressure": 0.5,
+                },
+            ),
+            (
+                "write_diary",
+                {
+                    "object_id": "mara-private-diary",
+                    "proposition": "claim",
+                    "asserted_value": 2,
+                },
+            ),
+            ("read_diary", {"object_id": "mara-private-diary", "entry_id": ""}),
+            ("wait", {"until": 2}),
+        )
+        for kind, parameters in invalid_parameters:
+            with self.subTest(invalid_kind=kind, parameters=parameters):
+                with self.assertRaises(StructuredChoiceError):
+                    structured_choice_to_attempt(
+                        view,
+                        {
+                            "kind": kind,
+                            "parameters": parameters,
+                            "explanation": f"attempt {kind}",
+                            "decision_reason": "choose one supported action",
+                        },
+                    )
+
+        self.assertEqual(simulation.inspector_state(), state_before)
+        self.assertEqual(simulation.events, events_before)
+
 
 class StaticModelDecisionClient:
     def __init__(self, response):
@@ -141,6 +248,13 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(model_input["character"]["agent_id"], FOCAL_AGENT_ID)
         self.assertEqual(model_input["character"]["display_name"], "Mara Vale")
+        parameter_contract = model_input["action_contract"]["parameters_by_kind"]
+        self.assertEqual(set(parameter_contract), set(view.valid_actions))
+        self.assertEqual(
+            parameter_contract["travel"]["required"],
+            {"destination": "non_empty_string"},
+        )
+        self.assertEqual(parameter_contract["work"], {"required": {}, "optional": {}})
         self.assertEqual(json.loads(json.dumps(model_input)), model_input)
 
         def nested_keys(value):
@@ -171,9 +285,17 @@ class ModelFocalPolicyTests(unittest.TestCase):
         model_input["character"]["display_name"] = "mutated"
         model_input["state"]["resource_holdings"]["household_allocation"] = 99
         model_input["action_contract"]["supported_kinds"].append("rewrite_world")
+        parameter_contract["travel"]["required"]["destination"] = "integer"
         self.assertEqual(view.display_name, "Mara Vale")
         self.assertEqual(dict(view.resource_holdings), {})
         self.assertNotIn("rewrite_world", view.valid_actions)
+        fresh_contract = model_input_from_view(view)["action_contract"][
+            "parameters_by_kind"
+        ]
+        self.assertEqual(
+            fresh_contract["travel"]["required"]["destination"],
+            "non_empty_string",
+        )
         self.assertEqual(simulation.inspector_state(), state_before)
         self.assertEqual(simulation.events, events_before)
 
@@ -313,7 +435,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         client = StaticModelDecisionClient(
             {
                 "kind": "travel",
-                "parameters": {"destination": 7},
+                "parameters": {"destination": "nowhere"},
                 "explanation": "attempt a route",
                 "decision_reason": "try the supplied destination",
             }
