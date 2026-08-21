@@ -130,6 +130,68 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(client.views[0].agent_id, FOCAL_AGENT_ID)
         self.assertEqual(client.views[0].display_name, "Mara Vale")
 
+    def test_equal_model_inputs_with_different_valid_choices_diverge_in_world(self):
+        wait_client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "remain home",
+                "decision_reason": "choose to pause before leaving",
+            }
+        )
+        travel_client = SequenceModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to workplace",
+                "decision_reason": "choose to begin the workplace obligation",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after arriving",
+                "decision_reason": "the chosen journey is complete",
+            },
+        )
+        waiting = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(wait_client)
+        )
+        travelling = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(travel_client)
+        )
+        self.assertEqual(waiting.inspector_state(), travelling.inspector_state())
+
+        waiting_snapshots = [waiting.step() for _ in range(3)]
+        travelling_snapshots = [travelling.step() for _ in range(3)]
+
+        self.assertEqual(wait_client.views[0], travel_client.views[0])
+        waiting_attempt = next(
+            event
+            for event in waiting.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        travelling_attempt = next(
+            event
+            for event in travelling.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        wait_completed = next(
+            event
+            for event in waiting.events
+            if event.kind == "wait_completed" and event.actor_id == FOCAL_AGENT_ID
+        )
+        travel_completed = next(
+            event
+            for event in travelling.events
+            if event.kind == "travel_completed" and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(waiting_attempt.details["action_kind"], "wait")
+        self.assertEqual(travelling_attempt.details["action_kind"], "travel")
+        self.assertEqual(wait_completed.caused_by, (waiting_attempt.event_id,))
+        self.assertEqual(travel_completed.caused_by, (travelling_attempt.event_id,))
+        self.assertEqual(waiting_snapshots[-1].location, "home")
+        self.assertEqual(travelling_snapshots[-1].location, "workplace")
+
     def test_world_schedules_and_completes_model_selected_travel(self):
         client = SequenceModelDecisionClient(
             {

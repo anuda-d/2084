@@ -1,13 +1,13 @@
 # Model-Backed Focal Character Implementation State
 
-Status: active shared state; no implementation work unit has been selected.
+Status: active shared state; alignment is due before more implementation.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-5A explicit-state decision continuity
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: MF-9A same-input divergent model behavior
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -21,7 +21,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-6 Explicit failure | open | None yet. |
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
-| MF-9 Bounded behavioral proof | open | None yet. |
+| MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first restricted views: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
 | MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 70 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-5A is verified; the next implementation work unit must be selected
-from fresh repository evidence.
+None. MF-9A is verified. Whole-goal alignment is due before another
+implementation work unit may be selected.
 
 ## Completion Rules
 
@@ -180,3 +180,21 @@ select a future task.
   choice; the same completion and rejection follow-ups still occurred. It
   approved MF-5 as met at the offline boundary without claiming live-provider
   statelessness.
+
+### MF-9A Same-input divergent model behavior
+
+- Criterion met: MF-9 Bounded behavioral proof.
+- Observed behavior: Two seed-42 model-backed simulations receive equal first
+  restricted views; valid wait versus travel choices produce distinct first
+  attempts and, through normal resolution, home versus workplace locations at
+  tick 3.
+- Boundary evidence: The paired test verifies equal opening inspector state and
+  full first `AgentView`, distinct model-selected kinds, causal links from each
+  first attempt to its normal completion event, and final location divergence.
+  Clients receive no simulation, resolver, inspector, institution, or
+  other-agent private state.
+- Validation: Eight focused tests passed; `./scripts/check.sh` passed 75 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced all
+  checks, confirmed same-builder and equal-view evidence is proportionate, and
+  approved MF-9 as met only at the deterministic fake-client boundary.
