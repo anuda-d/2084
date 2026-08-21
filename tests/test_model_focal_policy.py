@@ -1,7 +1,11 @@
+import json
 import unittest
 
+from observer.inspector import render_inspector
+from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     ModelFocalPolicy,
+    ModelUnavailableError,
     StructuredChoiceError,
     structured_choice_to_attempt,
 )
@@ -41,6 +45,16 @@ class StaticModelDecisionClient:
     def choose(self, view):
         self.views.append(view)
         return self.response
+
+
+class FailingModelDecisionClient:
+    def __init__(self, error):
+        self.error = error
+        self.views = []
+
+    def choose(self, view):
+        self.views.append(view)
+        raise self.error
 
 
 class SequenceModelDecisionClient:
@@ -91,6 +105,116 @@ class ResultResponsiveModelDecisionClient:
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_model_selection_failures_record_a_linked_safe_wait_without_fallback(self):
+        cases = (
+            (
+                "timeout",
+                FailingModelDecisionClient(TimeoutError("secret timeout detail")),
+                "timeout",
+                "TimeoutError",
+            ),
+            (
+                "unavailable",
+                FailingModelDecisionClient(
+                    ModelUnavailableError("secret provider detail")
+                ),
+                "unavailable_model",
+                "ModelUnavailableError",
+            ),
+            (
+                "malformed",
+                StaticModelDecisionClient("secret unstructured response"),
+                "malformed_response",
+                "StructuredChoiceError",
+            ),
+            (
+                "invalid_attempt",
+                StaticModelDecisionClient(
+                    {
+                        "kind": "rewrite_world",
+                        "parameters": {},
+                        "explanation": "replace objective state",
+                        "decision_reason": "claim direct authority",
+                    }
+                ),
+                "invalid_attempt",
+                "_InvalidStructuredAttemptError",
+            ),
+        )
+
+        for label, client, failure_kind, failure_type in cases:
+            with self.subTest(label=label):
+                simulation = build_first_day(
+                    seed=42, focal_policy=ModelFocalPolicy(client)
+                )
+
+                snapshot = simulation.step()
+
+                focal_attempts = [
+                    event
+                    for event in simulation.events
+                    if event.kind == "action_attempted"
+                    and event.actor_id == FOCAL_AGENT_ID
+                ]
+                self.assertEqual(len(focal_attempts), 1)
+                attempted = focal_attempts[0]
+                self.assertEqual(attempted.details["action_kind"], "wait")
+                self.assertEqual(
+                    snapshot.current_action,
+                    "wait because no valid model decision is available",
+                )
+                self.assertEqual(
+                    snapshot.explanation,
+                    f"model decision failed safely: {failure_kind}",
+                )
+                self.assertEqual(len(client.views), 1)
+
+                self.assertEqual(len(simulation.decision_records), 1)
+                record = simulation.decision_records[0]
+                self.assertEqual(record.status, "failed")
+                self.assertEqual(record.failure_kind, failure_kind)
+                self.assertEqual(record.failure_type, failure_type)
+                self.assertEqual(record.attempted_action_kind, "wait")
+                self.assertEqual(record.attempt_event_id, attempted.event_id)
+                self.assertEqual(record.action_id, attempted.action_id)
+
+                inspector_lines = render_inspector(simulation).splitlines()
+                inspector = json.loads("\n".join(inspector_lines[2:]))
+                self.assertEqual(
+                    inspector["private_decision_records"], [record.to_data()]
+                )
+                self.assertNotIn("secret", render_inspector(simulation).lower())
+                normal = render_terminal(simulation.snapshots)
+                self.assertNotIn("private_decision_records", normal)
+                self.assertNotIn(record.decision_id, normal)
+
+    def test_schema_valid_but_invalid_world_parameters_are_rejected_normally(self):
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": 7},
+                "explanation": "attempt a route",
+                "decision_reason": "try the supplied destination",
+            }
+        )
+        simulation = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+
+        simulation.step()
+
+        focal_events = [
+            event
+            for event in simulation.events
+            if event.actor_id == FOCAL_AGENT_ID
+        ]
+        self.assertEqual(focal_events[0].kind, "action_attempted")
+        self.assertEqual(focal_events[0].details["action_kind"], "travel")
+        self.assertEqual(focal_events[1].kind, "action_rejected")
+        self.assertEqual(focal_events[1].caused_by, (focal_events[0].event_id,))
+        self.assertEqual(simulation.decision_records, ())
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).location, "home")
+
     def test_valid_client_choice_is_maras_attempt_without_scripted_substitution(self):
         scripted = build_first_day(seed=42)
         client = StaticModelDecisionClient(

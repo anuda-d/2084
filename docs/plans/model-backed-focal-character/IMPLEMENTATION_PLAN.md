@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal alignment after MF-9A
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-6A explicit model-decision failure
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -18,11 +18,11 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
 | MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only a fresh restricted view: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; clearing the client's test-only captured-view list does not change the choices. This proves the offline boundary, not live-provider statelessness. |
-| MF-6 Explicit failure | open | None yet. |
+| MF-6 Explicit failure | met | MF-6A verifies that explicit timeout and unavailable-model signals plus malformed responses and structurally invalid attempts produce one sanitized inspector-only failure record linked to one safe `wait` attempt, never the scripted policy. Schema-valid but world-invalid parameters still reach ordinary resolver rejection. |
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first restricted views: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 75 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 77 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. Alignment after MF-9A is complete; the next implementation work unit must
-be selected from fresh repository evidence.
+None. MF-6A is complete; the next implementation work unit must be selected from
+fresh repository evidence.
 
 ## Completion Rules
 
@@ -225,3 +225,27 @@ select a future task.
 - Independent review: Fresh Sol-high review found no blockers, reproduced all
   checks, confirmed same-builder and equal-view evidence is proportionate, and
   approved MF-9 as met only at the deterministic fake-client boundary.
+
+### MF-6A Explicit model-decision failure
+
+- Criterion met: MF-6 Explicit failure.
+- Observed behavior: explicit timeout and unavailable-model exceptions plus
+  malformed responses and structurally invalid attempted actions produce a
+  sanitized private failure record and a safe model-policy `wait`; the legacy
+  focal policy is never called.
+- Boundary evidence: the simulation links each failure record to the ordinary
+  attempted-action event and action id outside objective history. Raw response
+  values and exception messages are not retained. Schema-valid but world-invalid
+  parameters still become model-selected attempts and are rejected by the
+  unchanged resolver rather than reclassified as selection failures.
+- Privacy evidence: inspector output includes the detached failure records;
+  normal focal output, `history_data()`, action history, and failure records do
+  not expose raw responses or exception text. MF-7 remains open because valid
+  decision input, model configuration identity, structured response, and
+  resolved-outcome linkage are not yet recorded.
+- Validation: Ten focused tests passed; `./scripts/check.sh` passed 77 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced the
+  focused and full checks, independently probed structurally invalid and
+  world-invalid parameters, verified the privacy boundary, and approved MF-6
+  as met while keeping MF-7 open.

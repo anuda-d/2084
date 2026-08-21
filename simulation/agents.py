@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Mapping, Protocol
+from dataclasses import dataclass, field, replace
+from typing import Literal, Mapping, Protocol, runtime_checkable
 
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.beliefs import Belief
@@ -70,6 +70,53 @@ class AgentView:
     valid_actions: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class PolicyDecisionRecord:
+    """Private decision evidence kept outside objective event history."""
+
+    decision_id: str
+    tick: int
+    agent_id: str
+    policy_kind: str
+    status: Literal["failed"]
+    failure_kind: str
+    failure_type: str
+    attempted_action_kind: str
+    attempt_event_id: str | None = None
+    action_id: str | None = None
+
+    def linked_to(
+        self, *, attempt_event_id: str, action_id: str
+    ) -> PolicyDecisionRecord:
+        return replace(
+            self,
+            attempt_event_id=attempt_event_id,
+            action_id=action_id,
+        )
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "decision_id": self.decision_id,
+            "tick": self.tick,
+            "agent_id": self.agent_id,
+            "policy_kind": self.policy_kind,
+            "status": self.status,
+            "failure_kind": self.failure_kind,
+            "failure_type": self.failure_type,
+            "attempted_action_kind": self.attempted_action_kind,
+            "attempt_event_id": self.attempt_event_id,
+            "action_id": self.action_id,
+        }
+
+
 class DecisionPolicy(Protocol):
     def choose(self, view: AgentView) -> ActionAttempt:
+        ...
+
+
+@runtime_checkable
+class DecisionRecordSource(Protocol):
+    """Optional policy seam for one private record produced by the latest choice."""
+
+    def take_decision_record(self) -> PolicyDecisionRecord | None:
         ...

@@ -6,11 +6,19 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from simulation.actions import ActionAttempt
-from simulation.agents import AgentView
+from simulation.agents import AgentView, PolicyDecisionRecord
 
 
 class StructuredChoiceError(ValueError):
     """A model-like value does not satisfy the attempted-action schema."""
+
+
+class ModelUnavailableError(RuntimeError):
+    """A configured model client explicitly reports that it is unavailable."""
+
+
+class _InvalidStructuredAttemptError(StructuredChoiceError):
+    """A response cannot describe one supported attempted action."""
 
 
 class ModelDecisionClient(Protocol):
@@ -25,10 +33,55 @@ class ModelFocalPolicy:
 
     def __init__(self, client: ModelDecisionClient) -> None:
         self._client = client
+        self._decision_record: PolicyDecisionRecord | None = None
 
     def choose(self, view: AgentView) -> ActionAttempt:
-        response = self._client.choose(view)
-        return structured_choice_to_attempt(view, response)
+        self._decision_record = None
+        try:
+            response = self._client.choose(view)
+        except TimeoutError as error:
+            return self._safe_failure(view, "timeout", type(error).__name__)
+        except ModelUnavailableError as error:
+            return self._safe_failure(
+                view, "unavailable_model", type(error).__name__
+            )
+        try:
+            return structured_choice_to_attempt(view, response)
+        except _InvalidStructuredAttemptError as error:
+            return self._safe_failure(
+                view, "invalid_attempt", type(error).__name__
+            )
+        except StructuredChoiceError as error:
+            return self._safe_failure(
+                view, "malformed_response", type(error).__name__
+            )
+
+    def _safe_failure(
+        self, view: AgentView, failure_kind: str, failure_type: str
+    ) -> ActionAttempt:
+        attempt = ActionAttempt(
+            actor_id=view.agent_id,
+            kind="wait",
+            parameters={},
+            explanation="wait because no valid model decision is available",
+            decision_reason=f"model decision failed safely: {failure_kind}",
+        )
+        self._decision_record = PolicyDecisionRecord(
+            decision_id=f"model-decision-{view.agent_id}-{view.tick:04d}",
+            tick=view.tick,
+            agent_id=view.agent_id,
+            policy_kind="model",
+            status="failed",
+            failure_kind=failure_kind,
+            failure_type=failure_type,
+            attempted_action_kind=attempt.kind,
+        )
+        return attempt
+
+    def take_decision_record(self) -> PolicyDecisionRecord | None:
+        record = self._decision_record
+        self._decision_record = None
+        return record
 
 
 _CHOICE_FIELDS = frozenset(
@@ -42,12 +95,14 @@ def _validate_parameter_value(value: object, active_container_ids: set[int]) -> 
     if isinstance(value, Mapping):
         container_id = id(value)
         if container_id in active_container_ids:
-            raise StructuredChoiceError("structured choice parameters cannot be cyclic")
+            raise _InvalidStructuredAttemptError(
+                "structured choice parameters cannot be cyclic"
+            )
         active_container_ids.add(container_id)
         try:
             for key, item in value.items():
                 if not isinstance(key, str):
-                    raise StructuredChoiceError(
+                    raise _InvalidStructuredAttemptError(
                         "structured choice parameter fields must be strings"
                     )
                 _validate_parameter_value(item, active_container_ids)
@@ -57,7 +112,9 @@ def _validate_parameter_value(value: object, active_container_ids: set[int]) -> 
     if isinstance(value, (list, tuple)):
         container_id = id(value)
         if container_id in active_container_ids:
-            raise StructuredChoiceError("structured choice parameters cannot be cyclic")
+            raise _InvalidStructuredAttemptError(
+                "structured choice parameters cannot be cyclic"
+            )
         active_container_ids.add(container_id)
         try:
             for item in value:
@@ -65,7 +122,7 @@ def _validate_parameter_value(value: object, active_container_ids: set[int]) -> 
         finally:
             active_container_ids.remove(container_id)
         return
-    raise StructuredChoiceError(
+    raise _InvalidStructuredAttemptError(
         f"unsupported structured choice parameter value: {type(value).__name__}"
     )
 
@@ -94,17 +151,21 @@ def structured_choice_to_attempt(
 
     kind = response["kind"]
     if not isinstance(kind, str) or kind not in view.valid_actions:
-        raise StructuredChoiceError("structured choice kind is not supported")
+        raise _InvalidStructuredAttemptError(
+            "structured choice kind is not supported"
+        )
 
     parameters = response["parameters"]
     if not isinstance(parameters, Mapping) or any(
         not isinstance(key, str) for key in parameters
     ):
-        raise StructuredChoiceError("structured choice parameters must be an object")
+        raise _InvalidStructuredAttemptError(
+            "structured choice parameters must be an object"
+        )
     try:
         _validate_parameter_value(parameters, set())
     except RecursionError as error:
-        raise StructuredChoiceError(
+        raise _InvalidStructuredAttemptError(
             "structured choice parameter nesting is too deep"
         ) from error
 
@@ -124,4 +185,4 @@ def structured_choice_to_attempt(
             decision_reason=decision_reason,
         )
     except (TypeError, ValueError, RecursionError) as error:
-        raise StructuredChoiceError(str(error)) from error
+        raise _InvalidStructuredAttemptError(str(error)) from error

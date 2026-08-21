@@ -7,7 +7,13 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
-from simulation.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
+from simulation.agents import (
+    AgentView,
+    DecisionPolicy,
+    DecisionRecordSource,
+    DiaryEntryKnowledge,
+    PolicyDecisionRecord,
+)
 from simulation.beliefs import (
     Belief,
     BeliefTransition,
@@ -101,6 +107,7 @@ class Simulation:
         self._interpreted_claim_counts: dict[str, int] = {}
         self._stance_transitions: list[StanceTransition] = []
         self._action_results: list[ActionResult] = []
+        self._decision_records: list[PolicyDecisionRecord] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
 
@@ -118,6 +125,11 @@ class Simulation:
     @property
     def snapshots(self) -> tuple[FocalSnapshot, ...]:
         return tuple(self._snapshots)
+
+    @property
+    def decision_records(self) -> tuple[PolicyDecisionRecord, ...]:
+        """Return inspector-only decision evidence, separate from objective history."""
+        return tuple(self._decision_records)
 
     @property
     def is_complete(self) -> bool:
@@ -1308,8 +1320,18 @@ class Simulation:
         for agent_id in sorted(self._policies):
             if agent_id in self._pending:
                 continue
-            attempt = self._policies[agent_id].choose(self._view_for(agent_id))
-            self.resolve_attempt(attempt)
+            policy = self._policies[agent_id]
+            attempt = policy.choose(self._view_for(agent_id))
+            attempted_event = self.resolve_attempt(attempt)
+            if isinstance(policy, DecisionRecordSource):
+                decision_record = policy.take_decision_record()
+                if decision_record is not None:
+                    self._decision_records.append(
+                        decision_record.linked_to(
+                            attempt_event_id=attempted_event.event_id,
+                            action_id=attempted_event.action_id,
+                        )
+                    )
             if agent_id == self.focal_agent_id:
                 focal_attempt = attempt
 
