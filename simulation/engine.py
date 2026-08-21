@@ -202,6 +202,8 @@ class Simulation:
             action_results=tuple(agent.action_results),
             observations=tuple(agent.observations),
             beliefs=tuple(agent.beliefs),
+            memory_traces=agent.memory_traces,
+            interpreted_claims=agent.interpreted_claims,
             contextual_stance=agent.contextual_stance,
             accessible_diary_id=diary.object_id if diary is not None else None,
             accessible_diary_entry_count=len(diary.entries) if diary is not None else 0,

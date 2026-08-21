@@ -7,9 +7,10 @@ from policies.model_focal_policy import (
     ModelFocalPolicy,
     ModelUnavailableError,
     StructuredChoiceError,
+    model_input_from_view,
     structured_choice_to_attempt,
 )
-from scenarios.first_day import FOCAL_AGENT_ID, build_first_day
+from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
 
 
 class StructuredModelChoiceTests(unittest.TestCase):
@@ -40,57 +41,58 @@ class StructuredModelChoiceTests(unittest.TestCase):
 class StaticModelDecisionClient:
     def __init__(self, response):
         self.response = response
-        self.views = []
+        self.inputs = []
 
-    def choose(self, view):
-        self.views.append(view)
+    def choose(self, model_input):
+        self.inputs.append(model_input)
         return self.response
 
 
 class FailingModelDecisionClient:
     def __init__(self, error):
         self.error = error
-        self.views = []
+        self.inputs = []
 
-    def choose(self, view):
-        self.views.append(view)
+    def choose(self, model_input):
+        self.inputs.append(model_input)
         raise self.error
 
 
 class SequenceModelDecisionClient:
     def __init__(self, *responses):
         self.responses = responses
-        self.views = []
+        self.inputs = []
 
-    def choose(self, view):
-        response = self.responses[len(self.views)]
-        self.views.append(view)
+    def choose(self, model_input):
+        response = self.responses[len(self.inputs)]
+        self.inputs.append(model_input)
         return response
 
 
 class ResultResponsiveModelDecisionClient:
     def __init__(self, first_destination):
         self.first_destination = first_destination
-        self.views = []
+        self.inputs = []
 
-    def choose(self, view):
-        self.views.append(view)
-        if not view.action_results:
+    def choose(self, model_input):
+        self.inputs.append(model_input)
+        history = model_input["decision_history"]
+        if not history["results"]:
             return {
                 "kind": "travel",
                 "parameters": {"destination": self.first_destination},
                 "explanation": f"travel to {self.first_destination}",
                 "decision_reason": "the first decision follows the current obligation",
             }
-        latest_result = view.action_results[-1]
-        if latest_result.status == "completed":
+        latest_result = history["results"][-1]
+        if latest_result["status"] == "completed":
             return {
                 "kind": "work",
                 "parameters": {},
                 "explanation": "begin work after arriving",
                 "decision_reason": (
-                    f"the completed {latest_result.action_kind} placed Mara at "
-                    f"{view.location}"
+                    f"the completed {latest_result['action_kind']} placed Mara at "
+                    f"{model_input['state']['location']}"
                 ),
             }
         return {
@@ -98,13 +100,132 @@ class ResultResponsiveModelDecisionClient:
             "parameters": {},
             "explanation": "wait after the rejected route",
             "decision_reason": (
-                f"the previous {latest_result.action_kind} was rejected: "
-                f"{latest_result.reason}"
+                f"the previous {latest_result['action_kind']} was rejected: "
+                f"{latest_result['reason']}"
             ),
         }
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_client_receives_detached_json_compatible_restricted_input(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        state_before = simulation.inspector_state()
+        events_before = simulation.events
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait briefly",
+                "decision_reason": "pause at the current location",
+            }
+        )
+
+        selected = ModelFocalPolicy(client).choose(view)
+
+        self.assertEqual(selected.kind, "wait")
+        self.assertEqual(len(client.inputs), 1)
+        model_input = client.inputs[0]
+        self.assertEqual(
+            set(model_input),
+            {
+                "tick",
+                "character",
+                "state",
+                "decision_history",
+                "delivered_observations",
+                "understanding",
+                "accessible_objects",
+                "action_contract",
+            },
+        )
+        self.assertEqual(model_input["character"]["agent_id"], FOCAL_AGENT_ID)
+        self.assertEqual(model_input["character"]["display_name"], "Mara Vale")
+        self.assertEqual(json.loads(json.dumps(model_input)), model_input)
+
+        def nested_keys(value):
+            if isinstance(value, dict):
+                return set(value).union(
+                    *(nested_keys(item) for item in value.values())
+                )
+            if isinstance(value, list):
+                return set().union(*(nested_keys(item) for item in value))
+            return set()
+
+        forbidden_fields = {
+            "world",
+            "objective_resources",
+            "event_history",
+            "institution_records",
+            "official_record",
+            "official_record_versions",
+            "model_configuration",
+            "api_key",
+            "authorization",
+        }
+        self.assertTrue(forbidden_fields.isdisjoint(nested_keys(model_input)))
+        encoded = json.dumps(model_input, sort_keys=True)
+        self.assertNotIn(CO_WORKER_ID, encoded)
+        self.assertNotIn(CLERK_ID, encoded)
+
+        model_input["character"]["display_name"] = "mutated"
+        model_input["state"]["resource_holdings"]["household_allocation"] = 99
+        model_input["action_contract"]["supported_kinds"].append("rewrite_world")
+        self.assertEqual(view.display_name, "Mara Vale")
+        self.assertEqual(dict(view.resource_holdings), {})
+        self.assertNotIn("rewrite_world", view.valid_actions)
+        self.assertEqual(simulation.inspector_state(), state_before)
+        self.assertEqual(simulation.events, events_before)
+
+    def test_model_input_carries_only_delivered_source_linked_understanding(self):
+        simulation = build_first_day(seed=42)
+        initial_input = model_input_from_view(
+            simulation.agent_view(FOCAL_AGENT_ID)
+        )
+        self.assertEqual(initial_input["understanding"]["memory_traces"], [])
+        self.assertEqual(initial_input["understanding"]["interpreted_claims"], [])
+
+        for _ in range(7):
+            simulation.step()
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after reviewing delivered evidence",
+                "decision_reason": "retain the source-linked understanding",
+            }
+        )
+
+        ModelFocalPolicy(client).choose(view)
+
+        model_input = client.inputs[0]
+        traces = model_input["understanding"]["memory_traces"]
+        claims = model_input["understanding"]["interpreted_claims"]
+        delivered_ids = {
+            item["observation_id"]
+            for item in model_input["delivered_observations"]
+        }
+        self.assertEqual(
+            [trace["trace_id"] for trace in traces],
+            [trace.trace_id for trace in view.memory_traces],
+        )
+        self.assertEqual(
+            [claim["claim_id"] for claim in claims],
+            [claim.claim_id for claim in view.interpreted_claims],
+        )
+        self.assertTrue(traces)
+        self.assertTrue(
+            all(trace["source_observation_id"] in delivered_ids for trace in traces)
+        )
+        self.assertTrue(
+            all(
+                claim["origin_trace_id"]
+                in {trace["trace_id"] for trace in traces}
+                for claim in claims
+            )
+        )
+
     def test_model_selection_failures_record_a_linked_safe_wait_without_fallback(self):
         cases = (
             (
@@ -167,7 +288,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                     snapshot.explanation,
                     f"model decision failed safely: {failure_kind}",
                 )
-                self.assertEqual(len(client.views), 1)
+                self.assertEqual(len(client.inputs), 1)
 
                 self.assertEqual(len(simulation.decision_records), 1)
                 record = simulation.decision_records[0]
@@ -250,9 +371,13 @@ class ModelFocalPolicyTests(unittest.TestCase):
             "the immediate choice is to pause",
         )
         self.assertEqual(snapshot.current_action, "remain at home for one decision")
-        self.assertEqual(len(client.views), 1)
-        self.assertEqual(client.views[0].agent_id, FOCAL_AGENT_ID)
-        self.assertEqual(client.views[0].display_name, "Mara Vale")
+        self.assertEqual(len(client.inputs), 1)
+        self.assertEqual(
+            client.inputs[0]["character"]["agent_id"], FOCAL_AGENT_ID
+        )
+        self.assertEqual(
+            client.inputs[0]["character"]["display_name"], "Mara Vale"
+        )
 
     def test_equal_model_inputs_with_different_valid_choices_diverge_in_world(self):
         wait_client = StaticModelDecisionClient(
@@ -288,7 +413,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         waiting_snapshots = [waiting.step() for _ in range(3)]
         travelling_snapshots = [travelling.step() for _ in range(3)]
 
-        self.assertEqual(wait_client.views[0], travel_client.views[0])
+        self.assertEqual(wait_client.inputs[0], travel_client.inputs[0])
         waiting_attempt = next(
             event
             for event in waiting.events
@@ -357,12 +482,12 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(completion.tick, 3)
         self.assertEqual(completion.action_id, travel_attempt.action_id)
         self.assertEqual(completion.caused_by, (travel_attempt.event_id,))
-        self.assertEqual(len(client.views), 2)
-        self.assertEqual(client.views[0].action_results, ())
-        completed_result = client.views[1].action_results[-1]
-        self.assertEqual(completed_result.action_id, travel_attempt.action_id)
-        self.assertEqual(completed_result.status, "completed")
-        self.assertEqual(completed_result.resolved_tick, 3)
+        self.assertEqual(len(client.inputs), 2)
+        self.assertEqual(client.inputs[0]["decision_history"]["results"], [])
+        completed_result = client.inputs[1]["decision_history"]["results"][-1]
+        self.assertEqual(completed_result["action_id"], travel_attempt.action_id)
+        self.assertEqual(completed_result["status"], "completed")
+        self.assertEqual(completed_result["resolved_tick"], 3)
 
     def test_world_rejects_unreachable_model_travel_and_returns_actor_safe_result(self):
         client = StaticModelDecisionClient(
@@ -399,7 +524,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(result.outcome_event_id, rejected.event_id)
         self.assertEqual(result.status, "rejected")
         self.assertEqual(result.reason, rejected.details["reason"])
-        self.assertEqual(len(client.views), 1)
+        self.assertEqual(len(client.inputs), 1)
 
     def test_later_choice_uses_completed_result_and_persistent_location(self):
         client = ResultResponsiveModelDecisionClient("workplace")
@@ -420,14 +545,19 @@ class ModelFocalPolicyTests(unittest.TestCase):
             [event.details["action_kind"] for event in focal_attempts],
             ["travel", "work"],
         )
-        self.assertEqual(len(client.views), 2)
-        later_view = client.views[1]
-        completed = later_view.action_results[-1]
-        self.assertEqual(later_view.location, "workplace")
-        self.assertEqual(later_view.last_attempt.kind, "travel")
-        self.assertEqual(later_view.action_history, (later_view.last_attempt,))
-        self.assertEqual(completed.action_kind, "travel")
-        self.assertEqual(completed.status, "completed")
+        self.assertEqual(len(client.inputs), 2)
+        later_input = client.inputs[1]
+        completed = later_input["decision_history"]["results"][-1]
+        self.assertEqual(later_input["state"]["location"], "workplace")
+        self.assertEqual(
+            later_input["decision_history"]["last_attempt"]["kind"], "travel"
+        )
+        self.assertEqual(
+            later_input["decision_history"]["attempts"],
+            [later_input["decision_history"]["last_attempt"]],
+        )
+        self.assertEqual(completed["action_kind"], "travel")
+        self.assertEqual(completed["status"], "completed")
         self.assertEqual(
             focal_attempts[1].details["decision_explanation"],
             "the completed travel placed Mara at workplace",
@@ -451,17 +581,19 @@ class ModelFocalPolicyTests(unittest.TestCase):
             [event.details["action_kind"] for event in focal_attempts],
             ["travel", "wait"],
         )
-        self.assertEqual(len(client.views), 2)
-        later_view = client.views[1]
-        rejected = later_view.action_results[-1]
-        self.assertEqual(later_view.location, "home")
-        self.assertEqual(later_view.last_attempt.kind, "travel")
-        self.assertEqual(rejected.action_kind, "travel")
-        self.assertEqual(rejected.status, "rejected")
-        self.assertIn("not reachable", rejected.reason)
+        self.assertEqual(len(client.inputs), 2)
+        later_input = client.inputs[1]
+        rejected = later_input["decision_history"]["results"][-1]
+        self.assertEqual(later_input["state"]["location"], "home")
+        self.assertEqual(
+            later_input["decision_history"]["last_attempt"]["kind"], "travel"
+        )
+        self.assertEqual(rejected["action_kind"], "travel")
+        self.assertEqual(rejected["status"], "rejected")
+        self.assertIn("not reachable", rejected["reason"])
         self.assertEqual(
             focal_attempts[1].details["decision_explanation"],
-            "the previous travel was rejected: " + rejected.reason,
+            "the previous travel was rejected: " + rejected["reason"],
         )
 
     def test_invalid_model_like_values_fail_before_touching_simulation(self):

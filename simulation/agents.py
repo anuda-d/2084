@@ -62,6 +62,8 @@ class AgentView:
     action_results: tuple[ActionResult, ...]
     observations: tuple[Observation, ...]
     beliefs: tuple[Belief, ...]
+    memory_traces: tuple[MemoryTrace, ...]
+    interpreted_claims: tuple[InterpretedClaim, ...]
     contextual_stance: ContextualStance | None
     accessible_diary_id: str | None
     accessible_diary_entry_count: int

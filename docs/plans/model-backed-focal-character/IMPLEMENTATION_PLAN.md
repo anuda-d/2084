@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-6A explicit model-decision failure
-- Verified implementation runs since alignment: 1
+- Last completed run: MF-2B serialized restricted model input
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -14,15 +14,15 @@ Status: active shared state; no implementation work unit has been selected.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
-| MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
+| MF-2 Restricted decision envelope | open | MF-2A verifies agent-owned focal identity. MF-2B verifies that the client receives only a detached JSON-compatible serialization of identity, embodied and goal state, delivered evidence, source-linked understanding, accessible objects, prior attempts/results, and supported kinds. Parameter-level agent-safe action affordances remain open. |
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
-| MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only a fresh restricted view: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; clearing the client's test-only captured-view list does not change the choices. This proves the offline boundary, not live-provider statelessness. |
+| MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only fresh serialized restricted input: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; no opaque client history determines the choices. This proves the offline boundary, not live-provider statelessness. |
 | MF-6 Explicit failure | met | MF-6A verifies that explicit timeout and unavailable-model signals plus malformed responses and structurally invalid attempts produce one sanitized inspector-only failure record linked to one safe `wait` attempt, never the scripted policy. Schema-valid but world-invalid parameters still reach ordinary resolver rejection. |
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
-| MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first restricted views: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 77 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 79 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,7 +47,7 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-6A is complete; the next implementation work unit must be selected from
+None. MF-2B is complete; the next implementation work unit must be selected from
 fresh repository evidence.
 
 ## Completion Rules
@@ -216,8 +216,9 @@ select a future task.
   attempts and, through normal resolution, home versus workplace locations at
   tick 3.
 - Boundary evidence: The paired test verifies equal opening inspector state and
-  full first `AgentView`, distinct model-selected kinds, causal links from each
-  first attempt to its normal completion event, and final location divergence.
+  full first serialized restricted input, distinct model-selected kinds, causal
+  links from each first attempt to its normal completion event, and final
+  location divergence.
   Clients receive no simulation, resolver, inspector, institution, or
   other-agent private state.
 - Validation: Eight focused tests passed; `./scripts/check.sh` passed 75 current
@@ -249,3 +250,27 @@ select a future task.
   focused and full checks, independently probed structurally invalid and
   world-invalid parameters, verified the privacy boundary, and approved MF-6
   as met while keeping MF-7 open.
+
+### MF-2B Serialized restricted model input
+
+- Criterion advanced: MF-2 Restricted decision envelope remains open.
+- Observed behavior: `ModelFocalPolicy` now supplies its client a fresh plain
+  mapping/list/scalar serialization instead of `AgentView`. The input includes
+  focal identity, embodied and goal state, prior attempts/results, delivered
+  observations, beliefs, canonical memory traces and interpreted claims,
+  contextual stance, accessible diary and public-record references, and the
+  supported action kinds.
+- Boundary evidence: focused tests JSON-round-trip the input, mutate nested
+  identity, holdings, and action-kind containers without changing the view,
+  simulation, or EventLog, and verify source-linked understanding is empty
+  before delivery and later refers only to supplied delivered observations.
+- Privacy evidence: forbidden objective, event-history, institution-private,
+  provider, credential, and other-agent-private fields are absent. A delivered
+  visible actor reference may still appear as actor-safe evidence.
+- Validation: Twelve focused tests passed; `./scripts/check.sh` passed 79 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, JSON-encoded the
+  input across every deterministic tick including diary and contextual-stance
+  states, reproduced mutation and privacy probes, and confirmed no met
+  criterion reopens. MF-2 remains open because the action contract still lacks
+  agent-safe parameter-level affordances.
