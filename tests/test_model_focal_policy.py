@@ -54,6 +54,42 @@ class SequenceModelDecisionClient:
         return response
 
 
+class ResultResponsiveModelDecisionClient:
+    def __init__(self, first_destination):
+        self.first_destination = first_destination
+        self.views = []
+
+    def choose(self, view):
+        self.views.append(view)
+        if not view.action_results:
+            return {
+                "kind": "travel",
+                "parameters": {"destination": self.first_destination},
+                "explanation": f"travel to {self.first_destination}",
+                "decision_reason": "the first decision follows the current obligation",
+            }
+        latest_result = view.action_results[-1]
+        if latest_result.status == "completed":
+            return {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "begin work after arriving",
+                "decision_reason": (
+                    f"the completed {latest_result.action_kind} placed Mara at "
+                    f"{view.location}"
+                ),
+            }
+        return {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "wait after the rejected route",
+            "decision_reason": (
+                f"the previous {latest_result.action_kind} was rejected: "
+                f"{latest_result.reason}"
+            ),
+        }
+
+
 class ModelFocalPolicyTests(unittest.TestCase):
     def test_valid_client_choice_is_maras_attempt_without_scripted_substitution(self):
         scripted = build_first_day(seed=42)
@@ -178,6 +214,69 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(result.status, "rejected")
         self.assertEqual(result.reason, rejected.details["reason"])
         self.assertEqual(len(client.views), 1)
+
+    def test_later_choice_uses_completed_result_and_persistent_location(self):
+        client = ResultResponsiveModelDecisionClient("workplace")
+        simulation = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+
+        simulation.step()
+        simulation.step()
+        simulation.step()
+
+        focal_attempts = [
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        ]
+        self.assertEqual(
+            [event.details["action_kind"] for event in focal_attempts],
+            ["travel", "work"],
+        )
+        self.assertEqual(len(client.views), 2)
+        later_view = client.views[1]
+        completed = later_view.action_results[-1]
+        self.assertEqual(later_view.location, "workplace")
+        self.assertEqual(later_view.last_attempt.kind, "travel")
+        self.assertEqual(later_view.action_history, (later_view.last_attempt,))
+        self.assertEqual(completed.action_kind, "travel")
+        self.assertEqual(completed.status, "completed")
+        self.assertEqual(
+            focal_attempts[1].details["decision_explanation"],
+            "the completed travel placed Mara at workplace",
+        )
+
+    def test_later_choice_uses_rejected_result_without_provider_history(self):
+        client = ResultResponsiveModelDecisionClient("allocation_office")
+        simulation = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+
+        simulation.step()
+        simulation.step()
+
+        focal_attempts = [
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        ]
+        self.assertEqual(
+            [event.details["action_kind"] for event in focal_attempts],
+            ["travel", "wait"],
+        )
+        self.assertEqual(len(client.views), 2)
+        later_view = client.views[1]
+        rejected = later_view.action_results[-1]
+        self.assertEqual(later_view.location, "home")
+        self.assertEqual(later_view.last_attempt.kind, "travel")
+        self.assertEqual(rejected.action_kind, "travel")
+        self.assertEqual(rejected.status, "rejected")
+        self.assertIn("not reachable", rejected.reason)
+        self.assertEqual(
+            focal_attempts[1].details["decision_explanation"],
+            "the previous travel was rejected: " + rejected.reason,
+        )
 
     def test_invalid_model_like_values_fail_before_touching_simulation(self):
         simulation = build_first_day(seed=42)

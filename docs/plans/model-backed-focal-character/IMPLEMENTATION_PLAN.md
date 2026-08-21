@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-4A model attempt resolution authority
-- Verified implementation runs since alignment: 1
+- Last completed run: MF-5A explicit-state decision continuity
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -17,7 +17,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
-| MF-5 Decision continuity | open | None yet. |
+| MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only a fresh restricted view: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; clearing the client's test-only captured-view list does not change the choices. This proves the offline boundary, not live-provider statelessness. |
 | MF-6 Explicit failure | open | None yet. |
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
@@ -47,7 +47,7 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-4A is verified; the next implementation work unit must be selected
+None. MF-5A is verified; the next implementation work unit must be selected
 from fresh repository evidence.
 
 ## Completion Rules
@@ -160,3 +160,23 @@ select a future task.
   full checks and model-path probes, confirmed complete result linkage and
   tick-2 immobility independently, and approved MF-4 as met without production
   changes to the resolver.
+
+### MF-5A Explicit-state decision continuity
+
+- Criterion met: MF-5 Decision continuity.
+- Observed behavior: A deterministic client chooses travel from the initial
+  restricted view, then chooses work from a completed travel result plus the
+  new workplace location, or wait from a rejected travel result plus its
+  actor-safe reason.
+- Boundary evidence: Committed tests verify both later model-selected actions,
+  their decision explanations, current location, linked result status, and the
+  presence of explicit last-attempt and action-history state. Branch selection
+  uses the result and location or reason; it does not consult captured prior
+  views or opaque conversation history.
+- Validation: Seven focused tests passed; `./scripts/check.sh` passed 74 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced all
+  checks, and cleared the client's test-only captured-view list after the first
+  choice; the same completion and rejection follow-ups still occurred. It
+  approved MF-5 as met at the offline boundary without claiming live-provider
+  statelessness.
