@@ -6,8 +6,20 @@ import random
 from dataclasses import dataclass
 from typing import Mapping
 
-from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
-from simulation.agents import AgentView, DecisionPolicy, DiaryEntryKnowledge
+from simulation.actions import (
+    ACTION_KINDS,
+    ACTION_PARAMETER_CONTRACTS,
+    ActionAttempt,
+    ActionResult,
+    PendingAction,
+)
+from simulation.agents import (
+    AgentView,
+    DecisionPolicy,
+    DecisionRecordSource,
+    DiaryEntryKnowledge,
+    PolicyDecisionRecord,
+)
 from simulation.beliefs import (
     Belief,
     BeliefTransition,
@@ -101,6 +113,7 @@ class Simulation:
         self._interpreted_claim_counts: dict[str, int] = {}
         self._stance_transitions: list[StanceTransition] = []
         self._action_results: list[ActionResult] = []
+        self._decision_records: list[PolicyDecisionRecord] = []
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
 
@@ -118,6 +131,11 @@ class Simulation:
     @property
     def snapshots(self) -> tuple[FocalSnapshot, ...]:
         return tuple(self._snapshots)
+
+    @property
+    def decision_records(self) -> tuple[PolicyDecisionRecord, ...]:
+        """Return inspector-only decision evidence, separate from objective history."""
+        return tuple(self._decision_records)
 
     @property
     def is_complete(self) -> bool:
@@ -176,6 +194,8 @@ class Simulation:
         return AgentView(
             tick=self.tick,
             agent_id=agent.agent_id,
+            display_name=agent.display_name,
+            role=agent.role,
             location=agent.location,
             aim=agent.aim,
             required_resource_id=agent.required_resource_id,
@@ -188,6 +208,8 @@ class Simulation:
             action_results=tuple(agent.action_results),
             observations=tuple(agent.observations),
             beliefs=tuple(agent.beliefs),
+            memory_traces=agent.memory_traces,
+            interpreted_claims=agent.interpreted_claims,
             contextual_stance=agent.contextual_stance,
             accessible_diary_id=diary.object_id if diary is not None else None,
             accessible_diary_entry_count=len(diary.entries) if diary is not None else 0,
@@ -208,6 +230,13 @@ class Simulation:
                 and self.rules.official_record_artifact_id
                 == self.world.institution.official_record.artifact_id
                 else ()
+            ),
+            reachable_destinations=tuple(
+                self.world.travel_graph.get(agent.location, ())
+            ),
+            work_action_available=agent.location == self.rules.work_location,
+            allocation_action_available=(
+                agent.location == self.rules.allocation_location
             ),
             valid_actions=tuple(sorted(ACTION_KINDS)),
         )
@@ -243,6 +272,13 @@ class Simulation:
 
     def _append_action_result(self, result: ActionResult) -> None:
         self._action_results.append(result)
+        self._decision_records = [
+            record.resolved_with(result)
+            if record.action_id == result.action_id
+            and record.resolution_status is None
+            else record
+            for record in self._decision_records
+        ]
         actor = self.world.agents.get(result.actor_id)
         if actor is not None:
             actor.action_results.append(result)
@@ -308,29 +344,9 @@ class Simulation:
         return None
 
     def _unexpected_parameter_error(self, attempt: ActionAttempt) -> str | None:
-        allowed_by_kind = {
-            "travel": {"destination"},
-            "work": set(),
-            "consult_official_record": {"artifact_id"},
-            "request_allocation": {"requested_units", "evidence_observation_ids"},
-            "speak": {
-                "proposition",
-                "asserted_value",
-                "private_belief_id",
-                "evidence_observation_ids",
-                "pressure_reason",
-                "pressure",
-            },
-            "write_diary": {
-                "object_id",
-                "proposition",
-                "asserted_value",
-                "source_observation_ids",
-            },
-            "read_diary": {"object_id", "entry_id"},
-            "wait": set(),
-        }
-        unexpected = sorted(set(attempt.parameters) - allowed_by_kind[attempt.kind])
+        contract = ACTION_PARAMETER_CONTRACTS[attempt.kind]
+        allowed = set(contract.required) | set(contract.optional)
+        unexpected = sorted(set(attempt.parameters) - allowed)
         if not unexpected:
             return None
         return f"{attempt.kind} contains unexpected parameters: " + ", ".join(
@@ -1306,8 +1322,32 @@ class Simulation:
         for agent_id in sorted(self._policies):
             if agent_id in self._pending:
                 continue
-            attempt = self._policies[agent_id].choose(self._view_for(agent_id))
-            self.resolve_attempt(attempt)
+            policy = self._policies[agent_id]
+            attempt = policy.choose(self._view_for(agent_id))
+            attempted_event = self.resolve_attempt(attempt)
+            if isinstance(policy, DecisionRecordSource):
+                decision_record = policy.take_decision_record()
+                if decision_record is not None:
+                    result = next(
+                        (
+                            item
+                            for item in reversed(self._action_results)
+                            if item.action_id == attempted_event.action_id
+                        ),
+                        None,
+                    )
+                    decision_record = decision_record.linked_to(
+                        attempt_event_id=attempted_event.event_id,
+                        action_id=attempted_event.action_id or "",
+                        validation_status=(
+                            "rejected"
+                            if result is not None and result.status == "rejected"
+                            else "accepted"
+                        ),
+                    )
+                    if result is not None:
+                        decision_record = decision_record.resolved_with(result)
+                    self._decision_records.append(decision_record)
             if agent_id == self.focal_agent_id:
                 focal_attempt = attempt
 

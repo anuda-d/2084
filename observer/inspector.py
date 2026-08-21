@@ -27,6 +27,9 @@ def render_inspector(simulation: Simulation) -> str:
     }
     payload = {
         "objective_state": simulation.inspector_state(),
+        "private_decision_records": [
+            record.to_data() for record in simulation.decision_records
+        ],
         "institution_records": dict(simulation.world.institution.records),
         "official_record": simulation.world.institution.official_record.to_data(),
         "beliefs": beliefs,

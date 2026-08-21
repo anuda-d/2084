@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from simulation.agents import AgentState
+from simulation.agents import AgentState, DecisionPolicy
 from simulation.institutions import (
     InstitutionState,
     OfficialRecordPublication,
@@ -27,7 +27,9 @@ RATION_SCHEDULE_VERSION_TWO_ID = "weekly-household-ration-schedule-v2"
 RATION_SCHEDULE_PERIOD_ID = "first-day-week"
 
 
-def build_first_day(seed: int = 42) -> Simulation:
+def build_first_day(
+    seed: int = 42, *, focal_policy: DecisionPolicy | None = None
+) -> Simulation:
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise ValueError("seed must be an integer")
     agents = {
@@ -84,7 +86,7 @@ def build_first_day(seed: int = 42) -> Simulation:
     return Simulation(
         world=world,
         policies={
-            FOCAL_AGENT_ID: FocalPolicy(),
+            FOCAL_AGENT_ID: FocalPolicy() if focal_policy is None else focal_policy,
             CO_WORKER_ID: CoworkerPolicy(),
             CLERK_ID: AllocationClerkPolicy(),
         },
