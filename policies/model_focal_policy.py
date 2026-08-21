@@ -11,7 +11,7 @@ from simulation.actions import (
     action_parameter_shape_error,
 )
 from simulation.agents import AgentView, PolicyDecisionRecord
-from simulation.events import to_plain_data
+from simulation.events import freeze_mapping, to_plain_data
 
 
 class StructuredChoiceError(ValueError):
@@ -306,33 +306,69 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
 class ModelFocalPolicy:
     """Use a model-compatible client as the focal character's chooser."""
 
-    def __init__(self, client: ModelDecisionClient) -> None:
+    def __init__(self, client: ModelDecisionClient, *, configuration_id: str) -> None:
+        if not isinstance(configuration_id, str) or not configuration_id.strip():
+            raise ValueError("configuration_id must be a non-empty string")
         self._client = client
+        self._configuration_id = configuration_id
         self._decision_record: PolicyDecisionRecord | None = None
 
     def choose(self, view: AgentView) -> ActionAttempt:
         self._decision_record = None
+        model_input = model_input_from_view(view)
+        recorded_input = freeze_mapping(model_input)
         try:
-            response = self._client.choose(model_input_from_view(view))
+            response = self._client.choose(model_input)
         except TimeoutError as error:
-            return self._safe_failure(view, "timeout", type(error).__name__)
+            return self._safe_failure(
+                view,
+                recorded_input,
+                "timeout",
+                type(error).__name__,
+            )
         except ModelUnavailableError as error:
             return self._safe_failure(
-                view, "unavailable_model", type(error).__name__
+                view,
+                recorded_input,
+                "unavailable_model",
+                type(error).__name__,
             )
         try:
-            return structured_choice_to_attempt(view, response)
+            attempt = structured_choice_to_attempt(view, response)
         except _InvalidStructuredAttemptError as error:
             return self._safe_failure(
-                view, "invalid_attempt", type(error).__name__
+                view,
+                recorded_input,
+                "invalid_attempt",
+                type(error).__name__,
             )
         except StructuredChoiceError as error:
             return self._safe_failure(
-                view, "malformed_response", type(error).__name__
+                view,
+                recorded_input,
+                "malformed_response",
+                type(error).__name__,
             )
+        self._decision_record = PolicyDecisionRecord(
+            decision_id=f"model-decision-{view.agent_id}-{view.tick:04d}",
+            tick=view.tick,
+            agent_id=view.agent_id,
+            policy_kind="model",
+            configuration_id=self._configuration_id,
+            status="selected",
+            model_input=recorded_input,
+            structured_response=response,
+            attempted_action=_attempt_data(attempt) or {},
+            attempted_action_kind=attempt.kind,
+        )
+        return attempt
 
     def _safe_failure(
-        self, view: AgentView, failure_kind: str, failure_type: str
+        self,
+        view: AgentView,
+        model_input: Mapping[str, object],
+        failure_kind: str,
+        failure_type: str,
     ) -> ActionAttempt:
         attempt = ActionAttempt(
             actor_id=view.agent_id,
@@ -346,7 +382,11 @@ class ModelFocalPolicy:
             tick=view.tick,
             agent_id=view.agent_id,
             policy_kind="model",
+            configuration_id=self._configuration_id,
             status="failed",
+            model_input=model_input,
+            structured_response=None,
+            attempted_action=_attempt_data(attempt) or {},
             failure_kind=failure_kind,
             failure_type=failure_type,
             attempted_action_kind=attempt.kind,

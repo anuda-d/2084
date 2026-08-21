@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-2C agent-safe action affordances
-- Verified implementation runs since alignment: 1
+- Last completed run: MF-7A linked private decision evidence
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -19,10 +19,10 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
 | MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only fresh serialized restricted input: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; no opaque client history determines the choices. This proves the offline boundary, not live-provider statelessness. |
 | MF-6 Explicit failure | met | MF-6A verifies that explicit timeout and unavailable-model signals plus malformed responses and structurally invalid attempts produce one sanitized inspector-only failure record linked to one safe `wait` attempt, never the scripted policy. Schema-valid but world-invalid parameters still reach ordinary resolver rejection. |
-| MF-7 Decision evidence and privacy | open | None yet. |
+| MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | open | None yet. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 81 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 84 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,7 +47,7 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-2C is complete; the next implementation work unit must be selected from
+None. MF-7A is complete; the next implementation work unit must be selected from
 fresh repository evidence.
 
 ## Completion Rules
@@ -360,3 +360,32 @@ select a future task.
   deterministic states through tick 28, reproduced nested mutation and privacy
   probes, and approved MF-2 as met at the restricted offline envelope boundary
   without reopening MF-3 or another met criterion.
+
+### MF-7A Linked private decision evidence
+
+- Criterion met: MF-7 Decision evidence and privacy.
+- Observed behavior: every valid or failed model selection produces exactly one
+  immutable private record. It captures the pre-client restricted input, an
+  explicit caller-supplied configuration identity, a structured response only
+  after successful validation, the resulting attempted action, and linked world
+  validation and terminal resolution fields.
+- Causal evidence: immediate completion and rejection records link during the
+  same step; accepted pending travel begins without a terminal status and is
+  immutably updated with the tick-3 completion event when normal resolution
+  finishes. Attempt, action, and outcome identifiers match objective events.
+- Privacy evidence: records stay outside `EventLog` and `history_data()` and are
+  rendered only by the development inspector. Raw malformed output, exception
+  messages, client credential-like attributes and provider configuration are
+  never retained. Normal output keeps only the existing attributed character
+  decision explanation, not the private record or configuration identity.
+- Detachment evidence: input is frozen before the client call, valid response
+  and attempted action are detached, post-call nested mutation does not change
+  records, and record data strictly JSON-encodes in tested paths. Callers must
+  continue supplying a non-secret configuration label rather than credentials.
+- Validation: Seventeen focused tests passed; `./scripts/check.sh` passed 84
+  current and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced a
+  seven-path matrix covering immediate, pending, rejected, malformed,
+  shape-invalid, timeout, and unavailable decisions, and approved MF-7 as met
+  without reopening another criterion. MF-8 remains open because no playback
+  client or equal-history recorded-decision proof exists.

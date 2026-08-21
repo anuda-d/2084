@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Literal, Mapping, Protocol, runtime_checkable
+from typing import Any, Literal, Mapping, Protocol, runtime_checkable
 
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.beliefs import Belief
-from simulation.events import Observation
+from simulation.events import Observation, freeze_mapping, to_plain_data
 from simulation.understanding import ContextualStance, InterpretedClaim, MemoryTrace
 
 
@@ -83,20 +83,58 @@ class PolicyDecisionRecord:
     tick: int
     agent_id: str
     policy_kind: str
-    status: Literal["failed"]
-    failure_kind: str
-    failure_type: str
+    configuration_id: str
+    status: Literal["selected", "failed"]
+    model_input: Mapping[str, Any]
+    structured_response: Mapping[str, Any] | None
+    attempted_action: Mapping[str, Any]
     attempted_action_kind: str
+    failure_kind: str | None = None
+    failure_type: str | None = None
     attempt_event_id: str | None = None
     action_id: str | None = None
+    validation_status: Literal["accepted", "rejected"] | None = None
+    resolution_status: Literal["completed", "rejected"] | None = None
+    outcome_event_id: str | None = None
+    resolved_tick: int | None = None
+    resolution_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "model_input", freeze_mapping(self.model_input))
+        object.__setattr__(
+            self,
+            "structured_response",
+            (
+                freeze_mapping(self.structured_response)
+                if self.structured_response is not None
+                else None
+            ),
+        )
+        object.__setattr__(
+            self, "attempted_action", freeze_mapping(self.attempted_action)
+        )
 
     def linked_to(
-        self, *, attempt_event_id: str, action_id: str
+        self,
+        *,
+        attempt_event_id: str,
+        action_id: str,
+        validation_status: Literal["accepted", "rejected"],
     ) -> PolicyDecisionRecord:
         return replace(
             self,
             attempt_event_id=attempt_event_id,
             action_id=action_id,
+            validation_status=validation_status,
+        )
+
+    def resolved_with(self, result: ActionResult) -> PolicyDecisionRecord:
+        return replace(
+            self,
+            resolution_status=result.status,
+            outcome_event_id=result.outcome_event_id,
+            resolved_tick=result.resolved_tick,
+            resolution_reason=result.reason,
         )
 
     def to_data(self) -> dict[str, object]:
@@ -105,12 +143,25 @@ class PolicyDecisionRecord:
             "tick": self.tick,
             "agent_id": self.agent_id,
             "policy_kind": self.policy_kind,
+            "configuration_id": self.configuration_id,
             "status": self.status,
+            "model_input": to_plain_data(self.model_input),
+            "structured_response": (
+                to_plain_data(self.structured_response)
+                if self.structured_response is not None
+                else None
+            ),
+            "attempted_action": to_plain_data(self.attempted_action),
             "failure_kind": self.failure_kind,
             "failure_type": self.failure_type,
             "attempted_action_kind": self.attempted_action_kind,
             "attempt_event_id": self.attempt_event_id,
             "action_id": self.action_id,
+            "validation_status": self.validation_status,
+            "resolution_status": self.resolution_status,
+            "outcome_event_id": self.outcome_event_id,
+            "resolved_tick": self.resolved_tick,
+            "resolution_reason": self.resolution_reason,
         }
 
 

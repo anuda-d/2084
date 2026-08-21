@@ -165,6 +165,16 @@ class FailingModelDecisionClient:
         raise self.error
 
 
+class MutatingModelDecisionClient:
+    def __init__(self, response):
+        self.response = response
+
+    def choose(self, model_input):
+        model_input["character"]["display_name"] = "mutated by client"
+        model_input["action_contract"]["supported_kinds"].append("rewrite_world")
+        return self.response
+
+
 class SequenceModelDecisionClient:
     def __init__(self, *responses):
         self.responses = responses
@@ -213,6 +223,10 @@ class ResultResponsiveModelDecisionClient:
         }
 
 
+def model_policy(client):
+    return ModelFocalPolicy(client, configuration_id="deterministic-test-v1")
+
+
 class ModelFocalPolicyTests(unittest.TestCase):
     def test_client_receives_detached_json_compatible_restricted_input(self):
         simulation = build_first_day(seed=42)
@@ -228,7 +242,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             }
         )
 
-        selected = ModelFocalPolicy(client).choose(view)
+        selected = model_policy(client).choose(view)
 
         self.assertEqual(selected.kind, "wait")
         self.assertEqual(len(client.inputs), 1)
@@ -294,6 +308,10 @@ class ModelFocalPolicyTests(unittest.TestCase):
             "allocatable_units",
             "committed_units",
             "model_configuration",
+            "configuration_id",
+            "structured_response",
+            "decision_records",
+            "private_decision_records",
             "api_key",
             "authorization",
         }
@@ -420,7 +438,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             }
         )
 
-        ModelFocalPolicy(client).choose(view)
+        model_policy(client).choose(view)
 
         model_input = client.inputs[0]
         traces = model_input["understanding"]["memory_traces"]
@@ -489,7 +507,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         for label, client, failure_kind, failure_type in cases:
             with self.subTest(label=label):
                 simulation = build_first_day(
-                    seed=42, focal_policy=ModelFocalPolicy(client)
+                    seed=42, focal_policy=model_policy(client)
                 )
 
                 snapshot = simulation.step()
@@ -516,11 +534,15 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 self.assertEqual(len(simulation.decision_records), 1)
                 record = simulation.decision_records[0]
                 self.assertEqual(record.status, "failed")
+                self.assertEqual(record.configuration_id, "deterministic-test-v1")
                 self.assertEqual(record.failure_kind, failure_kind)
                 self.assertEqual(record.failure_type, failure_type)
+                self.assertIsNone(record.structured_response)
                 self.assertEqual(record.attempted_action_kind, "wait")
                 self.assertEqual(record.attempt_event_id, attempted.event_id)
                 self.assertEqual(record.action_id, attempted.action_id)
+                self.assertEqual(record.validation_status, "accepted")
+                self.assertEqual(record.resolution_status, "completed")
 
                 inspector_lines = render_inspector(simulation).splitlines()
                 inspector = json.loads("\n".join(inspector_lines[2:]))
@@ -542,7 +564,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             }
         )
         simulation = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
 
         simulation.step()
@@ -556,8 +578,122 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(focal_events[0].details["action_kind"], "travel")
         self.assertEqual(focal_events[1].kind, "action_rejected")
         self.assertEqual(focal_events[1].caused_by, (focal_events[0].event_id,))
-        self.assertEqual(simulation.decision_records, ())
+        self.assertEqual(len(simulation.decision_records), 1)
+        record = simulation.decision_records[0]
+        self.assertEqual(record.status, "selected")
+        self.assertEqual(record.structured_response["kind"], "travel")
+        self.assertEqual(record.validation_status, "rejected")
+        self.assertEqual(record.resolution_status, "rejected")
+        self.assertEqual(record.outcome_event_id, focal_events[1].event_id)
+        self.assertEqual(record.resolution_reason, focal_events[1].details["reason"])
         self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).location, "home")
+
+    def test_successful_decision_record_links_private_evidence_to_resolution(self):
+        response = {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "remain home briefly",
+            "decision_reason": "pause before travelling",
+        }
+        client = StaticModelDecisionClient(response)
+        client.api_key = "credential-marker-must-not-be-recorded"
+        simulation = build_first_day(
+            seed=42, focal_policy=model_policy(client)
+        )
+
+        snapshot = simulation.step()
+
+        record = simulation.decision_records[0]
+        attempted = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+        )
+        completed = next(
+            event
+            for event in simulation.events
+            if event.kind == "wait_completed"
+            and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(record.status, "selected")
+        self.assertEqual(record.configuration_id, "deterministic-test-v1")
+        self.assertEqual(record.to_data()["model_input"], client.inputs[0])
+        self.assertEqual(record.to_data()["structured_response"], response)
+        self.assertEqual(record.attempted_action["kind"], "wait")
+        self.assertEqual(record.attempt_event_id, attempted.event_id)
+        self.assertEqual(record.action_id, attempted.action_id)
+        self.assertEqual(record.validation_status, "accepted")
+        self.assertEqual(record.resolution_status, "completed")
+        self.assertEqual(record.outcome_event_id, completed.event_id)
+        self.assertEqual(record.resolved_tick, 1)
+        self.assertIsNone(record.resolution_reason)
+        json.dumps(record.to_data())
+
+        inspector = render_inspector(simulation)
+        normal = render_terminal((snapshot,))
+        history = json.dumps(simulation.history_data(), sort_keys=True)
+        self.assertIn("deterministic-test-v1", inspector)
+        self.assertNotIn("credential-marker", inspector)
+        self.assertNotIn("deterministic-test-v1", normal)
+        self.assertNotIn("deterministic-test-v1", history)
+        self.assertNotIn("private_decision_records", normal)
+        self.assertNotIn("private_decision_records", history)
+
+    def test_pending_decision_record_gains_eventual_completion_link(self):
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to workplace",
+                "decision_reason": "follow the current obligation",
+            }
+        )
+        simulation = build_first_day(
+            seed=42, focal_policy=model_policy(client)
+        )
+
+        simulation.step()
+        initial_record = simulation.decision_records[0]
+        self.assertEqual(initial_record.validation_status, "accepted")
+        self.assertIsNone(initial_record.resolution_status)
+        simulation.step()
+        simulation.step()
+
+        completed_record = simulation.decision_records[0]
+        completion = next(
+            event
+            for event in simulation.events
+            if event.kind == "travel_completed"
+            and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(completed_record.resolution_status, "completed")
+        self.assertEqual(completed_record.outcome_event_id, completion.event_id)
+        self.assertEqual(completed_record.resolved_tick, 3)
+
+    def test_recorded_input_is_detached_before_client_mutation(self):
+        client = MutatingModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait",
+                "decision_reason": "choose a safe pause",
+            }
+        )
+        simulation = build_first_day(
+            seed=42, focal_policy=model_policy(client)
+        )
+
+        simulation.step()
+
+        record_input = simulation.decision_records[0].model_input
+        self.assertEqual(record_input["character"]["display_name"], "Mara Vale")
+        self.assertNotIn(
+            "rewrite_world", record_input["action_contract"]["supported_kinds"]
+        )
+        self.assertEqual(
+            simulation.agent_view(FOCAL_AGENT_ID).display_name, "Mara Vale"
+        )
 
     def test_valid_client_choice_is_maras_attempt_without_scripted_substitution(self):
         scripted = build_first_day(seed=42)
@@ -570,7 +706,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             }
         )
         model_backed = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
         self.assertEqual(scripted.inspector_state(), model_backed.inspector_state())
 
@@ -626,10 +762,10 @@ class ModelFocalPolicyTests(unittest.TestCase):
             },
         )
         waiting = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(wait_client)
+            seed=42, focal_policy=model_policy(wait_client)
         )
         travelling = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(travel_client)
+            seed=42, focal_policy=model_policy(travel_client)
         )
         self.assertEqual(waiting.inspector_state(), travelling.inspector_state())
 
@@ -680,7 +816,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             },
         )
         simulation = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
 
         tick_one = simulation.step()
@@ -722,7 +858,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
             }
         )
         simulation = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
 
         simulation.step()
@@ -752,7 +888,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
     def test_later_choice_uses_completed_result_and_persistent_location(self):
         client = ResultResponsiveModelDecisionClient("workplace")
         simulation = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
 
         simulation.step()
@@ -789,7 +925,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
     def test_later_choice_uses_rejected_result_without_provider_history(self):
         client = ResultResponsiveModelDecisionClient("allocation_office")
         simulation = build_first_day(
-            seed=42, focal_policy=ModelFocalPolicy(client)
+            seed=42, focal_policy=model_policy(client)
         )
 
         simulation.step()

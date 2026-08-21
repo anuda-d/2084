@@ -272,6 +272,13 @@ class Simulation:
 
     def _append_action_result(self, result: ActionResult) -> None:
         self._action_results.append(result)
+        self._decision_records = [
+            record.resolved_with(result)
+            if record.action_id == result.action_id
+            and record.resolution_status is None
+            else record
+            for record in self._decision_records
+        ]
         actor = self.world.agents.get(result.actor_id)
         if actor is not None:
             actor.action_results.append(result)
@@ -1321,12 +1328,26 @@ class Simulation:
             if isinstance(policy, DecisionRecordSource):
                 decision_record = policy.take_decision_record()
                 if decision_record is not None:
-                    self._decision_records.append(
-                        decision_record.linked_to(
-                            attempt_event_id=attempted_event.event_id,
-                            action_id=attempted_event.action_id,
-                        )
+                    result = next(
+                        (
+                            item
+                            for item in reversed(self._action_results)
+                            if item.action_id == attempted_event.action_id
+                        ),
+                        None,
                     )
+                    decision_record = decision_record.linked_to(
+                        attempt_event_id=attempted_event.event_id,
+                        action_id=attempted_event.action_id or "",
+                        validation_status=(
+                            "rejected"
+                            if result is not None and result.status == "rejected"
+                            else "accepted"
+                        ),
+                    )
+                    if result is not None:
+                        decision_record = decision_record.resolved_with(result)
+                    self._decision_records.append(decision_record)
             if agent_id == self.focal_agent_id:
                 focal_attempt = attempt
 
