@@ -176,6 +176,8 @@ class Simulation:
         return AgentView(
             tick=self.tick,
             agent_id=agent.agent_id,
+            display_name=agent.display_name,
+            role=agent.role,
             location=agent.location,
             aim=agent.aim,
             required_resource_id=agent.required_resource_id,

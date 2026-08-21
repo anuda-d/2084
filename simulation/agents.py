@@ -48,6 +48,8 @@ class AgentView:
 
     tick: int
     agent_id: str
+    display_name: str
+    role: str
     location: str
     aim: str
     required_resource_id: str | None

@@ -1200,6 +1200,8 @@ class LivingSimulationStepTests(unittest.TestCase):
         selected = FocalPolicy().choose(view)
 
         self.assertEqual(selected.kind, "travel")
+        self.assertEqual(view.display_name, "Mara Vale")
+        self.assertEqual(view.role, "focal")
         self.assertEqual(simulation.inspector_state(), state_before)
         self.assertEqual(simulation.events, events_before)
         agent_fields = {field.name for field in fields(AgentView)}

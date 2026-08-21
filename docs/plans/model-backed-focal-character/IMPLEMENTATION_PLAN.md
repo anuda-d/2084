@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: none
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-2A restricted focal identity projection
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -14,7 +14,7 @@ Status: active shared state; no implementation work unit has been selected.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | MF-1 Actual character decision | open | None yet. |
-| MF-2 Restricted decision envelope | open | None yet. |
+| MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
 | MF-3 Structured action contract | open | None yet. |
 | MF-4 World-owned consequence | open | None yet. |
 | MF-5 Decision continuity | open | None yet. |
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. The active goal is approved, but its first implementation work unit has
-not been selected.
+None. MF-2A is verified; the next work unit must be selected from fresh
+repository evidence.
 
 ## Completion Rules
 
@@ -73,4 +73,18 @@ select a future task.
 
 ## Verified Run Log
 
-None.
+### MF-2A Restricted focal identity projection
+
+- Criterion advanced: MF-2 Restricted decision envelope remains open.
+- Observed behavior: `Simulation.agent_view()` exposes the requested agent's
+  authored display name and role alongside the existing restricted state.
+- Boundary evidence: The focused policy-view test asserts Mara's identity,
+  retains the explicit forbidden-field checks, and confirms policy selection
+  does not mutate objective or event state.
+- Validation: Focused test passed; `./scripts/check.sh` passed 67 current and 63
+  historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high re-review found no blocking issue and
+  independently reproduced the focused test, full checks, and diff check. It
+  confirmed the fields come from the requested agent's own state and add no
+  hidden authority; supporting-agent identity has only a generic-path runtime
+  check, so MF-2 remains open.
