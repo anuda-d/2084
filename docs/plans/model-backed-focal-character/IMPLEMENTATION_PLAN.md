@@ -1,13 +1,13 @@
 # Model-Backed Focal Character Implementation State
 
-Status: active shared state; alignment is due before more implementation.
+Status: active shared state; no implementation work unit has been selected.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-9A same-input divergent model behavior
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: goal alignment after MF-9A
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -22,7 +22,7 @@ Status: active shared state; alignment is due before more implementation.
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first restricted views: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 70 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 75 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-9A is verified. Whole-goal alignment is due before another
-implementation work unit may be selected.
+None. Alignment after MF-9A is complete; the next implementation work unit must
+be selected from fresh repository evidence.
 
 ## Completion Rules
 
@@ -91,6 +91,33 @@ select a future task.
 - The review selected no later implementation work. Focused tests passed 3;
   full checks passed 70 current and 63 historical tests; `git diff --check`
   passed; the worktree remained clean at reviewed HEAD `73b23c2`.
+
+### 2026-08-20 — Alignment after MF-9A
+
+- Fresh Sol-high whole-goal review found no blocker and reopened no criterion.
+  MF-1, MF-4, MF-5, and MF-9 remain met at their explicitly bounded offline
+  evidence levels; MF-2, MF-3, MF-6, MF-7, MF-8, and MF-10 remain open.
+- Tests-only work for MF-4, MF-5, and MF-9 is sufficient because it exercises
+  the real model policy, restricted view, step loop, and unchanged resolver
+  rather than recreating production behavior in fakes.
+- A future live adapter must not use opaque provider history as canonical
+  memory. The current deterministic-client evidence does not prove live
+  provider statelessness or sampling determinism.
+- Model-generated `decision_reason` currently enters the objective attempted-
+  action event and normal focal explanation. It must remain attributed decision
+  explanation or expression, never be presented as world truth or hidden
+  private reasoning.
+- The global action-kind list is not an agent-safe semantic affordance contract,
+  and model-mode normal/inspector privacy remains unproven until detached
+  decision evidence exists.
+- The opt-in live smoke remains an eventual external-credential completion
+  dependency, but is not yet an active blocker because no live adapter exists.
+- No production or test code warrants removal. Keep the narrow client interface
+  and focused evidence; do not grow generic parameter validation or test-client
+  helpers into general frameworks without real duplication.
+- The review selected no later implementation work. Focused tests passed 8;
+  full checks passed 75 current and 63 historical tests; `git diff --check`
+  passed; the worktree remained clean at reviewed HEAD `73e5178`.
 
 ## Verified Run Log
 
