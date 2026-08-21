@@ -5,9 +5,9 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-8A recorded-decision reproduction
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: goal alignment after MF-8A
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -47,9 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-8A is complete; the next activity is a fresh whole-goal alignment
-review because three verified implementation runs have completed since the
-last alignment.
+None. Alignment after MF-8A is complete; the next implementation work unit must
+be selected from fresh repository evidence.
 
 ## Completion Rules
 
@@ -153,6 +152,42 @@ select a future task.
 - The review selected no later implementation work. Focused tests passed 13;
   full checks passed 80 current and 63 historical tests; `git diff --check`
   passed; the worktree remained clean at reviewed HEAD `a7abcd7`.
+
+### 2026-08-20 — Alignment after MF-8A
+
+- Fresh Sol-high whole-goal review found no blocker and reopened no criterion.
+  MF-1 through MF-9 remain met at their recorded offline boundaries. MF-10 is
+  the sole open criterion, so the goal remains active and incomplete.
+- The restricted input remains detached, agent-owned, source-linked, and
+  affordance-bounded. It excludes objective resources, full topology,
+  undelivered history, inspector and institution-private data, provider
+  configuration, credentials, and unobserved supporting-agent private state.
+- The unchanged resolver retains action validation, timing, mutation,
+  rejection, and consequence authority. Explicit state and actor-safe outcomes
+  support later decisions without opaque provider conversation memory.
+- Decision evidence remains immutable, inspector-only, configuration-labelled,
+  and causally linked through eventual resolution. Recorded playback uses the
+  same policy, parser, and resolver boundary and proves world reproduction, not
+  deterministic live sampling.
+- MF-10 remains open because the runnable CLI still constructs only the
+  scripted policy, no live provider adapter or external configuration path
+  exists, provider errors are not translated at a live seam, and there is no
+  explicitly opt-in credentialed smoke.
+- Public documentation is stale: `README.md` still calls the model boundary
+  unimplemented and replay nonexistent; `docs/main/ARCHITECTURE.md` still calls
+  the policy planned and omits failure evidence and replay; and
+  `docs/main/CORE_CONSTRUCT.md` retains outdated implementation questions.
+- Credentials are not yet an owner blocker because there is no usable live
+  path to test. Any live adapter must keep the narrow client interface, remain
+  stateless with respect to canonical character memory, use only a non-secret
+  configuration label, keep credentials external, and avoid a provider
+  framework. No current production system warrants removal.
+- The unused replay-validator `index` argument is a trivial cleanup opportunity,
+  not a goal blocker. The review selected no later implementation work.
+  Focused tests passed 20; full checks passed 87 current and 63 historical
+  tests; scripted normal and inspector runs each produced 150 events;
+  `git diff --check` passed; the worktree remained clean at reviewed HEAD
+  `d131f36`.
 
 ## Verified Run Log
 
