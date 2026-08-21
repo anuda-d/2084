@@ -6,11 +6,14 @@ from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     ModelFocalPolicy,
     ModelUnavailableError,
+    RecordedDecisionClient,
+    RecordedDecisionError,
     StructuredChoiceError,
     model_input_from_view,
     structured_choice_to_attempt,
 )
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
+from simulation.events import to_plain_data
 
 
 class StructuredModelChoiceTests(unittest.TestCase):
@@ -228,6 +231,150 @@ def model_policy(client):
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_recorded_decisions_reproduce_complete_ordered_world_history(self):
+        scripted = build_first_day(seed=42)
+        scripted.run(max_ticks=30)
+        scripted_attempts = scripted.world.agents[FOCAL_AGENT_ID].action_history
+        responses = tuple(
+            {
+                "kind": attempt.kind,
+                "parameters": to_plain_data(attempt.parameters),
+                "explanation": attempt.explanation,
+                "decision_reason": attempt.decision_reason,
+            }
+            for attempt in scripted_attempts
+        )
+        source_client = SequenceModelDecisionClient(*responses)
+        source = build_first_day(
+            seed=42, focal_policy=model_policy(source_client)
+        )
+        source.run(max_ticks=30)
+        source_call_count = len(source_client.inputs)
+
+        recorded_client = RecordedDecisionClient.from_records(
+            source.decision_records
+        )
+        replay = build_first_day(
+            seed=42,
+            focal_policy=ModelFocalPolicy(
+                recorded_client,
+                configuration_id="recorded:first-day-v1",
+            ),
+        )
+        replay.run(max_ticks=30)
+
+        self.assertTrue(source.is_complete)
+        self.assertTrue(replay.is_complete)
+        self.assertEqual(source.tick, 28)
+        self.assertEqual(replay.tick, 28)
+        self.assertEqual(source.history_data(), scripted.history_data())
+        self.assertEqual(replay.history_data(), source.history_data())
+        self.assertEqual(
+            [event.event_id for event in replay.events],
+            [event.event_id for event in source.events],
+        )
+        self.assertEqual(len(source_client.inputs), source_call_count)
+        self.assertEqual(recorded_client.consumed_count, len(source.decision_records))
+        self.assertEqual(recorded_client.remaining_count, 0)
+
+    def test_recorded_client_is_strict_detached_and_explicit_on_bad_data(self):
+        source_client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait once",
+                "decision_reason": "create one recorded choice",
+            }
+        )
+        source = build_first_day(
+            seed=42, focal_policy=model_policy(source_client)
+        )
+        source.step()
+        record_data = source.decision_records[0].to_data()
+        recorded_client = RecordedDecisionClient((record_data,))
+        mismatch = json.loads(json.dumps(record_data["model_input"]))
+        mismatch["tick"] += 1
+
+        with self.assertRaisesRegex(RecordedDecisionError, "input mismatch"):
+            recorded_client.choose(mismatch)
+        self.assertEqual(recorded_client.consumed_count, 0)
+
+        choice = recorded_client.choose(record_data["model_input"])
+        choice["kind"] = "travel"
+        self.assertEqual(
+            source.decision_records[0].structured_response["kind"], "wait"
+        )
+        with self.assertRaisesRegex(RecordedDecisionError, "exhausted"):
+            recorded_client.choose(record_data["model_input"])
+
+        disagreeing_choice = json.loads(json.dumps(record_data))
+        disagreeing_choice["structured_response"]["parameters"] = {"until": 2}
+        with self.assertRaisesRegex(RecordedDecisionError, "disagree"):
+            RecordedDecisionClient((disagreeing_choice,))
+
+        invalid_choice = json.loads(json.dumps(record_data))
+        invalid_choice["structured_response"]["parameters"] = {"until": 2}
+        invalid_choice["attempted_action"]["parameters"] = {"until": 2}
+        with self.assertRaisesRegex(RecordedDecisionError, "unexpected"):
+            RecordedDecisionClient((invalid_choice,))
+
+        invalid_records = (
+            ({"status": "selected"}, "no restricted input"),
+            (
+                {"status": "selected", "model_input": {}},
+                "no structured response",
+            ),
+            (
+                {"status": "failed", "model_input": {}},
+                "no safe attempted action",
+            ),
+            (
+                {"status": "unknown", "model_input": {}},
+                "unsupported status",
+            ),
+        )
+        for invalid, message in invalid_records:
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(RecordedDecisionError, message):
+                    RecordedDecisionClient((invalid,))
+
+    def test_failed_decision_record_replays_safe_world_behavior(self):
+        failing_client = FailingModelDecisionClient(TimeoutError("private detail"))
+        source = build_first_day(
+            seed=42, focal_policy=model_policy(failing_client)
+        )
+        source.step()
+        tampered = source.decision_records[0].to_data()
+        tampered["attempted_action"] = {
+            "actor_id": FOCAL_AGENT_ID,
+            "kind": "travel",
+            "parameters": {"destination": "workplace"},
+            "explanation": "tampered failure route",
+            "decision_reason": "replace the safe failure",
+        }
+        tampered["attempted_action_kind"] = "travel"
+        with self.assertRaisesRegex(RecordedDecisionError, "safe wait"):
+            RecordedDecisionClient((tampered,))
+        recorded_client = RecordedDecisionClient.from_records(
+            source.decision_records
+        )
+        replay = build_first_day(
+            seed=42,
+            focal_policy=ModelFocalPolicy(
+                recorded_client,
+                configuration_id="recorded:failure-v1",
+            ),
+        )
+
+        replay.step()
+
+        self.assertEqual(replay.history_data(), source.history_data())
+        self.assertEqual(recorded_client.consumed_count, 1)
+        self.assertEqual(replay.decision_records[0].status, "selected")
+        self.assertEqual(
+            replay.decision_records[0].attempted_action_kind, "wait"
+        )
+
     def test_client_receives_detached_json_compatible_restricted_input(self):
         simulation = build_first_day(seed=42)
         view = simulation.agent_view(FOCAL_AGENT_ID)
@@ -270,11 +417,11 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(
             parameter_contract["work"],
-            {"required": {}, "optional": {}, "paired_fields": []},
+            {"required": {}, "optional": {}, "conditional_requirements": []},
         )
         self.assertEqual(
-            parameter_contract["speak"]["paired_fields"],
-            [["pressure", "pressure_reason"]],
+            parameter_contract["speak"]["conditional_requirements"],
+            [{"if_present": "pressure", "requires": ["pressure_reason"]}],
         )
         action_contract = model_input["action_contract"]
         self.assertEqual(

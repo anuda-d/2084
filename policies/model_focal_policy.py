@@ -22,6 +22,10 @@ class ModelUnavailableError(RuntimeError):
     """A configured model client explicitly reports that it is unavailable."""
 
 
+class RecordedDecisionError(RuntimeError):
+    """Recorded decision data cannot be applied to the current restricted input."""
+
+
 class _InvalidStructuredAttemptError(StructuredChoiceError):
     """A response cannot describe one supported attempted action."""
 
@@ -31,6 +35,75 @@ class ModelDecisionClient(Protocol):
 
     def choose(self, model_input: Mapping[str, object]) -> object:
         ...
+
+
+class RecordedDecisionClient:
+    """Replay detached decision records without calling a model provider."""
+
+    def __init__(self, records: tuple[Mapping[str, object], ...]) -> None:
+        frozen_records = []
+        for index, record in enumerate(records):
+            if not isinstance(record, Mapping):
+                raise RecordedDecisionError(
+                    f"recorded decision {index} must be an object"
+                )
+            model_input = record.get("model_input")
+            status = record.get("status")
+            if not isinstance(model_input, Mapping):
+                raise RecordedDecisionError(
+                    f"recorded decision {index} has no restricted input"
+                )
+            if status == "selected":
+                if not isinstance(record.get("structured_response"), Mapping):
+                    raise RecordedDecisionError(
+                        f"recorded decision {index} has no structured response"
+                    )
+            elif status == "failed":
+                if not isinstance(record.get("attempted_action"), Mapping):
+                    raise RecordedDecisionError(
+                        f"recorded decision {index} has no safe attempted action"
+                    )
+            else:
+                raise RecordedDecisionError(
+                    f"recorded decision {index} has unsupported status"
+                )
+            try:
+                frozen_record = freeze_mapping(record)
+                _validate_recorded_choice(frozen_record, index)
+            except (KeyError, TypeError, ValueError, RecursionError) as error:
+                raise RecordedDecisionError(
+                    f"recorded decision {index} is invalid: {error}"
+                ) from error
+            frozen_records.append(frozen_record)
+        self._records = tuple(frozen_records)
+        self._index = 0
+
+    @classmethod
+    def from_records(
+        cls, records: tuple[PolicyDecisionRecord, ...]
+    ) -> RecordedDecisionClient:
+        return cls(tuple(record.to_data() for record in records))
+
+    @property
+    def consumed_count(self) -> int:
+        return self._index
+
+    @property
+    def remaining_count(self) -> int:
+        return len(self._records) - self._index
+
+    def choose(self, model_input: Mapping[str, object]) -> object:
+        if self._index >= len(self._records):
+            raise RecordedDecisionError("recorded decisions are exhausted")
+        record = self._records[self._index]
+        expected_input = to_plain_data(record["model_input"])
+        if to_plain_data(freeze_mapping(model_input)) != expected_input:
+            raise RecordedDecisionError(
+                f"recorded decision input mismatch at index {self._index}"
+            )
+        response = _recorded_choice(record)
+        self._index += 1
+        return to_plain_data(response)
 
 
 def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
@@ -440,6 +513,87 @@ def _validate_parameter_value(value: object, active_container_ids: set[int]) -> 
     raise _InvalidStructuredAttemptError(
         f"unsupported structured choice parameter value: {type(value).__name__}"
     )
+
+
+def _recorded_choice(record: Mapping[str, object]) -> Mapping[str, object]:
+    if record["status"] == "selected":
+        response = record["structured_response"]
+        if not isinstance(response, Mapping):
+            raise RecordedDecisionError("selected record has no response")
+        return response
+    attempt = record["attempted_action"]
+    if not isinstance(attempt, Mapping):
+        raise RecordedDecisionError("failed record has no safe attempt")
+    return {
+        "kind": attempt["kind"],
+        "parameters": attempt["parameters"],
+        "explanation": attempt["explanation"],
+        "decision_reason": attempt["decision_reason"],
+    }
+
+
+def _validate_recorded_choice(
+    record: Mapping[str, object], index: int
+) -> None:
+    response = _recorded_choice(record)
+    if frozenset(response) != _CHOICE_FIELDS:
+        raise RecordedDecisionError("recorded response fields are not exact")
+    kind = response["kind"]
+    model_input = record["model_input"]
+    if not isinstance(kind, str) or not isinstance(model_input, Mapping):
+        raise RecordedDecisionError("recorded response kind is invalid")
+    action_contract = model_input.get("action_contract")
+    if not isinstance(action_contract, Mapping):
+        raise RecordedDecisionError("recorded input has no action contract")
+    character = model_input.get("character")
+    attempt = record.get("attempted_action")
+    if not isinstance(character, Mapping) or not isinstance(attempt, Mapping):
+        raise RecordedDecisionError("recorded action identity is incomplete")
+    if frozenset(attempt) != {
+        "actor_id",
+        "kind",
+        "parameters",
+        "explanation",
+        "decision_reason",
+    }:
+        raise RecordedDecisionError("recorded attempted action fields are not exact")
+    if attempt["actor_id"] != character.get("agent_id"):
+        raise RecordedDecisionError("recorded attempted action actor does not match")
+    projected_attempt = {
+        "kind": attempt["kind"],
+        "parameters": attempt["parameters"],
+        "explanation": attempt["explanation"],
+        "decision_reason": attempt["decision_reason"],
+    }
+    if to_plain_data(projected_attempt) != to_plain_data(response):
+        raise RecordedDecisionError("recorded response and attempted action disagree")
+    if record.get("attempted_action_kind") != kind:
+        raise RecordedDecisionError("recorded attempted action kind does not match")
+    if record["status"] == "failed":
+        failure_kind = record.get("failure_kind")
+        if (
+            kind != "wait"
+            or to_plain_data(response["parameters"]) != {}
+            or response["explanation"]
+            != "wait because no valid model decision is available"
+            or not isinstance(failure_kind, str)
+            or response["decision_reason"]
+            != f"model decision failed safely: {failure_kind}"
+        ):
+            raise RecordedDecisionError("failed record is not the generated safe wait")
+    supported = action_contract.get("supported_kinds")
+    if not isinstance(supported, (list, tuple)) or kind not in supported:
+        raise RecordedDecisionError("recorded response kind is not supported")
+    parameters = response["parameters"]
+    if not isinstance(parameters, Mapping):
+        raise RecordedDecisionError("recorded response parameters are invalid")
+    _validate_parameter_value(parameters, set())
+    if parameter_error := action_parameter_shape_error(kind, parameters):
+        raise RecordedDecisionError(parameter_error)
+    for field in ("explanation", "decision_reason"):
+        value = response[field]
+        if not isinstance(value, str) or not value.strip():
+            raise RecordedDecisionError(f"recorded response {field} is empty")
 
 
 def structured_choice_to_attempt(

@@ -5,9 +5,9 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-7A linked private decision evidence
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: MF-8A recorded-decision reproduction
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -20,9 +20,9 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only fresh serialized restricted input: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; no opaque client history determines the choices. This proves the offline boundary, not live-provider statelessness. |
 | MF-6 Explicit failure | met | MF-6A verifies that explicit timeout and unavailable-model signals plus malformed responses and structurally invalid attempts produce one sanitized inspector-only failure record linked to one safe `wait` attempt, never the scripted policy. Schema-valid but world-invalid parameters still reach ordinary resolver rejection. |
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
-| MF-8 Recorded reproduction | open | None yet. |
+| MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 84 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 87 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,9 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-7A is complete; the next implementation work unit must be selected from
-fresh repository evidence.
+None. MF-8A is complete; the next activity is a fresh whole-goal alignment
+review because three verified implementation runs have completed since the
+last alignment.
 
 ## Completion Rules
 
@@ -389,3 +390,30 @@ select a future task.
   shape-invalid, timeout, and unavailable decisions, and approved MF-7 as met
   without reopening another criterion. MF-8 remains open because no playback
   client or equal-history recorded-decision proof exists.
+
+### MF-8A Recorded-decision reproduction
+
+- Criterion met: MF-8 Recorded reproduction.
+- Observed behavior: a recorded-decision client freezes exported private
+  records, consumes them in order only when the current restricted input
+  exactly matches, and returns detached structured choices through the same
+  `ModelFocalPolicy` and resolver path without retaining or calling a provider.
+- Reproduction evidence: a full deterministic-client first-day capture replays
+  all 18 decisions, completes at tick 28, and produces the same ordered 150
+  events, 24 observations, 73 action results, `history_data()`, and event ids
+  with no additional source-client call and no record left unconsumed.
+- Integrity evidence: reordered, missing, perturbed, inconsistent, invalid, or
+  exhausted records fail explicitly without inappropriate consumption. Failed
+  decision records can replay only the exact generated safe wait; tampered
+  action, actor, kind, or reason data is rejected.
+- Contract correction: full replay exposed that the existing scripted policy
+  legitimately supplies `pressure_reason` without `pressure`. The shared model
+  shape contract now matches the unchanged resolver's one-way rule: pressure
+  requires a reason, while a reason alone remains valid.
+- Validation: Twenty focused tests passed; `./scripts/check.sh` passed 87
+  current and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, independently
+  replayed the tick-28 history, exercised mismatch, truncation, detachment, and
+  safe-failure tampering, and approved MF-8 as met without reopening MF-2 or
+  MF-3. This evidence proves offline recorded world reproduction, not
+  deterministic live-model sampling. MF-10 remains open.
