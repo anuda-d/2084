@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Protocol
 
 from simulation.actions import ActionAttempt
 from simulation.agents import AgentView
@@ -10,6 +11,24 @@ from simulation.agents import AgentView
 
 class StructuredChoiceError(ValueError):
     """A model-like value does not satisfy the attempted-action schema."""
+
+
+class ModelDecisionClient(Protocol):
+    """Narrow source of one structured choice for a restricted agent view."""
+
+    def choose(self, view: AgentView) -> object:
+        ...
+
+
+class ModelFocalPolicy:
+    """Use a model-compatible client as the focal character's chooser."""
+
+    def __init__(self, client: ModelDecisionClient) -> None:
+        self._client = client
+
+    def choose(self, view: AgentView) -> ActionAttempt:
+        response = self._client.choose(view)
+        return structured_choice_to_attempt(view, response)
 
 
 _CHOICE_FIELDS = frozenset(

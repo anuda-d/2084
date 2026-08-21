@@ -1,6 +1,7 @@
 import unittest
 
 from policies.model_focal_policy import (
+    ModelFocalPolicy,
     StructuredChoiceError,
     structured_choice_to_attempt,
 )
@@ -30,6 +31,57 @@ class StructuredModelChoiceTests(unittest.TestCase):
         self.assertEqual(simulation.events, events_before)
         with self.assertRaises(TypeError):
             attempt.parameters["destination"] = "home"
+
+
+class StaticModelDecisionClient:
+    def __init__(self, response):
+        self.response = response
+        self.views = []
+
+    def choose(self, view):
+        self.views.append(view)
+        return self.response
+
+
+class ModelFocalPolicyTests(unittest.TestCase):
+    def test_valid_client_choice_is_maras_attempt_without_scripted_substitution(self):
+        scripted = build_first_day(seed=42)
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "remain at home for one decision",
+                "decision_reason": "the immediate choice is to pause",
+            }
+        )
+        model_backed = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+        self.assertEqual(scripted.inspector_state(), model_backed.inspector_state())
+
+        scripted.step()
+        snapshot = model_backed.step()
+
+        scripted_attempt = next(
+            event
+            for event in scripted.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        model_attempt = next(
+            event
+            for event in model_backed.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(scripted_attempt.details["action_kind"], "travel")
+        self.assertEqual(model_attempt.details["action_kind"], "wait")
+        self.assertEqual(
+            model_attempt.details["decision_explanation"],
+            "the immediate choice is to pause",
+        )
+        self.assertEqual(snapshot.current_action, "remain at home for one decision")
+        self.assertEqual(len(client.views), 1)
+        self.assertEqual(client.views[0].agent_id, FOCAL_AGENT_ID)
+        self.assertEqual(client.views[0].display_name, "Mara Vale")
 
     def test_invalid_model_like_values_fail_before_touching_simulation(self):
         simulation = build_first_day(seed=42)

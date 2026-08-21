@@ -1,19 +1,19 @@
 # Model-Backed Focal Character Implementation State
 
-Status: active shared state; no implementation work unit has been selected.
+Status: active shared state; alignment is due before more implementation.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-3A exact structured choice parser
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: MF-1A injected model policy decision
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
-| MF-1 Actual character decision | open | None yet. |
+| MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
 | MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
 | MF-4 World-owned consequence | open | None yet. |
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-3A is verified; the next work unit must be selected from fresh
-repository evidence.
+None. MF-1A is verified. Whole-goal alignment is due before another
+implementation work unit may be selected.
 
 ## Completion Rules
 
@@ -105,3 +105,20 @@ select a future task.
   reproduced the full checks, and probed direct and mixed cycles, 3,000-level
   nesting, and nested detachment successfully. It confirmed MF-3 remains open
   because semantic constraints for each action kind are not implemented yet.
+
+### MF-1A Injected model policy decision
+
+- Criterion met: MF-1 Actual character decision.
+- Observed behavior: `ModelFocalPolicy` calls its injected decision client once
+  and passes the response directly through the strict parser; no scripted focal
+  chooser runs inside that path.
+- Behavioral evidence: From equal seed-42 opening world state, the legacy mode
+  attempts travel while the deterministic model client selects `wait`; the
+  objective log records Mara's `wait` and its supplied decision reason, then
+  normal resolution produces `wait_completed`.
+- Validation: Three focused tests passed; `./scripts/check.sh` passed 70 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced the
+  checks and runtime behavior, and confirmed the engine still supplies the
+  restricted view and owns attempt recording and resolution. This evidence
+  proves the fake-client boundary, not live-provider behavior or failure paths.
