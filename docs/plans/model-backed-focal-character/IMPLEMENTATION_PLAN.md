@@ -1,13 +1,13 @@
 # Model-Backed Focal Character Implementation State
 
-Status: active shared state; alignment is due before more implementation.
+Status: active shared state; no implementation work unit has been selected.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-1A injected model policy decision
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: goal alignment after MF-1A
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -16,13 +16,13 @@ Status: active shared state; alignment is due before more implementation.
 | MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
 | MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
-| MF-4 World-owned consequence | open | None yet. |
+| MF-4 World-owned consequence | open | Alignment confirmed that model-created attempts enter the unchanged resolver and that a read-only invalid-travel probe was rejected with an actor-safe result and no movement. Committed model-path coverage of accepted, scheduled, and rejected consequences remains open. |
 | MF-5 Decision continuity | open | None yet. |
 | MF-6 Explicit failure | open | None yet. |
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
 | MF-9 Bounded behavioral proof | open | None yet. |
-| MF-10 Integration | open | None yet. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 70 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-1A is verified. Whole-goal alignment is due before another
-implementation work unit may be selected.
+None. Alignment after MF-1A is complete; the next implementation work unit must
+be selected from fresh repository evidence.
 
 ## Completion Rules
 
@@ -70,6 +70,27 @@ After several verified work units, or whenever implementation evidence changes
 the apparent boundary, perform a fresh whole-goal alignment review. Alignment
 may close evidence gaps or recommend removal and simplification, but it must not
 select a future task.
+
+### 2026-08-20 — Alignment after MF-1A
+
+- Fresh Sol-high whole-goal review found no blocker and reopened no criterion.
+- MF-1 remains met through the deterministic-client boundary; this does not
+  prove live-model behavior. MF-2A and MF-3A remain proportionate partial
+  evidence, and MF-2 through MF-10 remain open.
+- No hidden world knowledge, institutional authority, other-agent private
+  state, canonical model-created memory, provider framework, credential path,
+  or direct consequence authority entered the implementation.
+- A future persistent client must not make opaque provider conversation state
+  the character's canonical memory.
+- `AgentView.valid_actions` still lacks agent-safe parameter constraints, and
+  the restricted view does not directly serialize canonical memory traces or
+  interpreted claims; MF-2 and MF-3 must remain open.
+- No code warrants removal. Keep the single narrow client interface. Do not
+  grow the recursive generic parameter validator into a parallel semantic
+  schema; consolidate it with the eventual per-action contract instead.
+- The review selected no later implementation work. Focused tests passed 3;
+  full checks passed 70 current and 63 historical tests; `git diff --check`
+  passed; the worktree remained clean at reviewed HEAD `73b23c2`.
 
 ## Verified Run Log
 
