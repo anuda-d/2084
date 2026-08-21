@@ -254,7 +254,24 @@ class ModelFocalPolicyTests(unittest.TestCase):
             parameter_contract["travel"]["required"],
             {"destination": "non_empty_string"},
         )
-        self.assertEqual(parameter_contract["work"], {"required": {}, "optional": {}})
+        self.assertEqual(
+            parameter_contract["work"],
+            {"required": {}, "optional": {}, "paired_fields": []},
+        )
+        self.assertEqual(
+            parameter_contract["speak"]["paired_fields"],
+            [["pressure", "pressure_reason"]],
+        )
+        action_contract = model_input["action_contract"]
+        self.assertEqual(
+            action_contract["currently_applicable_kinds"], ["travel", "wait"]
+        )
+        self.assertEqual(
+            action_contract["affordances_by_kind"]["travel"][
+                "parameter_options"
+            ]["destination"],
+            ["workplace"],
+        )
         self.assertEqual(json.loads(json.dumps(model_input)), model_input)
 
         def nested_keys(value):
@@ -273,6 +290,9 @@ class ModelFocalPolicyTests(unittest.TestCase):
             "institution_records",
             "official_record",
             "official_record_versions",
+            "travel_graph",
+            "allocatable_units",
+            "committed_units",
             "model_configuration",
             "api_key",
             "authorization",
@@ -285,10 +305,14 @@ class ModelFocalPolicyTests(unittest.TestCase):
         model_input["character"]["display_name"] = "mutated"
         model_input["state"]["resource_holdings"]["household_allocation"] = 99
         model_input["action_contract"]["supported_kinds"].append("rewrite_world")
+        model_input["action_contract"]["affordances_by_kind"]["travel"][
+            "parameter_options"
+        ]["destination"].append("allocation_office")
         parameter_contract["travel"]["required"]["destination"] = "integer"
         self.assertEqual(view.display_name, "Mara Vale")
         self.assertEqual(dict(view.resource_holdings), {})
         self.assertNotIn("rewrite_world", view.valid_actions)
+        self.assertEqual(view.reachable_destinations, ("workplace",))
         fresh_contract = model_input_from_view(view)["action_contract"][
             "parameters_by_kind"
         ]
@@ -298,6 +322,83 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(simulation.inspector_state(), state_before)
         self.assertEqual(simulation.events, events_before)
+
+    def test_action_affordances_follow_only_agent_safe_state_and_access(self):
+        simulation = build_first_day(seed=42)
+
+        initial = model_input_from_view(simulation.agent_view(FOCAL_AGENT_ID))
+        initial_contract = initial["action_contract"]
+        self.assertEqual(
+            initial_contract["currently_applicable_kinds"], ["travel", "wait"]
+        )
+        self.assertEqual(
+            initial_contract["affordances_by_kind"]["travel"][
+                "parameter_options"
+            ]["destination"],
+            ["workplace"],
+        )
+        self.assertFalse(
+            initial_contract["affordances_by_kind"]["write_diary"][
+                "currently_applicable"
+            ]
+        )
+
+        for _ in range(6):
+            simulation.step()
+        workplace = model_input_from_view(
+            simulation.agent_view(FOCAL_AGENT_ID)
+        )
+        workplace_contract = workplace["action_contract"]
+        self.assertEqual(workplace["state"]["location"], "workplace")
+        self.assertIn("work", workplace_contract["currently_applicable_kinds"])
+        self.assertEqual(
+            workplace_contract["affordances_by_kind"]["travel"][
+                "parameter_options"
+            ]["destination"],
+            ["home", "allocation_office"],
+        )
+
+        simulation.step()
+        counter = model_input_from_view(simulation.agent_view(FOCAL_AGENT_ID))
+        counter_contract = counter["action_contract"]
+        self.assertEqual(counter["state"]["location"], "allocation_office")
+        for kind in ("consult_official_record", "request_allocation", "speak"):
+            self.assertIn(kind, counter_contract["currently_applicable_kinds"])
+        claim_options = counter_contract["affordances_by_kind"]["speak"][
+            "parameter_options"
+        ]["grounded_claims"]
+        delivered_ids = {
+            item["observation_id"] for item in counter["delivered_observations"]
+        }
+        self.assertTrue(claim_options)
+        self.assertTrue(
+            all(
+                set(option["evidence_observation_ids"]).issubset(delivered_ids)
+                for option in claim_options
+            )
+        )
+        counter_encoded = json.dumps(counter, sort_keys=True)
+        self.assertNotIn("allocatable_units", counter_encoded)
+        self.assertNotIn("committed_units", counter_encoded)
+        self.assertNotIn("travel_graph", counter_encoded)
+
+        for _ in range(11):
+            simulation.step()
+        home = model_input_from_view(simulation.agent_view(FOCAL_AGENT_ID))
+        home_contract = home["action_contract"]
+        self.assertEqual(home["state"]["location"], "home")
+        self.assertIn("read_diary", home_contract["currently_applicable_kinds"])
+        self.assertEqual(
+            home_contract["affordances_by_kind"]["read_diary"][
+                "parameter_options"
+            ]["entries"],
+            [
+                {
+                    "object_id": "mara-private-diary",
+                    "entry_id": "entry-0001",
+                }
+            ],
+        )
 
     def test_model_input_carries_only_delivered_source_linked_understanding(self):
         simulation = build_first_day(seed=42)

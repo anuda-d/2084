@@ -27,15 +27,18 @@ ACTION_KINDS = frozenset(
 class ActionParameterContract:
     required: Mapping[str, str]
     optional: Mapping[str, str]
+    paired_fields: tuple[tuple[str, str], ...]
 
 
 def _contract(
     *, required: Mapping[str, str] | None = None,
     optional: Mapping[str, str] | None = None,
+    paired_fields: tuple[tuple[str, str], ...] = (),
 ) -> ActionParameterContract:
     return ActionParameterContract(
         required=MappingProxyType(dict(required or {})),
         optional=MappingProxyType(dict(optional or {})),
+        paired_fields=paired_fields,
     )
 
 
@@ -61,6 +64,7 @@ ACTION_PARAMETER_CONTRACTS: Mapping[str, ActionParameterContract] = MappingProxy
                 "pressure_reason": "non_empty_string",
                 "pressure": "positive_unit_number",
             },
+            paired_fields=(("pressure", "pressure_reason"),),
         ),
         "write_diary": _contract(
             required={
@@ -83,12 +87,15 @@ ACTION_PARAMETER_CONTRACTS: Mapping[str, ActionParameterContract] = MappingProxy
 
 def action_parameter_contract_data(
     kinds: tuple[str, ...],
-) -> dict[str, dict[str, dict[str, str]]]:
+) -> dict[str, dict[str, object]]:
     """Return detached JSON-compatible parameter shapes for supported kinds."""
     return {
         kind: {
             "required": dict(ACTION_PARAMETER_CONTRACTS[kind].required),
             "optional": dict(ACTION_PARAMETER_CONTRACTS[kind].optional),
+            "paired_fields": [
+                list(pair) for pair in ACTION_PARAMETER_CONTRACTS[kind].paired_fields
+            ],
         }
         for kind in kinds
     }
@@ -136,10 +143,9 @@ def action_parameter_shape_error(
     for name in sorted(parameters):
         if not _matches_parameter_shape(parameters[name], shapes[name]):
             return f"{kind} parameter {name} must be {shapes[name]}"
-    if kind == "speak" and (
-        ("pressure" in parameters) != ("pressure_reason" in parameters)
-    ):
-        return "speak pressure and pressure_reason must be supplied together"
+    for first, second in contract.paired_fields:
+        if (first in parameters) != (second in parameters):
+            return f"{kind} parameters {first} and {second} must be supplied together"
     return None
 
 

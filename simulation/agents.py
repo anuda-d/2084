@@ -69,6 +69,9 @@ class AgentView:
     accessible_diary_entry_count: int
     accessible_diary_entries: tuple[DiaryEntryKnowledge, ...]
     consultable_official_record_ids: tuple[str, ...]
+    reachable_destinations: tuple[str, ...]
+    work_action_available: bool
+    allocation_action_available: bool
     valid_actions: tuple[str, ...]
 
 

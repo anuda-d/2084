@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal alignment after MF-3B
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-2C agent-safe action affordances
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -14,7 +14,7 @@ Status: active shared state; no implementation work unit has been selected.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
-| MF-2 Restricted decision envelope | open | MF-2A verifies agent-owned focal identity. MF-2B verifies a detached JSON-compatible serialization of relevant restricted state. MF-3B adds detached required/optional parameter shapes, but reachable or applicable value options, actor-owned evidence/value combinations, and the pressure/reason cross-field rule remain open. |
+| MF-2 Restricted decision envelope | met | MF-2A verifies agent-owned focal identity; MF-2B verifies detached restricted serialization; MF-2C verifies current applicability plus agent-safe direct destinations, accessible artifacts and diary entries, request guidance, grounded claim/evidence/private-belief combinations, delivered pressure pairs, and the serialized cross-field rule without hidden-state leakage. |
 | MF-3 Structured action contract | met | MF-3A verifies the exact pure outer parser. MF-3B verifies one shared contract for all eight supported kinds, with required, optional, forbidden, typed, bounded, and coupled parameter shapes enforced before attempt creation; world-dependent semantics remain resolver-owned. Whitespace-only list identifiers remain a resolver rejection rather than a parser error. |
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
 | MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only fresh serialized restricted input: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; no opaque client history determines the choices. This proves the offline boundary, not live-provider statelessness. |
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | open | None yet. |
 | MF-8 Recorded reproduction | open | None yet. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 80 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 81 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. Alignment after MF-3B is complete; the next implementation work unit must
-be selected from fresh repository evidence.
+None. MF-2C is complete; the next implementation work unit must be selected from
+fresh repository evidence.
 
 ## Completion Rules
 
@@ -333,3 +333,30 @@ select a future task.
   approved MF-3 as met without reopening another met criterion. MF-2 remains
   open because agent-safe value options and the serialized pressure/reason
   cross-field rule are not yet supplied to the client.
+
+### MF-2C Agent-safe action affordances
+
+- Criterion met: MF-2 Restricted decision envelope.
+- Observed behavior: the model input now identifies currently applicable kinds
+  and supplies agent-safe value guidance for direct travel, accessible public
+  artifacts and diary entries, allocation requests, grounded expressions and
+  diary claims, delivered evidence, and delivered pressure/reason pairs. The
+  shared pressure/reason relationship is serialized with the shape contract.
+- Boundary evidence: immediate destinations reveal no full route graph; request
+  guidance uses Mara's unmet requirement rather than hidden stock; claim and
+  pressure options derive only from delivered observations and retained
+  understanding; diary pairs require current physical access.
+- Privacy evidence: focused and independent all-tick scans found no objective
+  resource availability or commitments, hidden event history, full topology,
+  institutional or other-agent private state, provider configuration, or
+  credentials. Delivered visible-actor references remain actor-safe evidence.
+- Authority evidence: affordances are detached guidance. Nested client mutation
+  cannot affect the view, world, EventLog, or shared contract, and a shape-valid
+  nonexistent destination still becomes an ordinary attempted action followed
+  by resolver rejection.
+- Validation: Fourteen focused tests passed; `./scripts/check.sh` passed 81
+  current and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, scanned all 29
+  deterministic states through tick 28, reproduced nested mutation and privacy
+  probes, and approved MF-2 as met at the restricted offline envelope boundary
+  without reopening MF-3 or another met criterion.

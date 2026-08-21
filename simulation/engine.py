@@ -231,6 +231,13 @@ class Simulation:
                 == self.world.institution.official_record.artifact_id
                 else ()
             ),
+            reachable_destinations=tuple(
+                self.world.travel_graph.get(agent.location, ())
+            ),
+            work_action_available=agent.location == self.rules.work_location,
+            allocation_action_available=(
+                agent.location == self.rules.allocation_location
+            ),
             valid_actions=tuple(sorted(ACTION_KINDS)),
         )
 

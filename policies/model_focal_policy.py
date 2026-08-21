@@ -45,9 +45,124 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
     }
 
 
+def _grounded_claim_options(view: AgentView) -> list[dict[str, object]]:
+    options: list[dict[str, object]] = []
+    for belief in view.beliefs:
+        options.append(
+            {
+                "source_kind": "belief",
+                "source_id": belief.belief_id,
+                "proposition": belief.proposition,
+                "asserted_value": belief.asserted_value,
+                "evidence_observation_ids": list(
+                    belief.source_observation_ids
+                ),
+                "private_belief_id": belief.belief_id,
+            }
+        )
+    trace_by_id = {trace.trace_id: trace for trace in view.memory_traces}
+    for claim in view.interpreted_claims:
+        trace = trace_by_id.get(claim.origin_trace_id)
+        if trace is None:
+            continue
+        options.append(
+            {
+                "source_kind": "interpreted_claim",
+                "source_id": claim.claim_id,
+                "proposition": claim.proposition,
+                "asserted_value": claim.asserted_value,
+                "evidence_observation_ids": [trace.source_observation_id],
+                "private_belief_id": None,
+            }
+        )
+    return options
+
+
+def _action_affordances(view: AgentView) -> dict[str, dict[str, object]]:
+    delivered_ids = [
+        observation.observation_id for observation in view.observations
+    ]
+    claim_options = _grounded_claim_options(view)
+    pressure_options = [
+        {
+            "evidence_observation_id": observation.observation_id,
+            "pressure": observation.details["pressure"],
+            "pressure_reason": observation.details["reason"],
+        }
+        for observation in view.observations
+        if observation.details.get("evidence_kind") == "social_pressure"
+        and isinstance(observation.details.get("pressure"), (int, float))
+        and not isinstance(observation.details.get("pressure"), bool)
+        and isinstance(observation.details.get("reason"), str)
+    ]
+    diary_entries = [
+        {
+            "object_id": view.accessible_diary_id,
+            "entry_id": entry.entry_id,
+        }
+        for entry in view.accessible_diary_entries
+        if view.accessible_diary_id is not None
+    ]
+    return {
+        "travel": {
+            "currently_applicable": bool(view.reachable_destinations),
+            "parameter_options": {
+                "destination": list(view.reachable_destinations)
+            },
+        },
+        "work": {
+            "currently_applicable": view.work_action_available,
+            "parameter_options": {},
+        },
+        "consult_official_record": {
+            "currently_applicable": bool(view.consultable_official_record_ids),
+            "parameter_options": {
+                "artifact_id": list(view.consultable_official_record_ids)
+            },
+        },
+        "request_allocation": {
+            "currently_applicable": view.allocation_action_available,
+            "parameter_options": {
+                "requested_units": {
+                    "minimum": 1,
+                    "suggested": max(1, view.remaining_required_units),
+                },
+                "evidence_observation_ids": delivered_ids,
+            },
+        },
+        "speak": {
+            "currently_applicable": bool(claim_options and delivered_ids),
+            "parameter_options": {
+                "grounded_claims": claim_options,
+                "evidence_observation_ids": delivered_ids,
+                "pressure_pairs": pressure_options,
+            },
+        },
+        "write_diary": {
+            "currently_applicable": bool(
+                view.accessible_diary_id is not None and claim_options
+            ),
+            "parameter_options": {
+                "object_id": (
+                    [view.accessible_diary_id]
+                    if view.accessible_diary_id is not None
+                    else []
+                ),
+                "grounded_claims": claim_options,
+            },
+        },
+        "read_diary": {
+            "currently_applicable": bool(diary_entries),
+            "parameter_options": {"entries": diary_entries},
+        },
+        "wait": {"currently_applicable": True, "parameter_options": {}},
+    }
+
+
 def model_input_from_view(view: AgentView) -> dict[str, object]:
     """Serialize only the restricted agent view into detached JSON-like data."""
     stance = view.contextual_stance
+    affordances = _action_affordances(view)
     return {
         "tick": view.tick,
         "character": {
@@ -175,9 +290,15 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
         },
         "action_contract": {
             "supported_kinds": list(view.valid_actions),
+            "currently_applicable_kinds": [
+                kind
+                for kind in view.valid_actions
+                if affordances[kind]["currently_applicable"]
+            ],
             "parameters_by_kind": action_parameter_contract_data(
                 view.valid_actions
             ),
+            "affordances_by_kind": affordances,
         },
     }
 
