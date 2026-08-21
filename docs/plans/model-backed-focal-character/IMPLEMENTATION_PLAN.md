@@ -5,17 +5,17 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-3B per-action parameter contract
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: goal alignment after MF-3B
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
-| MF-2 Restricted decision envelope | open | MF-2A verifies agent-owned focal identity. MF-2B verifies a detached JSON-compatible serialization of relevant restricted state. MF-3B adds detached required/optional parameter shapes, but agent-safe value options and the pressure/reason cross-field rule remain open. |
-| MF-3 Structured action contract | met | MF-3A verifies the exact pure outer parser. MF-3B verifies one shared contract for all eight supported kinds, with required, optional, forbidden, typed, non-empty, bounded, and coupled parameter shapes enforced before attempt creation; world-dependent semantics remain resolver-owned. |
+| MF-2 Restricted decision envelope | open | MF-2A verifies agent-owned focal identity. MF-2B verifies a detached JSON-compatible serialization of relevant restricted state. MF-3B adds detached required/optional parameter shapes, but reachable or applicable value options, actor-owned evidence/value combinations, and the pressure/reason cross-field rule remain open. |
+| MF-3 Structured action contract | met | MF-3A verifies the exact pure outer parser. MF-3B verifies one shared contract for all eight supported kinds, with required, optional, forbidden, typed, bounded, and coupled parameter shapes enforced before attempt creation; world-dependent semantics remain resolver-owned. Whitespace-only list identifiers remain a resolver rejection rather than a parser error. |
 | MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
 | MF-5 Decision continuity | met | MF-5A verifies that later deterministic-client decisions use only fresh serialized restricted input: a completed travel result plus workplace location leads to work, while a rejected travel result plus actor-safe reason leads to wait. Attempts and results remain explicit simulation state; no opaque client history determines the choices. This proves the offline boundary, not live-provider statelessness. |
 | MF-6 Explicit failure | met | MF-6A verifies that explicit timeout and unavailable-model signals plus malformed responses and structurally invalid attempts produce one sanitized inspector-only failure record linked to one safe `wait` attempt, never the scripted policy. Schema-valid but world-invalid parameters still reach ordinary resolver rejection. |
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-3B is complete; whole-goal alignment is due before another
-implementation work unit is selected.
+None. Alignment after MF-3B is complete; the next implementation work unit must
+be selected from fresh repository evidence.
 
 ## Completion Rules
 
@@ -118,6 +118,40 @@ select a future task.
 - The review selected no later implementation work. Focused tests passed 8;
   full checks passed 75 current and 63 historical tests; `git diff --check`
   passed; the worktree remained clean at reviewed HEAD `73e5178`.
+
+### 2026-08-20 — Alignment after MF-3B
+
+- Fresh Sol-high whole-goal review found no blocker, reopened no criterion, and
+  closed no additional criterion. MF-1, MF-3, MF-4, MF-5, MF-6, and MF-9 remain
+  met at their recorded offline boundaries; MF-2, MF-7, MF-8, and MF-10 remain
+  open, so the goal is active and incomplete.
+- The detached serialized input contains focal-owned state, delivered evidence,
+  source-linked understanding, accessible objects, and action shapes without
+  supporting-agent private aims or hidden objective and institutional state.
+  Delivered visible supporting-character references remain actor-safe evidence.
+- MF-2 remains open because the client is not given reachable destinations,
+  location-applicable actions, actor-owned evidence/value combinations, or the
+  `pressure`/`pressure_reason` cross-field rule. Whitespace-only identifiers in
+  list-shaped parameters pass the parser shape check and are rejected by world
+  validation; this caveat does not reopen MF-3.
+- MF-6 remains met. Failure evidence stores sanitized category/type data outside
+  objective history, links to the safe attempted action, appears only in the
+  inspector, and retains no raw exception message or malformed response.
+- MF-7 remains open because successful decisions lack records and neither
+  restricted input, configuration identity, structured response, validation,
+  nor resolved-outcome linkage is captured. MF-8 has no recorded-decision
+  playback. MF-10 has no live adapter, external configuration entry path,
+  current usage documentation, or opt-in live smoke.
+- Model `decision_reason` remains an attributed character/model explanation in
+  the attempted-action event and normal focal presentation; it must never be
+  treated as objective world truth or hidden private reasoning. A future live
+  adapter must not use opaque provider history as canonical memory.
+- No code warrants removal. Evolve the existing failure-only
+  `PolicyDecisionRecord` instead of adding a parallel evidence system, keep the
+  client narrow, and do not turn parameter validation into a second resolver.
+- The review selected no later implementation work. Focused tests passed 13;
+  full checks passed 80 current and 63 historical tests; `git diff --check`
+  passed; the worktree remained clean at reviewed HEAD `a7abcd7`.
 
 ## Verified Run Log
 
