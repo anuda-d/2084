@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal alignment after MF-1A
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-4A model attempt resolution authority
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -16,7 +16,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-1 Actual character decision | met | MF-1A verifies through the deterministic test client that `ModelFocalPolicy` calls the injected chooser once, converts its schema-valid response directly through the strict parser, and records the resulting `wait` attempt where the unchanged scripted mode selects travel. This proves the offline boundary, not live-model behavior. |
 | MF-2 Restricted decision envelope | open | MF-2A verifies that the restricted `AgentView` carries each agent's authored display name and role from agent-owned state without adding objective, institutional-private, inspector-only, or other-agent fields. The complete serialized model envelope remains open. |
 | MF-3 Structured action contract | open | MF-3A verifies an exact pure parser that derives the actor from the restricted view, accepts only supported action kinds and immutable structured parameters, and rejects prose, missing or extra fields, actor spoofing, malformed containers, cycles, and unsupported values without touching simulation state. Per-action semantic parameter constraints remain open. |
-| MF-4 World-owned consequence | open | Alignment confirmed that model-created attempts enter the unchanged resolver and that a read-only invalid-travel probe was rejected with an actor-safe result and no movement. Committed model-path coverage of accepted, scheduled, and rejected consequences remains open. |
+| MF-4 World-owned consequence | met | MF-4A verifies through committed model-path tests that the unchanged resolver alone schedules valid travel, completes it at the configured tick with linked location mutation and an actor-safe result in the next restricted view, or rejects unreachable travel with no movement and a linked actor-safe reason. The client receives no consequence API. |
 | MF-5 Decision continuity | open | None yet. |
 | MF-6 Explicit failure | open | None yet. |
 | MF-7 Decision evidence and privacy | open | None yet. |
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. Alignment after MF-1A is complete; the next implementation work unit must
-be selected from fresh repository evidence.
+None. MF-4A is verified; the next implementation work unit must be selected
+from fresh repository evidence.
 
 ## Completion Rules
 
@@ -143,3 +143,20 @@ select a future task.
   checks and runtime behavior, and confirmed the engine still supplies the
   restricted view and owns attempt recording and resolution. This evidence
   proves the fake-client boundary, not live-provider behavior or failure paths.
+
+### MF-4A Model attempt resolution authority
+
+- Criterion met: MF-4 World-owned consequence.
+- Observed behavior: Model-selected valid travel stays pending until the
+  unchanged resolver completes it at tick 3; unreachable model-selected travel
+  is rejected immediately and leaves Mara at home.
+- Boundary evidence: Committed tests verify attempt/outcome causal linkage,
+  configured timing, location mutation only on completion, skipped client calls
+  while pending, and completed or rejected actor-safe results in the restricted
+  view. The decision client exposes only `choose(view)` and no consequence API.
+- Validation: Five focused tests passed; `./scripts/check.sh` passed 72 current
+  and 63 historical tests; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no blockers, reproduced the
+  full checks and model-path probes, confirmed complete result linkage and
+  tick-2 immobility independently, and approved MF-4 as met without production
+  changes to the resolver.

@@ -43,6 +43,17 @@ class StaticModelDecisionClient:
         return self.response
 
 
+class SequenceModelDecisionClient:
+    def __init__(self, *responses):
+        self.responses = responses
+        self.views = []
+
+    def choose(self, view):
+        response = self.responses[len(self.views)]
+        self.views.append(view)
+        return response
+
+
 class ModelFocalPolicyTests(unittest.TestCase):
     def test_valid_client_choice_is_maras_attempt_without_scripted_substitution(self):
         scripted = build_first_day(seed=42)
@@ -82,6 +93,91 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(len(client.views), 1)
         self.assertEqual(client.views[0].agent_id, FOCAL_AGENT_ID)
         self.assertEqual(client.views[0].display_name, "Mara Vale")
+
+    def test_world_schedules_and_completes_model_selected_travel(self):
+        client = SequenceModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to workplace",
+                "decision_reason": "the workplace obligation is current",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after arriving",
+                "decision_reason": "arrival completes the selected journey",
+            },
+        )
+        simulation = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+
+        tick_one = simulation.step()
+        simulation.step()
+        tick_three = simulation.step()
+
+        travel_attempt = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted"
+            and event.actor_id == FOCAL_AGENT_ID
+            and event.details["action_kind"] == "travel"
+        )
+        completion = next(
+            event
+            for event in simulation.events
+            if event.kind == "travel_completed" and event.actor_id == FOCAL_AGENT_ID
+        )
+        self.assertEqual(tick_one.location, "home")
+        self.assertEqual(tick_three.location, "workplace")
+        self.assertEqual(travel_attempt.tick, 1)
+        self.assertEqual(completion.tick, 3)
+        self.assertEqual(completion.action_id, travel_attempt.action_id)
+        self.assertEqual(completion.caused_by, (travel_attempt.event_id,))
+        self.assertEqual(len(client.views), 2)
+        self.assertEqual(client.views[0].action_results, ())
+        completed_result = client.views[1].action_results[-1]
+        self.assertEqual(completed_result.action_id, travel_attempt.action_id)
+        self.assertEqual(completed_result.status, "completed")
+        self.assertEqual(completed_result.resolved_tick, 3)
+
+    def test_world_rejects_unreachable_model_travel_and_returns_actor_safe_result(self):
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "allocation_office"},
+                "explanation": "travel directly to the allocation office",
+                "decision_reason": "attempt the shortest apparent route",
+            }
+        )
+        simulation = build_first_day(
+            seed=42, focal_policy=ModelFocalPolicy(client)
+        )
+
+        simulation.step()
+
+        attempted = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
+        )
+        rejected = next(
+            event
+            for event in simulation.events
+            if event.kind == "action_rejected" and event.actor_id == FOCAL_AGENT_ID
+        )
+        result = simulation.agent_view(FOCAL_AGENT_ID).action_results[-1]
+        self.assertEqual(simulation.agent_view(FOCAL_AGENT_ID).location, "home")
+        self.assertEqual(attempted.details["destination"], "allocation_office")
+        self.assertEqual(rejected.action_id, attempted.action_id)
+        self.assertEqual(rejected.caused_by, (attempted.event_id,))
+        self.assertIn("not reachable", rejected.details["reason"])
+        self.assertEqual(result.action_id, attempted.action_id)
+        self.assertEqual(result.outcome_event_id, rejected.event_id)
+        self.assertEqual(result.status, "rejected")
+        self.assertEqual(result.reason, rejected.details["reason"])
+        self.assertEqual(len(client.views), 1)
 
     def test_invalid_model_like_values_fail_before_touching_simulation(self):
         simulation = build_first_day(seed=42)
