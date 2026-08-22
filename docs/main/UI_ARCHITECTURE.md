@@ -26,11 +26,18 @@ shows the focal character's location, aim, selected or ongoing action, a concise
 decision explanation, newly delivered observations, action rejections, a simple
 held-versus-needed resource summary, and a small belief summary. It receives
 only focal snapshots and cannot inspect the objective world or event history.
+In explicit model mode, the same surface shows Mara's attributed concise
+decision reason and the consequence admitted by the simulation; it does not
+show the restricted request, model configuration, or private decision record.
 
 A separate command renders an explicitly labelled omniscient development
-inspector containing objective state, institutional records, all beliefs, and
-source-linked history. This separation is implemented and tested, although it
-is not yet a visual interface boundary.
+inspector containing objective state, institutional and official records, all
+beliefs, source-linked history, and inspector-only linked model decision
+evidence when present. That evidence connects restricted input, authored and
+non-secret configuration identities, structured response, attempted action,
+validation, and outcome without retaining the endpoint, raw provider failure,
+or hidden provider reasoning. This separation is implemented and tested,
+although it is not yet a graphical interface boundary.
 
 There is currently no graphical or spatial view, pause/resume control, playback
 speed, selectable people or objects, intervention, or durable history browser.
@@ -68,6 +75,10 @@ A readable decision artifact may summarize:
 
 This is a user-facing explanation, not raw hidden model reasoning.
 
+The terminal currently implements only the concise attributed decision reason
+and selected or ongoing action. Alternatives considered, expectations, and a
+dedicated understanding surface remain proposed.
+
 ### People and relationships
 
 The observer may inspect what the focal character knows or believes about another person: past interactions, trust, suspicion, obligations, and unresolved questions. Unknown private state must remain unknown.
@@ -90,10 +101,11 @@ Entries may expose earlier beliefs and contradictions, but the interface should 
 
 ### Development inspector
 
-A separate surface may expose objective events, hidden state, Official Record
-operations and versions, Observation Delivery history, Agent Understanding
-transitions, institutional processing, and decision traces. It exists for
-debugging, replay, and explaining surprising behavior.
+A separate surface already exposes objective events, hidden state, Official
+Record operations and versions, delivered-observation history, Agent
+Understanding transitions, institutional state, and private decision traces.
+It exists for debugging, programmatic reproduction, and explaining surprising
+behavior. A durable replay browser and graphical inspector remain unimplemented.
 
 This inspector must be visually and conceptually distinct from the normal main-character perspective.
 

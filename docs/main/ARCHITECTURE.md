@@ -6,6 +6,12 @@ This document describes the conceptual boundaries for 2084 and how the current
 first living slice implements them. The implementation is a working feasibility
 slice, not a settled production specification.
 
+The bounded Official Record, Agent Understanding, and Model-Backed Focal
+Character goals are complete. There is currently no active owner-approved
+implementation goal. The separate thin-harness/fat-skills documents describe a
+possible generalization of the completed Mara boundary, not an implemented
+general agent runtime.
+
 ## Implemented Simulation Loop
 
 ```text
@@ -32,9 +38,11 @@ The focal-character view presents only an appropriate projection
    and rewrite create objective evidence but no observation.
 3. Complete actions whose duration has elapsed.
 4. Deliver completion perceptions and queued prior-action outcomes.
-5. Update structured beliefs from newly delivered claim observations.
+5. Update structured beliefs, source-linked understanding, and Mara's bounded
+   contextual stance from newly delivered evidence.
 6. Ask each idle policy for one attempted action using a restricted view.
-7. Validate and resolve or schedule each attempt.
+7. Validate and resolve or schedule each attempt, linking any model decision
+   evidence to validation and eventual outcome outside objective history.
 8. Retain a focal-character snapshot containing only admitted information.
 
 `Simulation.run()` repeatedly calls this boundary. The terminal command advances
@@ -59,12 +67,22 @@ There is no durable save/checkpoint format or user-facing replay command.
   restricted view supplied to a policy.
 - `simulation/beliefs.py` derives the currently supported structured
   beliefs and contradiction links.
+- `simulation/understanding.py` defines source-linked memory traces,
+  interpreted claims, contextual stance, and inspectable stance transitions;
+  the engine currently coordinates their updates.
 - `simulation/actions.py` defines immutable action attempts, pending
-  actions, and actor-safe terminal results.
+  actions, actor-safe terminal results, and the shared model action-parameter
+  contract.
 - `policies/` selects attempts without receiving objective world resources,
   hidden history, or private state belonging to other agents. The scripted
   focal policy remains the default; an explicit model-backed policy can use the
   single local Ollama adapter or detached recorded decisions.
+- `characters/mara/` contains the versioned authored profile and reusable
+  choose-next-action skill used by the model-backed policy.
+- `policies/mara_decision_request.py`, `policies/model_focal_policy.py`, and
+  `policies/ollama_client.py` compose the restricted request, enforce the
+  structured choice boundary, record or replay decisions, and make the one
+  supported live provider call.
 - `simulation/engine.py` currently centralizes scheduling,
   validation, resolution, perception delivery, belief updates, history export,
   completion, and focal projection.
@@ -81,8 +99,8 @@ completed bounded Official Record goal established the initial-publication,
 narrow public-consultation, and authorized rewrite seams described above. The
 completed bounded Agent Understanding goal added source-linked memory traces,
 explicit official-version conflict, one contextual public stance, and one
-diary-cued resurfacing transition. The active bounded goal connects only the
-focal character to a model while preserving those state boundaries.
+diary-cued resurfacing transition. The completed Model-Backed Focal Character
+goal connected only Mara to a model while preserving those state boundaries.
 
 - **Official Record** currently owns the institution's narrow mutable public
   projection and authorized rewrite; broader suppression and fabrication remain
@@ -120,11 +138,12 @@ What an agent currently retains or concludes. Memories and beliefs may have conf
 
 For initially supported contradictions, beliefs should use structured claims whose conflict is explicit. The system should not depend on an AI reliably discovering every contradiction in arbitrary prose.
 
-A later Agent Understanding module may make a memory less accessible or inhibit
-a contradiction from guiding one contextual stance. That transition must not
-delete its provenance from development evidence. Public expression remains a
-separate attempted action rather than a belief field silently overwritten by
-the institution.
+The bounded Agent Understanding path can select a context-specific public
+stance and later resurface an earlier claim through accessible diary evidence.
+Those transitions retain provenance in development evidence. More general
+inhibition, graded accessibility, and decay remain future work. Public
+expression remains a separate attempted action rather than a belief field
+silently overwritten by the institution.
 
 ### Public expression and action
 
@@ -138,11 +157,11 @@ Reports, sensor observations, evidence, suspicions, queues, decisions, and publi
 
 Institutions act only on information they can access and process. Their official records may contradict world truth, private memory, or one another without gaining special authority over objective state.
 
-The institution's current public projection may stop showing an earlier
-official version, suppress references in controlled artifacts, or introduce an
-artifact attributed to the past. Each accepted operation is still a new
-objective event. Uncontrolled physical copies, private records, observations,
-and agent memories change only through valid world actions or delivery paths.
+The implemented institution's current public projection may move from one
+immutable version to a later one. Possible future suppression or fabrication
+operations would still need to create new objective events rather than edit
+history. Uncontrolled physical copies, private records, observations, and
+agent memories may change only through valid world actions or delivery paths.
 
 ### Observer presentation
 
@@ -191,8 +210,9 @@ elsewhere. The scripted focal policy remains a separate default and is never a
 failure fallback.
 
 Persistent identity, embodied state, delivered observations, source-linked
-understanding, relationships, aims, plans, and prior outcomes remain explicit
-agent or world state. The model receives only the restricted agent view. It
+understanding, aims, obligations, holdings, accessible objects, and prior
+outcomes remain explicit agent or world state. The model receives only the
+restricted agent view. It
 cannot inspect the development inspector or hidden state, mutate the world, or
 declare success; existing world resolution remains authoritative.
 
@@ -245,14 +265,18 @@ Not every step needs to exist in the first implementation. The invariant is that
 
 Official-record operations follow the same rule: a role must have authority and
 access to a known target, processing may consume time or capacity, and a record
-change does not itself broadcast the result. Observation Delivery separately
-determines who encounters the new projection.
+change does not itself broadcast the result. The current delivery logic in
+`Simulation` separately determines who encounters the new projection; a
+standalone Observation Delivery module has not been extracted.
 
 ## Physical Objects and the Diary
 
 Physical objects should have only the properties required for current interactions: identity, type, location, possession, and relevant state.
 
-The initial diary can be one such object. Its minimum supported actions are reading and writing. An entry should record time, content or structured claims, and the focal character's perspective when written. Writing should advance time and require physical access to the object.
+The current diary is one such object. Reading and writing require physical
+access and consume their configured simulation duration. Entries preserve a
+structured claim, its source observations, and start and completion ticks from
+Mara's limited perspective.
 
 The diary does not need discovery AI, hiding mechanics, evidence rules, memory bonuses, or complex editing initially. Its object identity leaves room for those consequences if later behavior justifies them.
 
@@ -305,18 +329,22 @@ resulting day should not be presented as an emergent plot.
 ## Current Technical Limits
 
 - The first model integration is deliberately narrow: only Mara can use one
-  local Ollama model through one structured decision skill. Supporting agents
-  and institutions remain deterministic, and there is no provider framework,
-  tool loop, or opaque provider memory.
+  explicitly selected `qwen3:4b-instruct` model through one local Ollama adapter
+  and one structured decision skill. Supporting agents and institutions remain
+  deterministic, and there is no provider framework, tool loop, generic skill
+  resolver, or opaque provider memory.
 - Live model sampling may vary. Offline deterministic-client tests and
   recorded-decision playback prove the boundary and resulting world history,
   not deterministic or believable live behavior.
-- The focal policy is tailored to this first day rather than driven by a general
-  planner, need system, or schedule model.
+- The scripted focal comparison is tailored to this first day. The model skill
+  does not encode that route, but it is still bounded to Mara and the current
+  eight-action vocabulary rather than a general planner, need system, or
+  schedule model.
 - `Simulation` is a single large coordinator whose action-specific resolution
   branches will need separation if the action vocabulary grows.
-- Action and observation payloads use immutable structured mappings rather than
-  action-specific schemas.
+- Model-selected action parameters have shared per-kind shape contracts, while
+  action, event, and observation payloads still use generic immutable mappings
+  rather than dedicated data types for every kind.
 - The world has one resource model with simple per-agent integer holdings, one
   institution, three locations, three agents, and one diary. It does not yet
   model physical resource lots, transfer logistics, use, or storage.
@@ -337,8 +365,10 @@ resulting day should not be presented as an emergent plot.
 - The allocation resolver records the two-unit physical handover as a separate,
   resource-identified objective consequence. Its later delivered outcome updates
   focal holdings without changing the published ration schedule.
-- There is no deep Agent Understanding module: cognitive transitions remain split
-  between the belief helper, simulation coordinator, focal policy, and observer.
+- Agent Understanding is deliberately bounded. Its data types live in
+  `simulation/understanding.py`, but transition logic remains coordinated by the
+  large `Simulation` class and there is no memory decay, general inference, or
+  model-authored canonical understanding.
 - Claim and Provenance has not been extracted, and observation payloads still
   repeat proposition, value, source, and revision fields as mappings.
 - There is no Observation Delivery module: reach, delay, co-location, and

@@ -1,17 +1,22 @@
 # Mara Model Harness Plan
 
-Status: owner-directed architecture plan for completing the active
-Model-Backed Focal Character goal. This document records the decisions made in
-the August 22, 2026 harness discussion. It does not authorize work on the
-later 24-hour simulation foundation.
+Status: completed architecture record for the Model-Backed Focal Character
+goal. This document records the decisions made in the August 22, 2026 harness
+discussion and the boundary they produced. Verified completion evidence lives
+in the goal's [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md).
+It does not authorize work on the later 24-hour simulation foundation.
+
+Reading note: forward-looking language below preserves the plan-time design
+constraints. The sections on existing code, verified evaluation, resolved
+decisions, and definition of done describe the final repository state.
 
 ## Purpose
 
-Build the smallest model harness that allows a locally hosted model to make
+The plan built the smallest model harness that allows a locally hosted model to make
 Mara Vale's actual simulation decisions while preserving the simulation's
 authority over truth, knowledge, physical possibility, time, and consequence.
 
-The immediate sequence is:
+The completed implementation sequence was:
 
 1. Define Mara's stable character profile and first reusable decision skill.
 2. Connect those authored inputs and the existing restricted decision envelope
@@ -22,8 +27,9 @@ The immediate sequence is:
 5. Document the live entry path and complete MF-10 without weakening MF-1
    through MF-9.
 
-The 24-hour simulation foundation is deliberately deferred until model-backed
-Mara can be observed interacting with the current bounded world.
+The 24-hour simulation foundation remains deliberately deferred. Model-backed
+Mara can now be observed interacting with the current bounded world, but no
+later foundation goal is active.
 
 ## Architectural Thesis
 
@@ -46,7 +52,7 @@ invoke or control the simulation directly.
 ```mermaid
 flowchart LR
     S["Deterministic simulation state"] --> V["Restricted Mara view"]
-    V --> R["Deterministic context resolver"]
+    V --> R["Deterministic input and affordance composition"]
     R --> H["Mara profile + skill + thin harness"]
     H --> M["Local model on PC"]
     M --> C["One structured choice"]
@@ -95,8 +101,8 @@ decision. It is not a substitute for mutable simulation state.
 A skill is a reusable authored procedure for judgment. It teaches Mara how to
 approach a class of decisions without deciding the outcome in advance.
 
-The first model-backed version should begin with one primary skill, tentatively
-called `choose-next-action`. It should teach Mara to:
+The first model-backed version uses one primary skill,
+`choose-next-action-v0`. It teaches Mara to:
 
 - reason only from the supplied character-safe context;
 - consider current aims, obligations, location, access, and holdings;
@@ -220,9 +226,10 @@ The harness does not own:
 For the first live integration, one inference call should produce one attempted
 action. Mara should not enter an open-ended internal tool loop.
 
-## Deterministic Context Resolver
+## Deterministic Context Composition
 
-The resolver answers only: which authored material is needed for this decision?
+The current composer answers only: what agent-safe state, affordances, and
+authored material belong in this decision request?
 
 It may consider agent-safe facts already present in `AgentView`, such as:
 
@@ -234,13 +241,14 @@ It may consider agent-safe facts already present in `AgentView`, such as:
 It must not consult objective events, another agent's private state,
 institutional secrets, the inspector, or future scenario schedules.
 
-Initially, the safest resolver is intentionally boring:
+The implemented selection is intentionally boring:
 
 - always include the stable Mara profile;
 - always include the single `choose-next-action` skill;
 - include no optional specialized skill until a second real skill exists.
 
 This preserves a clean future seam without building speculative routing logic.
+There is no generic skill resolver in the current repository.
 
 ## Model-Neutral Decision Contract
 
@@ -429,7 +437,7 @@ inspectable simulation mechanism. It is not part of this harness plan.
 
 ## Relationship to Existing Code
 
-The current implementation already provides most of the lower boundary:
+The completed implementation uses these boundaries:
 
 - `simulation/agents.py` defines `AgentView`, `DecisionPolicy`, and private
   `PolicyDecisionRecord` evidence.
@@ -446,21 +454,20 @@ The current implementation already provides most of the lower boundary:
 - `tests/test_model_focal_policy.py` provides the current offline proof for
   restricted input, action parsing, failure, privacy, causality, and recorded
   reproduction.
+- `characters/mara/profile-v0.md` and
+  `characters/mara/skills/choose-next-action-v0.md` provide the versioned
+  authored inputs.
+- `policies/mara_decision_request.py` composes the four request layers and
+  derives the provider schema from the shared action contract.
+- `policies/ollama_client.py` implements one stateless native Ollama adapter.
+- `scenarios/first_day.py` exposes the explicit opt-in CLI while preserving the
+  scripted default.
+- `tests/test_mara_decision_request.py`, `tests/test_ollama_client.py`, and
+  `tests/test_first_day_cli.py` verify composition, transport, failure, privacy,
+  and entry-path behavior offline.
 
-The harness should extend these seams rather than replace them.
-
-The likely missing implementation pieces are:
-
-- authored Mara profile material;
-- the first reusable Mara decision skill;
-- deterministic prompt composition;
-- one live local-model adapter;
-- response extraction into the existing structured choice;
-- an explicitly opt-in model-backed entry path;
-- documentation and one inspected live smoke run.
-
-Exact file placement and names remain implementation decisions to be selected
-from fresh repository evidence when work begins.
+The harness extended the existing seams rather than replacing them. No general
+provider framework or tool-using agent runtime was introduced.
 
 ## Evaluation Strategy
 
@@ -487,7 +494,7 @@ response normalization without network access.
 
 ### Live smoke
 
-The opt-in live smoke should demonstrate at least one real decision boundary:
+The completed opt-in live smoke demonstrated one real decision boundary:
 
 1. Start the configured local server on the PC.
 2. Confirm the selected model is available without exposing credentials.
@@ -501,13 +508,16 @@ The opt-in live smoke should demonstrate at least one real decision boundary:
    configuration details.
 9. Record honest evidence, including variability and any model limitation.
 
-The smoke test proves that the live boundary works. It does not prove that the
-model is deterministic or that Mara is fully believable.
+The verified `qwen3:4b-instruct` sample selected travel, made no call while that
+action was pending, completed arrival through ordinary resolution, and then
+selected work. Linked inspector evidence and normal-view privacy were verified.
+The smoke proves that the live boundary works. It does not prove that the model
+is deterministic or that Mara is fully believable.
 
 ## MF-10 Completion Boundary
 
-The harness work completes the active Model-Backed Focal Character goal only
-when all of the following are true:
+The harness work completed MF-10 and the Model-Backed Focal Character goal
+after all of the following were verified:
 
 - the default deterministic first-day mode remains available;
 - an explicitly selected model-backed entry path is documented and usable;
@@ -522,8 +532,9 @@ when all of the following are true:
 - recorded-decision reproduction remains available;
 - independent review confirms MF-1 through MF-10 without broadening the goal.
 
-If the live server or selected model is unavailable, MF-10 remains open. The
-goal must not be weakened or marked complete based only on fake-client evidence.
+The live server and selected model were available for the owner-authorized
+smoke, so MF-10 did not rely only on fake-client evidence. Future offline runs
+remain independent of that external server.
 
 ## Explicit Non-Goals
 
@@ -550,12 +561,13 @@ durable checkpoints, pacing, discrete-event scheduling, and crash recovery.
 Those concerns must remain outside the Mara decision harness so they do not
 turn it into a general runtime.
 
-No choices about that later foundation are required to finish model-backed
-Mara.
+No choices about that later foundation were required to finish model-backed
+Mara, and none are authorized by this completed record.
 
 ## Decisions Already Made
 
-- GPT-5.6 Sol runs the autonomous implementation loop; it is not Mara.
+- Codex development models are not Mara and are governed separately by the
+  repository development-loop contract.
 - Mara is backed by a locally hosted model running on the PC.
 - The 2084 repository, simulation, and harness are developed on the Mac.
 - Mac and PC communicate over a private local-network model API.
@@ -568,32 +580,35 @@ Mara.
 - The model returns one attempted action and never directly changes the world.
 - Persistent Mara continuity remains explicit simulation state, not provider
   chat history.
-- The current active goal stops at MF-10; work on the 24-hour foundation waits.
+- The completed goal stopped at MF-10; work on the 24-hour foundation still
+  waits for a separate owner-approved goal.
 
-## Open Decisions for the Mara Skills Discussion
+## Decisions Resolved by the Initial Integration
 
-The following choices have intentionally not been made yet:
+The implementation resolved the plan-time questions as follows:
 
-- the exact content and length of Mara's stable profile;
-- which values or tensions define her without prescribing her story;
-- the wording and structure of the first `choose-next-action` skill;
-- how much expressive voice belongs in the profile versus the skill;
-- whether profile and skill artifacts are Markdown, structured data plus
-  Markdown, or another simple authored format;
-- the exact prompt layout and contract versioning mechanism;
-- the local serving software and initial model;
-- which structured-output feature the selected server reliably supports;
-- the exact opt-in command-line interface for model-backed first-day runs;
-- what observed behavior will count as a promising first portrayal of Mara
-  beyond merely satisfying the schema.
+- Mara's short `mara-profile-v0` Markdown profile defines practical obligation,
+  skepticism, caution, adaptable response, and plain restrained voice without a
+  prescribed route.
+- `choose-next-action-v0` is one reusable Markdown decision skill; expression
+  guidance is divided between the stable profile and the bounded skill.
+- `mara-decision-v0` composes stable boundary instructions, profile, skill, and
+  fresh restricted JSON as four explicit layers.
+- The native server is Ollama and the first supported integration model is
+  exactly `qwen3:4b-instruct`.
+- Ollama receives the canonical per-action JSON Schema as its `format`, while
+  the strict local parser remains authoritative.
+- The explicit CLI requires `--focal-policy ollama`, an external private
+  numeric-IP base URL, and the exact model name.
 
-These questions are the next discussion scope. They should be answered before
-implementation adds provider or prompt machinery that silently decides them.
+Whether any live sample is a promising portrayal of Mara remains an evaluation
+question. The completed goal proves the decision and authority boundary, not
+believability.
 
 ## Definition of Done for This Plan
 
-This plan is satisfied when model-backed Mara can make a real, inspectable
-decision through the local model boundary, the deterministic simulation remains
-the sole authority over state and consequences, the offline regression suite
-remains independent of the model server, and the evidence required by MF-10 is
-complete.
+This plan is satisfied. Model-backed Mara made real, inspectable decisions
+through the local model boundary, the deterministic simulation remained the
+sole authority over state and consequences, the offline regression suite
+remains independent of the model server, and MF-10 completion evidence is
+recorded in the goal implementation state.

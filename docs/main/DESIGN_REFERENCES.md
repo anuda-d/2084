@@ -94,9 +94,12 @@ Together, the references suggest:
 
 The simulation should be rigorous underneath and experiential on the surface. Its interest should come from watching pressure, limited knowledge, relationships, and contradiction alter a life—not from a victory condition, a prescribed plot, or a graph claiming to prove how people behave.
 
-The proposed implementation of this direction is divided into Official Record,
-Agent Understanding, Observation Delivery, and—only after two real uses
-exist—shared Claim and Provenance semantics. See
+The bounded implementation now covers Official Record and Agent Understanding,
+including one retained contradiction and diary-cued resurfacing path. Observation
+Delivery and—only after two real uses exist—shared Claim and Provenance remain
+possible later extractions. The completed model-backed Mara boundary also
+demonstrates the reference principle that a decision policy proposes an attempt
+while deterministic world rules retain consequence authority. See
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 
 ## Scope Test

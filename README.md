@@ -14,6 +14,10 @@ Eighty-Four*, especially the gap between lived experience, public behavior, and
 official accounts. It is not an adaptation of Orwell's plot, characters, or
 setting.
 
+Repository status: the bounded Official Record, Agent Understanding, and
+Model-Backed Focal Character goals are complete. There is no active
+owner-approved implementation goal as of August 22, 2026.
+
 ## What exists today
 
 The repository contains one bounded prototype scenario, `first_day_v3`, with a
@@ -74,7 +78,8 @@ python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect
 
 The inspector is intentionally verbose. It includes objective events,
 agent-specific observations, action outcomes, official-record versions,
-physical state, beliefs, and the new Agent Understanding evidence.
+physical state, beliefs, Agent Understanding evidence, and inspector-only
+model decision records when model-backed Mara is used.
 
 Useful options:
 
@@ -132,11 +137,23 @@ under `experiments/`.
 
 ## Current development status
 
-The bounded **Agent Understanding** experiment now demonstrates that Mara can
-retain two delivered official versions, link their conflict, use the revised
-version as a public working stance under pressure, and later resurface the
-earlier version through a physical diary strongly enough to prompt one ordinary
-public-schedule recheck.
+Beyond the initial First Living Slice, the three most recent bounded
+implementation goals are complete:
+
+- **Official Record** added a stable ration-schedule artifact, immutable
+  versions, a current-version pointer, location-gated consultation, and an
+  authorized same-period rewrite that never changes objective history or
+  automatically delivers the new version.
+- **Agent Understanding** demonstrates that Mara can retain two delivered
+  official versions, link their conflict, use the revised version as a public
+  working stance under pressure, and later resurface the earlier version through
+  a physical diary strongly enough to prompt one ordinary public-schedule
+  recheck.
+- **Model-Backed Focal Character** added a versioned Mara profile and reusable
+  decision skill, a restricted decision envelope, a strict shared action
+  contract, explicit safe failures, inspector-only linked decision evidence,
+  recorded-decision reproduction, and the opt-in Ollama command above. The
+  scripted command remains the offline regression default.
 
 The evidence remains deliberately inspectable and limited:
 
@@ -154,11 +171,10 @@ in the terminal output. It represents Mara's direct sight of three physical
 allocation units. It remains separate from the official-version conflict and
 stance system.
 
-The active model-backed boundary now has a versioned Mara profile and reusable
-decision skill, a strict shared action contract, explicit safe failures,
-inspector-only decision evidence, recorded-decision reproduction, and the
-opt-in Ollama command above. The scripted command remains the offline regression
-default.
+The repository also contains a proposed thin-harness/fat-skills direction for
+later model-backed expansion. The current code implements only the narrow Mara
+decision boundary; it does not contain a general skill resolver, tool-using
+agent runtime, or self-modifying skill system. No later product goal is active.
 
 ## Known limits
 
@@ -169,9 +185,10 @@ default.
 - The first-day route, institutional rewrite timing, public pressure, and diary
   opportunity are authored inputs. The result is bounded evidence, not an
   emergent story.
-- Memory decay, forgetting, general language understanding, emotion,
+- Memory decay, forgetting, general language understanding, dynamic
   personality, relationships, surveillance, punishment, and a broader living
-  society are not implemented.
+  society are not implemented. Mara has a short authored profile, not a general
+  personality simulation.
 - There is no graphical interface, durable save system, user-facing replay
   command, or player intervention. Recorded-decision reproduction exists at the
   policy boundary and is covered by offline tests.
@@ -199,16 +216,26 @@ The most useful documents are:
   thematic direction.
 - [Architecture](docs/main/ARCHITECTURE.md) — the boundaries between world
   truth, observations, decisions, institutions, and presentation.
-- [Current Development Index](docs/plans/CURRENT.md) — the active development
-  entry point.
+- [Current Development Index](docs/plans/CURRENT.md) — the operational
+  development entry point and authoritative goal status.
 - [Model-Backed Focal Character Goal](docs/plans/model-backed-focal-character/GOAL.md)
-  — the active bounded Phase 3B goal.
+  — the completed bounded Phase 3B goal.
 - [Model-Backed Focal Character Implementation State](docs/plans/model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-  — verified progress for the active goal.
+  — verified completion evidence for that goal.
 - [Agent Understanding Goal](docs/plans/agent-understanding/GOAL.md) — the
   completed Phase 3A foundation.
 - [Verified Implementation State](docs/plans/agent-understanding/IMPLEMENTATION_PLAN.md)
   — evidence retained from the completed Agent Understanding goal.
+- [UI Architecture](docs/main/UI_ARCHITECTURE.md) — implemented terminal
+  surfaces and future interface direction.
+- [Design References](docs/main/DESIGN_REFERENCES.md) — transferable reference
+  ideas and explicit boundaries against copying them wholesale.
+- [Thin Harness, Fat Skills](docs/main/thin-harness-fat-skills-spec.md) — a
+  proposed general architecture direction, not an active implementation goal.
+- [Mara Model Harness Plan](docs/plans/MARA_HARNESS_PLAN.md) — the completed
+  architecture record behind the first live model integration.
+- [Development Loop](docs/main/DEVELOPMENT_LOOP.md) — the full operating
+  contract used only when owner-authorized work is active.
 
 For coding agents and contributors, [AGENTS.md](AGENTS.md) describes the working
 agreements and the one-slice development loop.
