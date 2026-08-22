@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-10A authored decision request
-- Verified implementation runs since alignment: 1
+- Last completed run: MF-10B native Ollama adapter
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 87 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. The scripted default remains intact and offline checks pass 105 current and 63 historical tests. Profile/skill identity in decision records, a usable documented live entry path, and the explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,7 +47,7 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-10A is complete; the next implementation work unit must be selected
+None. MF-10B is complete; the next implementation work unit must be selected
 from fresh repository evidence.
 
 ## Completion Rules
@@ -220,6 +220,48 @@ select a future task.
   and approved MF-10A for finalization. Live Ollama schema acceptance,
   profile/skill identity in decision records, and end-to-end live privacy remain
   outside this cycle's evidence.
+
+### MF-10B Native Ollama adapter
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: one `OllamaDecisionClient.choose(model_input)` call composes
+  fresh two-message Mara context, sends one native `POST /api/chat` with
+  `stream: false`, `think: false`, the exact JSON Schema in `format`,
+  temperature 0, 256 predicted tokens, and a 16K context, then extracts only
+  the assistant `message.content` JSON as the candidate structured choice.
+- Transport boundary: the standard-library client accepts only external
+  cleartext private, loopback, or link-local numeric-IP origins, bypasses DNS,
+  proxies, redirects, and provider history, permits no credentials in the URL,
+  uses one exact request with no retry or model pull, enforces a whole-request
+  deadline, and caps success and error responses at 1 MiB. Configuration
+  identity records the exact model and material generation/timeout settings but
+  not the endpoint.
+- Failure evidence: focused fake and loopback tests cover socket and nested
+  timeout, connection refusal and route errors, HTTP 404/500, close before
+  status, malformed HTTP status and truncated response, model-label mismatch,
+  invalid UTF-8/JSON/envelope/content, deep JSON recursion, oversized integer
+  decoding, oversized and slow-drip bodies, malformed structured choice, and a
+  schema-valid world-invalid attempt. These become the existing sanitized
+  timeout, unavailable-model, malformed-response, invalid-attempt, or ordinary
+  resolver-rejection paths without raw provider, endpoint, or thinking text.
+- Authority and continuity evidence: a valid extracted choice passes unchanged
+  through `ModelFocalPolicy` and the strict parser; the simulation alone owns
+  attempt validity and outcome. Every call builds only the current profile,
+  skill, and restricted state; no provider chat is retained and the scripted
+  policy is never invoked as fallback.
+- Validation: Thirty-eight focused request/adapter/policy tests passed;
+  `./scripts/check.sh` passed 105 current and 63 historical tests; scripted
+  normal and inspector runs completed; `git diff --check` passed.
+- Independent review: successive fresh Sol-high transport reviews exposed and
+  drove fixes for HTTP protocol exception escapes, response-model mismatch,
+  recursive and oversized-number JSON, non-finite timeout values, automatic
+  redirects, malformed URL suffixes and ports, environment proxy inheritance,
+  unbounded slow/large responses, numeric-IP name resolution, scoped IPv6,
+  public cleartext origins, lossy timeout identity, and close-before-status
+  classification. The final fresh review found no findings, independently
+  reproduced the focused/full checks and targeted socket probes, and approved
+  MF-10B. Live Ollama behavior and profile/skill identity in decision evidence
+  remain outside this cycle's evidence.
 
 ### MF-2A Restricted focal identity projection
 
