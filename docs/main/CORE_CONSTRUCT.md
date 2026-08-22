@@ -4,6 +4,12 @@ Status: current product direction.
 
 This document is a living guide to what 2084 is becoming. It describes the current direction without pretending that the setting, systems, or final form are settled.
 
+The current repository proves three bounded foundations: append-only objective
+history beside a mutable Official Record, source-linked Agent Understanding
+with one contextual contradiction and diary-resurfacing path, and an optional
+model-backed Mara whose choices become real attempted actions. All three goals
+are complete; there is no active owner-approved implementation goal.
+
 ## Central Idea
 
 2084 follows one autonomous person living inside a broader social simulation shaped by institutions, incentives, limited information, relationships, and pressure.
@@ -60,13 +66,12 @@ The doublethink-inspired mechanism should initially be modest. It can model cont
 
 Early contradictions should be structured and understandable, such as changing ration figures, revised production claims, altered rules, or conflicting accounts of a past event. Arbitrary language interpretation can wait.
 
-The proposed architecture separates this into four responsibilities. The
-**Official Record** owns the institution's mutable current public projection;
-**Observation Delivery** determines which version reaches which person and
-when; **Agent Understanding** owns source-linked memory, confidence, conflict,
-contextual stance, and inspectable suppression; and **Claim and Provenance** may
-later hold shared claim semantics once the first two modules provide two real
-uses. Objective events remain outside all four in the append-only history. See
+The architecture distinguishes four responsibilities. The bounded
+**Official Record** and **Agent Understanding** responsibilities are
+implemented, although some update logic remains centralized in `Simulation`.
+**Observation Delivery** and shared **Claim and Provenance** remain possible
+future extractions. Objective events remain outside all four in the append-only
+history. See
 [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
 
 ## Institutions
@@ -76,9 +81,9 @@ Institutions may observe, broadcast, reward, investigate, ration, revise records
 A revised official record changes only the institution's controlled public
 projection. It does not erase objective events, automatically alter private or
 uncontrolled physical records, or instantly grant the revision to every agent.
-Suppression and fabrication are therefore institutional operations with
-authority, access, processing, time, and evidence—not global edits to the
-simulation.
+If suppression or fabrication is later implemented, it must be an institutional
+operation with authority, access, processing, time, and evidence—not a global
+edit to the simulation. Neither operation exists in the current slice.
 
 Institutional limits matter. Surveillance can miss events. Reports can be false or delayed. Officials can misunderstand evidence. Processing capacity can become overloaded. Different parts of an institution can act from different information.
 
@@ -115,8 +120,9 @@ scripted actor. The deterministic focal policy remains the default comparison
 and is never a hidden fallback.
 
 The persistent character is not reducible to one model call. Identity, body,
-location, aims, relationships, delivered observations, source-linked memory,
-current plans, and prior outcomes remain explicit simulation state. The model
+location, aims, obligations, holdings, accessible objects, delivered
+observations, source-linked understanding, and prior outcomes remain explicit
+simulation state. The model
 receives only a restricted character view and chooses what to attempt next.
 
 AI does not automatically know the world, speak truthfully, remain consistent,
@@ -126,7 +132,7 @@ world, or declare its own success.
 
 World truth, perception, action validity, institutional access, and consequential resolution should remain governed by explicit simulation state and constraints. Simpler decision rules remain valuable wherever they answer the same question more clearly.
 
-Begin with the focal character only. Supporting characters should become
+The current implementation begins with the focal character only. Supporting characters should become
 model-backed only after the focal boundary demonstrates limited knowledge,
 persistent identity, inspectable decisions, safe failure handling, and recorded
 reproduction. Agent Understanding remains the canonical, inspectable substrate
@@ -151,6 +157,12 @@ non-secret configuration identity, structured response, attempted action,
 validation, and outcome. Recorded-decision playback can reproduce resulting
 world history without another live call. None of this makes model output an
 objective fact, canonical memory, deterministic sample, or successful action.
+
+The owner-authorized live smoke completed with the pinned local
+`qwen3:4b-instruct` integration: Mara selected travel, ordinary resolution
+completed it after its configured duration, and a later eligible decision
+selected work. This verifies one end-to-end boundary, not believable behavior
+or deterministic live sampling.
 
 The implemented belief model is also deliberately narrow. It recognizes one
 structured direct-allocation proposition with fixed confidence and can link
@@ -186,6 +198,11 @@ The `first_day_v3` scenario does not use the generic scheduled broadcasts. Its
 world timings and supporting policies remain scenario-specific, as does the
 scripted focal comparison; the model-backed skill does not encode that route.
 
+The repository's [Thin Harness, Fat Skills](thin-harness-fat-skills-spec.md)
+document proposes how this separation might guide later model-backed work. The
+implemented system does not yet have a general skill resolver, tool-using agent
+runtime, automatic skill-improvement loop, or model-backed supporting cast.
+
 ## Observation and Playability
 
 Playability means embodied attention, not necessarily conventional control:
@@ -207,7 +224,9 @@ Authored material may seed people, places, pressures, and starting conditions. I
 
 ## Still Open
 
-- The focal character's identity, work, household, and initial situation
+- Whether Mara Vale, her ledger work, household obligation, and first-day
+  situation remain the lasting product foundation rather than a bounded
+  prototype
 - The original setting and historical background
 - The first small district and supporting population
 - Which repeated live-model failures or mediocre choices justify revising the

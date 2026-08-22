@@ -1,8 +1,23 @@
 # Thin Harness, Fat Skills
 
+Status: proposed architecture direction, not an active implementation goal.
+
+This document generalizes lessons from the completed model-backed Mara boundary.
+The current repository has one versioned Mara profile, one authored
+`choose-next-action` skill, a narrow request composer and Ollama adapter, a
+strict structured-choice parser, and a deterministic simulation that alone
+changes world state. It does not yet have a generic skill catalog or resolver,
+model tools, a reusable agent harness, automatic skill improvement, or a
+model-backed supporting cast.
+
+Any broader implementation requires a new owner-approved goal. The current
+factual architecture remains defined by [Architecture](ARCHITECTURE.md); the
+completed first application is recorded in the
+[Model-Backed Focal Character evidence](../plans/model-backed-focal-character/IMPLEMENTATION_PLAN.md).
+
 ## Objective
 
-Build agent systems in three layers:
+Guide later agent systems toward three layers:
 
 1. **Skills** contain reusable procedures, domain judgment, and decision logic.
 2. **Harness** runs the model and coordinates execution while staying small.
@@ -130,7 +145,8 @@ Minimum workflow:
 
 ## Learning Loop
 
-For repeatable workflows, improve the skill rather than adding complexity to the harness.
+For repeatable workflows, prefer improving a reviewed skill rather than adding
+complexity to the harness.
 
 1. Run the workflow on real examples.
 2. Collect outcomes and user feedback.
@@ -139,7 +155,10 @@ For repeatable workflows, improve the skill rather than adding complexity to the
 5. Validate the revised skill against prior examples.
 6. Reuse the updated skill on future runs.
 
-Skill changes must be reviewable and version-controlled. Do not allow an agent to silently rewrite production instructions based on a single result.
+Skill changes must be owner-authorized, reviewable, version-controlled, and
+evaluated against prior behavior. Do not allow an agent to silently rewrite
+production instructions based on a single result. No automatic skill-rewriting
+loop exists in 2084 today.
 
 ## Implementation Constraints
 
