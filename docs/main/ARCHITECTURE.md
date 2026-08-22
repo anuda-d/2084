@@ -38,9 +38,12 @@ The focal-character view presents only an appropriate projection
 8. Retain a focal-character snapshot containing only admitted information.
 
 `Simulation.run()` repeatedly calls this boundary. The terminal command advances
-the loop automatically, but the engine remains discrete and deterministic. The
-current run can reproduce identical history data from the same configuration
-and seed; it cannot yet load a durable save and resume or replay a complete run.
+the loop automatically, while the engine remains discrete and world resolution
+remains deterministic for equal attempts. Scripted runs reproduce equal history
+from equal configuration and seed. Live model choices are not assumed
+deterministic; detached recorded decisions can be replayed through the same
+parser and resolver to reproduce world history without another provider call.
+There is no durable save/checkpoint format or user-facing replay command.
 
 ## Current Implementation Map
 
@@ -58,8 +61,10 @@ and seed; it cannot yet load a durable save and resume or replay a complete run.
   beliefs and contradiction links.
 - `simulation/actions.py` defines immutable action attempts, pending
   actions, and actor-safe terminal results.
-- `policies/` selects attempts without receiving objective world
-  resources, hidden history, or private state belonging to other agents.
+- `policies/` selects attempts without receiving objective world resources,
+  hidden history, or private state belonging to other agents. The scripted
+  focal policy remains the default; an explicit model-backed policy can use the
+  single local Ollama adapter or detached recorded decisions.
 - `simulation/engine.py` currently centralizes scheduling,
   validation, resolution, perception delivery, belief updates, history export,
   completion, and focal projection.
@@ -74,15 +79,17 @@ The possible deeper architecture is described in detail in
 It is a proposal, not a description of currently implemented modules. The
 completed bounded Official Record goal established the initial-publication,
 narrow public-consultation, and authorized rewrite seams described above. The
-active bounded goal now begins Module 2 with source-linked memory traces,
+completed bounded Agent Understanding goal added source-linked memory traces,
 explicit official-version conflict, one contextual public stance, and one
-diary-cued resurfacing transition.
+diary-cued resurfacing transition. The active bounded goal connects only the
+focal character to a model while preserving those state boundaries.
 
-- **Official Record** would own the institution's mutable current public
-  projection and bounded rewrite, suppression, and fabrication operations.
-- **Agent Understanding** would own source-linked memory traces, interpreted
-  claims, confidence, known conflicts, contextual stance, retrieval
-  accessibility, and inspectable suppression or resurfacing.
+- **Official Record** currently owns the institution's narrow mutable public
+  projection and authorized rewrite; broader suppression and fabrication remain
+  proposed operations.
+- **Agent Understanding** currently owns the bounded source-linked memory,
+  interpreted-claim conflict, contextual stance, and resurfacing evidence;
+  confidence change, inhibition, and decay remain proposed deepening.
 - **Claim and Provenance** may be extracted only after Official Record and Agent
   Understanding create two real uses for shared claim identity, comparison, and
   lineage.
@@ -174,12 +181,14 @@ The decision process may recommend an action and give a concise, user-facing exp
 
 Resolution validates the attempt, applies costs and time, handles conflicts, and produces consequences. Important resolutions should preserve enough evidence to explain what happened.
 
-### Planned model-backed focal policy
+### Model-backed focal policy
 
-The approved direction is to begin AI character decisions with the focal
-character. A model-backed focal policy will be the character's decision and
-expression process: its valid structured output becomes the character's
-attempted action, rather than commentary on a choice made elsewhere.
+The implemented AI boundary begins with the focal character. In explicit model
+mode, a versioned Mara profile, one reusable decision skill, and a fresh
+restricted state are sent to one local Ollama model. Its valid structured output
+becomes Mara's attempted action, rather than commentary on a choice made
+elsewhere. The scripted focal policy remains a separate default and is never a
+failure fallback.
 
 Persistent identity, embodied state, delivered observations, source-linked
 understanding, relationships, aims, plans, and prior outcomes remain explicit
@@ -187,10 +196,15 @@ agent or world state. The model receives only the restricted agent view. It
 cannot inspect the development inspector or hidden state, mutate the world, or
 declare success; existing world resolution remains authoritative.
 
-Live model output will not be assumed deterministic. Reproduction therefore
-requires recording the restricted decision input, model configuration,
-structured response, validation result, and accepted attempt so a recorded run
-can be inspected or replayed without another live model call.
+Live model output is not assumed deterministic. Inspector-only decision records
+therefore retain the restricted input, profile/skill identities, non-secret
+model configuration identity, sanitized structured response, attempted action,
+validation, and resolved outcome. Recorded-decision playback applies those
+choices through the same parser and resolver without another live call. Prompt
+text, endpoint addressing, raw provider failures, and hidden provider
+chain-of-thought stay out of objective history and normal presentation. Mara's
+concise `decision_reason` is intentionally retained as an attributed action
+explanation and rendered in the normal `Reason:` line.
 
 ## Contradictory Reality
 
@@ -207,11 +221,13 @@ memory trace containing:
 
 This permits an agent to remember one ration amount, repeat another at work, and remain uncertain in private without collapsing all three into a single loyalty score.
 
-Possible later changes include contextual stance, retrieval accessibility,
-repetition effects, motivated reinterpretation, compartmentalization,
-inhibition, resurfacing, memory decay, and cognitive strain. These should be
-introduced one at a time, retained as inspectable transitions, and tied to
-visible behavior. A conflict must not trigger automatic memory deletion.
+The bounded slice already records one contextual public stance, explicit
+retrieval accessibility, and one diary-cued resurfacing transition. Possible
+deeper changes include graded accessibility, repetition effects, motivated
+reinterpretation, compartmentalization, inhibition, memory decay, and cognitive
+strain. These should be introduced one at a time, retained as inspectable
+transitions, and tied to visible behavior. A conflict must not trigger automatic
+memory deletion.
 
 ## Bounded Institutions
 
@@ -255,15 +271,20 @@ The normal experience need not look like a study dashboard, but the simulation s
 These records are development infrastructure. They help distinguish emergence from scripting and detect impossible knowledge, inconsistent state, or fabricated consequences.
 
 The current slice exports detached JSON-compatible configuration, events,
-observations, and belief transitions through `history_data()`. Equal configured
-runs produce identical ordered records. This is replay evidence, not yet a
-portable persistence format, checkpoint system, or full-run replay executor.
+observations, and belief transitions through `history_data()`. Equal scripted
+runs produce identical ordered history. Separately, `RecordedDecisionClient`
+can consume detached private decision records and reproduce equal ordered world
+history through the same policy, parser, and resolver without another model
+call. This is programmatic full-run reproduction, not a portable persistence
+format, checkpoint system, user-facing replay command, or claim that equal live
+configuration produces equal samples.
 
 ## Implemented First Slice
 
 The current scenario contains:
 
-- one focal character;
+- one focal character with a deterministic scripted default and an explicit
+  local model-backed decision mode;
 - two supporting characters with small deterministic policies;
 - a home, workplace, and allocation office connected by a travel graph;
 - one institution with a structured initial ration-schedule publication,
@@ -283,10 +304,13 @@ resulting day should not be presented as an emergent plot.
 
 ## Current Technical Limits
 
-- The decision layer uses deterministic rules, not AI.
-- The approved model-backed focal-character direction is not implemented yet;
-  there is no model adapter, failure policy, decision recording, or executable
-  replay path.
+- The first model integration is deliberately narrow: only Mara can use one
+  local Ollama model through one structured decision skill. Supporting agents
+  and institutions remain deterministic, and there is no provider framework,
+  tool loop, or opaque provider memory.
+- Live model sampling may vary. Offline deterministic-client tests and
+  recorded-decision playback prove the boundary and resulting world history,
+  not deterministic or believable live behavior.
 - The focal policy is tailored to this first day rather than driven by a general
   planner, need system, or schedule model.
 - `Simulation` is a single large coordinator whose action-specific resolution
@@ -328,15 +352,14 @@ resulting day should not be presented as an emergent plot.
 
 - Which state must update every step, and which can update only when relevant?
 - What is the smallest useful action vocabulary?
-- Does the selected diary-cued resurfacing transition change observable
-  behavior without pretending to model full human cognition?
 - Which authority, access, time, or capacity limit would justify a later
   Official Record experiment beyond the completed rewrite?
 - Should the first follow-up operation explore one suppressed reference or one fabricated artifact?
 - When do Official Record and Agent Understanding justify extracting Claim and Provenance?
 - Which delivery channel first needs stale or missed official versions?
 - How much independent NPC behavior is required to make the world feel alive?
-- What should the readable decision explanation expose?
+- What additional explanation evidence, if any, would remain agent-safe as the
+  action vocabulary grows beyond the current concise attributed reason?
 - How should pauses, playback speed, and optional intervention affect time?
 - What needs to be deterministic or seeded for replay?
 - When should a new mechanism be removed rather than expanded?

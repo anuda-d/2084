@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-10D explicit Ollama CLI composition
-- Verified implementation runs since alignment: 1
+- Last completed run: MF-10E public model-boundary documentation
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. Offline checks pass 110 current and 63 historical tests. Current public documentation and the explicit live smoke remain open. |
+| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. MF-10E documents the usable command, privacy and authority boundaries, failure behavior, replay limits, and live variability. Offline checks pass 110 current and 63 historical tests. The explicit live smoke remains open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,7 +47,7 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-10D is complete; select at most one fresh bounded work unit from the
+None. MF-10E is complete; select at most one fresh bounded work unit from the
 verified open MF-10 evidence.
 
 ## Completion Rules
@@ -212,6 +212,39 @@ select a future task.
   `d131f36`.
 
 ## Verified Run Log
+
+### MF-10E Public model-boundary documentation
+
+- Criterion advanced: MF-10 Integration remains open only for the explicit
+  live smoke and final whole-goal review.
+- Observable documentation: the README now gives the unchanged scripted
+  command and a usable explicit Ollama command with a replaceable private-IP
+  example and externally supplied exact `qwen3:4b-instruct` model. It explains
+  one-call restricted decisions, safe failure without scripted fallback,
+  normal/inspector evidence, endpoint and prompt privacy, and live variability.
+- Architecture evidence: Architecture and Core Construct now describe the
+  implemented model/parser/world boundary, authored profile and skill, private
+  linked records, programmatic recorded-decision reproduction, bounded Agent
+  Understanding, deterministic supporting policies, and the deliberately
+  narrow current limits. They distinguish equal scripted or recorded world
+  behavior from variable live samples and a programmatic replay seam from a
+  durable save or user-facing replay command.
+- Privacy and accuracy: the owner endpoint is absent. The documented example is
+  explicitly replaceable, and the text distinguishes retained attributed
+  `decision_reason` from excluded hidden provider chain-of-thought. All local
+  documentation links resolve, and resolved pre-model questions and stale
+  deterministic-only descriptions were removed.
+- Validation: `./scripts/check.sh` passed 110 current and 63 historical tests;
+  scripted normal and inspector runs completed through tick 28; CLI help matched
+  the documented options; `git diff --check` passed.
+- Independent review: the first fresh Sol-high review found an overbroad live
+  replay claim, ambiguous private-reasoning wording, future-only descriptions of
+  implemented stance/resurfacing, and one stale repository-guide line. Those
+  were corrected. A second fresh Sol-high review found one literal ambiguity
+  between “no server address” and the example address; the final wording says no
+  configured or owner endpoint. It then found no remaining findings and
+  approved the exact revised state. This documentation does not claim the live
+  smoke has occurred.
 
 ### MF-10D Explicit Ollama CLI composition
 

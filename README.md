@@ -16,9 +16,10 @@ setting.
 
 ## What exists today
 
-The repository contains one deterministic prototype scenario, `first_day_v3`.
-It follows Mara Vale and two supporting characters through a 28-tick workday.
-Mara:
+The repository contains one bounded prototype scenario, `first_day_v3`, with a
+deterministic scripted focal policy by default and an explicitly selected local
+model-backed focal policy. The scripted comparison follows Mara Vale and two
+supporting characters through a 28-tick workday. Mara:
 
 - travels between home, work, and a civic allocation office;
 - sees three allocation units but physically receives only two;
@@ -30,10 +31,11 @@ Mara:
   schedule; and
 - finishes the day with one household unit still unmet.
 
-The route is heavily authored, but the characters are not moved directly by a
-player. Transparent rule-based policies choose attempted actions from limited
-information. The simulation then checks whether each attempt is valid and
-records what actually happens.
+The scripted route is heavily authored, but the characters are not moved
+directly by a player. Transparent rule-based policies choose attempted actions
+from limited information. In model-backed mode, the local model chooses Mara's
+attempts instead; supporting characters remain rule-based. In both modes the
+simulation checks each attempt and alone decides what actually happens.
 
 The current prototype also preserves an important separation:
 
@@ -77,10 +79,47 @@ physical state, beliefs, and the new Agent Understanding evidence.
 Useful options:
 
 ```text
---seed N       Choose the deterministic random seed.
---ticks N      Limit how many ticks may run.
---inspect      Show the omniscient development view.
+--seed N                     Choose the world seed.
+--ticks N                    Limit how many ticks may run.
+--focal-policy scripted      Use the deterministic default.
+--focal-policy ollama        Explicitly use the local model-backed policy.
+--ollama-base-url URL        Supply its private numeric-IP HTTP origin.
+--ollama-model MODEL         Supply the model selected for this integration.
+--inspect                    Show the omniscient development view.
 ```
+
+### Run model-backed Mara
+
+The first live integration uses a local Ollama server and exactly
+`qwen3:4b-instruct`. Both the endpoint and model must be supplied at runtime;
+the repository contains no configured or owner endpoint. Replace the example
+private address below with the numeric private-LAN origin that hosts Ollama:
+
+```bash
+python3 -m scenarios.first_day \
+  --seed 42 \
+  --ticks 3 \
+  --focal-policy ollama \
+  --ollama-base-url http://192.168.1.50:11434 \
+  --ollama-model qwen3:4b-instruct
+```
+
+The adapter accepts only a path-free HTTP origin on a private, loopback, or
+link-local numeric IP address. It does not use credentials, provider chat
+history, retries, model pulls, redirects, proxies, or DNS. Each eligible Mara
+decision sends one fresh restricted state and requests one structured attempted
+action. A provider timeout, unavailable service, malformed response, or invalid
+choice produces an explicit safe wait; it never invokes the scripted policy.
+
+Normal output shows Mara's concise attributed `Reason:` and the consequence the
+simulation resolved. Add `--inspect` to see restricted model input, authored
+profile/skill identities, non-secret model configuration identity, structured
+response, attempted action, validation, and outcome links. The inspector does
+not retain the endpoint, raw prompt, provider error detail, or hidden provider
+chain-of-thought. Mara's requested concise `decision_reason` is retained as an
+attributed explanation and shown normally. Live choices may vary even with
+temperature zero; recorded-decision playback is for reproducing world behavior,
+not claiming deterministic model sampling.
 
 Run the complete test suite with:
 
@@ -115,21 +154,27 @@ in the terminal output. It represents Mara's direct sight of three physical
 allocation units. It remains separate from the official-version conflict and
 stance system.
 
+The active model-backed boundary now has a versioned Mara profile and reusable
+decision skill, a strict shared action contract, explicit safe failures,
+inspector-only decision evidence, recorded-decision reproduction, and the
+opt-in Ollama command above. The scripted command remains the offline regression
+default.
+
 ## Known limits
 
-- The scenario uses deterministic hand-written policies, not an LLM or other AI
-  decision model. The approved architectural direction is to begin with one
-  model-backed focal character whose structured choices become attempted
-  actions, while the simulation retains authority over knowledge boundaries and
-  consequences; this is not implemented yet.
+- The scripted comparison remains heavily authored. Model-backed Mara uses one
+  bounded decision skill and one local model, while supporting characters and
+  institutions remain deterministic; this is not yet a general living society
+  or evidence that the character is believable.
 - The first-day route, institutional rewrite timing, public pressure, and diary
   opportunity are authored inputs. The result is bounded evidence, not an
   emergent story.
 - Memory decay, forgetting, general language understanding, emotion,
   personality, relationships, surveillance, punishment, and a broader living
   society are not implemented.
-- There is no graphical interface, durable save system, executable replay, or
-  player intervention.
+- There is no graphical interface, durable save system, user-facing replay
+  command, or player intervention. Recorded-decision reproduction exists at the
+  policy boundary and is covered by offline tests.
 - The inspector is a development tool, not the intended final experience.
 
 These limits are deliberate. The project is testing small, inspectable
@@ -140,7 +185,7 @@ mechanisms before adding scale or less predictable behavior.
 ```text
 scenarios/    Authored worlds and runnable entry points
 simulation/   Time, world state, actions, events, records, and understanding
-policies/     Deterministic character and institution decision rules
+policies/     Scripted rules plus Mara's model request, client, and policy boundary
 observer/     The filtered terminal view and omniscient inspector
 tests/        Tests for the current engine and scenario
 experiments/  Older prototypes kept as historical evidence
