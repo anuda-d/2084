@@ -5,9 +5,9 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-10E public model-boundary documentation
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: MF-10F owner-authorized live Ollama smoke
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. MF-10E documents the usable command, privacy and authority boundaries, failure behavior, replay limits, and live variability. Offline checks pass 110 current and 63 historical tests. The explicit live smoke remains open. |
+| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. MF-10E documents the usable command, privacy and authority boundaries, failure behavior, replay limits, and live variability. MF-10F verifies the exact pinned live model selecting travel and work through the documented command, with ordinary travel completion, one call per eligible tick, linked private evidence, and normal/history privacy. Offline checks pass 111 current and 63 historical tests. Final whole-goal review remains open before this criterion can be marked met. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-10E is complete; select at most one fresh bounded work unit from the
-verified open MF-10 evidence.
+None. MF-10F is complete; whole-goal alignment is due before any criterion or
+goal status changes.
 
 ## Completion Rules
 
@@ -212,6 +212,49 @@ select a future task.
   `d131f36`.
 
 ## Verified Run Log
+
+### MF-10F Owner-authorized live Ollama smoke
+
+- Criterion advanced: MF-10 Integration remains open only for final whole-goal
+  review.
+- Pinned environment evidence: a non-mutating `/api/tags` preflight reported
+  exact model `qwen3:4b-instruct`, digest
+  `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`,
+  family qwen3, 4.0B parameters, and Q4_K_M quantization. No model was pulled or
+  changed, and the runtime endpoint was not added to tracked files.
+- Live compatibility finding and fix: the first explicit smoke safely produced
+  `unavailable_model` because Ollama rejected the provider schema's unanchored
+  regex patterns, then rejected their anchored grammar. A tight direct-request
+  probe isolated the issue. Provider-facing non-empty string constraints now use
+  Ollama-compatible `minLength: 1`; the unchanged strict local parser still
+  rejects whitespace-only scalar parameters, explanations, and reasons. All
+  action branches, world validation, and resolution authority are unchanged.
+- Normal live evidence: the documented three-tick command made Mara select
+  travel at tick 1, made no decision call while travel remained pending at tick
+  2, completed arrival through the ordinary world resolver at tick 3, delivered
+  the arrival observation, and then selected work. Normal output contained only
+  the attributed attempts/reasons and admitted consequence, with no endpoint,
+  configuration, prompt, private record, or provider thinking.
+- Inspector live evidence: a separate three-tick sample produced exactly two
+  selected/accepted records at eligible ticks 1 and 3. The travel record linked
+  restricted input, exact profile/skill identities and hashes, non-secret model
+  configuration, structured choice, attempt `action-0002`/`event-0003`, and
+  completed outcome `event-0009`. Endpoint, composed-prompt markers, raw provider
+  error and thinking were absent; private decision records remained outside
+  objective history.
+- Limits: both live samples happened to choose the same travel/work sequence.
+  This proves one bounded live request-to-consequence chain, not deterministic
+  sampling, broad competence, believability, or a tendency toward rebellion.
+- Validation and diagnosis closure: the original one-tick red loop now passes;
+  forty-four focused tests passed; `./scripts/check.sh` passed 111 current and 63
+  historical tests; scripted normal and inspector runs completed;
+  `git diff --check` and syntax compilation passed. No temporary debug files or
+  instrumentation remain.
+- Independent review: fresh Sol-high review found no findings, independently
+  reproduced exact model identity, live travel completion and two eligible-tick
+  records, local whitespace rejection, focused/full checks, privacy, and owner
+  file preservation, and approved MF-10F. It correctly left final criterion and
+  goal completion to a later whole-goal review.
 
 ### MF-10E Public model-boundary documentation
 

@@ -145,7 +145,7 @@ def load_choose_next_action_skill() -> AuthoredArtifact:
 
 def _json_schema_for_shape(shape: str) -> dict[str, object]:
     if shape == "non_empty_string":
-        return {"type": "string", "pattern": r".*\S.*"}
+        return {"type": "string", "minLength": 1}
     if shape == "integer":
         return {"type": "integer"}
     if shape == "positive_integer":
@@ -218,10 +218,13 @@ def structured_choice_json_schema(kinds: tuple[str, ...]) -> dict[str, object]:
                 "properties": {
                     "kind": {"const": kind},
                     "parameters": _parameters_schema(kind),
-                    "explanation": {"type": "string", "pattern": r".*\S.*"},
+                    "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
                     "decision_reason": {
                         "type": "string",
-                        "pattern": r".*\S.*",
+                        "minLength": 1,
                     },
                 },
                 "required": [

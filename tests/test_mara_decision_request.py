@@ -151,6 +151,44 @@ class MaraDecisionRequestTests(unittest.TestCase):
                 },
             )
 
+    def test_response_schema_uses_min_length_for_nonblank_strings(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        model_input = model_input_from_view(view)
+        schema = compose_mara_decision_prompt(model_input).response_schema_data()
+        string_schemas = []
+        patterns = []
+
+        def collect_string_schemas(value):
+            if isinstance(value, dict):
+                if value.get("type") == "string":
+                    string_schemas.append(value)
+                if "pattern" in value:
+                    patterns.append(value["pattern"])
+                for nested in value.values():
+                    collect_string_schemas(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    collect_string_schemas(nested)
+
+        collect_string_schemas(schema)
+
+        self.assertTrue(string_schemas)
+        self.assertEqual(patterns, [])
+        self.assertTrue(
+            all(string_schema.get("minLength") == 1 for string_schema in string_schemas)
+        )
+        with self.assertRaises(StructuredChoiceError):
+            structured_choice_to_attempt(
+                view,
+                {
+                    "kind": "travel",
+                    "parameters": {"destination": "   "},
+                    "explanation": "attempt the trip",
+                    "decision_reason": "the workplace obligation is pending",
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
