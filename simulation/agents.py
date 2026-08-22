@@ -89,6 +89,7 @@ class PolicyDecisionRecord:
     structured_response: Mapping[str, Any] | None
     attempted_action: Mapping[str, Any]
     attempted_action_kind: str
+    authorship_identity: Mapping[str, Any] | None = None
     failure_kind: str | None = None
     failure_type: str | None = None
     attempt_event_id: str | None = None
@@ -112,6 +113,15 @@ class PolicyDecisionRecord:
         )
         object.__setattr__(
             self, "attempted_action", freeze_mapping(self.attempted_action)
+        )
+        object.__setattr__(
+            self,
+            "authorship_identity",
+            (
+                freeze_mapping(self.authorship_identity)
+                if self.authorship_identity is not None
+                else None
+            ),
         )
 
     def linked_to(
@@ -144,6 +154,11 @@ class PolicyDecisionRecord:
             "agent_id": self.agent_id,
             "policy_kind": self.policy_kind,
             "configuration_id": self.configuration_id,
+            "authorship_identity": (
+                to_plain_data(self.authorship_identity)
+                if self.authorship_identity is not None
+                else None
+            ),
             "status": self.status,
             "model_input": to_plain_data(self.model_input),
             "structured_response": (

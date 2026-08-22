@@ -1,6 +1,9 @@
 # Model-Backed Focal Character
 
-Status: active; owner-approved on 2026-08-19.
+Status: complete; owner-approved on 2026-08-19 and completed on 2026-08-22.
+
+Verified completion evidence is recorded in the
+[Implementation Plan](IMPLEMENTATION_PLAN.md).
 
 This is the bounded Phase 3B implementation goal described in
 [The Lie and Doublethink architecture](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md).

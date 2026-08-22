@@ -1,312 +1,190 @@
-# Agentic Development Loop
+# Thin Harness, Fat Skills
 
-Status: current operating contract for continuous and scheduled autonomous
-development.
+## The harness is the secret sauce
 
-This loop advances one owner-approved 2084 goal through small, independently
-validated tasks. Each work unit completes at most one current task, records the
-verified result, and commits the coherent change. An owner-started continuous
-Goal begins the next work unit from the updated repository state; scheduled and
-manual one-shot runs exit after one unit. Each work unit selects its task from
-the active goal and current verified evidence; it does not plan later tasks.
-The repository is the durable state between units. The loop does not choose
-project direction or authorize its own next goal.
+On March 31, 2026, Anthropic accidentally shipped the entire source code for Claude Code to the npm registry. 512,000 lines. When I read it, it confirmed everything I'd been teaching at YC. The secret sauce isn't the model. It's the thing wrapping the model: the harness. Live repo context. Prompt caching. Purpose-built tools. Context bloat minimization. Structured session memory. Parallel sub-agents.
 
-## Continuous Goal and Run Boundary
+None of that is about making the model smarter. All of it is about giving the model the right context, at the right time, without drowning it in noise.
 
-Continuous Goal mode is the primary operating mode when the owner asks the loop
-to keep working. One Codex task remains active, completes one fully validated
-and independently reviewed work unit, commits it, then selects the next unit
-from the updated repository state. It does not wait for a new trigger or retain
-a future task queue. The Goal stops at a terminal condition, when the active
-project goal is complete, or when the owner pauses or stops it.
+That's the only question that matters. And the answer has a specific shape. I call it **thin harness, fat skills**.
 
-The standalone schedule is a fallback for periodic unattended work and should
-be paused while a continuous Goal owns the main checkout. When enabled, it
-launches tasks at 6:00 PM, 7:00 PM, 8:00 PM, 9:00 PM, and 10:00 PM in
-`America/Toronto`. Each scheduled task works in the main 2084 checkout, handles
-one self-selected implementation task or one alignment review, and exits. If a
-continuous Goal or earlier run is active, the trigger performs no repository
-work.
+## Five definitions
 
-The owner may request a manual run in chat at any time. A manual run follows the
-same one-task, authority, validation, independent-review, and no-overlap rules.
-The scheduled time boundary does not apply unless the manual request supplies
-one.
+The bottleneck is never the model's intelligence. The bottleneck is whether the model understands your schema. Models already know how to reason, synthesize, and write code. They fail because they don't know your data. Five definitions fix this.
 
-### Model routing
+### Definition 1: Skill File
 
-The continuous Goal and scheduled orchestrators use `gpt-5.6-terra` with high
-reasoning for orchestration, implementation, and integration. Every independent
-implementation reviewer and goal-alignment reviewer uses a fresh `gpt-5.6-sol`
-agent with high reasoning. Luna is not authorized for this loop.
+A skill file is a reusable markdown procedure that teaches the model HOW to do something. Not WHAT to do. The user supplies the specifics. The skill supplies the process.
 
-### No-overlap gate
+**Markdown is actually code.** A skill file is a more perfect encapsulation of capability than rigid source code, because it describes process, judgment, and context in the language the model already thinks in.
 
-Before reading or changing repository state, a newly triggered run or Goal must
-inspect the Codex task activity for this project. Ignore the just-started task
-itself. If any other
-2084 task is queued or running—including a manual run, an earlier scheduled
-orchestrator, or any subagent—stop at **ACTIVE RUN EXISTS** without touching the
-repository. If task activity cannot be inspected reliably, stop at
-**ACTIVE RUN STATUS UNKNOWN** rather than risk concurrent work.
+On the left is a skill called `/investigate`. Seven steps: scope the dataset, build a timeline, diarize every document, synthesize, argue both sides, cite sources. It takes three parameters: TARGET, QUESTION, and DATASET.
 
-After this gate passes, later work units inside the same continuous Goal do not
-repeat the external task-activity gate; the still-active Goal is the single
-visible owner of the checkout. Each unit must still wait for or stop all of its
-subagents before the next unit begins.
+On the right are two completely different invocations of the same skill. One points at Dr. Sarah Chen and 2.1 million discovery emails, asking whether a safety scientist was silenced. The other points at Pacific Corporate Services and FEC filings, asking whether shell companies are coordinating campaign donations.
 
-The application may still create a scheduled run at the trigger time; this gate
-defines whether that run may begin work. Do not assume the scheduler suppresses
-overlapping runs because that behavior is not part of the documented contract.
-An orchestrator must not finish while one of its subagents remains active: wait
-for it, ask it to return, or stop it before reporting a terminal state. This
-keeps the active orchestrator visible to the next trigger for the full lifetime
-of its agent tree.
+Same skill. Same seven steps. Same markdown file. In one case it's a medical research analyst. In the other it's a forensic investigator. The skill describes a process of judgment. The invocation supplies the world.
 
-At the start of each scheduled run, read the compact index in `CURRENT.md` and
-the just-in-time authority sources it routes. The 10:00 PM run must not begin an
-implementation that cannot be finished, validated, reviewed, documented, and
-committed by 11:00 PM.
+**This is the key insight most people miss: a skill file works like a method call.** It takes parameters. You invoke it with different arguments. The same procedure produces radically different capabilities depending on what you pass in. This is not prompt engineering. This is software design, using markdown as the programming language and human judgment as the runtime.
 
-The scheduled task uses this instruction:
+### Definition 2: Harness
 
-> Complete exactly one current work unit from the autonomous 2084 development
-> loop. If alignment is due, review verified goal evidence without selecting
-> future work. Otherwise select the smallest useful task from the active goal
-> and current evidence; do not use or create a future task queue.
-> Before touching the repository, inspect Codex task activity for this project.
-> If any other 2084 task, loop orchestrator, or subagent is active, make this run
-> a no-op as required by the contract.
-> Start with `docs/plans/CURRENT.md`. Read its active goal and implementation
-> state. Locate only enough code and tests to select one bounded task, then read
-> only its relevant specification. Implement, validate, obtain fresh
-> independent `gpt-5.6-sol` high-reasoning review, update the shared state,
-> commit one coherent task, and exit. For alignment, use a fresh
-> `gpt-5.6-sol` high-reasoning reviewer, update verified goal state, commit, and
-> exit without implementation or task selection. Do not begin another work
-> unit, select a new goal, push, merge, publish, or disturb unrelated user work.
-> Do not use Luna.
+The harness is the program that runs the LLM. It does four things: runs the model in a loop, reads and writes your files, manages context, and enforces safety. That's the "thin."
 
-## Sources of Authority
+The anti-pattern is a fat harness with thin skills: 40+ tool definitions eating half the context window. God tools with 2 to 5 second MCP round-trips. REST API wrappers that turn every endpoint into a tool. 3x the tokens, 3x the latency, 3x the failure rate.
 
-Read these in order before changing the repository:
+What you should build instead: a Playwright CLI that does each browser operation in 100 milliseconds. Compare: Chrome MCP takes 15 seconds for screenshot + find + click + wait + read. Playwright CLI takes 200 milliseconds for screenshot + assert. 75x faster. Software doesn't have to be precious anymore. Build exactly what you need.
 
-1. `AGENTS.md` — project-wide working constraints.
-2. `docs/plans/CURRENT.md` — compact index and current run boundary.
-3. The active goal linked from `CURRENT.md` — authorized outcome and invariants.
-4. The linked implementation state — verified progress and incomplete work.
-5. Relevant code and tests found just in time to select one task.
-6. Only the specification relevant to the selected task — detailed behavior.
+### Definition 3: Resolver
 
-Read `README.md`, Core Construct, Architecture, UI Architecture, Design
-References, broader proposals, completed goals, and historical experiments only
-when the active specification routes to them or an invariant cannot otherwise
-be resolved. The active goal narrows higher-level documents but does not
-override their invariants.
+A resolver is a routing table for context. When task type X appears, load document Y first.
 
-If the sources conflict in a way that changes product direction or lasting
-architecture, stop at **NEEDS OWNER DECISION**. Autonomy removes routine review,
-not the boundary around owner authority.
+Skills say HOW. Resolvers say WHAT to load WHEN. A developer changes a prompt. Without the resolver, they ship it. With the resolver, the model reads `docs/EVALS.md` first, which says: run the eval suite, compare scores, if accuracy drops more than 2%, revert and investigate. The developer didn't know the eval suite existed. The resolver loaded the right context at the right moment.
 
-## Authority
+Claude Code has a built-in resolver. Every skill has a description field, and the model matches user intent to skill descriptions automatically. You never have to remember `/ship` exists. The description IS the resolver. It's like Clippy. Except it actually works.
 
-The autonomous loop may:
+A confession: my CLAUDE.md was 20,000 lines. Every single thing I ran across went in there. Every quirk, every pattern, every lesson. Completely ridiculous. The model's attention degraded. Claude Code literally told me to cut it back. The fix: about 200 lines. Just pointers to documents. The resolver loads the right one when it matters.
 
-- implement one coherent change that advances one unmet active-goal criterion;
-- add or change tests that prove the new behavior or protect an affected
-  invariant;
-- update factual implementation-status documentation affected by the change;
-- simplify or remove code when that is the smallest way to satisfy the goal;
-- partition bounded independent implementation work and delegate investigation
-  or verification as described below;
-- mark a criterion met when proportionate evidence passes validation and
-  independent review;
-- commit each complete task, including its tests and progress update.
+### Definition 4: Latent vs. Deterministic
 
-The autonomous loop may not:
+Every step in your system is one or the other.
 
-- select, broaden, or replace the active goal;
-- settle an open product, worldbuilding, or lasting architecture decision;
-- make conceptual changes to the Core Construct or Architecture without an
-  owner decision;
-- continue into an adjacent feature after the active goal is complete;
-- modify `experiments/` unless the active goal explicitly targets it;
-- push, merge, publish, or discard user work;
-- weaken a test merely because intended behavior is difficult to implement.
+**Latent space** is where intelligence lives. The model reads, interprets, decides. Judgment. Synthesis. Pattern recognition.
 
-The orchestrator owns the final integration and completion decision, but it may
-not be the only reviewer of its implementation result. The owner remains the
-authority for goal and product-direction decisions.
+**Deterministic** is where trust lives. Same input, same output. Every time. SQL. Code. Numbers.
 
-## Preconditions
+An LLM can seat 8 people at a dinner table. Ask it to seat 800 and it will hallucinate a seating chart that looks plausible but is completely wrong. That's a deterministic problem forced into latent space. The worst systems put the wrong work on the wrong side.
 
-Before implementation, confirm that:
+### Definition 5: Diarization
 
-- `CURRENT.md` links exactly one active, owner-approved goal;
-- the linked implementation state contains no future task queue;
-- the active goal authorizes the proposed behavior;
-- no incomplete run is recorded in the implementation state;
-- the working checkout contains no unrelated unfinished changes;
-- the baseline repository check passes, or any pre-existing failure is recorded
-  and clearly unrelated to the proposed change.
+The model reads everything about a subject and writes a structured profile. Read 50 documents, produce 1 page of judgment.
 
-If the checkout contains unrelated user changes, do not edit, stage, commit, or
-discard them. Stop at **BASELINE BLOCKED** and report the exact paths. If another
-precondition is not met, make no implementation change and report the specific
-condition.
+No SQL query produces this. No RAG pipeline produces this. The model has to actually read, hold contradictions in mind, notice what changed and when, and write structured intelligence. This is what makes AI useful for real knowledge work.
 
-## One Task Run
+## The architecture
 
-### 1. Orient
+Three layers:
 
-Read the compact index, goal, and implementation state. If alignment is due,
-perform section 7 without loading implementation or starting a task. Otherwise,
-locate only enough relevant implementation and tests to select one task.
+**Fat skills** on top. Markdown procedures that encode judgment, process, and domain knowledge. This is where 90% of the value lives.
 
-### 2. Select one task
+**Thin CLI harness** in the middle. About 200 lines. JSON in, text out. Read-only by default. CLI first, add MCP later.
 
-Choose the smallest unmet goal gap whose implementation can create new
-behavioral evidence in one fresh context. Record that single task in the
-implementation state, then read only its relevant specification. Do not select
-or record later work. If it cannot fit comfortably, replace it with a smaller
-task before editing. State a progress claim:
+**Your app** on the bottom. QueryDB. ReadDoc. Search. Timeline. The deterministic foundation.
 
-> This task advances criterion X by producing behavior Y, verified by evidence
-> Z.
+Push intelligence UP into skills. Push execution DOWN into deterministic tooling. Keep the harness THIN.
 
-If no honest progress claim can be made, do not change code.
+## The system that learns: YC Startup School
 
-### 3. Partition and delegate bounded work
+Let me show you all five definitions working together. Not in theory. In an actual system we're building at YC.
 
-Use subagents to keep exploration, implementation details, test output, and
-review evidence out of the orchestrator's context when the work divides
-cleanly. Suitable parallel work includes repository exploration, invariant
-analysis, independent components, and independent test suites.
+Chase Center. July 2026. 6,000 founders. Each one has a structured application, questionnaire answers, transcripts from 1:1 advisor chats, and public signals: X posts, GitHub commits, Claude Code transcripts showing how fast they ship.
 
-- Use no more than two implementation or investigation subagents concurrently
-  by default.
-- Give each subagent one bounded outcome, relevant constraints, exclusive file
-  or module ownership, and a concise return format.
-- Parallel writers are allowed only when their interfaces are agreed first,
-  their owned files do not overlap, and neither needs to edit shared mutable
-  state such as central schemas, registries, configuration, or the same tests.
-- Use one writer when steps depend on one another, boundaries are uncertain, or
-  integration would require frequent coordination.
-- Prefer parallel read-only work when a clean write partition is unavailable.
-- Do not delegate the active-goal choice, progress claim, or completion
-  decision.
-- Require each subagent to return a distilled result instead of raw logs or
-  exploration transcripts.
-- Skip delegation when coordination would cost more than the context or time it
-  saves.
+The traditional approach: a program team of 15 reads applications, makes gut calls, updates a spreadsheet. It works at 200 founders. It breaks at 6,000.
 
-### 4. Implement one coherent change
+No human can hold 6,000 profiles in working memory and notice that the three best candidates for the infrastructure-for-AI-agents cohort are a dev tools founder in Lagos, a compliance founder in Singapore, and a CLI-tooling founder in Brooklyn who all described the same pain point in different words during their 1:1 chats.
 
-Make the smallest change that can satisfy the progress claim. Wait for all
-implementation subagents, inspect their results, and integrate them into one
-coherent change. No two agents may edit the same file concurrently. If a
-supposedly independent partition reveals a shared dependency, stop parallel
-writes and integrate that boundary sequentially.
+The model can.
 
-Infrastructure-only work is allowed only when it is necessary for a named
-criterion and identifies the immediate behavioral use it unlocks. Do not add
-speculative extension points for later goals.
+**Step 1: Enrich every founder.**
 
-### 5. Validate proportionately
+The `/enrich-founder` skill: pull all sources, run enrichments, diarize, highlight what they SAY vs what they're ACTUALLY BUILDING. On the right, the deterministic calls: SQL to find stale profiles, GitHub stats, browser test on the demo URL, social signal pulls, CrustData for company intel.
 
-Run focused checks first, then the repository check. When observable simulation
-behavior changes, also run the normal focal view and the omniscient inspector.
-Review the diff for:
+Cron runs nightly at 2am. 6,000 profiles, every night, always fresh.
 
-- hidden knowledge or impossible authority;
-- accidental coupling of official publication and observation delivery;
-- mutation of append-only objective evidence;
-- forced outcomes described as emergence;
-- tests changed beyond the intended behavior;
-- complexity that does not help answer the active question.
+The diarization output catches things no keyword search would find:
 
-### 6. Obtain independent review, record, and commit
+```
+FOUNDER: Maria Santos
+COMPANY: Contrail (contrail.dev)
+SAYS: "Datadog for AI agents"
+ACTUALLY BUILDING: 80% of commits are in billing module.
+  She's building a FinOps tool disguised as observability.
+```
 
-After integration and validation, spawn a fresh read-only reviewer subagent for
-every implementation task. Give it the active goal, relevant project rules,
-the resulting diff, and validation results, but do not give it the
-implementer's reasoning or ask it to confirm the chosen approach. It must look
-for goal mismatch, impossible knowledge or authority, broken invariants,
-missing behavioral evidence, test gaps, and unnecessary complexity. The
-reviewer must use `gpt-5.6-sol` with high reasoning, including for a
-documentation-only or no-change alignment task.
+"SAYS" vs "ACTUALLY BUILDING." That requires reading the GitHub commit history, the application, and the advisor transcript and holding all three in mind at once.
 
-The orchestrator must resolve every blocking finding and repeat independent
-review after any material correction. Separate observed behavior from
-interpretation. Mark the task complete only when the evidence is proportionate,
-the focused and full checks pass, and independent review finds no unresolved
-blocking violation. Update `IMPLEMENTATION_PLAN.md` in the same run, including
-verified criterion status, counters, evidence, and any alignment requirement.
-Clear the current-run record during commit preparation; do not record a next
-task.
+**Step 2: Match 6,000 founders. Make judgment calls.**
 
-Review the final staged diff, then create one commit containing the coherent
-implementation, validation evidence encoded in tests, and progress update. Do
-not include unrelated files. If validation or review fails, fix the task or
-restore only the loop's own incomplete changes before moving on; never commit a
-known failing or partial result as verified progress.
+This is where skill-as-method-call really shines. Three invocations:
 
-### 7. Apply progress and saturation gates
+`/match-breakout`: 1,200 founders, cluster by sector affinity, 30 per room. Embed + deterministic assign.
 
-- A criterion with verified proportionate evidence is closed. Do not harden it
-  further without a regression, an affected invariant, or owner direction.
-- After at most three verified implementation tasks, perform a goal-level
-  alignment review in a separate work unit before the next implementation
-  task. In continuous Goal mode this remains inside the same Goal task.
-- Never plan, suggest, or record a future implementation task.
-- Do not complete two infrastructure-only tasks without focused behavioral
-  evidence.
-- It is valid for a run to make no code change.
+`/match-lunch`: 600 founders, serendipity matching (cross-sector), 8 per table, no repeats. The LLM invents the themes, then assigns.
 
-The goal-level alignment review asks what observable behavior changed, which
-criteria are proven, whether complexity grew faster than explanatory value,
-and whether anything should be removed. It updates only verified state and
-recommendations about existing implementation. Reset the alignment counter only
-after recording and committing that review. Do not implement or select a later
-task during alignment.
+`/match-live`: whoever is in the zone, nearest-neighbor embedding, real-time at 200ms, 1:1 pairs, not already met.
 
-## Work-Unit and Terminal States
+Same skill. Three invocations. Three completely different matching strategies. Different parameters, different strategies, different group sizes. The skill describes the process. The arguments shape the output.
 
-After one work unit, choose exactly one state. In continuous Goal mode,
-**TASK COMPLETE** and **ALIGNMENT COMPLETE** are internal checkpoints followed
-by the next work unit; all other states stop the Goal. In a one-shot run, every
-state ends the run.
+And the model's judgment calls: "Santos and Oram are both AI infra, but they're not competitors. Santos is cost attribution, Oram is orchestration. Put them in the same group." And: "Kim applied as 'developer tools' but his 1:1 transcript reveals he's building compliance automation for SOC2. Move him to FinTech/RegTech."
 
-- **TASK COMPLETE** — the task is validated, recorded, and committed. Continue
-  only when an owner-started continuous Goal is active; otherwise exit.
-- **ALIGNMENT COMPLETE** — verified goal evidence was reviewed and recorded;
-  no implementation task was selected.
-- **ACTIVE RUN EXISTS** — another project task, orchestrator, or subagent is
-  active, so this trigger performed no repository work.
-- **ACTIVE RUN STATUS UNKNOWN** — task activity could not be inspected reliably,
-  so this trigger performed no repository work.
-- **TIME WINDOW COMPLETE** — the current coherent task is safely finished and
-  the run has reached its daily stopping boundary.
-- **NEEDS OWNER DECISION** — continuing requires a product, worldbuilding,
-  architecture, scope, or authority choice absent from the active goal.
-- **GOAL COMPLETE** — every criterion has proportionate verified evidence. Mark
-  the goal complete, commit the final progress update, and do not select or
-  begin another goal.
-- **NO JUSTIFIED CHANGE** — no change would honestly advance the active goal.
-- **BASELINE BLOCKED** — existing repository state prevents a safe autonomous
-  task.
+No embedding captures the Kim reclassification. No algorithm can do it. The model has to read the entire profile.
 
-For each committed task, retain a concise report in the active Goal or
-scheduled task run:
+**Step 3: The self-learning loop.**
 
-1. criterion advanced and the progress claim;
-2. observed behavior and interpretation kept separate;
-3. files changed and commit created;
-4. focused and full validation results;
-5. implementation partition, subagents used, and independent-review findings;
-6. forced outcomes, special cases, risks, and unresolved assumptions;
-7. whether alignment is due; do not name a future implementation task.
+After the event, the `/improve` skill reads NPS surveys, diarizes the "OK" responses (not the bad ones, the mediocre ones), and extracts patterns. Then it proposes new rules and writes them back into the matching skills:
 
-When the Goal or one-shot run stops, report why and the exact repository state.
-Routine implementation checkpoints do not wait for owner review.
+```
+When attendee says "AI infrastructure"
+    but startup is 80%+ billing code:
+    -> Classify as FinTech, not AI Infra.
+
+When two attendees in same group
+    already know each other:
+    -> Penalize proximity.
+       Prioritize novel introductions.
+```
+
+These rules get written back into the skill file. Next run uses them automatically. The skill rewrites itself.
+
+July event: 12% "OK" ratings. Next event: 4%. The skill file learned what "OK" actually meant.
+
+Same pattern as every other domain: retrieve, read, diarize, count, synthesize. Then: survey, investigate, diarize, rewrite the skill. It transfers everywhere.
+
+## OpenClaw: where the skills live
+
+I want to tell you about one more harness. Not for coding. For everything else.
+
+I run a personal AI agent on OpenClaw. It has a persona, knows who I am, and maintains a knowledge base of thousands of interconnected files. But the thing that makes it work is the exact same principle. Thin harness, fat skills.
+
+I tweeted about this a few days ago:
+
+> *You are not allowed to do one-off work. If I ask you to do something and it's the kind of thing that will need to happen again, you must: do it manually the first time on 3 to 10 items. Show me the output. If I approve, codify it into a skill file. If it should run automatically, put it on a cron.*
+
+> *The test: if I have to ask you for something twice, you failed.*
+
+That resonated: a thousand likes, twenty-five hundred bookmarks. People thought it was a prompt engineering trick. It's not. It's the same architecture.
+
+Claude Code is the best harness for coding. OpenClaw is the best harness for everything else: email, calendar, meetings, people, research, alerts. Same principle. Thin harness. Fat skills. The skills are method calls. The parameters change. The process stays.
+
+Every skill I write is a permanent upgrade. It never degrades. It never forgets. It runs at 3 AM while I sleep. And when the next model drops, every skill instantly gets better, because the judgment in the latent steps improves while the deterministic steps stay perfectly reliable.
+
+That's how you get Yegge's 10x to 100x. Not a smarter model. Fat skills, thin harness, and the discipline to codify everything.
+
+The system compounds. Build it once. It runs forever.
+
+Five definitions. Three layers. One principle. Thin harness, fat skills.
+
+---
+
+## Agent Decision Guide: Skill or Code?
+
+When building GBrain features, use this decision guide:
+
+| Question | If YES | If NO |
+|----------|--------|-------|
+| Does the agent need to think, adapt, or ask questions? | **Skill** (recipe markdown) | Code |
+| Same input always produces same output? | **Code** (CLI command) | Skill |
+| Does it require judgment about the user's environment? | **Skill** | Code |
+| Is it a lookup, list, or status check? | **Code** | Probably skill |
+| Does it change behavior based on conversation context? | **Skill** | Code |
+
+**GBrain examples:**
+- `gbrain integrations list` = **Code** (reads files, checks env vars, deterministic)
+- `gbrain integrations status` = **Code** (checks env vars + heartbeat, deterministic)
+- `gbrain integrations doctor` = **Code** (runs health checks, deterministic)
+- `gbrain integrations stats` = **Code** (aggregates JSONL, deterministic)
+- Recipe setup flow = **Skill** (asks for API keys, adapts to environment, validates)
+- Recipe changelog surfacing = **Skill** (agent describes changes conversationally)
+- Entity detection = **Skill** (reads message, decides what's important, creates pages)
+- Meeting ingestion = **Skill** (reads transcript, extracts entities, updates pages)
+
+**The rule:** If it's a lookup table, it's code. If the agent needs to think, it's a skill.

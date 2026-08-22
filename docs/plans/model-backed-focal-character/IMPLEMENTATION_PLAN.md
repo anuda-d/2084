@@ -1,11 +1,11 @@
 # Model-Backed Focal Character Implementation State
 
-Status: active shared state; no implementation work unit has been selected.
+Status: complete; MF-1 through MF-10 are met and independently reviewed.
 
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal alignment after MF-8A
+- Last completed run: final whole-goal alignment after MF-10F
 - Verified implementation runs since alignment: 0
 - Alignment due: no
 
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | The scripted default and observer boundary remain intact and offline checks pass 87 current and 63 historical tests. A usable documented live entry path and explicit live smoke remain open. |
+| MF-10 Integration | met | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. MF-10E documents the usable command, privacy and authority boundaries, failure behavior, replay limits, and live variability. MF-10F verifies the exact pinned live model selecting travel and work through the documented command, with ordinary travel completion, one call per eligible tick, linked private evidence, and normal/history privacy. Offline checks pass 111 current and 63 historical tests. Final whole-goal review found no findings, reopened no criterion, and confirmed MF-10 and the bounded goal complete. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. Alignment after MF-8A is complete; the next implementation work unit must
-be selected from fresh repository evidence.
+None. The Model-Backed Focal Character goal is complete. Do not select another
+work unit or goal without new owner approval.
 
 ## Completion Rules
 
@@ -70,6 +70,67 @@ After several verified work units, or whenever implementation evidence changes
 the apparent boundary, perform a fresh whole-goal alignment review. Alignment
 may close evidence gaps or recommend removal and simplification, but it must not
 select a future task.
+
+### 2026-08-22 — Final alignment after MF-10F
+
+- Fresh Sol-high whole-goal review found no findings and reopened no criterion.
+  MF-1 through MF-10 are met, and the bounded Model-Backed Focal Character goal
+  is complete.
+- The model's schema-valid choice passes directly through the strict parser into
+  an attempted action with no scripted substitution. Restricted input remains
+  agent-owned and affordance-bounded; the unchanged simulation alone owns
+  validation, timing, mutation, rejection, observation delivery, and consequence.
+- Timeout, unavailable-model, malformed-response, and invalid-attempt failures
+  remain explicit safe waits with no scripted fallback. Detached decision
+  records remain inspector-only and causally link input, authored/configuration
+  identities, structured response, attempt, validation, and outcome without
+  endpoint, raw prompt, provider failure, or thinking leakage.
+- Recorded playback consumed 18 detached decisions and reproduced equal ordered
+  150-event world history without a provider call. Equal opening inputs with
+  different valid choices still produce distinct resolved world behavior.
+- The scripted CLI remains the offline default. The documented Ollama CLI is
+  explicit and externally configured, and the private-IP adapter remains one
+  narrow stateless provider seam rather than a general framework.
+- Independent live verification confirmed exact `qwen3:4b-instruct`, digest
+  `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`,
+  qwen3 4.0B Q4_K_M. A normal sample selected travel at tick 1, made no call
+  while pending at tick 2, completed arrival through ordinary resolution at tick
+  3, then selected work. Inspector evidence contained two selected/accepted
+  eligible-tick records and linked the travel attempt to its completion.
+- The provider `minLength: 1` constraint remains subordinate to the strict local
+  parser, which rejects whitespace-only scalar parameters, explanation, and
+  reason. Recorded integer and list-identifier caveats grant no world authority
+  and do not reopen MF-3.
+- No production or test system warrants removal or simplification. Live samples
+  prove one bounded request-to-consequence chain and boundary integrity, not
+  believable behavior, deterministic sampling, broad competence, or an emergent
+  story.
+- Validation passed 44 focused tests, 111 current and 63 historical full tests,
+  scripted normal and inspector runs, replay/privacy/hidden-state probes, CLI
+  help and documentation-link checks, and `git diff --check` at reviewed HEAD
+  `16814a0`. The review selected no future work.
+
+### 2026-08-22 — Alignment after MF-10C
+
+- Fresh Sol-high whole-goal review found no findings and reopened no criterion.
+  MF-1 through MF-9 remain met at their recorded boundaries. MF-10 remains the
+  sole open criterion, so the goal is active and incomplete.
+- Authored profile and skill layers, the detached restricted input, the shared
+  strict parser, the stateless single-request Ollama adapter, private decision
+  evidence, unchanged resolver, and recorded replay preserve the intended
+  model/world authority and privacy boundary.
+- The exact remaining MF-10 evidence gaps are a runnable explicit live-policy
+  composition path with external endpoint and model configuration, current
+  public documentation, and one owner-authorized live smoke covering model
+  response through normal world consequence and normal/inspector privacy.
+- No production or test system warrants removal or simplification. Keep the
+  narrow client, shared parser, private record seam, and recorded client; do not
+  grow them into a provider framework.
+- The review selected no later implementation work. Focused model-boundary
+  tests passed 38; full checks passed 105 current and 63 historical tests;
+  recorded replay reproduced equal 150-event history; scripted normal and
+  inspector runs completed; `git diff --check` passed at reviewed HEAD
+  `611953c`.
 
 ### 2026-08-20 — Alignment after MF-1A
 
@@ -190,6 +251,213 @@ select a future task.
   `d131f36`.
 
 ## Verified Run Log
+
+### MF-10F Owner-authorized live Ollama smoke
+
+- Criterion advanced: MF-10 Integration remains open only for final whole-goal
+  review.
+- Pinned environment evidence: a non-mutating `/api/tags` preflight reported
+  exact model `qwen3:4b-instruct`, digest
+  `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`,
+  family qwen3, 4.0B parameters, and Q4_K_M quantization. No model was pulled or
+  changed, and the runtime endpoint was not added to tracked files.
+- Live compatibility finding and fix: the first explicit smoke safely produced
+  `unavailable_model` because Ollama rejected the provider schema's unanchored
+  regex patterns, then rejected their anchored grammar. A tight direct-request
+  probe isolated the issue. Provider-facing non-empty string constraints now use
+  Ollama-compatible `minLength: 1`; the unchanged strict local parser still
+  rejects whitespace-only scalar parameters, explanations, and reasons. All
+  action branches, world validation, and resolution authority are unchanged.
+- Normal live evidence: the documented three-tick command made Mara select
+  travel at tick 1, made no decision call while travel remained pending at tick
+  2, completed arrival through the ordinary world resolver at tick 3, delivered
+  the arrival observation, and then selected work. Normal output contained only
+  the attributed attempts/reasons and admitted consequence, with no endpoint,
+  configuration, prompt, private record, or provider thinking.
+- Inspector live evidence: a separate three-tick sample produced exactly two
+  selected/accepted records at eligible ticks 1 and 3. The travel record linked
+  restricted input, exact profile/skill identities and hashes, non-secret model
+  configuration, structured choice, attempt `action-0002`/`event-0003`, and
+  completed outcome `event-0009`. Endpoint, composed-prompt markers, raw provider
+  error and thinking were absent; private decision records remained outside
+  objective history.
+- Limits: both live samples happened to choose the same travel/work sequence.
+  This proves one bounded live request-to-consequence chain, not deterministic
+  sampling, broad competence, believability, or a tendency toward rebellion.
+- Validation and diagnosis closure: the original one-tick red loop now passes;
+  forty-four focused tests passed; `./scripts/check.sh` passed 111 current and 63
+  historical tests; scripted normal and inspector runs completed;
+  `git diff --check` and syntax compilation passed. No temporary debug files or
+  instrumentation remain.
+- Independent review: fresh Sol-high review found no findings, independently
+  reproduced exact model identity, live travel completion and two eligible-tick
+  records, local whitespace rejection, focused/full checks, privacy, and owner
+  file preservation, and approved MF-10F. It correctly left final criterion and
+  goal completion to a later whole-goal review.
+
+### MF-10E Public model-boundary documentation
+
+- Criterion advanced: MF-10 Integration remains open only for the explicit
+  live smoke and final whole-goal review.
+- Observable documentation: the README now gives the unchanged scripted
+  command and a usable explicit Ollama command with a replaceable private-IP
+  example and externally supplied exact `qwen3:4b-instruct` model. It explains
+  one-call restricted decisions, safe failure without scripted fallback,
+  normal/inspector evidence, endpoint and prompt privacy, and live variability.
+- Architecture evidence: Architecture and Core Construct now describe the
+  implemented model/parser/world boundary, authored profile and skill, private
+  linked records, programmatic recorded-decision reproduction, bounded Agent
+  Understanding, deterministic supporting policies, and the deliberately
+  narrow current limits. They distinguish equal scripted or recorded world
+  behavior from variable live samples and a programmatic replay seam from a
+  durable save or user-facing replay command.
+- Privacy and accuracy: the owner endpoint is absent. The documented example is
+  explicitly replaceable, and the text distinguishes retained attributed
+  `decision_reason` from excluded hidden provider chain-of-thought. All local
+  documentation links resolve, and resolved pre-model questions and stale
+  deterministic-only descriptions were removed.
+- Validation: `./scripts/check.sh` passed 110 current and 63 historical tests;
+  scripted normal and inspector runs completed through tick 28; CLI help matched
+  the documented options; `git diff --check` passed.
+- Independent review: the first fresh Sol-high review found an overbroad live
+  replay claim, ambiguous private-reasoning wording, future-only descriptions of
+  implemented stance/resurfacing, and one stale repository-guide line. Those
+  were corrected. A second fresh Sol-high review found one literal ambiguity
+  between “no server address” and the example address; the final wording says no
+  configured or owner endpoint. It then found no remaining findings and
+  approved the exact revised state. This documentation does not claim the live
+  smoke has occurred.
+
+### MF-10D Explicit Ollama CLI composition
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: the existing `python3 -m scenarios.first_day` command
+  remains scripted by default and never constructs a live client. Explicit
+  `--focal-policy ollama` selection requires caller-supplied base URL and model,
+  permits only the owner-approved `qwen3:4b-instruct` first-integration model,
+  constructs one `OllamaDecisionClient`, and binds its configuration and
+  authorship identities to the existing `ModelFocalPolicy`.
+- Configuration boundary: missing, DNS-based, malformed, public, path-bearing,
+  credential-bearing, invalid-port, and wrong-model values fail as controlled
+  command errors before simulation construction or a provider call. The
+  endpoint remains runtime-only. Normal fake-live output contains neither the
+  endpoint nor configuration identity.
+- Offline boundary evidence: an injected fake through the real command
+  composition produces one model-selected wait and attributed reason with one
+  client call and no network. The scripted chooser is not a fallback, and the
+  unchanged simulation still resolves the attempt.
+- Validation: Forty-three combined CLI/request/adapter/model-policy tests
+  passed; `./scripts/check.sh` passed 110 current and 63 historical tests;
+  scripted normal and inspector runs completed; `git diff --check` and syntax
+  compilation passed.
+- Independent review: the first fresh Sol-high review found that arbitrary
+  model names were accepted and invalid origins escaped with a traceback. The
+  implementation now rejects both before a run. A second fresh Sol-high review
+  found no findings, independently exercised seven invalid configuration
+  classes, reproduced the focused/full checks and privacy/default probes, and
+  approved MF-10D. Public documentation and a real live smoke remain outside
+  this cycle's evidence.
+
+### MF-10A Authored decision request
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: separate Mara Profile v0 and `choose-next-action` v0
+  Markdown artifacts load with stable human-readable identities and
+  deterministic SHA-256 content identities. A pure composer places stable
+  boundary instructions, the profile, the skill, and one fresh detached
+  restricted decision state in four explicit ordered layers and derives a JSON
+  Schema from the canonical supported action contracts.
+- Boundary evidence: focused tests verify exact artifact loading, repeated
+  identity, stable-before-dynamic ordering, explicit treatment of dynamic
+  strings as untrusted data, JSON delimiting, later-input-mutation detachment,
+  all eight schema branches, exact outer fields, and the existing conditional
+  pressure rule. No scenario completion, provider configuration, credential,
+  endpoint, hidden state, desired route, or private reasoning is introduced.
+- Parser authority caveat: JSON Schema numeric semantics accept `1.0` as an
+  integer, while the strict Python action contract rejects the decoded float.
+  This difference is documented and tested; provider constraint never replaces
+  the existing local parser.
+- Validation: Four focused request tests and the combined 24 model-boundary
+  tests passed; `./scripts/check.sh` passed 91 current and 63 historical tests;
+  scripted normal and inspector runs completed; `git diff --check` passed.
+- Independent review: The first fresh Sol-high review found the numeric-schema
+  precision caveat above and no blocker. After it was documented and covered by
+  a local-parser regression assertion, a second fresh Sol-high review found no
+  findings, independently reproduced the checks and detachment/schema probes,
+  and approved MF-10A for finalization. Live Ollama schema acceptance,
+  profile/skill identity in decision records, and end-to-end live privacy remain
+  outside this cycle's evidence.
+
+### MF-10B Native Ollama adapter
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: one `OllamaDecisionClient.choose(model_input)` call composes
+  fresh two-message Mara context, sends one native `POST /api/chat` with
+  `stream: false`, `think: false`, the exact JSON Schema in `format`,
+  temperature 0, 256 predicted tokens, and a 16K context, then extracts only
+  the assistant `message.content` JSON as the candidate structured choice.
+- Transport boundary: the standard-library client accepts only external
+  cleartext private, loopback, or link-local numeric-IP origins, bypasses DNS,
+  proxies, redirects, and provider history, permits no credentials in the URL,
+  uses one exact request with no retry or model pull, enforces a whole-request
+  deadline, and caps success and error responses at 1 MiB. Configuration
+  identity records the exact model and material generation/timeout settings but
+  not the endpoint.
+- Failure evidence: focused fake and loopback tests cover socket and nested
+  timeout, connection refusal and route errors, HTTP 404/500, close before
+  status, malformed HTTP status and truncated response, model-label mismatch,
+  invalid UTF-8/JSON/envelope/content, deep JSON recursion, oversized integer
+  decoding, oversized and slow-drip bodies, malformed structured choice, and a
+  schema-valid world-invalid attempt. These become the existing sanitized
+  timeout, unavailable-model, malformed-response, invalid-attempt, or ordinary
+  resolver-rejection paths without raw provider, endpoint, or thinking text.
+- Authority and continuity evidence: a valid extracted choice passes unchanged
+  through `ModelFocalPolicy` and the strict parser; the simulation alone owns
+  attempt validity and outcome. Every call builds only the current profile,
+  skill, and restricted state; no provider chat is retained and the scripted
+  policy is never invoked as fallback.
+- Validation: Thirty-eight focused request/adapter/policy tests passed;
+  `./scripts/check.sh` passed 105 current and 63 historical tests; scripted
+  normal and inspector runs completed; `git diff --check` passed.
+- Independent review: successive fresh Sol-high transport reviews exposed and
+  drove fixes for HTTP protocol exception escapes, response-model mismatch,
+  recursive and oversized-number JSON, non-finite timeout values, automatic
+  redirects, malformed URL suffixes and ports, environment proxy inheritance,
+  unbounded slow/large responses, numeric-IP name resolution, scoped IPv6,
+  public cleartext origins, lossy timeout identity, and close-before-status
+  classification. The final fresh review found no findings, independently
+  reproduced the focused/full checks and targeted socket probes, and approved
+  MF-10B. Live Ollama behavior and profile/skill identity in decision evidence
+  remain outside this cycle's evidence.
+
+### MF-10C Authored decision identity
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: the Ollama client loads one immutable profile and skill for
+  its lifetime and exposes a typed identity with decision-contract version,
+  stable authored names, and exact SHA-256 content identities. A caller can
+  supply that typed identity to `ModelFocalPolicy`, which records a detached
+  plain-data copy on both selected and failed private decisions separately from
+  restricted input and model configuration.
+- Exact content evidence: independent recomputation matched profile
+  `sha256:7a4e22b7f545c983b9c5cc0ead28abf5c2deb2c60c806295621dea0970fea678`
+  and skill
+  `sha256:23e37f6d1615539d2d89c876775676c6c3ab99a947f67d89a1f8fd0aedd5f0ed`
+  to the UTF-8 text actually held by the client and embedded in its request.
+- Privacy and compatibility evidence: identity/version/hash data appears only
+  in inspector decision evidence. Authored prompt text, endpoint, provider
+  thinking and errors remain absent from the record, normal view, and world
+  history. Generic deterministic clients retain `authorship_identity=None`,
+  exported-data mutation does not affect records, import order remains acyclic,
+  and recorded-decision replay and tamper rejection remain functional.
+- Validation: Thirty-eight focused request/adapter/policy tests passed;
+  `./scripts/check.sh` passed 105 current and 63 historical tests; scripted
+  normal and inspector runs completed; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no findings and independently
+  reproduced hash-to-prompt correspondence, success and every failure category,
+  detachment, inspector-only privacy, generic-client compatibility, equal-world
+  recorded replay, tamper rejection, and import-order behavior. MF-10 remains
+  open for the documented entry path and live smoke.
 
 ### MF-2A Restricted focal identity projection
 

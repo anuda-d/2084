@@ -108,10 +108,11 @@ Consequences should remain connected to understandable world responses. Delayed 
 
 ## AI
 
-The intended direction is to make the focal character model-backed first. The
-model will be the character's decision and expression process: its validated
-choices become the focal character's attempted actions, rather than suggestions
-for a separate scripted actor.
+The implemented first AI boundary makes only the focal character optionally
+model-backed. The model is Mara's decision and expression process: its validated
+choice becomes her attempted action, rather than a suggestion for a separate
+scripted actor. The deterministic focal policy remains the default comparison
+and is never a hidden fallback.
 
 The persistent character is not reducible to one model call. Identity, body,
 location, aims, relationships, delivered observations, source-linked memory,
@@ -134,13 +135,22 @@ must not become the character's only memory.
 
 ### Current implementation status
 
-The first living slice currently uses transparent deterministic policies, not
-AI. Those policies receive restricted agent or institution views and return an
-attempted action; the simulation separately validates and resolves the attempt.
-Policies receive immutable completed or rejected results, so an unsuccessful
-attempt cannot silently advance their plan. This is enough to test knowledge
-boundaries and inspectable consequences before adding a less predictable
-decision layer.
+The first living slice keeps transparent deterministic policies for supporting
+characters, institutions, and the default focal comparison. An explicit CLI
+mode composes Mara's versioned profile and reusable decision skill with a fresh
+restricted view, sends one request to the selected local Ollama model, and
+passes one structured choice through the shared strict parser. The simulation
+separately validates and resolves the attempt. Policies receive immutable
+completed or rejected results, so an unsuccessful attempt cannot silently
+advance a plan.
+
+Model timeout, unavailable-service, malformed-response, and invalid-choice
+paths produce an explicit safe wait without invoking the scripted focal policy.
+Inspector-only evidence links the restricted input, authored identities,
+non-secret configuration identity, structured response, attempted action,
+validation, and outcome. Recorded-decision playback can reproduce resulting
+world history without another live call. None of this makes model output an
+objective fact, canonical memory, deterministic sample, or successful action.
 
 The implemented belief model is also deliberately narrow. It recognizes one
 structured direct-allocation proposition with fixed confidence and can link
@@ -167,11 +177,14 @@ deliver version two while leaving the earlier version-one observation unchanged.
 The autonomous focal path performs that second consultation only after the
 partial handover and delivered counter pressure; it does not receive hidden
 notice of the rewrite. The clerk separately consults version one through the
-same access boundary before using it as evidence for the pressure action. Agent
-Understanding, Claim and Provenance, and Observation Delivery remain proposals.
-The `first_day_v2` scenario no longer uses the generic scheduled broadcasts;
-the focal and supporting policies still contain scenario-specific consultation,
-pressure, and diary decisions.
+same access boundary before using it as evidence for the pressure action. The
+bounded Agent Understanding layer now retains source-linked memory traces,
+interpreted official claims, known conflicts, contextual stance, and
+diary-cued resurfacing. Claim and Provenance and Observation Delivery remain
+possible later extractions rather than implemented modules.
+The `first_day_v3` scenario does not use the generic scheduled broadcasts. Its
+world timings and supporting policies remain scenario-specific, as does the
+scripted focal comparison; the model-backed skill does not encode that route.
 
 ## Observation and Playability
 
@@ -197,15 +210,12 @@ Authored material may seed people, places, pressures, and starting conditions. I
 - The focal character's identity, work, household, and initial situation
 - The original setting and historical background
 - The first small district and supporting population
-- Which bounded focal-character model interface, failure policy, and recorded
-  reproduction format should implement the approved model-backed direction
+- Which repeated live-model failures or mediocre choices justify revising the
+  reusable decision skill rather than enlarging the harness
 - Which interpretations or plans may later be proposed by the model while
   delivered evidence, source provenance, and world consequences remain explicit
 - What evidence should be required before supporting characters also become
   model-backed
-- Whether the selected public-counter stance and diary-cued resurfacing rule is
-  the smallest useful Agent Understanding experiment, or should be removed
-  after evaluation
 - How much of the focal character's internal state the observer may inspect
 - Whether and how the observer can intervene
 - Which additional institutional limits, if any, are justified after the

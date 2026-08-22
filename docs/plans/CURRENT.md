@@ -1,18 +1,20 @@
 # Current Development Index
 
-Status: Model-Backed Focal Character is the active owner-approved goal as of
-2026-08-19.
+Status: no active owner-approved goal as of 2026-08-22. Model-Backed Focal
+Character is complete.
 
 ## Active Work
 
-- Goal: [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
-- Shared implementation state:
+- Active goal: none
+- Most recently completed goal:
+  [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
+- Most recent completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Completed goal: [Agent Understanding](agent-understanding/GOAL.md)
-- Completed-goal evidence:
+- Earlier completed goal: [Agent Understanding](agent-understanding/GOAL.md)
+- Earlier completion evidence:
   [Agent Understanding Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: select at most one fresh, bounded work unit from verified gaps in
-  the active goal; do not pre-plan later work
+- Active work: none; stop after reading this index until the owner approves a
+  new goal
 
 ## Required Read Order
 

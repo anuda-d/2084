@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
+from policies.mara_decision_request import DecisionAuthorshipIdentity
 from simulation.actions import (
     ActionAttempt,
     action_parameter_contract_data,
@@ -379,11 +380,22 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
 class ModelFocalPolicy:
     """Use a model-compatible client as the focal character's chooser."""
 
-    def __init__(self, client: ModelDecisionClient, *, configuration_id: str) -> None:
+    def __init__(
+        self,
+        client: ModelDecisionClient,
+        *,
+        configuration_id: str,
+        authorship_identity: DecisionAuthorshipIdentity | None = None,
+    ) -> None:
         if not isinstance(configuration_id, str) or not configuration_id.strip():
             raise ValueError("configuration_id must be a non-empty string")
         self._client = client
         self._configuration_id = configuration_id
+        self._authorship_identity = (
+            freeze_mapping(authorship_identity.to_data())
+            if authorship_identity is not None
+            else None
+        )
         self._decision_record: PolicyDecisionRecord | None = None
 
     def choose(self, view: AgentView) -> ActionAttempt:
@@ -433,6 +445,7 @@ class ModelFocalPolicy:
             structured_response=response,
             attempted_action=_attempt_data(attempt) or {},
             attempted_action_kind=attempt.kind,
+            authorship_identity=self._authorship_identity,
         )
         return attempt
 
@@ -460,6 +473,7 @@ class ModelFocalPolicy:
             model_input=model_input,
             structured_response=None,
             attempted_action=_attempt_data(attempt) or {},
+            authorship_identity=self._authorship_identity,
             failure_kind=failure_kind,
             failure_type=failure_type,
             attempted_action_kind=attempt.kind,
