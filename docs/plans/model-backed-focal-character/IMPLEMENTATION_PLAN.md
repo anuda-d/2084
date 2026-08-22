@@ -5,9 +5,9 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-10C authored decision identity
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: whole-goal alignment after MF-10C
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-10C is complete; whole-goal alignment is due before another
-implementation work unit is selected.
+None. The alignment after MF-10C is complete; select at most one fresh bounded
+work unit from the verified open MF-10 evidence.
 
 ## Completion Rules
 
@@ -70,6 +70,28 @@ After several verified work units, or whenever implementation evidence changes
 the apparent boundary, perform a fresh whole-goal alignment review. Alignment
 may close evidence gaps or recommend removal and simplification, but it must not
 select a future task.
+
+### 2026-08-22 — Alignment after MF-10C
+
+- Fresh Sol-high whole-goal review found no findings and reopened no criterion.
+  MF-1 through MF-9 remain met at their recorded boundaries. MF-10 remains the
+  sole open criterion, so the goal is active and incomplete.
+- Authored profile and skill layers, the detached restricted input, the shared
+  strict parser, the stateless single-request Ollama adapter, private decision
+  evidence, unchanged resolver, and recorded replay preserve the intended
+  model/world authority and privacy boundary.
+- The exact remaining MF-10 evidence gaps are a runnable explicit live-policy
+  composition path with external endpoint and model configuration, current
+  public documentation, and one owner-authorized live smoke covering model
+  response through normal world consequence and normal/inspector privacy.
+- No production or test system warrants removal or simplification. Keep the
+  narrow client, shared parser, private record seam, and recorded client; do not
+  grow them into a provider framework.
+- The review selected no later implementation work. Focused model-boundary
+  tests passed 38; full checks passed 105 current and 63 historical tests;
+  recorded replay reproduced equal 150-event history; scripted normal and
+  inspector runs completed; `git diff --check` passed at reviewed HEAD
+  `611953c`.
 
 ### 2026-08-20 — Alignment after MF-1A
 
