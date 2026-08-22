@@ -134,6 +134,7 @@ class OllamaDecisionClientTests(unittest.TestCase):
             focal_policy=ModelFocalPolicy(
                 client,
                 configuration_id=client.configuration_id,
+                authorship_identity=client.authorship_identity,
             ),
         )
 
@@ -145,6 +146,7 @@ class OllamaDecisionClientTests(unittest.TestCase):
             if event.kind == "action_attempted" and event.actor_id == FOCAL_AGENT_ID
         )
         record = simulation.decision_records[0]
+        authorship = client.authorship_identity.to_data()
         self.assertEqual(focal_attempt.details["action_kind"], "wait")
         self.assertEqual(snapshot.current_action, "I will remain here briefly.")
         self.assertEqual(
@@ -152,9 +154,33 @@ class OllamaDecisionClientTests(unittest.TestCase):
             "The immediate obligations allow a short pause.",
         )
         self.assertEqual(record.structured_response["kind"], "wait")
+        self.assertEqual(record.to_data()["authorship_identity"], authorship)
+        self.assertEqual(
+            authorship["decision_contract_version"],
+            "mara-decision-v0",
+        )
+        self.assertEqual(authorship["profile"]["identity"], "mara-profile-v0")
+        self.assertRegex(
+            authorship["profile"]["content_identity"],
+            r"^sha256:[0-9a-f]{64}$",
+        )
+        self.assertEqual(
+            [skill["identity"] for skill in authorship["skills"]],
+            ["choose-next-action-v0"],
+        )
         self.assertNotIn(secret_marker, json.dumps(record.to_data()))
-        self.assertNotIn(secret_marker, render_terminal((snapshot,)))
-        self.assertNotIn(secret_marker, render_inspector(simulation))
+        encoded_record = json.dumps(record.to_data())
+        self.assertNotIn("neither destined to rebel", encoded_record)
+        self.assertNotIn("127.0.0.1", encoded_record)
+        normal = render_terminal((snapshot,))
+        inspector = render_inspector(simulation)
+        history = json.dumps(simulation.history_data())
+        self.assertNotIn(secret_marker, normal)
+        self.assertNotIn(secret_marker, inspector)
+        self.assertIn("mara-profile-v0", inspector)
+        self.assertIn("choose-next-action-v0", inspector)
+        self.assertNotIn("mara-profile-v0", normal)
+        self.assertNotIn("mara-profile-v0", history)
 
     def test_empty_query_or_fragment_suffix_cannot_change_chat_path(self):
         simulation = build_first_day(seed=42)
@@ -586,6 +612,7 @@ class OllamaDecisionClientTests(unittest.TestCase):
                     focal_policy=ModelFocalPolicy(
                         client,
                         configuration_id=client.configuration_id,
+                        authorship_identity=client.authorship_identity,
                     ),
                 )
 
@@ -595,6 +622,12 @@ class OllamaDecisionClientTests(unittest.TestCase):
                 self.assertEqual(
                     simulation.decision_records[0].failure_kind,
                     expected_failure,
+                )
+                self.assertEqual(
+                    simulation.decision_records[0].to_data()[
+                        "authorship_identity"
+                    ],
+                    client.authorship_identity.to_data(),
                 )
                 encoded = json.dumps(simulation.decision_records[0].to_data())
                 self.assertNotIn(private_marker, encoded)

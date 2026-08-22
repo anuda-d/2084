@@ -765,6 +765,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(record.status, "selected")
         self.assertEqual(record.configuration_id, "deterministic-test-v1")
+        self.assertIsNone(record.authorship_identity)
         self.assertEqual(record.to_data()["model_input"], client.inputs[0])
         self.assertEqual(record.to_data()["structured_response"], response)
         self.assertEqual(record.attempted_action["kind"], "wait")

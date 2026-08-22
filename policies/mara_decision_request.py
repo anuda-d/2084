@@ -56,6 +56,34 @@ class AuthoredArtifact:
 
 
 @dataclass(frozen=True)
+class AuthoredArtifactIdentity:
+    identity: str
+    content_identity: str
+
+    def to_data(self) -> dict[str, str]:
+        return {
+            "identity": self.identity,
+            "content_identity": self.content_identity,
+        }
+
+
+@dataclass(frozen=True)
+class DecisionAuthorshipIdentity:
+    """Prompt authorship evidence without authored text or provider state."""
+
+    decision_contract_version: str
+    profile: AuthoredArtifactIdentity
+    skills: tuple[AuthoredArtifactIdentity, ...]
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "decision_contract_version": self.decision_contract_version,
+            "profile": self.profile.to_data(),
+            "skills": [skill.to_data() for skill in self.skills],
+        }
+
+
+@dataclass(frozen=True)
 class MaraDecisionPrompt:
     """Detached provider-neutral material for one Mara decision call."""
 
@@ -70,6 +98,29 @@ class MaraDecisionPrompt:
 
     def response_schema_data(self) -> dict[str, object]:
         return to_plain_data(self.response_schema)
+
+    def authorship_identity(self) -> DecisionAuthorshipIdentity:
+        return decision_authorship_identity(self.profile, self.skills)
+
+
+def _artifact_identity(artifact: AuthoredArtifact) -> AuthoredArtifactIdentity:
+    return AuthoredArtifactIdentity(
+        identity=artifact.identity,
+        content_identity=artifact.content_identity,
+    )
+
+
+def decision_authorship_identity(
+    profile: AuthoredArtifact,
+    skills: tuple[AuthoredArtifact, ...],
+) -> DecisionAuthorshipIdentity:
+    if not skills:
+        raise ValueError("at least one authored decision skill is required")
+    return DecisionAuthorshipIdentity(
+        decision_contract_version=DECISION_CONTRACT_VERSION,
+        profile=_artifact_identity(profile),
+        skills=tuple(_artifact_identity(skill) for skill in skills),
+    )
 
 
 def _load_artifact(path: Path, identity: str) -> AuthoredArtifact:

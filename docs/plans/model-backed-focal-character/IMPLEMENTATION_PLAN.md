@@ -5,9 +5,9 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: MF-10B native Ollama adapter
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: MF-10C authored decision identity
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. The scripted default remains intact and offline checks pass 105 current and 63 historical tests. Profile/skill identity in decision records, a usable documented live entry path, and the explicit live smoke remain open. |
+| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. The scripted default remains intact and offline checks pass 105 current and 63 historical tests. A usable documented live entry path and the explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. MF-10B is complete; the next implementation work unit must be selected
-from fresh repository evidence.
+None. MF-10C is complete; whole-goal alignment is due before another
+implementation work unit is selected.
 
 ## Completion Rules
 
@@ -262,6 +262,35 @@ select a future task.
   reproduced the focused/full checks and targeted socket probes, and approved
   MF-10B. Live Ollama behavior and profile/skill identity in decision evidence
   remain outside this cycle's evidence.
+
+### MF-10C Authored decision identity
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: the Ollama client loads one immutable profile and skill for
+  its lifetime and exposes a typed identity with decision-contract version,
+  stable authored names, and exact SHA-256 content identities. A caller can
+  supply that typed identity to `ModelFocalPolicy`, which records a detached
+  plain-data copy on both selected and failed private decisions separately from
+  restricted input and model configuration.
+- Exact content evidence: independent recomputation matched profile
+  `sha256:7a4e22b7f545c983b9c5cc0ead28abf5c2deb2c60c806295621dea0970fea678`
+  and skill
+  `sha256:23e37f6d1615539d2d89c876775676c6c3ab99a947f67d89a1f8fd0aedd5f0ed`
+  to the UTF-8 text actually held by the client and embedded in its request.
+- Privacy and compatibility evidence: identity/version/hash data appears only
+  in inspector decision evidence. Authored prompt text, endpoint, provider
+  thinking and errors remain absent from the record, normal view, and world
+  history. Generic deterministic clients retain `authorship_identity=None`,
+  exported-data mutation does not affect records, import order remains acyclic,
+  and recorded-decision replay and tamper rejection remain functional.
+- Validation: Thirty-eight focused request/adapter/policy tests passed;
+  `./scripts/check.sh` passed 105 current and 63 historical tests; scripted
+  normal and inspector runs completed; `git diff --check` passed.
+- Independent review: Fresh Sol-high review found no findings and independently
+  reproduced hash-to-prompt correspondence, success and every failure category,
+  detachment, inspector-only privacy, generic-client compatibility, equal-world
+  recorded replay, tamper rejection, and import-order behavior. MF-10 remains
+  open for the documented entry path and live smoke.
 
 ### MF-2A Restricted focal identity projection
 

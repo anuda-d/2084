@@ -14,7 +14,13 @@ from typing import Mapping, Protocol
 from urllib.error import URLError
 from urllib.parse import urlsplit
 
-from policies.mara_decision_request import compose_mara_decision_prompt
+from policies.mara_decision_request import (
+    DecisionAuthorshipIdentity,
+    compose_mara_decision_prompt,
+    decision_authorship_identity,
+    load_choose_next_action_skill,
+    load_mara_profile,
+)
 from policies.model_focal_policy import ModelUnavailableError
 
 
@@ -235,6 +241,12 @@ class OllamaDecisionClient:
         self._model = model.strip()
         self._timeout_seconds = _timeout_value(timeout_seconds)
         self._transport = transport or _StandardLibraryOllamaTransport()
+        self._profile = load_mara_profile()
+        self._skill = load_choose_next_action_skill()
+        self._authorship_identity = decision_authorship_identity(
+            self._profile,
+            (self._skill,),
+        )
 
     @property
     def configuration_id(self) -> str:
@@ -245,8 +257,16 @@ class OllamaDecisionClient:
             f"{OLLAMA_NUM_PREDICT}:timeout_seconds={timeout}"
         )
 
+    @property
+    def authorship_identity(self) -> DecisionAuthorshipIdentity:
+        return self._authorship_identity
+
     def choose(self, model_input: Mapping[str, object]) -> object:
-        prompt = compose_mara_decision_prompt(model_input)
+        prompt = compose_mara_decision_prompt(
+            model_input,
+            profile=self._profile,
+            skill=self._skill,
+        )
         payload = {
             "model": self._model,
             "messages": prompt.messages_data(),
