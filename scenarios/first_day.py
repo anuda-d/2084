@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 
+from policies.model_focal_policy import ModelFocalPolicy
+from policies.ollama_client import OllamaDecisionClient
 from simulation.agents import AgentState, DecisionPolicy
 from simulation.institutions import (
     InstitutionState,
@@ -25,6 +28,7 @@ RATION_SCHEDULE_ARTIFACT_ID = "weekly-household-ration-schedule"
 RATION_SCHEDULE_VERSION_ONE_ID = "weekly-household-ration-schedule-v1"
 RATION_SCHEDULE_VERSION_TWO_ID = "weekly-household-ration-schedule-v2"
 RATION_SCHEDULE_PERIOD_ID = "first-day-week"
+_MF10_OLLAMA_MODEL = "qwen3:4b-instruct"
 
 
 def build_first_day(
@@ -181,10 +185,58 @@ def _positive_ticks(value: str) -> int:
     return ticks
 
 
-def main(argv: list[str] | None = None) -> int:
+def _cli_focal_policy(
+    *,
+    policy_name: str,
+    ollama_base_url: str | None,
+    ollama_model: str | None,
+    ollama_client_factory: Callable[..., OllamaDecisionClient],
+) -> DecisionPolicy | None:
+    if policy_name == "scripted":
+        return None
+    if policy_name != "ollama":
+        raise ValueError("unsupported focal policy")
+    if ollama_base_url is None or not ollama_base_url.strip():
+        raise ValueError("Ollama base URL is required")
+    if ollama_model is None or not ollama_model.strip():
+        raise ValueError("Ollama model is required")
+    if ollama_model.strip() != _MF10_OLLAMA_MODEL:
+        raise ValueError(
+            f"Ollama model must be {_MF10_OLLAMA_MODEL} for this integration"
+        )
+    client = ollama_client_factory(
+        base_url=ollama_base_url,
+        model=ollama_model.strip(),
+    )
+    return ModelFocalPolicy(
+        client,
+        configuration_id=client.configuration_id,
+        authorship_identity=client.authorship_identity,
+    )
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    ollama_client_factory: Callable[..., OllamaDecisionClient] = OllamaDecisionClient,
+) -> int:
     parser = argparse.ArgumentParser(description="Run the 2084 first living slice")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--ticks", type=_positive_ticks, default=30)
+    parser.add_argument(
+        "--focal-policy",
+        choices=("scripted", "ollama"),
+        default="scripted",
+        help="choose the scripted default or the explicit live Ollama policy",
+    )
+    parser.add_argument(
+        "--ollama-base-url",
+        help="private Ollama origin, required only with --focal-policy ollama",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        help="Ollama model name, required only with --focal-policy ollama",
+    )
     parser.add_argument(
         "--inspect",
         action="store_true",
@@ -192,7 +244,31 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    simulation = build_first_day(seed=args.seed)
+    if args.focal_policy == "ollama" and (
+        args.ollama_base_url is None
+        or not args.ollama_base_url.strip()
+        or args.ollama_model is None
+        or not args.ollama_model.strip()
+    ):
+        parser.error(
+            "--ollama-base-url and --ollama-model are required with "
+            "--focal-policy ollama"
+        )
+    if args.focal_policy == "scripted" and (
+        args.ollama_base_url is not None or args.ollama_model is not None
+    ):
+        parser.error("--ollama-base-url and --ollama-model require --focal-policy ollama")
+
+    try:
+        focal_policy = _cli_focal_policy(
+            policy_name=args.focal_policy,
+            ollama_base_url=args.ollama_base_url,
+            ollama_model=args.ollama_model,
+            ollama_client_factory=ollama_client_factory,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    simulation = build_first_day(seed=args.seed, focal_policy=focal_policy)
     simulation.run(max_ticks=args.ticks)
     if args.inspect:
         from observer.inspector import render_inspector

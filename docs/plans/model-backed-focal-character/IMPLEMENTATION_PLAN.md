@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: whole-goal alignment after MF-10C
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-10D explicit Ollama CLI composition
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -22,7 +22,7 @@ Status: active shared state; no implementation work unit has been selected.
 | MF-7 Decision evidence and privacy | met | MF-7A verifies one inspector-only record per valid or failed selection with the exact detached pre-client input, explicit non-secret configuration identity, sanitized valid response, attempted action, attempt/action links, validation status, and immediate or eventual outcome link; raw failures, client credentials/config, and private records remain absent from AgentView, normal output, EventLog, and `history_data()`. |
 | MF-8 Recorded reproduction | met | MF-8A verifies that an offline recorded-decision client consumes frozen private records in order, requires exact restricted-input equality, and replays detached valid choices or the exact generated safe failure wait through `ModelFocalPolicy`. A complete 18-decision first-day replay reaches tick 28 with equal ordered world history and event identity, no further source-client calls, and explicit mismatch, invalid-record, tampering, and exhaustion failures. This proves recorded world reproduction, not deterministic live sampling. |
 | MF-9 Bounded behavioral proof | met | MF-9A verifies two seed-42 model-backed runs with equal opening inspector state and equal first serialized restricted inputs: valid `wait` versus travel choices become causally linked normal outcomes and leave Mara home versus at the workplace by tick 3. This is bounded deterministic-client evidence, not live-model determinism. |
-| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. The scripted default remains intact and offline checks pass 105 current and 63 historical tests. A usable documented live entry path and the explicit live smoke remain open. |
+| MF-10 Integration | open | MF-10A provides separate authored profile/skill inputs and a deterministic four-layer request. MF-10B provides the native Ollama adapter with exact offline request, extraction, timeout, failure, privacy, and no-retry evidence. MF-10C records the exact decision-contract, profile, and skill identities separately from restricted input and model configuration. MF-10D adds an explicit CLI composition path requiring an external private endpoint and the externally supplied exact first-integration model while preserving the scripted default. Offline checks pass 110 current and 63 historical tests. Current public documentation and the explicit live smoke remain open. |
 
 This table records only verified goal evidence. It is not a task backlog or an
 implementation sequence.
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. The alignment after MF-10C is complete; select at most one fresh bounded
-work unit from the verified open MF-10 evidence.
+None. MF-10D is complete; select at most one fresh bounded work unit from the
+verified open MF-10 evidence.
 
 ## Completion Rules
 
@@ -212,6 +212,36 @@ select a future task.
   `d131f36`.
 
 ## Verified Run Log
+
+### MF-10D Explicit Ollama CLI composition
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: the existing `python3 -m scenarios.first_day` command
+  remains scripted by default and never constructs a live client. Explicit
+  `--focal-policy ollama` selection requires caller-supplied base URL and model,
+  permits only the owner-approved `qwen3:4b-instruct` first-integration model,
+  constructs one `OllamaDecisionClient`, and binds its configuration and
+  authorship identities to the existing `ModelFocalPolicy`.
+- Configuration boundary: missing, DNS-based, malformed, public, path-bearing,
+  credential-bearing, invalid-port, and wrong-model values fail as controlled
+  command errors before simulation construction or a provider call. The
+  endpoint remains runtime-only. Normal fake-live output contains neither the
+  endpoint nor configuration identity.
+- Offline boundary evidence: an injected fake through the real command
+  composition produces one model-selected wait and attributed reason with one
+  client call and no network. The scripted chooser is not a fallback, and the
+  unchanged simulation still resolves the attempt.
+- Validation: Forty-three combined CLI/request/adapter/model-policy tests
+  passed; `./scripts/check.sh` passed 110 current and 63 historical tests;
+  scripted normal and inspector runs completed; `git diff --check` and syntax
+  compilation passed.
+- Independent review: the first fresh Sol-high review found that arbitrary
+  model names were accepted and invalid origins escaped with a traceback. The
+  implementation now rejects both before a run. A second fresh Sol-high review
+  found no findings, independently exercised seven invalid configuration
+  classes, reproduced the focused/full checks and privacy/default probes, and
+  approved MF-10D. Public documentation and a real live smoke remain outside
+  this cycle's evidence.
 
 ### MF-10A Authored decision request
 
