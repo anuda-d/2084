@@ -5,8 +5,8 @@ Status: active shared state; no implementation work unit has been selected.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal alignment after MF-8A
-- Verified implementation runs since alignment: 0
+- Last completed run: MF-10A authored decision request
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -47,8 +47,8 @@ order. If no honest work unit advances the goal, make no implementation change.
 
 ## Current Run
 
-None. Alignment after MF-8A is complete; the next implementation work unit must
-be selected from fresh repository evidence.
+None. MF-10A is complete; the next implementation work unit must be selected
+from fresh repository evidence.
 
 ## Completion Rules
 
@@ -190,6 +190,36 @@ select a future task.
   `d131f36`.
 
 ## Verified Run Log
+
+### MF-10A Authored decision request
+
+- Criterion advanced: MF-10 Integration remains open.
+- Observed behavior: separate Mara Profile v0 and `choose-next-action` v0
+  Markdown artifacts load with stable human-readable identities and
+  deterministic SHA-256 content identities. A pure composer places stable
+  boundary instructions, the profile, the skill, and one fresh detached
+  restricted decision state in four explicit ordered layers and derives a JSON
+  Schema from the canonical supported action contracts.
+- Boundary evidence: focused tests verify exact artifact loading, repeated
+  identity, stable-before-dynamic ordering, explicit treatment of dynamic
+  strings as untrusted data, JSON delimiting, later-input-mutation detachment,
+  all eight schema branches, exact outer fields, and the existing conditional
+  pressure rule. No scenario completion, provider configuration, credential,
+  endpoint, hidden state, desired route, or private reasoning is introduced.
+- Parser authority caveat: JSON Schema numeric semantics accept `1.0` as an
+  integer, while the strict Python action contract rejects the decoded float.
+  This difference is documented and tested; provider constraint never replaces
+  the existing local parser.
+- Validation: Four focused request tests and the combined 24 model-boundary
+  tests passed; `./scripts/check.sh` passed 91 current and 63 historical tests;
+  scripted normal and inspector runs completed; `git diff --check` passed.
+- Independent review: The first fresh Sol-high review found the numeric-schema
+  precision caveat above and no blocker. After it was documented and covered by
+  a local-parser regression assertion, a second fresh Sol-high review found no
+  findings, independently reproduced the checks and detachment/schema probes,
+  and approved MF-10A for finalization. Live Ollama schema acceptance,
+  profile/skill identity in decision records, and end-to-end live privacy remain
+  outside this cycle's evidence.
 
 ### MF-2A Restricted focal identity projection
 
