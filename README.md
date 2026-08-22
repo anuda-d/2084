@@ -3,9 +3,8 @@
 2084 is an early, terminal-based social simulation about following one
 autonomous person through a world they can only partly understand.
 
-The long-term idea is to watch a life unfold inside a small society shaped by
-scarcity, institutions, relationships, limited information, and pressure. The
-focal character is not a player-controlled puppet and does not know everything
+The long-term idea is to watch a life unfold inside a small society shaped by lies, contradictions, institutions, relationships, limited information, and pressure. The
+focal character is not a player-controlled does not know everything
 the simulation knows. Other people and institutions continue acting while the
 observer sees the world mainly through that character's experience.
 
@@ -13,10 +12,6 @@ The project takes thematic inspiration from George Orwell's *Nineteen
 Eighty-Four*, especially the gap between lived experience, public behavior, and
 official accounts. It is not an adaptation of Orwell's plot, characters, or
 setting.
-
-Repository status: the bounded Official Record, Agent Understanding, and
-Model-Backed Focal Character goals are complete. There is no active
-owner-approved implementation goal as of August 22, 2026.
 
 ## What exists today
 
