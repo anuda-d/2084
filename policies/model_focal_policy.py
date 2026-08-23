@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
-from policies.mara_decision_request import DecisionAuthorshipIdentity
+from policies.mara_decision_request import (
+    DecisionAuthorshipIdentity,
+    restricted_decision_input_size_bytes,
+)
 from simulation.actions import (
     ActionAttempt,
     action_parameter_contract_data,
@@ -21,6 +24,10 @@ class StructuredChoiceError(ValueError):
 
 class ModelUnavailableError(RuntimeError):
     """A configured model client explicitly reports that it is unavailable."""
+
+
+class RestrictedInputTooLargeError(RuntimeError):
+    """A provider adapter refused a restricted input above its approved ceiling."""
 
 
 class RecordedDecisionError(RuntimeError):
@@ -402,12 +409,22 @@ class ModelFocalPolicy:
         self._decision_record = None
         model_input = model_input_from_view(view)
         recorded_input = freeze_mapping(model_input)
+        model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
         try:
             response = self._client.choose(model_input)
+        except RestrictedInputTooLargeError as error:
+            return self._safe_failure(
+                view,
+                recorded_input,
+                model_input_bytes,
+                "restricted_input_too_large",
+                type(error).__name__,
+            )
         except TimeoutError as error:
             return self._safe_failure(
                 view,
                 recorded_input,
+                model_input_bytes,
                 "timeout",
                 type(error).__name__,
             )
@@ -415,6 +432,7 @@ class ModelFocalPolicy:
             return self._safe_failure(
                 view,
                 recorded_input,
+                model_input_bytes,
                 "unavailable_model",
                 type(error).__name__,
             )
@@ -424,6 +442,7 @@ class ModelFocalPolicy:
             return self._safe_failure(
                 view,
                 recorded_input,
+                model_input_bytes,
                 "invalid_attempt",
                 type(error).__name__,
             )
@@ -431,6 +450,7 @@ class ModelFocalPolicy:
             return self._safe_failure(
                 view,
                 recorded_input,
+                model_input_bytes,
                 "malformed_response",
                 type(error).__name__,
             )
@@ -442,6 +462,7 @@ class ModelFocalPolicy:
             configuration_id=self._configuration_id,
             status="selected",
             model_input=recorded_input,
+            model_input_bytes=model_input_bytes,
             structured_response=response,
             attempted_action=_attempt_data(attempt) or {},
             attempted_action_kind=attempt.kind,
@@ -453,6 +474,7 @@ class ModelFocalPolicy:
         self,
         view: AgentView,
         model_input: Mapping[str, object],
+        model_input_bytes: int,
         failure_kind: str,
         failure_type: str,
     ) -> ActionAttempt:
@@ -471,6 +493,7 @@ class ModelFocalPolicy:
             configuration_id=self._configuration_id,
             status="failed",
             model_input=model_input,
+            model_input_bytes=model_input_bytes,
             structured_response=None,
             attempted_action=_attempt_data(attempt) or {},
             authorship_identity=self._authorship_identity,

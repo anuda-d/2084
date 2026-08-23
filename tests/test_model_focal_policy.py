@@ -12,6 +12,7 @@ from policies.model_focal_policy import (
     model_input_from_view,
     structured_choice_to_attempt,
 )
+from policies.mara_decision_request import restricted_decision_input_size_bytes
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
 from simulation.events import to_plain_data
 
@@ -764,6 +765,10 @@ class ModelFocalPolicyTests(unittest.TestCase):
             and event.actor_id == FOCAL_AGENT_ID
         )
         self.assertEqual(record.status, "selected")
+        self.assertEqual(
+            record.model_input_bytes,
+            restricted_decision_input_size_bytes(record.model_input),
+        )
         self.assertEqual(record.configuration_id, "deterministic-test-v1")
         self.assertIsNone(record.authorship_identity)
         self.assertEqual(record.to_data()["model_input"], client.inputs[0])

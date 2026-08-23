@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: none for this goal
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-7 restricted-input size boundary (2026-08-23)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | The current supporting policies complete one bounded interaction and then wait; no full-day independent activity is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
-| AD-7 Bounded model continuity | open | The current model request and each private decision record retain full accumulated focal history; no full-day ceilings are met. |
+| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is now measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. The continuity projection and complete-day private-record retention still grow without verified bounds. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path, but retry cadence, unexpected runtime failure, and false full-day completion are not covered. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
@@ -58,7 +58,7 @@ ledger because they do not implement a work unit.
 
 ## Current Run
 
-None. The goal is active, but no implementation work unit has been selected.
+None. The last selected work unit is complete.
 
 ## Completion Rules
 
@@ -95,4 +95,21 @@ implementation-run counter after recording the reviewed state.
 
 ## Verified Run Log
 
-None. No implementation work has begun for this goal.
+### 2026-08-23 — AD-7 restricted-input size boundary
+
+- Added one canonical serializer and UTF-8 byte measurement for the dynamic
+  restricted decision-state JSON actually embedded in the Ollama prompt.
+- The Ollama adapter accepts an input of exactly 49,152 bytes and refuses any
+  larger input before transport. `ModelFocalPolicy` turns that refusal into the
+  existing safe wait while recording `restricted_input_too_large`, the failure
+  type, and the independently recomputable input size in private evidence.
+- Focused validation passed 34 model-policy and Ollama adapter tests, including
+  the exact boundary, one-byte overflow, multibyte measurement, unchanged normal
+  selection, and zero transport calls for oversized input.
+- Full offline validation passed 113 repository tests and 63 historical
+  scenario checks; `git diff --check` passed.
+- Fresh independent Sol-high review found no blocking issues and separately
+  confirmed exact measurement, pre-transport refusal, privacy, and equal replayed
+  world history for an oversized-input safe failure.
+- Scope limit: AD-7 remains open. This work enforces one approved ceiling but
+  does not bound continuity selection or complete-day private-record retention.

@@ -86,6 +86,7 @@ class PolicyDecisionRecord:
     configuration_id: str
     status: Literal["selected", "failed"]
     model_input: Mapping[str, Any]
+    model_input_bytes: int
     structured_response: Mapping[str, Any] | None
     attempted_action: Mapping[str, Any]
     attempted_action_kind: str
@@ -161,6 +162,7 @@ class PolicyDecisionRecord:
             ),
             "status": self.status,
             "model_input": to_plain_data(self.model_input),
+            "model_input_bytes": self.model_input_bytes,
             "structured_response": (
                 to_plain_data(self.structured_response)
                 if self.structured_response is not None
