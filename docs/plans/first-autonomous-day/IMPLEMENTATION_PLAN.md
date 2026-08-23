@@ -9,25 +9,25 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 retained private-record size ceiling (2026-08-23)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: whole-goal alignment and runtime-failure boundary correction (2026-08-23)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | No explicit clock, exact 24-hour successor composition, or day-boundary completion exists. |
-| AD-2 Deterministic temporal order | open | The existing tick order is deterministic for `first_day_v3`, but no full-day time representation, equal-time contract, or quiet-time advancement has been verified. |
+| AD-2 Deterministic temporal order | open | The existing tick order is deterministic for successful `first_day_v3` runs, and a failed advancement is now terminal with a named last committed snapshot. No full-day time representation, equal-time contract, or quiet-time advancement has been verified. |
 | AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
-| AD-5 Independently living world | open | The current supporting policies complete one bounded interaction and then wait; no full-day independent activity is verified. |
+| AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
-| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records now use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not yet verified. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path, but retry cadence, unexpected runtime failure, and false full-day completion are not covered. |
+| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. The recent window plus omission counts does not yet prove preservation of every behaviorally relevant older result. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not verified. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected `Simulation.step()` exception now creates sanitized inspector-only evidence naming the failed tick and last committed snapshot, makes completion false, and prevents any retry from mutating the partial append-only tail. Safe-failure retry cadence and false-completion behavior in a full-day runner are not covered. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | Current output renders every tick and has no compact quiet-span or full-day progress/measurement summary. |
+| AD-11 Watchability and inspection | open | Inspector-only evidence now includes restricted-input bytes, current and peak private-record bytes, and sanitized runtime-failure boundaries. Current normal output still renders every tick and has no readable full-day clock, compact quiet spans, or complete progress/measurement summary. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -93,6 +93,29 @@ simplification recommendations.
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
 
+### 2026-08-23 — First whole-goal alignment
+
+- Fresh independent Sol-high review compared all AD-1 through AD-12 criteria
+  with implementation and tests. Every criterion remains open; the goal remains
+  coherent, owner-authorized, and within its existing scope.
+- The review confirmed the three AD-7 mechanisms and their privacy boundaries,
+  but corrected two overstatements: a recent-history window does not by itself
+  prove relevance preservation, and private-record overflow was initially safe
+  only for Mara's target mutation rather than the complete failed advancement.
+- `Simulation.step()` now records a sanitized terminal failure boundary with
+  the failed tick, last committed snapshot, and evidence counts. Partial
+  append-only failed-tick evidence remains inspectable, `is_complete` is false,
+  and every retry fails before mutation. This is terminal failure evidence, not
+  rollback or restart.
+- Re-review reproduced new-record and pending-completion overflow, an arbitrary
+  private exception marker, complete-scenario and tick-limit preconditions, and
+  retry refusal with no remaining blocking finding or leak.
+- Focused validation passed 40 model-policy and adapter tests. Full offline
+  validation passed 119 repository tests and 63 historical scenario checks;
+  `git diff --check` passed.
+- No mechanism was removed or expanded. The alignment counter resets to zero;
+  no future implementation task was selected or recorded.
+
 ## Verified Run Log
 
 ### 2026-08-23 — AD-7 retained private-record size ceiling
@@ -105,17 +128,19 @@ implementation-run counter after recording the reviewed state.
 - The engine records current and peak retained bytes, preflights new records
   with a conservative bound derived from the actual action and authored rule
   material, and preflights pending completions against the exact prospective
-  resolved record before world mutation. The omniscient inspector reports the
-  current, peak, and ceiling; objective history and normal output do not.
+  resolved record before the focal mutation. The omniscient inspector reports
+  the current, peak, and ceiling; objective history and normal output do not.
 - Focused validation passed 23 model-policy tests, including exact-limit and
   one-byte overflow, pending-to-resolved growth, atomic collection replacement,
   a 5,000-byte authored rule-string adversary, and an exact-limit pending travel
   that cannot partially complete or duplicate.
 - Full offline validation passed 118 repository tests and 63 historical
   scenario checks; `git diff --check` passed.
-- Fresh independent Sol-high review initially found two partial-state overflow
-  paths. After fixes, repeated read-only review reproduced both adversarial
-  cases and found no remaining blocking issue.
+- Work-unit review initially found and resolved two focal partial-state overflow
+  paths. Later whole-goal alignment found that earlier same-tick supporting or
+  institutional evidence could still form a partial tail; terminal runtime
+  failure evidence and retry refusal now make the last committed snapshot
+  explicit without rewriting that append-only evidence.
 - Scope limit: AD-7 remains open. Delivered observations and source-linked
   understanding still lack a bounded fresh-request projection, and the
   complete-day 128-call ceiling has not been exercised.

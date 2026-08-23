@@ -244,6 +244,31 @@ def model_policy(client):
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_unexpected_policy_exception_records_sanitized_terminal_boundary(self):
+        class UnexpectedFailurePolicy:
+            def choose(self, view):
+                raise ValueError("private-provider-marker")
+
+        simulation = build_first_day(
+            seed=42,
+            focal_policy=UnexpectedFailurePolicy(),
+        )
+
+        with self.assertRaisesRegex(ValueError, "private-provider-marker"):
+            simulation.step()
+
+        self.assertFalse(simulation.is_complete)
+        self.assertEqual(simulation.runtime_failure.failure_type, "ValueError")
+        self.assertEqual(simulation.runtime_failure.last_committed_tick, 0)
+        self.assertEqual(simulation.runtime_failure.failed_tick, 1)
+        inspector = render_inspector(simulation)
+        normal = render_terminal(simulation.snapshots)
+        objective = json.dumps(simulation.history_data(), sort_keys=True)
+        self.assertIn('"failure_type": "ValueError"', inspector)
+        self.assertNotIn("private-provider-marker", inspector)
+        self.assertNotIn("runtime_failure", normal)
+        self.assertNotIn("runtime_failure", objective)
+
     def test_private_record_retention_accepts_exact_limit_and_rejects_overflow(
         self,
     ):
@@ -367,6 +392,34 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 for event in preflight.events
             )
         )
+        self.assertFalse(preflight.is_complete)
+        self.assertEqual(
+            preflight.runtime_failure.to_data(),
+            {
+                "failure_type": "PrivateDecisionRecordLimitError",
+                "last_committed_tick": 0,
+                "failed_tick": 1,
+                "committed_snapshot_count": 0,
+                "event_count_at_failure": len(preflight.events),
+                "observation_count_at_failure": len(
+                    preflight._event_log.observations
+                ),
+                "action_result_count_at_failure": len(
+                    preflight._action_results
+                ),
+            },
+        )
+        failed_boundary = (
+            preflight.tick,
+            preflight.events,
+            preflight.runtime_failure,
+        )
+        with self.assertRaisesRegex(RuntimeError, "stopped after a runtime failure"):
+            preflight.step()
+        self.assertEqual(
+            (preflight.tick, preflight.events, preflight.runtime_failure),
+            failed_boundary,
+        )
 
     def test_pending_record_overflow_preflights_before_world_completion(self):
         client = StaticModelDecisionClient(
@@ -410,6 +463,26 @@ class ModelFocalPolicyTests(unittest.TestCase):
             )
         )
         self.assertIn(FOCAL_AGENT_ID, simulation._pending)
+        self.assertFalse(simulation.is_complete)
+        self.assertEqual(simulation.runtime_failure.last_committed_tick, 2)
+        self.assertEqual(simulation.runtime_failure.failed_tick, 3)
+        failed_boundary = (
+            simulation.tick,
+            simulation.events,
+            tuple(simulation._action_results),
+            dict(simulation._pending),
+        )
+        with self.assertRaisesRegex(RuntimeError, "stopped after a runtime failure"):
+            simulation.step()
+        self.assertEqual(
+            (
+                simulation.tick,
+                simulation.events,
+                tuple(simulation._action_results),
+                dict(simulation._pending),
+            ),
+            failed_boundary,
+        )
 
     def test_inspector_reports_exact_current_and_peak_private_record_bytes_only(self):
         client = StaticModelDecisionClient(
@@ -459,6 +532,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertNotIn("private_decision_record_storage", normal)
         self.assertNotIn("private_decision_record_storage", objective)
         self.assertNotIn(str(completed_bytes), normal)
+        self.assertIsNone(inspector["runtime_failure"])
 
     def test_decision_history_projection_retains_a_bounded_recent_window(self):
         simulation = build_first_day(seed=42)

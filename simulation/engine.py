@@ -85,6 +85,30 @@ class SimulationRules:
     diary_read_duration_ticks: int = 1
 
 
+@dataclass(frozen=True)
+class SimulationRuntimeFailureEvidence:
+    """Private run-state evidence for one terminal failed advancement."""
+
+    failure_type: str
+    last_committed_tick: int
+    failed_tick: int
+    committed_snapshot_count: int
+    event_count_at_failure: int
+    observation_count_at_failure: int
+    action_result_count_at_failure: int
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "failure_type": self.failure_type,
+            "last_committed_tick": self.last_committed_tick,
+            "failed_tick": self.failed_tick,
+            "committed_snapshot_count": self.committed_snapshot_count,
+            "event_count_at_failure": self.event_count_at_failure,
+            "observation_count_at_failure": self.observation_count_at_failure,
+            "action_result_count_at_failure": self.action_result_count_at_failure,
+        }
+
+
 class Simulation:
     """Advance objective state, agents, and a restricted focal projection one tick."""
 
@@ -108,6 +132,7 @@ class Simulation:
         self.max_ticks = max_ticks
         self.completion_tick = completion_tick
         self.scenario_configuration = freeze_mapping(scenario_configuration)
+        self._initial_tick = world.tick
         self._rng = random.Random(world.seed)
         self._event_log = EventLog()
         self._pending: dict[str, PendingAction] = {}
@@ -125,6 +150,7 @@ class Simulation:
         )
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
+        self._runtime_failure: SimulationRuntimeFailureEvidence | None = None
 
     @property
     def tick(self) -> int:
@@ -157,6 +183,10 @@ class Simulation:
     @property
     def maximum_private_decision_records_bytes(self) -> int:
         return MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+
+    @property
+    def runtime_failure(self) -> SimulationRuntimeFailureEvidence | None:
+        return self._runtime_failure
 
     def _retain_decision_records(
         self, records: tuple[PolicyDecisionRecord, ...]
@@ -217,6 +247,8 @@ class Simulation:
 
     @property
     def is_complete(self) -> bool:
+        if self._runtime_failure is not None:
+            return False
         focal_work_completions = sum(
             1
             for event in self.events
@@ -1379,10 +1411,31 @@ class Simulation:
         return tuple(delivered)
 
     def step(self) -> FocalSnapshot:
+        if self._runtime_failure is not None:
+            raise RuntimeError("simulation stopped after a runtime failure")
         if self.is_complete:
             raise RuntimeError("simulation scenario is complete")
         if self.tick >= self.max_ticks:
             raise RuntimeError("simulation has reached its configured tick limit")
+        try:
+            return self._advance_step()
+        except Exception as error:
+            self._runtime_failure = SimulationRuntimeFailureEvidence(
+                failure_type=type(error).__name__,
+                last_committed_tick=(
+                    self._snapshots[-1].tick
+                    if self._snapshots
+                    else self._initial_tick
+                ),
+                failed_tick=self.tick,
+                committed_snapshot_count=len(self._snapshots),
+                event_count_at_failure=len(self.events),
+                observation_count_at_failure=len(self._event_log.observations),
+                action_result_count_at_failure=len(self._action_results),
+            )
+            raise
+
+    def _advance_step(self) -> FocalSnapshot:
         self.world.tick += 1
         scheduled_deliveries = self._apply_scheduled_institutional_events()
         completed_events = self._complete_due_actions()

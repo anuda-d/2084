@@ -11,10 +11,13 @@ Character goals are complete. The owner-approved
 [First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
 goal is active and targets one accelerated model-backed day with explicit time,
 decision eligibility, a minimally living wider world, bounded model continuity,
-offline reproduction, and one final owner-authorized live run. None of those
-later-goal behaviors are implemented yet. The separate thin-harness/fat-skills
-documents describe a possible generalization of the completed Mara boundary,
-not an implemented general agent runtime.
+offline reproduction, and one final owner-authorized live run. Its initial
+bounded-model work now enforces restricted-input and retained-private-record
+byte ceilings and projects prior decisions through a finite recent window. The
+24-hour clock, scheduling, ordinary-day composition, full-day proofs, and live
+run are not implemented. The separate thin-harness/fat-skills documents
+describe a possible generalization of the completed Mara boundary, not an
+implemented general agent runtime.
 
 ## Implemented Simulation Loop
 
@@ -229,6 +232,22 @@ text, endpoint addressing, raw provider failures, and hidden provider
 chain-of-thought stay out of objective history and normal presentation. Mara's
 concise `decision_reason` is intentionally retained as an attributed action
 explanation and rendered in the normal `Reason:` line.
+
+The active 24-hour goal has added three long-run guardrails to this boundary.
+The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter
+refuses inputs above 48 KiB before transport. Prior attempts and results use a
+16-entry recent window with explicit total and omitted counts. The complete
+private decision-record collection uses canonical compact JSON measurement,
+cannot retain more than 8 MiB, and reports current and peak sizes only in the
+omniscient inspector. These mechanisms do not yet bound delivered observations
+or canonical understanding, prove that older behaviorally relevant results are
+always represented elsewhere, or establish a complete-day call ceiling.
+
+An exception during `Simulation.step()` creates sanitized inspector-only
+runtime-failure evidence naming the failed tick and last committed snapshot.
+The append-only log may retain a partial failed-tick tail; the simulation is
+then terminal, cannot report completion, and rejects every later step before
+mutation. This is an explicit failure boundary, not rollback or restart.
 
 ## Contradictory Reality
 

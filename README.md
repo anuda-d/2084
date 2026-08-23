@@ -17,8 +17,9 @@ setting.
 Repository status: the bounded Official Record, Agent Understanding, and
 Model-Backed Focal Character goals are complete. The owner-approved
 [First Autonomous 24-Hour Living Day](docs/plans/first-autonomous-day/GOAL.md)
-goal is active as of August 23, 2026; no implementation work unit has yet been
-selected.
+goal is active as of August 23, 2026. Initial work enforces three bounded-model
+evidence limits, but the 24-hour successor composition and the rest of that goal
+remain incomplete.
 
 ## What exists today
 
