@@ -54,6 +54,15 @@ The existing `first_day_v3` tick remains unchanged as regression evidence, and
 no successor composition, executable event scheduler, full-day command, or
 day-completion claim exists yet.
 
+An isolated `DecisionEligibility` seam can place only five documented causes
+into the agenda's decision phase: initial activation, a terminal action result,
+a delivered observation, an explicit scheduled wake, or a safe-failure retry.
+Causes for one actor at one minute coalesce into one eligibility record. Time
+passage alone creates no record. The initial safe-failure cadence is one retry
+30 simulated minutes later, with no retry if that instant would cross the day
+boundary. The seam does not call policies or execute actions, and the legacy
+tick loop does not use it yet.
+
 ```text
 The world and its systems advance
         ↓

@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-2 monotonic equal-time phase dispatch (2026-08-23)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-3 explicit decision-trigger eligibility (2026-08-23)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -19,12 +19,12 @@ implementation sequence.
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | An isolated `SimulatedDayClock` now owns an explicit start, current time, and exact start-plus-1,440-minute boundary with readable day/time projection. It is not wired into a successor composition or offline full-day command. |
 | AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda orders pending successor work by minute, the chosen successor causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. It releases one equal-time phase at a time, allowing newly caused later-phase work before pending decisions while rejecting causal backtracking. The agenda does not execute work in a successor runtime. |
-| AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
+| AD-3 Decision eligibility | open | An isolated successor seam admits only initial activation, terminal action result, delivered observation, scheduled wake, or safe-failure retry; coalesces simultaneous causes per actor; and creates nothing from time passage alone. It is not wired into a runtime: every idle legacy policy is still called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
 | AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. The recent window plus omission counts does not yet prove preservation of every behaviorally relevant older result. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not verified. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected `Simulation.step()` exception creates sanitized inspector-only evidence naming the failed tick and last committed snapshot, makes completion false, and prevents any retry from mutating the partial append-only tail. A safe model failure currently completes an immediate wait and retries the provider on the next tick, producing per-tick calls; no bounded full-day retry cadence or full-day false-completion proof exists. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected `Simulation.step()` exception creates sanitized inspector-only evidence naming the failed tick and last committed snapshot, makes completion false, and prevents any retry from mutating the partial append-only tail. The isolated successor eligibility seam defines one retry 30 simulated minutes after a safe failure, or none beyond the day; it is not integrated, and the legacy path still retries every tick. No full-day false-completion proof exists. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
 | AD-11 Watchability and inspection | open | Inspector-only evidence now includes restricted-input bytes, current and peak private-record bytes, and sanitized runtime-failure boundaries. Current normal output still renders every tick and has no readable full-day clock, compact quiet spans, or complete progress/measurement summary. |
@@ -140,6 +140,27 @@ implementation-run counter after recording the reviewed state.
   selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-3 explicit decision-trigger eligibility
+
+- Added an isolated successor seam for exactly five decision causes: initial
+  activation, terminal action result, delivered observation, scheduled wake,
+  and safe-failure retry. Time passage alone creates no eligibility work.
+- Multiple causes for one actor at one minute coalesce into one deterministic
+  eligibility record. Different minutes retain separate agenda identities, and
+  a record can be consumed only once, after release and at its due minute.
+- Defined the initial safe-failure cadence as one retry exactly 30 simulated
+  minutes later. Stale or future failure instants are rejected, an exact-end
+  retry is allowed, and a retry crossing the end boundary is omitted.
+- Focused validation passed six eligibility tests. Full offline validation
+  passed 136 repository tests and 63 historical scenario checks; staged and
+  unstaged `git diff --check` passed.
+- Fresh independent Sol-high review and re-review found no blocking defects and
+  separately exercised all trigger kinds, actor isolation, stale and future
+  failure rejection, exact-boundary retry and consumption, and release timing.
+- Scope limit: AD-3 and AD-8 remain open. Trigger provenance is caller-asserted,
+  and no successor runtime yet connects deliveries, action results, policy
+  calls, waits, or failures to this seam. The legacy path is unchanged.
 
 ### 2026-08-23 — AD-2 monotonic equal-time phase dispatch
 
