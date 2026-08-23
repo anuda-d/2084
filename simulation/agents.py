@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping, Protocol, runtime_checkable
 
@@ -9,6 +10,22 @@ from simulation.actions import ActionAttempt, ActionResult
 from simulation.beliefs import Belief
 from simulation.events import Observation, freeze_mapping, to_plain_data
 from simulation.understanding import ContextualStance, InterpretedClaim, MemoryTrace
+
+
+MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES = 8 * 1024 * 1024
+PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES = 4 * 1024
+
+
+class PrivateDecisionRecordLimitError(RuntimeError):
+    """A candidate private evidence collection exceeds its approved ceiling."""
+
+    def __init__(self, *, attempted_bytes: int, maximum_bytes: int) -> None:
+        super().__init__(
+            "retained private decision records exceed the approved "
+            f"{maximum_bytes}-byte ceiling"
+        )
+        self.attempted_bytes = attempted_bytes
+        self.maximum_bytes = maximum_bytes
 
 
 @dataclass(frozen=True)
@@ -180,6 +197,47 @@ class PolicyDecisionRecord:
             "resolved_tick": self.resolved_tick,
             "resolution_reason": self.resolution_reason,
         }
+
+
+def serialize_private_decision_records(
+    records: tuple[PolicyDecisionRecord, ...],
+) -> str:
+    """Serialize retained inspector-only evidence with one canonical format."""
+    return json.dumps(
+        [record.to_data() for record in records],
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def private_decision_records_size_bytes(
+    records: tuple[PolicyDecisionRecord, ...],
+) -> int:
+    """Measure exact UTF-8 bytes retained by the canonical record collection."""
+    return len(serialize_private_decision_records(records).encode("utf-8"))
+
+
+def validate_private_decision_record_retention(
+    records: tuple[PolicyDecisionRecord, ...],
+    *,
+    reserved_bytes: int = 0,
+) -> int:
+    """Return candidate size or refuse retention above the approved ceiling."""
+    if (
+        not isinstance(reserved_bytes, int)
+        or isinstance(reserved_bytes, bool)
+        or reserved_bytes < 0
+    ):
+        raise ValueError("reserved_bytes must be a non-negative integer")
+    retained_bytes = private_decision_records_size_bytes(records)
+    required_bytes = retained_bytes + reserved_bytes
+    if required_bytes > MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES:
+        raise PrivateDecisionRecordLimitError(
+            attempted_bytes=required_bytes,
+            maximum_bytes=MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+    return retained_bytes
 
 
 class DecisionPolicy(Protocol):

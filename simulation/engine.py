@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import random
 from dataclasses import dataclass
 from typing import Mapping
@@ -14,11 +15,15 @@ from simulation.actions import (
     PendingAction,
 )
 from simulation.agents import (
+    MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+    PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
     AgentView,
     DecisionPolicy,
     DecisionRecordSource,
     DiaryEntryKnowledge,
     PolicyDecisionRecord,
+    private_decision_records_size_bytes,
+    validate_private_decision_record_retention,
 )
 from simulation.beliefs import (
     Belief,
@@ -114,6 +119,10 @@ class Simulation:
         self._stance_transitions: list[StanceTransition] = []
         self._action_results: list[ActionResult] = []
         self._decision_records: list[PolicyDecisionRecord] = []
+        self._private_decision_records_bytes = private_decision_records_size_bytes(())
+        self._peak_private_decision_records_bytes = (
+            self._private_decision_records_bytes
+        )
         self._snapshots: list[FocalSnapshot] = []
         self._queued_observations: list[dict[str, object]] = []
 
@@ -136,6 +145,75 @@ class Simulation:
     def decision_records(self) -> tuple[PolicyDecisionRecord, ...]:
         """Return inspector-only decision evidence, separate from objective history."""
         return tuple(self._decision_records)
+
+    @property
+    def private_decision_records_bytes(self) -> int:
+        return self._private_decision_records_bytes
+
+    @property
+    def peak_private_decision_records_bytes(self) -> int:
+        return self._peak_private_decision_records_bytes
+
+    @property
+    def maximum_private_decision_records_bytes(self) -> int:
+        return MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+
+    def _retain_decision_records(
+        self, records: tuple[PolicyDecisionRecord, ...]
+    ) -> None:
+        retained_bytes = validate_private_decision_record_retention(records)
+        self._decision_records = list(records)
+        self._private_decision_records_bytes = retained_bytes
+        self._peak_private_decision_records_bytes = max(
+            self._peak_private_decision_records_bytes,
+            retained_bytes,
+        )
+
+    def _decision_records_resolved_with(
+        self, result: ActionResult
+    ) -> tuple[PolicyDecisionRecord, ...]:
+        return tuple(
+            record.resolved_with(result)
+            if record.action_id == result.action_id
+            and record.resolution_status is None
+            else record
+            for record in self._decision_records
+        )
+
+    def _preflight_new_decision_record(
+        self,
+        record: PolicyDecisionRecord,
+        attempt: ActionAttempt,
+    ) -> None:
+        validate_private_decision_record_retention(
+            (*self.decision_records, record),
+            reserved_bytes=self._decision_record_resolution_reserve_bytes(
+                attempt
+            ),
+        )
+
+    def _decision_record_resolution_reserve_bytes(
+        self, attempt: ActionAttempt
+    ) -> int:
+        dynamic_material = (
+            attempt.actor_id,
+            attempt.kind,
+            self.rules.work_location,
+            self.rules.allocation_location,
+            self.rules.resource_id,
+            self.rules.resource_proposition,
+            self.rules.official_record_access_location,
+            self.rules.official_record_artifact_id,
+            json.dumps(
+                to_plain_data(attempt.parameters),
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+        )
+        return PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES + sum(
+            len(value.encode("utf-8")) for value in dynamic_material
+        )
 
     @property
     def is_complete(self) -> bool:
@@ -272,16 +350,10 @@ class Simulation:
 
     def _append_action_result(self, result: ActionResult) -> None:
         self._action_results.append(result)
-        self._decision_records = [
-            record.resolved_with(result)
-            if record.action_id == result.action_id
-            and record.resolution_status is None
-            else record
-            for record in self._decision_records
-        ]
         actor = self.world.agents.get(result.actor_id)
         if actor is not None:
             actor.action_results.append(result)
+        self._retain_decision_records(self._decision_records_resolved_with(result))
 
     def _record_completion(
         self, *, attempted: Event, outcome: Event, actor_id: str, action_kind: str
@@ -831,6 +903,18 @@ class Simulation:
         )
         for pending in due:
             actor = self.world.agents[pending.attempt.actor_id]
+            result = ActionResult(
+                action_id=pending.action_id,
+                attempt_event_id=pending.attempt_event_id,
+                outcome_event_id=f"event-{len(self.events) + 1:04d}",
+                actor_id=actor.agent_id,
+                action_kind=pending.attempt.kind,
+                status="completed",
+                resolved_tick=self.tick,
+            )
+            validate_private_decision_record_retention(
+                self._decision_records_resolved_with(result)
+            )
             if pending.attempt.kind == "travel":
                 origin = actor.location
                 destination = pending.attempt.parameters["destination"]
@@ -907,17 +991,9 @@ class Simulation:
                     },
                 ))
             outcome = completed[-1]
-            self._append_action_result(
-                ActionResult(
-                    action_id=pending.action_id,
-                    attempt_event_id=pending.attempt_event_id,
-                    outcome_event_id=outcome.event_id,
-                    actor_id=actor.agent_id,
-                    action_kind=pending.attempt.kind,
-                    status="completed",
-                    resolved_tick=self.tick,
-                )
-            )
+            if outcome.event_id != result.outcome_event_id:
+                raise RuntimeError("predicted completion event identity changed")
+            self._append_action_result(result)
             del self._pending[actor.agent_id]
         return tuple(completed)
 
@@ -1324,30 +1400,37 @@ class Simulation:
                 continue
             policy = self._policies[agent_id]
             attempt = policy.choose(self._view_for(agent_id))
+            decision_record = (
+                policy.take_decision_record()
+                if isinstance(policy, DecisionRecordSource)
+                else None
+            )
+            if decision_record is not None:
+                self._preflight_new_decision_record(decision_record, attempt)
             attempted_event = self.resolve_attempt(attempt)
-            if isinstance(policy, DecisionRecordSource):
-                decision_record = policy.take_decision_record()
-                if decision_record is not None:
-                    result = next(
-                        (
-                            item
-                            for item in reversed(self._action_results)
-                            if item.action_id == attempted_event.action_id
-                        ),
-                        None,
-                    )
-                    decision_record = decision_record.linked_to(
-                        attempt_event_id=attempted_event.event_id,
-                        action_id=attempted_event.action_id or "",
-                        validation_status=(
-                            "rejected"
-                            if result is not None and result.status == "rejected"
-                            else "accepted"
-                        ),
-                    )
-                    if result is not None:
-                        decision_record = decision_record.resolved_with(result)
-                    self._decision_records.append(decision_record)
+            if decision_record is not None:
+                result = next(
+                    (
+                        item
+                        for item in reversed(self._action_results)
+                        if item.action_id == attempted_event.action_id
+                    ),
+                    None,
+                )
+                decision_record = decision_record.linked_to(
+                    attempt_event_id=attempted_event.event_id,
+                    action_id=attempted_event.action_id or "",
+                    validation_status=(
+                        "rejected"
+                        if result is not None and result.status == "rejected"
+                        else "accepted"
+                    ),
+                )
+                if result is not None:
+                    decision_record = decision_record.resolved_with(result)
+                self._retain_decision_records(
+                    (*self.decision_records, decision_record)
+                )
             if agent_id == self.focal_agent_id:
                 focal_attempt = attempt
 

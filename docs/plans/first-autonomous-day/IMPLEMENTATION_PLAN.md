@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 bounded decision-history continuity projection (2026-08-23)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: AD-7 retained private-record size ceiling (2026-08-23)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | The current supporting policies complete one bounded interaction and then wait; no full-day independent activity is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
-| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results now use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Delivered observations and canonical understanding remain unbounded in the fresh request, and complete-day private-record retention still has no verified ceiling. |
+| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records now use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not yet verified. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path, but retry cadence, unexpected runtime failure, and false full-day completion are not covered. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
@@ -94,6 +94,31 @@ Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-7 retained private-record size ceiling
+
+- Added one canonical compact sorted JSON serializer and exact UTF-8 byte
+  measurement for the complete inspector-only decision-record collection.
+  Exactly 8 MiB is accepted; a larger candidate raises a typed error containing
+  only the attempted and maximum byte counts and does not replace retained
+  evidence.
+- The engine records current and peak retained bytes, preflights new records
+  with a conservative bound derived from the actual action and authored rule
+  material, and preflights pending completions against the exact prospective
+  resolved record before world mutation. The omniscient inspector reports the
+  current, peak, and ceiling; objective history and normal output do not.
+- Focused validation passed 23 model-policy tests, including exact-limit and
+  one-byte overflow, pending-to-resolved growth, atomic collection replacement,
+  a 5,000-byte authored rule-string adversary, and an exact-limit pending travel
+  that cannot partially complete or duplicate.
+- Full offline validation passed 118 repository tests and 63 historical
+  scenario checks; `git diff --check` passed.
+- Fresh independent Sol-high review initially found two partial-state overflow
+  paths. After fixes, repeated read-only review reproduced both adversarial
+  cases and found no remaining blocking issue.
+- Scope limit: AD-7 remains open. Delivered observations and source-linked
+  understanding still lack a bounded fresh-request projection, and the
+  complete-day 128-call ceiling has not been exercised.
 
 ### 2026-08-23 — AD-7 bounded decision-history continuity projection
 
