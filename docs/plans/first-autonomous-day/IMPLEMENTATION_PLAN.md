@@ -10,21 +10,21 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: AD-2 monotonic equal-time phase dispatch (2026-08-23)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | An isolated `SimulatedDayClock` now owns an explicit start, current time, and exact start-plus-1,440-minute boundary with readable day/time projection. It is not wired into a successor composition or offline full-day command. |
-| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda orders pending successor work by minute, explicit causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. It releases one equal-time phase at a time, allowing newly caused later-phase work before pending decisions while rejecting causal backtracking. The agenda does not execute work in a successor runtime. |
+| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda orders pending successor work by minute, the chosen successor causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. It releases one equal-time phase at a time, allowing newly caused later-phase work before pending decisions while rejecting causal backtracking. The agenda does not execute work in a successor runtime. |
 | AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
 | AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. The recent window plus omission counts does not yet prove preservation of every behaviorally relevant older result. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not verified. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected `Simulation.step()` exception now creates sanitized inspector-only evidence naming the failed tick and last committed snapshot, makes completion false, and prevents any retry from mutating the partial append-only tail. Safe-failure retry cadence and false-completion behavior in a full-day runner are not covered. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected `Simulation.step()` exception creates sanitized inspector-only evidence naming the failed tick and last committed snapshot, makes completion false, and prevents any retry from mutating the partial append-only tail. A safe model failure currently completes an immediate wait and retries the provider on the next tick, producing per-tick calls; no bounded full-day retry cadence or full-day false-completion proof exists. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
 | AD-11 Watchability and inspection | open | Inspector-only evidence now includes restricted-input bytes, current and peak private-record bytes, and sanitized runtime-failure boundaries. Current normal output still renders every tick and has no readable full-day clock, compact quiet spans, or complete progress/measurement summary. |
@@ -116,6 +116,29 @@ implementation-run counter after recording the reviewed state.
 - No mechanism was removed or expanded. The alignment counter resets to zero;
   no future implementation task was selected or recorded.
 
+### 2026-08-23 — Second whole-goal alignment
+
+- Fresh independent Sol-high review compared all AD-1 through AD-12 criteria
+  after the simulated clock and temporal agenda work. Every criterion remains
+  open; the isolated primitives do not yet constitute a successor runtime or
+  full-day command.
+- The review corrected one temporal overstatement. The agenda defines a chosen
+  successor phase order; it does not exactly preserve the legacy generic
+  broadcast path, which delivers a broadcast during institutional processing
+  before same-tick completions. `first_day_v3` does not use that generic path.
+- The review also measured the existing safe-failure cadence rather than
+  leaving it unspecified: five timeout ticks produced five provider calls,
+  five private failure records, and five focal wait attempts. AD-8 therefore
+  remains open partly because the current path retries once per tick.
+- Full offline validation passed 130 repository tests and 63 historical
+  scenario checks. Eleven focused clock and agenda tests and 42 model-policy
+  and Ollama boundary tests passed. The scripted regression reached tick 28
+  with 150 events, 24 observations, 73 action results, and no runtime failure.
+- No mechanism warrants removal. Temporal wording was simplified to state the
+  successor order directly and retain the legacy generic-broadcast exception.
+  The alignment counter resets to zero; no future implementation task was
+  selected or recorded.
+
 ## Verified Run Log
 
 ### 2026-08-23 — AD-2 monotonic equal-time phase dispatch
@@ -142,8 +165,8 @@ implementation-run counter after recording the reviewed state.
 - Added one pure temporal agenda that registers uniquely identified work only
   within the remaining simulated day and orders it by authoritative minute,
   explicit causal phase, and stable item identity.
-- Equal-time phases preserve the successful legacy boundary: scheduled world
-  and institutional work, action completions, observation deliveries,
+- Equal-time phases use the chosen successor order: scheduled world and
+  institutional work, action completions, observation deliveries,
   understanding updates, then decisions. The agenda returns due work without
   executing it or fabricating activity during quiet spans.
 - Next-due advancement jumps the day clock directly to pending work or the

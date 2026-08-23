@@ -11,9 +11,8 @@ from simulation.time import SimulatedDayClock, SimulatedTime
 class TemporalPhase(IntEnum):
     """Causal order for work due at the same simulated minute.
 
-    The order preserves the successful legacy loop's existing boundary:
-    world and institutional activity precedes action completion, then delivery,
-    understanding updates, and newly eligible decisions.
+    The successor order is world and institutional activity, action completion,
+    observation delivery, understanding updates, then newly eligible decisions.
     """
 
     SCHEDULED_WORLD = 10

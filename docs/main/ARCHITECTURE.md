@@ -36,13 +36,19 @@ This primitive is not yet wired into `Simulation.step()` or a successor
 composition. A `TemporalAgenda` can register uniquely identified work within
 the remaining day, order it by simulated minute, explicit causal phase, and
 stable identity, then move the day clock directly to the next due instant or
-the exact end boundary. Equal-time phases preserve the legacy successful-step
-order: scheduled world and institutional work, action completions, observation
-deliveries, understanding updates, then decisions. It releases only one phase
-at a time, so work caused by an earlier phase can enter a later phase before
-already-pending decisions are released. Once a phase has been released at a
-minute, inserting that phase or an earlier one is rejected. This seam returns
-due work; it does not execute it or fabricate intervening events.
+the exact end boundary. The chosen successor equal-time order is scheduled
+world and institutional work, action completions, observation deliveries,
+understanding updates, then decisions. It releases only one phase at a time, so
+work caused by an earlier phase can enter a later phase before already-pending
+decisions are released. Once a phase has been released at a minute, inserting
+that phase or an earlier one is rejected. This seam returns due work; it does
+not execute it or fabricate intervening events.
+
+This chosen order is not an exact copy of every legacy path. In the legacy
+generic-broadcast path, institutional processing also delivers its broadcast
+before same-tick action completions. `first_day_v3` does not use that generic
+broadcast path. The successor agenda separates scheduled activity from
+observation delivery so those causal phases can remain explicit.
 
 The existing `first_day_v3` tick remains unchanged as regression evidence, and
 no successor composition, executable event scheduler, full-day command, or
