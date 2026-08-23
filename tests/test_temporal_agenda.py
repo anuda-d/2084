@@ -47,24 +47,29 @@ class TemporalAgendaTests(unittest.TestCase):
             ),
         )
 
+    def _drain(self, agenda: TemporalAgenda) -> tuple[tuple[ScheduledWork, ...], ...]:
+        batches: list[tuple[ScheduledWork, ...]] = []
+        while agenda.pending:
+            batches.append(agenda.advance_to_next_due())
+        return tuple(batches)
+
     def test_equal_time_work_uses_explicit_phase_then_stable_identity(self):
         agenda = self._agenda()
         due_time = agenda.clock.current.plus_minutes(15)
         for item in self._equal_time_items(due_time):
             agenda.schedule(item)
 
-        due = agenda.advance_to_next_due()
+        batches = self._drain(agenda)
 
         self.assertEqual(agenda.clock.current, due_time)
         self.assertEqual(
-            [item.item_id for item in due],
+            [[item.item_id for item in batch] for batch in batches],
             [
-                "world-broadcast",
-                "completion-clerk",
-                "completion-mara",
-                "delivery-mara",
-                "understanding-mara",
-                "decision-mara",
+                ["world-broadcast"],
+                ["completion-clerk", "completion-mara"],
+                ["delivery-mara"],
+                ["understanding-mara"],
+                ["decision-mara"],
             ],
         )
         self.assertEqual(agenda.pending, ())
@@ -80,9 +85,89 @@ class TemporalAgendaTests(unittest.TestCase):
 
         self.assertEqual(first.pending, second.pending)
         self.assertEqual(
-            first.advance_to_next_due(),
-            second.advance_to_next_due(),
+            self._drain(first),
+            self._drain(second),
         )
+
+    def test_later_phase_work_caused_at_same_time_precedes_existing_decision(self):
+        agenda = self._agenda()
+        due_time = agenda.clock.current.plus_minutes(20)
+        agenda.schedule(
+            ScheduledWork(
+                "completion-mara",
+                due_time,
+                TemporalPhase.ACTION_COMPLETION,
+                "completion",
+            )
+        )
+        agenda.schedule(
+            ScheduledWork(
+                "decision-mara",
+                due_time,
+                TemporalPhase.DECISION,
+                "decision",
+            )
+        )
+
+        completion = agenda.advance_to_next_due()
+        self.assertEqual([item.item_id for item in completion], ["completion-mara"])
+        agenda.schedule(
+            ScheduledWork(
+                "delivery-mara",
+                due_time,
+                TemporalPhase.OBSERVATION_DELIVERY,
+                "delivery",
+            )
+        )
+        agenda.schedule(
+            ScheduledWork(
+                "understanding-mara",
+                due_time,
+                TemporalPhase.UNDERSTANDING_UPDATE,
+                "understanding",
+            )
+        )
+
+        self.assertEqual(
+            [[item.item_id for item in batch] for batch in self._drain(agenda)],
+            [
+                ["delivery-mara"],
+                ["understanding-mara"],
+                ["decision-mara"],
+            ],
+        )
+        self.assertEqual(agenda.clock.current, due_time)
+
+    def test_released_or_earlier_phase_cannot_be_reintroduced_at_same_time(self):
+        agenda = self._agenda()
+        due_time = agenda.clock.current.plus_minutes(20)
+        agenda.schedule(
+            ScheduledWork(
+                "completion-mara",
+                due_time,
+                TemporalPhase.ACTION_COMPLETION,
+                "completion",
+            )
+        )
+        agenda.advance_to_next_due()
+
+        for item_id, phase in (
+            ("late-world", TemporalPhase.SCHEDULED_WORLD),
+            ("late-completion", TemporalPhase.ACTION_COMPLETION),
+        ):
+            with self.subTest(phase=phase):
+                with self.assertRaisesRegex(ValueError, "already been released"):
+                    agenda.schedule(
+                        ScheduledWork(item_id, due_time, phase, "late_work")
+                    )
+        reusable = ScheduledWork(
+            "late-world",
+            due_time.plus_minutes(1),
+            TemporalPhase.SCHEDULED_WORLD,
+            "future_work",
+        )
+        self.assertEqual(agenda.schedule(reusable), reusable)
+        self.assertEqual(agenda.pending, (reusable,))
 
     def test_quiet_intervals_jump_to_due_work_then_exact_day_end(self):
         agenda = self._agenda()

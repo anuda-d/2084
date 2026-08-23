@@ -56,6 +56,7 @@ class TemporalAgenda:
         self._clock = clock
         self._pending_by_id: dict[str, ScheduledWork] = {}
         self._known_item_ids: set[str] = set()
+        self._released_phase_by_minute: dict[int, TemporalPhase] = {}
 
     @property
     def clock(self) -> SimulatedDayClock:
@@ -79,6 +80,13 @@ class TemporalAgenda:
             raise ValueError("scheduled work cannot be placed before current time")
         if item.due_time > self._clock.end:
             raise ValueError("scheduled work cannot be placed beyond the day boundary")
+        released_phase = self._released_phase_by_minute.get(
+            item.due_time.total_minutes
+        )
+        if released_phase is not None and item.phase <= released_phase:
+            raise ValueError(
+                "scheduled work phase has already been released at this time"
+            )
         self._pending_by_id[item.item_id] = item
         self._known_item_ids.add(item.item_id)
         return item
@@ -94,13 +102,18 @@ class TemporalAgenda:
         return earliest
 
     def advance_to_next_due(self) -> tuple[ScheduledWork, ...]:
-        """Jump to the next due instant (or day end) and remove work due there."""
+        """Jump if needed, then release only the next causal phase due."""
 
         target = self.next_due_time
         self._clock.advance_to(target)
-        due = tuple(
+        due_now = tuple(
             item for item in self.pending if item.due_time == self._clock.current
         )
+        if not due_now:
+            return ()
+        phase = due_now[0].phase
+        due = tuple(item for item in due_now if item.phase == phase)
         for item in due:
             del self._pending_by_id[item.item_id]
+        self._released_phase_by_minute[target.total_minutes] = phase
         return due

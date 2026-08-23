@@ -9,16 +9,16 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-2 deterministic temporal agenda (2026-08-23)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: AD-2 monotonic equal-time phase dispatch (2026-08-23)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | An isolated `SimulatedDayClock` now owns an explicit start, current time, and exact start-plus-1,440-minute boundary with readable day/time projection. It is not wired into a successor composition or offline full-day command. |
-| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda now orders pending successor work by minute, explicit causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. Equal-time phase order matches the legacy successful-step boundary. The agenda does not execute work, and dynamic same-minute interleaving in a successor runtime remains undefined. |
+| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda orders pending successor work by minute, explicit causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. It releases one equal-time phase at a time, allowing newly caused later-phase work before pending decisions while rejecting causal backtracking. The agenda does not execute work in a successor runtime. |
 | AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
@@ -117,6 +117,25 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-2 monotonic equal-time phase dispatch
+
+- Changed the pure agenda to release only the earliest causal phase at a due
+  minute, retaining later phases so work caused by a completion or delivery can
+  enter the correct place before an already pending decision.
+- Once a phase is released for one minute, a new item in that phase or an
+  earlier phase is rejected before its stable identity is consumed. Rejected
+  identities remain usable for valid future work.
+- Focused validation passed seven agenda tests. Full offline validation passed
+  130 repository tests and 63 historical scenario checks; staged and unstaged
+  `git diff --check` passed.
+- Fresh independent Sol-high review found no blocking defects and separately
+  exercised multiple minutes, dynamically caused delivery and understanding
+  work, backward and same-phase rejection, identity reuse, within-phase order,
+  per-minute isolation, and exact-end dispatch.
+- Scope limit: AD-2 remains open because no successor runtime executes the
+  agenda. Registration closure after reaching the end boundary also remains a
+  runner-level decision.
 
 ### 2026-08-23 — AD-2 deterministic temporal agenda
 
