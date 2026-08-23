@@ -8,7 +8,11 @@ The current repository proves three bounded foundations: append-only objective
 history beside a mutable Official Record, source-linked Agent Understanding
 with one contextual contradiction and diary-resurfacing path, and an optional
 model-backed Mara whose choices become real attempted actions. All three goals
-are complete; there is no active owner-approved implementation goal.
+are complete. The active owner-approved
+[First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
+goal now asks whether those foundations can sustain one accelerated ordinary
+day with independent wider-world activity and bounded model continuity; that
+result is not implemented yet.
 
 ## Central Idea
 

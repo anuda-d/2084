@@ -15,8 +15,10 @@ official accounts. It is not an adaptation of Orwell's plot, characters, or
 setting.
 
 Repository status: the bounded Official Record, Agent Understanding, and
-Model-Backed Focal Character goals are complete. There is no active
-owner-approved implementation goal as of August 22, 2026.
+Model-Backed Focal Character goals are complete. The owner-approved
+[First Autonomous 24-Hour Living Day](docs/plans/first-autonomous-day/GOAL.md)
+goal is active as of August 23, 2026; no implementation work unit has yet been
+selected.
 
 ## What exists today
 
@@ -174,7 +176,9 @@ stance system.
 The repository also contains a proposed thin-harness/fat-skills direction for
 later model-backed expansion. The current code implements only the narrow Mara
 decision boundary; it does not contain a general skill resolver, tool-using
-agent runtime, or self-modifying skill system. No later product goal is active.
+agent runtime, or self-modifying skill system. The active 24-hour goal preserves
+that narrow model boundary while adding one full-day composition; it does not
+authorize the proposed general runtime.
 
 ## Known limits
 

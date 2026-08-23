@@ -7,10 +7,14 @@ first living slice implements them. The implementation is a working feasibility
 slice, not a settled production specification.
 
 The bounded Official Record, Agent Understanding, and Model-Backed Focal
-Character goals are complete. There is currently no active owner-approved
-implementation goal. The separate thin-harness/fat-skills documents describe a
-possible generalization of the completed Mara boundary, not an implemented
-general agent runtime.
+Character goals are complete. The owner-approved
+[First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
+goal is active and targets one accelerated model-backed day with explicit time,
+decision eligibility, a minimally living wider world, bounded model continuity,
+offline reproduction, and one final owner-authorized live run. None of those
+later-goal behaviors are implemented yet. The separate thin-harness/fat-skills
+documents describe a possible generalization of the completed Mara boundary,
+not an implemented general agent runtime.
 
 ## Implemented Simulation Loop
 

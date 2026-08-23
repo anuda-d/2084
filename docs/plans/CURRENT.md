@@ -1,11 +1,14 @@
 # Current Development Index
 
-Status: no active owner-approved goal as of 2026-08-22. Model-Backed Focal
-Character is complete.
+Status: First Autonomous 24-Hour Living Day is the active owner-approved goal
+as of 2026-08-23.
 
 ## Active Work
 
-- Active goal: none
+- Active goal:
+  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
+- Shared implementation state:
+  [Implementation Plan](first-autonomous-day/IMPLEMENTATION_PLAN.md)
 - Most recently completed goal:
   [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Most recent completion evidence:
@@ -13,13 +16,12 @@ Character is complete.
 - Earlier completed goal: [Agent Understanding](agent-understanding/GOAL.md)
 - Earlier completion evidence:
   [Agent Understanding Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: none; stop after reading this index until the owner approves a
-  new goal
+- Active work: goal approved; no implementation work unit selected
 
 ## Required Read Order
 
-1. `AGENTS.md`
-2. this file
+1. this file
+2. `AGENTS.md`
 3. if one exists, the owner-approved active goal
 4. its shared implementation state
 5. relevant implementation and tests located with `rg` for task selection
@@ -48,6 +50,8 @@ unclear.
 - Otherwise select one smallest useful gap from the goal and current evidence.
 - For implementation, state one criterion, one behavior, and one evidence claim
   before editing.
+- For implementation, invoke the installed `$unlazy` skill in Solo mode and
+  write run-scoped gates for only that selected work unit before editing.
 - Load code just in time; the state file prescribes no task sequence or paths.
 - Run focused validation before the full check.
 - Use a fresh Sol-high read-only reviewer after implementation and during

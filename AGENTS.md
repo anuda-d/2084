@@ -84,6 +84,11 @@ For now, favor one autonomous focal life, a small living world, understandable a
   inside the same active Goal-mode task are not overlap.
 - Manual runs follow the same work-unit, authority, validation, review, and
   no-overlap rules.
+- Scheduled and Continuous Goal implementation work units explicitly invoke
+  the installed `$unlazy` skill in Solo mode. They write one run-scoped root
+  `GATES.md` only after selecting the current work unit, approve only understood
+  checks, reverify after review fixes, and never report or commit with an unmet
+  gate. No-overlap exits and read-only alignment runs do not create gates.
 - The active goal, not the trigger or task, defines authorized product and
   implementation scope.
 - The main agent owns gap selection, implementation, integration, validation,
