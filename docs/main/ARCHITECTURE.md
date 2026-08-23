@@ -14,8 +14,10 @@ decision eligibility, a minimally living wider world, bounded model continuity,
 offline reproduction, and one final owner-authorized live run. Its initial
 bounded-model work now enforces restricted-input and retained-private-record
 byte ceilings and projects prior decisions through a finite recent window. The
-24-hour clock, scheduling, ordinary-day composition, full-day proofs, and live
-run are not implemented. The separate thin-harness/fat-skills documents
+24-hour clock and a pure deterministic temporal agenda now exist as isolated
+successor-runtime primitives. Ordinary-day composition, executable scheduling,
+full-day proofs, and the live run are not implemented. The separate
+thin-harness/fat-skills documents
 describe a possible generalization of the completed Mara boundary, not an
 implemented general agent runtime.
 
@@ -31,8 +33,16 @@ start plus 1,440 minutes. It permits equal-time or forward advancement through
 that boundary and rejects backward or beyond-boundary movement.
 
 This primitive is not yet wired into `Simulation.step()` or a successor
-composition. The existing `first_day_v3` tick remains unchanged as regression
-evidence, and no full-day command, event scheduler, quiet-time advancement, or
+composition. A `TemporalAgenda` can register uniquely identified work within
+the remaining day, order it by simulated minute, explicit causal phase, and
+stable identity, then move the day clock directly to the next due instant or
+the exact end boundary. Equal-time phases preserve the legacy successful-step
+order: scheduled world and institutional work, action completions, observation
+deliveries, understanding updates, then decisions. This seam returns due work;
+it does not execute it or fabricate intervening events.
+
+The existing `first_day_v3` tick remains unchanged as regression evidence, and
+no successor composition, executable event scheduler, full-day command, or
 day-completion claim exists yet.
 
 ```text

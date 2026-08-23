@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-1/AD-2 authoritative simulated-day clock primitive (2026-08-23)
-- Verified implementation runs since alignment: 1
+- Last completed run: AD-2 deterministic temporal agenda (2026-08-23)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -18,7 +18,7 @@ implementation sequence.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | An isolated `SimulatedDayClock` now owns an explicit start, current time, and exact start-plus-1,440-minute boundary with readable day/time projection. It is not wired into a successor composition or offline full-day command. |
-| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes now define total time ordering, and the clock accepts equal/forward movement while rejecting backward/beyond-boundary advancement. The existing tick order remains deterministic for successful `first_day_v3` runs, and a failed advancement is terminal with a named last committed snapshot. No full-day event ordering or quiet-time advancement is verified. |
+| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes define total time ordering. A pure temporal agenda now orders pending successor work by minute, explicit causal phase, and stable identity; jumps directly to the next due instant or exact day end; and rejects duplicates, past work, and beyond-boundary work before mutation. Equal-time phase order matches the legacy successful-step boundary. The agenda does not execute work, and dynamic same-minute interleaving in a successor runtime remains undefined. |
 | AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
@@ -117,6 +117,30 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-2 deterministic temporal agenda
+
+- Added one pure temporal agenda that registers uniquely identified work only
+  within the remaining simulated day and orders it by authoritative minute,
+  explicit causal phase, and stable item identity.
+- Equal-time phases preserve the successful legacy boundary: scheduled world
+  and institutional work, action completions, observation deliveries,
+  understanding updates, then decisions. The agenda returns due work without
+  executing it or fabricating activity during quiet spans.
+- Next-due advancement jumps the day clock directly to pending work or the
+  exact end boundary. Duplicate identities, past work, beyond-boundary work,
+  and an externally skipped pending instant are rejected without consuming the
+  pending item.
+- Focused validation passed five agenda tests. Full offline validation passed
+  128 repository tests and 63 historical scenario checks; staged and unstaged
+  `git diff --check` passed.
+- Fresh independent Sol-high review found no blocking defects and separately
+  probed multiple distinct instants, future-work retention, exact-boundary
+  work, failed-schedule atomicity, and repeated completion advancement.
+- Scope limit: AD-2 remains open. The agenda is not wired into a successor
+  runtime and does not yet define interleaving for same-minute work created
+  while another returned batch executes or when end-boundary registration
+  closes.
 
 ### 2026-08-23 — AD-1/AD-2 authoritative simulated-day clock primitive
 
