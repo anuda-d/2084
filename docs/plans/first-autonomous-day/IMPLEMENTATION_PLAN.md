@@ -9,16 +9,16 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: whole-goal alignment and runtime-failure boundary correction (2026-08-23)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-1/AD-2 authoritative simulated-day clock primitive (2026-08-23)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
-| AD-1 Simulation-owned day | open | No explicit clock, exact 24-hour successor composition, or day-boundary completion exists. |
-| AD-2 Deterministic temporal order | open | The existing tick order is deterministic for successful `first_day_v3` runs, and a failed advancement is now terminal with a named last committed snapshot. No full-day time representation, equal-time contract, or quiet-time advancement has been verified. |
+| AD-1 Simulation-owned day | open | An isolated `SimulatedDayClock` now owns an explicit start, current time, and exact start-plus-1,440-minute boundary with readable day/time projection. It is not wired into a successor composition or offline full-day command. |
+| AD-2 Deterministic temporal order | open | Non-negative integer simulated minutes now define total time ordering, and the clock accepts equal/forward movement while rejecting backward/beyond-boundary advancement. The existing tick order remains deterministic for successful `first_day_v3` runs, and a failed advancement is terminal with a named last committed snapshot. No full-day event ordering or quiet-time advancement is verified. |
 | AD-3 Decision eligibility | open | Every idle policy is currently called every tick, and immediate waits create repeated attempts. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
@@ -117,6 +117,26 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-1/AD-2 authoritative simulated-day clock primitive
+
+- Added one wall-clock-independent `SimulatedTime` whose non-negative integer
+  minute value is the sole ordering source and whose readable `Day N HH:MM`
+  form is only a projection.
+- Added a `SimulatedDayClock` with explicit start, current, and exact
+  start-plus-1,440-minute end. Equal-time and forward advancement through the
+  boundary are valid; backward and beyond-boundary changes are rejected before
+  mutation.
+- Focused validation passed four boundary tests covering conversion, total
+  order, non-midnight rollover, exact completion, invalid values, and failed
+  advancement. Full offline validation passed 123 repository tests and 63
+  historical scenario checks; `git diff --check` passed.
+- Fresh independent Sol-high review found no blocking issues and separately
+  exercised five days of conversions, detached serialization, boundary
+  mutation safety, and absence of wall-clock dependencies.
+- Scope limit: AD-1 and AD-2 remain open. The primitive is deliberately not
+  connected to `Simulation.step()`, an event scheduler, quiet-time advancement,
+  a successor composition, or a runnable full-day completion boundary.
 
 ### 2026-08-23 — AD-7 retained private-record size ceiling
 

@@ -21,6 +21,20 @@ implemented general agent runtime.
 
 ## Implemented Simulation Loop
 
+### Simulated-time primitive for the 24-hour successor
+
+The active full-day work defines authoritative time as a non-negative integer
+count of whole simulated minutes. That integer is the sole ordering value;
+readable `Day N HH:MM` text is a projection and wall-clock time has no role.
+One `SimulatedDayClock` owns an explicit start, current time, and end at exactly
+start plus 1,440 minutes. It permits equal-time or forward advancement through
+that boundary and rejects backward or beyond-boundary movement.
+
+This primitive is not yet wired into `Simulation.step()` or a successor
+composition. The existing `first_day_v3` tick remains unchanged as regression
+evidence, and no full-day command, event scheduler, quiet-time advancement, or
+day-completion claim exists yet.
+
 ```text
 The world and its systems advance
         ↓
