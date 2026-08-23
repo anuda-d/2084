@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 restricted-input size boundary (2026-08-23)
-- Verified implementation runs since alignment: 1
+- Last completed run: AD-7 bounded decision-history continuity projection (2026-08-23)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | The current supporting policies complete one bounded interaction and then wait; no full-day independent activity is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
-| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is now measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. The continuity projection and complete-day private-record retention still grow without verified bounds. |
+| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results now use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Delivered observations and canonical understanding remain unbounded in the fresh request, and complete-day private-record retention still has no verified ceiling. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path, but retry cadence, unexpected runtime failure, and false full-day completion are not covered. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
@@ -94,6 +94,27 @@ Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-7 bounded decision-history continuity projection
+
+- Replaced full-lifetime prior attempts and terminal results in each fresh Mara
+  request with a deterministic recent window capped at 16 entries per
+  collection. Projection metadata reports the kind, limits, lifetime totals,
+  and omitted counts instead of silently hiding older evidence.
+- The latest attempt remains explicit, retained attempts and results preserve
+  their causal order, and current state, delivered evidence, canonical
+  understanding, and world resolution remain unchanged.
+- Focused validation passed 20 model-policy tests, including exact-window
+  retention, visible omissions, fixed collection cardinality after 96 lifetime
+  entries, later completed and rejected outcome use, privacy, and replay.
+- Full offline validation passed 115 repository tests and 63 historical
+  scenario checks; `git diff --check` passed.
+- Fresh independent Sol-high review found no blocking issues and independently
+  confirmed the bounded cardinality claim, restricted-view privacy, canonical
+  state preservation, and equal recorded world-history reproduction.
+- Scope limit: AD-7 remains open. Delivered observations and source-linked
+  understanding still lack a bounded fresh-request projection, and retained
+  full-day private decision records have no verified 8 MiB ceiling.
 
 ### 2026-08-23 — AD-7 restricted-input size boundary
 

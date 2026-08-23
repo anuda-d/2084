@@ -18,6 +18,10 @@ from simulation.agents import AgentView, PolicyDecisionRecord
 from simulation.events import freeze_mapping, to_plain_data
 
 
+MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
+DECISION_HISTORY_PROJECTION_KIND = "recent_terminal_window_v0"
+
+
 class StructuredChoiceError(ValueError):
     """A model-like value does not satisfy the attempted-action schema."""
 
@@ -123,6 +127,38 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
         "parameters": to_plain_data(attempt.parameters),
         "explanation": attempt.explanation,
         "decision_reason": attempt.decision_reason,
+    }
+
+
+def _decision_history_data(view: AgentView) -> dict[str, object]:
+    """Project recent evidence without retaining lifetime-sized collections."""
+    attempts = view.action_history[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
+    results = view.action_results[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
+    return {
+        "projection": {
+            "kind": DECISION_HISTORY_PROJECTION_KIND,
+            "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "total_attempts": len(view.action_history),
+            "total_results": len(view.action_results),
+            "omitted_attempts": len(view.action_history) - len(attempts),
+            "omitted_results": len(view.action_results) - len(results),
+        },
+        "last_attempt": _attempt_data(view.last_attempt),
+        "attempts": [_attempt_data(attempt) for attempt in attempts],
+        "results": [
+            {
+                "action_id": result.action_id,
+                "attempt_event_id": result.attempt_event_id,
+                "outcome_event_id": result.outcome_event_id,
+                "actor_id": result.actor_id,
+                "action_kind": result.action_kind,
+                "status": result.status,
+                "resolved_tick": result.resolved_tick,
+                "reason": result.reason,
+            }
+            for result in results
+        ],
     }
 
 
@@ -260,23 +296,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
             "remaining_required_units": view.remaining_required_units,
             "obligations": list(view.obligations),
         },
-        "decision_history": {
-            "last_attempt": _attempt_data(view.last_attempt),
-            "attempts": [_attempt_data(attempt) for attempt in view.action_history],
-            "results": [
-                {
-                    "action_id": result.action_id,
-                    "attempt_event_id": result.attempt_event_id,
-                    "outcome_event_id": result.outcome_event_id,
-                    "actor_id": result.actor_id,
-                    "action_kind": result.action_kind,
-                    "status": result.status,
-                    "resolved_tick": result.resolved_tick,
-                    "reason": result.reason,
-                }
-                for result in view.action_results
-            ],
-        },
+        "decision_history": _decision_history_data(view),
         "delivered_observations": [
             {
                 "observation_id": observation.observation_id,

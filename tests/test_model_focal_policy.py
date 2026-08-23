@@ -1,9 +1,12 @@
 import json
 import unittest
+from dataclasses import replace
 
 from observer.inspector import render_inspector
 from observer.terminal import render_terminal
 from policies.model_focal_policy import (
+    DECISION_HISTORY_PROJECTION_KIND,
+    MAX_RETAINED_DECISION_HISTORY_ENTRIES,
     ModelFocalPolicy,
     ModelUnavailableError,
     RecordedDecisionClient,
@@ -14,6 +17,7 @@ from policies.model_focal_policy import (
 )
 from policies.mara_decision_request import restricted_decision_input_size_bytes
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
+from simulation.actions import ActionAttempt, ActionResult
 from simulation.events import to_plain_data
 
 
@@ -232,6 +236,128 @@ def model_policy(client):
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_decision_history_projection_retains_a_bounded_recent_window(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        lifetime_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        attempts = tuple(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="wait",
+                parameters={},
+                explanation=f"wait attempt {index:02d}",
+                decision_reason=f"reason {index:02d}",
+            )
+            for index in range(lifetime_count)
+        )
+        results = tuple(
+            ActionResult(
+                action_id=f"action-{index:04d}",
+                attempt_event_id=f"event-attempt-{index:04d}",
+                outcome_event_id=f"event-outcome-{index:04d}",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="wait",
+                status="completed",
+                resolved_tick=index + 1,
+                reason=f"completed wait {index:02d}",
+            )
+            for index in range(lifetime_count)
+        )
+        projected = model_input_from_view(
+            replace(
+                view,
+                last_attempt=attempts[-1],
+                action_history=attempts,
+                action_results=results,
+            )
+        )["decision_history"]
+
+        self.assertEqual(
+            projected["projection"],
+            {
+                "kind": DECISION_HISTORY_PROJECTION_KIND,
+                "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "total_attempts": lifetime_count,
+                "total_results": lifetime_count,
+                "omitted_attempts": 3,
+                "omitted_results": 3,
+            },
+        )
+        self.assertEqual(
+            len(projected["attempts"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+        )
+        self.assertEqual(
+            len(projected["results"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+        )
+        self.assertEqual(
+            projected["attempts"][0]["explanation"], "wait attempt 03"
+        )
+        self.assertEqual(
+            projected["attempts"][-1], projected["last_attempt"]
+        )
+        self.assertEqual(
+            projected["results"][0]["action_id"], "action-0003"
+        )
+        self.assertEqual(
+            projected["results"][-1]["action_id"],
+            f"action-{lifetime_count - 1:04d}",
+        )
+
+    def test_decision_history_collection_size_stops_growing_after_its_window(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+
+        def projected_lengths(lifetime_count: int) -> tuple[int, int]:
+            attempts = tuple(
+                ActionAttempt(
+                    actor_id=FOCAL_AGENT_ID,
+                    kind="wait",
+                    parameters={},
+                    explanation="bounded wait",
+                    decision_reason="bounded continuity test",
+                )
+                for _ in range(lifetime_count)
+            )
+            results = tuple(
+                ActionResult(
+                    action_id=f"action-{index:04d}",
+                    attempt_event_id=f"event-attempt-{index:04d}",
+                    outcome_event_id=f"event-outcome-{index:04d}",
+                    actor_id=FOCAL_AGENT_ID,
+                    action_kind="wait",
+                    status="completed",
+                    resolved_tick=index + 1,
+                )
+                for index in range(lifetime_count)
+            )
+            history = model_input_from_view(
+                replace(
+                    view,
+                    last_attempt=attempts[-1],
+                    action_history=attempts,
+                    action_results=results,
+                )
+            )["decision_history"]
+            return len(history["attempts"]), len(history["results"])
+
+        self.assertEqual(
+            projected_lengths(MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            ),
+        )
+        self.assertEqual(
+            projected_lengths(MAX_RETAINED_DECISION_HISTORY_ENTRIES + 80),
+            (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            ),
+        )
+
     def test_recorded_decisions_reproduce_complete_ordered_world_history(self):
         scripted = build_first_day(seed=42)
         scripted.run(max_ticks=30)
