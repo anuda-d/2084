@@ -53,10 +53,7 @@ class AutonomousDay:
         return len(self._pending_actions)
 
     def run(self) -> DayRunSummary:
-        try:
-            return self.runtime.run()
-        finally:
-            self.world.tick = self.runtime.current.total_minutes
+        return self.runtime.run()
 
 
 def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
@@ -241,6 +238,11 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
         },
         model_backed_actor_ids=(MARA_ID,),
+        on_time_advanced=lambda current: setattr(
+            world,
+            "tick",
+            current.total_minutes,
+        ),
     )
     runtime.schedule(
         ScheduledWork(

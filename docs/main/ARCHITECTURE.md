@@ -69,12 +69,16 @@ temporal seams. A composition registers handlers by authored work kind, and the
 runtime dispatches due batches through the agenda's causal phases. Handlers
 receive only current/end time and a validated scheduling method; they cannot
 advance time, release work, close registration, or re-enter the runtime through
-that interface. The runtime retains exact
+that interface. A composition may bind a time-advance observer; the autonomous
+day uses it only to synchronize `WorldState.tick` before due handlers execute
+and again at the final boundary. The runtime retains exact
 committed-work order and compact quiet spans, processes work due exactly at the
 end boundary, then closes the agenda against further registration. An
 unexpected handler or dispatch exception creates sanitized terminal evidence
-and freezes both execution and registration to prevent false completion or
-retry mutation.
+and freezes subsequent execution and registration to prevent false completion
+or retry mutation. It does not roll back handler side effects: append-only
+objective evidence from a handler that fails after mutation may remain outside
+the committed-work trace and requires direct history inspection.
 
 The runtime now owns the explicit decision-eligibility registry. A composition
 can request one of the five documented causes, and the runtime consumes the
@@ -92,8 +96,9 @@ silently assigned Mara's model-call ceiling.
 Its authored schedule lets Ilan attempt a two-hour workplace shift at minute
 480 and complete it at minute 600. Between those events, the district transit
 authority changes objective tram-service state at minute 510. These events
-append to the shared `EventLog` while configured model-backed Mara remains at
-home with zero decisions. The service change itself grants no knowledge. A
+append to the shared `EventLog` while Mara is marked model-bounded for runtime
+accounting but remains at home with zero decisions and no configured model
+policy. The service change itself grants no knowledge. A
 separate observation-phase delivery at minute 660 links that event to Mara only
 when she is physically at the authored home bulletin receiver; otherwise it
 remains undelivered. The runtime then jumps to and closes at the exact day
@@ -326,7 +331,10 @@ private decision-record collection uses canonical compact JSON measurement,
 cannot retain more than 8 MiB, and reports current and peak sizes only in the
 omniscient inspector. These mechanisms do not yet bound delivered observations
 or canonical understanding, prove that older behaviorally relevant results are
-always represented elsewhere, or establish a complete-day call ceiling.
+always represented elsewhere, or prove the complete-day model path. The
+successor executor separately enforces 128 decision-handler invocations for a
+marked model-bounded actor, but no successor composition invokes Mara's model
+policy yet.
 
 An exception during `Simulation.step()` creates sanitized inspector-only
 runtime-failure evidence naming the failed tick and last committed snapshot.

@@ -17,6 +17,7 @@ from simulation.time import SimulatedDayClock, SimulatedTime
 
 DayWorkHandler = Callable[[ScheduledWork, "DayWorkContext"], None]
 DayDecisionHandler = Callable[[EligibleDecision, "DayWorkContext"], None]
+DayTimeObserver = Callable[[SimulatedTime], None]
 MAX_MODEL_DECISION_CALLS_PER_DAY = 128
 
 
@@ -194,6 +195,7 @@ class AcceleratedDayRuntime:
         handlers: Mapping[str, DayWorkHandler],
         decision_handler: DayDecisionHandler | None = None,
         model_backed_actor_ids: tuple[str, ...] = (),
+        on_time_advanced: DayTimeObserver | None = None,
     ) -> None:
         if not isinstance(start, SimulatedTime):
             raise TypeError("start must be SimulatedTime")
@@ -212,6 +214,8 @@ class AcceleratedDayRuntime:
             copied_handlers[kind] = handler
         if decision_handler is not None and not callable(decision_handler):
             raise TypeError("decision_handler must be callable")
+        if on_time_advanced is not None and not callable(on_time_advanced):
+            raise TypeError("on_time_advanced must be callable")
         if not isinstance(model_backed_actor_ids, tuple):
             raise TypeError("model_backed_actor_ids must be a tuple")
         if any(
@@ -229,6 +233,7 @@ class AcceleratedDayRuntime:
         self._decision_eligibility = DecisionEligibility(self._agenda)
         self._handlers = copied_handlers
         self._decision_handler = decision_handler
+        self._on_time_advanced = on_time_advanced
         self._model_backed_actor_ids = frozenset(model_backed_actor_ids)
         self._decision_counts_by_actor: dict[str, int] = {}
         self._executed_work: list[ExecutedWorkEvidence] = []
@@ -340,6 +345,15 @@ class AcceleratedDayRuntime:
                 raise
 
             if self._clock.current > previous_time:
+                if self._on_time_advanced is not None:
+                    try:
+                        self._on_time_advanced(self._clock.current)
+                    except Exception as error:
+                        self._record_failure(
+                            error,
+                            released_uncommitted_count=len(batch),
+                        )
+                        raise
                 self._quiet_spans.append(
                     QuietSpan(start=previous_time, end=self._clock.current)
                 )

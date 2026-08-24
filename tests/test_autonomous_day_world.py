@@ -47,6 +47,38 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(bulletin.details["current_status"], "reduced")
         self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0})
 
+    def test_world_time_is_authoritative_during_successor_dispatch(self):
+        day = build_autonomous_day(seed=42)
+        observed: list[tuple[str, int, int]] = []
+        original_record = day._event_log.record
+        original_deliver = day._event_log.deliver
+
+        def record(**values):
+            observed.append(("event", values["tick"], day.world.tick))
+            return original_record(**values)
+
+        def deliver(**values):
+            observed.append(
+                ("observation", values["delivery_tick"], day.world.tick)
+            )
+            return original_deliver(**values)
+
+        day._event_log.record = record
+        day._event_log.deliver = deliver
+
+        day.runtime.run()
+
+        self.assertEqual(
+            observed,
+            [
+                ("event", 480, 480),
+                ("event", 510, 510),
+                ("event", 600, 600),
+                ("observation", 660, 660),
+            ],
+        )
+        self.assertEqual(day.world.tick, 1440)
+
     def test_transit_change_remains_undelivered_without_channel_access(self):
         day = build_autonomous_day(seed=42)
         day.world.agents[MARA_ID].location = "workplace"

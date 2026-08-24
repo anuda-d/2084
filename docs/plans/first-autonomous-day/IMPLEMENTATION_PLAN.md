@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-12 are open.
+Status: active; AD-5 is met. AD-1 through AD-4 and AD-6 through AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,25 +9,25 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-6 access-gated background consequence (2026-08-23)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: Fourth whole-goal alignment (2026-08-23)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
-| AD-1 Simulation-owned day | open | The accelerated-day runtime now hosts one concrete successor world and owns its explicit minute 0 through minute 1,440 boundary, including exact-end work before registration closes and synchronization of the world's current minute. It has no documented offline command. |
+| AD-1 Simulation-owned day | open | The accelerated-day runtime now hosts one concrete successor world and owns its explicit minute 0 through minute 1,440 boundary, including exact-end work before registration closes. A time-advance binding synchronizes the world's current minute before each due handler and at the final boundary. It has no documented offline command. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
 | AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. Trigger provenance remains caller-asserted, overlapping retry chains can produce aggregate per-minute decisions, no actual policy uses this boundary, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
-| AD-5 Independently living world | open | The successor composition now gives Ilan one authored two-hour workplace action and the transit authority one independently scheduled objective service change while Mara remains inactive, with exact append-only evidence. A later access-gated bulletin can expose the service consequence. This proves the composition boundary, not a sustained ordinary-day supporting policy. |
+| AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. The delivered evidence is not yet connected to decision input, canonical understanding, or normal presentation. |
-| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime now enforces exactly 128 dedicated decision-handler invocations for each explicitly configured model-backed actor: call 128 is valid and call 129 is terminal before invocation. No full-day composition configures Mara or proves the model-policy path against this budget; observations/understanding remain unbounded and older relevance remains unproven. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes mutation; each requested safe-failure retry is delayed 30 minutes. Aggregate retry-chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy safe-failure path still retries every tick. |
+| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. The composition marks Mara for this accounting but neither configures nor exercises her model policy; observations/understanding remain unbounded and older relevance remains unproven. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, but aggregate chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | The isolated successor runtime summary retains readable start/current/end time, exact committed-work order, compact quiet spans, decision counts for every configured model actor including zero, supporting-actor counts when active, exact completion, and sanitized failure evidence. No normal full-day presenter or complete agent/model/event measurement summary uses it yet. |
+| AD-11 Watchability and inspection | open | The successor runtime summary retains readable start/current/end time, successful committed-work order, compact quiet spans, decision counts for every marked model actor including zero, exact completion, and sanitized failure evidence. A failed handler may leave an objective partial tail outside the committed-work trace. No normal full-day presenter or complete agent/model/event measurement summary exists yet. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,34 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-23 — Fourth whole-goal alignment
+
+- Fresh independent Sol-high review compared all AD-1 through AD-12 criteria
+  after the model call ceiling and first concrete successor-world composition.
+  AD-5 is now met narrowly: Ilan's authored work and the transit authority's
+  objective service change are independently scheduled while Mara is inactive.
+  AD-1 through AD-4 and AD-6 through AD-12 remain open.
+- The review found that `WorldState.tick` was synchronized only after the day
+  returned. The runtime now invokes a composition-owned time observer before
+  every due handler and at the final boundary; focused tests observe matching
+  world and event or delivery minutes at 480, 510, 600, and 660, then minute
+  1,440.
+- The review corrected two overstatements. Successor terminal failure freezes
+  subsequent execution and registration but is not rollback; a failed handler
+  may leave objective state or append-only events outside the successful
+  committed-work trace. The composition also marks Mara as model-bounded for
+  accounting but does not configure or exercise a model policy.
+- Focused validation passed ten runtime and composition tests. Full offline
+  validation passed 154 repository tests and 63 historical checks; the legacy
+  normal and omniscient runs still reached tick 28 with no runtime failure, and
+  `git diff --check` passed.
+- Fresh independent re-review found no blockers and additionally verified
+  same-minute multi-phase synchronization plus sanitized terminal behavior for
+  time-observer failure during due work and at the exact end boundary.
+- No agenda, eligibility, observation, or budget mechanism warrants removal.
+  The alignment counter resets to zero; no future implementation task was
+  selected or recorded.
 
 ### 2026-08-23 — First whole-goal alignment
 

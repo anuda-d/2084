@@ -166,6 +166,36 @@ class AcceleratedDayRuntimeTests(unittest.TestCase):
         self.assertTrue(summary.reached_end_boundary)
         self.assertTrue(runtime.is_registration_closed)
 
+    def test_time_observer_runs_before_handlers_and_at_exact_end(self):
+        observed: list[tuple[str, int]] = []
+
+        def on_time_advanced(current):
+            observed.append(("time", current.total_minutes))
+
+        def record(work, context):
+            observed.append(("handler", context.current.total_minutes))
+
+        runtime = AcceleratedDayRuntime(
+            start=SimulatedTime(0),
+            handlers={"world": record},
+            on_time_advanced=on_time_advanced,
+        )
+        runtime.schedule(
+            ScheduledWork(
+                "midday-work",
+                SimulatedTime(720),
+                TemporalPhase.SCHEDULED_WORLD,
+                "world",
+            )
+        )
+
+        runtime.run()
+
+        self.assertEqual(
+            observed,
+            [("time", 720), ("handler", 720), ("time", 1440)],
+        )
+
     def test_handler_exception_is_terminal_sanitized_and_not_false_complete(self):
         def fail(work, context):
             raise ValueError("private-provider-marker")
