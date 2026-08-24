@@ -135,6 +135,47 @@ class AcceleratedDayDecisionRuntimeTests(unittest.TestCase):
         self.assertIsNotNone(runtime.runtime_failure)
         self.assertTrue(runtime.is_registration_closed)
 
+    def test_decision_handler_cannot_add_same_minute_cause_after_release(self):
+        for source_actor, target_actor in (
+            ("actor-a", "actor-b"),
+            ("actor-b", "actor-a"),
+        ):
+            with self.subTest(source_actor=source_actor):
+                def decide(decision, context):
+                    if decision.actor_id == source_actor:
+                        context.request_decision(
+                            actor_id=target_actor,
+                            due_time=context.current,
+                            trigger=DecisionTrigger(
+                                DecisionTriggerKind.OBSERVATION_DELIVERED,
+                                "late-same-minute-cause",
+                            ),
+                        )
+
+                runtime = AcceleratedDayRuntime(
+                    start=self._start(),
+                    handlers={},
+                    decision_handler=decide,
+                )
+                for actor_id in ("actor-a", "actor-b"):
+                    runtime.request_decision(
+                        actor_id=actor_id,
+                        due_time=runtime.start,
+                        trigger=DecisionTrigger(
+                            DecisionTriggerKind.INITIAL_ACTIVATION,
+                            f"start-{actor_id}",
+                        ),
+                    )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "already been released|identity already used",
+                ):
+                    runtime.run()
+
+                self.assertFalse(runtime.is_complete)
+                self.assertIsNotNone(runtime.runtime_failure)
+
 
 if __name__ == "__main__":
     unittest.main()

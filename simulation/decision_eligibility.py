@@ -77,6 +77,8 @@ class DecisionEligibility:
 
         actor_time = (actor_id, due_time.total_minutes)
         work = self._work_by_actor_time.get(actor_time)
+        if work is not None and work not in self._agenda.pending:
+            raise ValueError("decision eligibility has already been released")
         if work is None:
             work = ScheduledWork(
                 item_id=(
