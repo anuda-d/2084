@@ -24,8 +24,9 @@ The completed implementation sequence was:
 1. Define Mara's stable character profile and first reusable decision skill.
 2. Connect those authored inputs and the existing restricted decision envelope
    to one locally hosted model.
-3. Return exactly one structured attempted action through the existing
-   `ModelFocalPolicy` boundary.
+3. Return exactly one structured attempted action through the named
+   `MaraHarness` composition facade and its existing `ModelFocalPolicy`
+   collaborator.
 4. Run and inspect an explicitly opted-in live-model smoke test.
 5. Document the live entry path and complete MF-10 without weakening MF-1
    through MF-9.
@@ -443,6 +444,10 @@ inspectable simulation mechanism. It is not part of this harness plan.
 
 The completed implementation uses these boundaries:
 
+- `policies/mara_harness.py` is the single public construction point for
+  model-backed Mara. It is a composition facade, not a simulation runtime or
+  persistent mind, and exposes only `AgentView -> ActionAttempt` plus private
+  decision-record retrieval.
 - `simulation/agents.py` defines `AgentView`, `DecisionPolicy`, and private
   `PolicyDecisionRecord` evidence.
 - `policies/model_focal_policy.py` serializes the restricted model input,

@@ -1,0 +1,85 @@
+"""Public composition facade for one model-backed Mara decision."""
+
+from __future__ import annotations
+
+from policies.mara_decision_request import DecisionAuthorshipIdentity
+from policies.model_focal_policy import (
+    ModelDecisionClient,
+    ModelFocalPolicy,
+    RecordedDecisionClient,
+)
+from policies.ollama_client import OllamaDecisionClient
+from simulation.actions import ActionAttempt
+from simulation.agents import AgentView, PolicyDecisionRecord
+
+
+RECORDED_MARA_CONFIGURATION_ID = "recorded:mara-harness-v0"
+
+
+class MaraHarness:
+    """Compose Mara's existing chooser collaborators behind one policy seam.
+
+    The harness receives only an ``AgentView`` and returns one attempted action.
+    It owns no world, scheduling, validation, consequence, or character state.
+    """
+
+    __slots__ = ("_policy",)
+
+    def __init__(self, policy: ModelFocalPolicy) -> None:
+        self._policy = policy
+
+    @classmethod
+    def from_ollama(
+        cls,
+        *,
+        base_url: str,
+        model: str,
+        timeout_seconds: float = 60,
+    ) -> MaraHarness:
+        """Construct model-backed Mara with the existing Ollama adapter."""
+        client = OllamaDecisionClient(
+            base_url=base_url,
+            model=model,
+            timeout_seconds=timeout_seconds,
+        )
+        return cls.from_client(
+            client,
+            configuration_id=client.configuration_id,
+            authorship_identity=client.authorship_identity,
+        )
+
+    @classmethod
+    def from_client(
+        cls,
+        client: ModelDecisionClient,
+        *,
+        configuration_id: str,
+        authorship_identity: DecisionAuthorshipIdentity | None = None,
+    ) -> MaraHarness:
+        """Construct Mara around one injected restricted decision client."""
+        return cls(
+            ModelFocalPolicy(
+                client,
+                configuration_id=configuration_id,
+                authorship_identity=authorship_identity,
+            )
+        )
+
+    @classmethod
+    def from_records(
+        cls,
+        records: tuple[PolicyDecisionRecord, ...],
+    ) -> MaraHarness:
+        """Reproduce recorded Mara decisions through the same public boundary."""
+        return cls.from_client(
+            RecordedDecisionClient.from_records(records),
+            configuration_id=RECORDED_MARA_CONFIGURATION_ID,
+        )
+
+    def choose(self, view: AgentView) -> ActionAttempt:
+        """Return one attempt without validating, resolving, or applying it."""
+        return self._policy.choose(view)
+
+    def take_decision_record(self) -> PolicyDecisionRecord | None:
+        """Take the latest private decision evidence, if one was produced."""
+        return self._policy.take_decision_record()

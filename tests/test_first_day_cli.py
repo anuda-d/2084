@@ -2,6 +2,7 @@ import io
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
+from policies.mara_harness import MaraHarness
 from scenarios.first_day import main
 
 
@@ -26,19 +27,28 @@ class _FakeOllamaClient:
         }
 
 
+def _fake_mara_harness_factory(*, base_url, model):
+    client = _FakeOllamaClient(base_url=base_url, model=model)
+    return MaraHarness.from_client(
+        client,
+        configuration_id=client.configuration_id,
+        authorship_identity=client.authorship_identity,
+    )
+
+
 class FirstDayCliTests(unittest.TestCase):
     def setUp(self):
         _FakeOllamaClient.instances.clear()
 
     def test_scripted_command_is_the_default_and_constructs_no_live_client(self):
-        def unexpected_client(**kwargs):
-            raise AssertionError(f"live client constructed with {kwargs}")
+        def unexpected_harness(**kwargs):
+            raise AssertionError(f"live harness constructed with {kwargs}")
 
         output = io.StringIO()
         with redirect_stdout(output):
             result = main(
                 ["--seed", "42", "--ticks", "1"],
-                ollama_client_factory=unexpected_client,
+                mara_harness_factory=unexpected_harness,
             )
 
         self.assertEqual(result, 0)
@@ -50,7 +60,7 @@ class FirstDayCliTests(unittest.TestCase):
         with redirect_stderr(error), self.assertRaises(SystemExit) as raised:
             main(
                 ["--focal-policy", "ollama", "--ticks", "1"],
-                ollama_client_factory=_FakeOllamaClient,
+                mara_harness_factory=_fake_mara_harness_factory,
             )
 
         self.assertEqual(raised.exception.code, 2)
@@ -69,7 +79,7 @@ class FirstDayCliTests(unittest.TestCase):
                     "--ollama-model",
                     "another-model",
                 ],
-                ollama_client_factory=_FakeOllamaClient,
+                mara_harness_factory=_fake_mara_harness_factory,
             )
 
         self.assertEqual(raised.exception.code, 2)
@@ -111,7 +121,7 @@ class FirstDayCliTests(unittest.TestCase):
                     "--ollama-model",
                     "qwen3:4b-instruct",
                 ],
-                ollama_client_factory=_FakeOllamaClient,
+                mara_harness_factory=_fake_mara_harness_factory,
             )
 
         self.assertEqual(result, 0)
