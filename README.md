@@ -4,8 +4,9 @@
 autonomous person through a world they can only partly understand.
 
 The long-term idea is to watch a life unfold inside a small society shaped by
-scarcity, institutions, relationships, limited information, and pressure. The
-focal character is not a player-controlled puppet and does not know everything
+lies, contradictions, institutions, relationships, limited information, and
+pressure. The focal character is not a player-controlled puppet and does not
+know everything
 the simulation knows. Other people and institutions continue acting while the
 observer sees the world mainly through that character's experience.
 
@@ -13,13 +14,6 @@ The project takes thematic inspiration from George Orwell's *Nineteen
 Eighty-Four*, especially the gap between lived experience, public behavior, and
 official accounts. It is not an adaptation of Orwell's plot, characters, or
 setting.
-
-Repository status: the bounded Official Record, Agent Understanding, and
-Model-Backed Focal Character goals are complete. The owner-approved
-[First Autonomous 24-Hour Living Day](docs/plans/first-autonomous-day/GOAL.md)
-goal is active as of August 23, 2026. Initial work enforces three bounded-model
-evidence limits, but the 24-hour successor composition and the rest of that goal
-remain incomplete.
 
 ## What exists today
 
