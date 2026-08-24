@@ -15,8 +15,9 @@ offline reproduction, and one final owner-authorized live run. Its initial
 bounded-model work now enforces restricted-input and retained-private-record
 byte ceilings and projects prior decisions through a finite recent window. The
 24-hour clock and a pure deterministic temporal agenda now exist as isolated
-successor-runtime primitives. Ordinary-day composition, executable scheduling,
-full-day proofs, and the live run are not implemented. The separate
+successor-runtime primitives, with a small agenda executor around them.
+Ordinary-day composition, agent and action scheduling, full-day proofs, and the
+live run are not implemented. The separate
 thin-harness/fat-skills documents
 describe a possible generalization of the completed Mara boundary, not an
 implemented general agent runtime.
@@ -51,8 +52,8 @@ broadcast path. The successor agenda separates scheduled activity from
 observation delivery so those causal phases can remain explicit.
 
 The existing `first_day_v3` tick remains unchanged as regression evidence, and
-no successor composition, executable event scheduler, full-day command, or
-day-completion claim exists yet.
+no successor composition, agent/action event schedule, full-day command, or
+scenario-level day-completion claim exists yet.
 
 An isolated `DecisionEligibility` seam can place only five documented causes
 into the agenda's decision phase: initial activation, a terminal action result,
@@ -62,6 +63,22 @@ passage alone creates no record. The initial safe-failure cadence is one retry
 30 simulated minutes later, with no retry if that instant would cross the day
 boundary. The seam does not call policies or execute actions, and the legacy
 tick loop does not use it yet.
+
+An `AcceleratedDayRuntime` now provides the first isolated executor for these
+temporal seams. A composition registers handlers by authored work kind, and the
+runtime dispatches due batches through the agenda's causal phases. Handlers
+receive only current/end time and a validated scheduling method; they cannot
+advance time, release work, close registration, or re-enter the runtime through
+that interface. The runtime retains exact
+committed-work order and compact quiet spans, processes work due exactly at the
+end boundary, then closes the agenda against further registration. An
+unexpected handler or dispatch exception creates sanitized terminal evidence
+and freezes both execution and registration to prevent false completion or
+retry mutation.
+
+This executor is still infrastructure rather than a successor simulation. No
+agent, policy, action resolver, observation delivery, ordinary-day composition,
+normal presenter, or command uses it yet.
 
 ```text
 The world and its systems advance

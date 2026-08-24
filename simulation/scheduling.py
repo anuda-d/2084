@@ -56,10 +56,15 @@ class TemporalAgenda:
         self._pending_by_id: dict[str, ScheduledWork] = {}
         self._known_item_ids: set[str] = set()
         self._released_phase_by_minute: dict[int, TemporalPhase] = {}
+        self._closed = False
 
     @property
     def clock(self) -> SimulatedDayClock:
         return self._clock
+
+    @property
+    def is_closed(self) -> bool:
+        return self._closed
 
     @property
     def pending(self) -> tuple[ScheduledWork, ...]:
@@ -73,6 +78,8 @@ class TemporalAgenda:
     def schedule(self, item: ScheduledWork) -> ScheduledWork:
         if not isinstance(item, ScheduledWork):
             raise TypeError("item must be ScheduledWork")
+        if self._closed:
+            raise RuntimeError("temporal agenda is closed")
         if item.item_id in self._known_item_ids:
             raise ValueError(f"scheduled item identity already used: {item.item_id}")
         if item.due_time < self._clock.current:
@@ -90,6 +97,13 @@ class TemporalAgenda:
         self._known_item_ids.add(item.item_id)
         return item
 
+    def close(self) -> None:
+        if not self._clock.is_complete:
+            raise RuntimeError("temporal agenda cannot close before day end")
+        if self._pending_by_id:
+            raise RuntimeError("temporal agenda cannot close with pending work")
+        self._closed = True
+
     @property
     def next_due_time(self) -> SimulatedTime:
         pending = self.pending
@@ -103,6 +117,8 @@ class TemporalAgenda:
     def advance_to_next_due(self) -> tuple[ScheduledWork, ...]:
         """Jump if needed, then release only the next causal phase due."""
 
+        if self._closed:
+            raise RuntimeError("temporal agenda is closed")
         target = self.next_due_time
         self._clock.advance_to(target)
         due_now = tuple(
