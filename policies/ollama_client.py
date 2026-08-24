@@ -16,12 +16,16 @@ from urllib.parse import urlsplit
 
 from policies.mara_decision_request import (
     DecisionAuthorshipIdentity,
+    MAX_RESTRICTED_DECISION_INPUT_BYTES,
     compose_mara_decision_prompt,
     decision_authorship_identity,
     load_choose_next_action_skill,
     load_mara_profile,
 )
-from policies.model_focal_policy import ModelUnavailableError
+from policies.model_focal_policy import (
+    ModelUnavailableError,
+    RestrictedInputTooLargeError,
+)
 
 
 OLLAMA_ADAPTER_VERSION = "ollama-chat-v0"
@@ -267,6 +271,10 @@ class OllamaDecisionClient:
             profile=self._profile,
             skill=self._skill,
         )
+        if prompt.restricted_input_bytes > MAX_RESTRICTED_DECISION_INPUT_BYTES:
+            raise RestrictedInputTooLargeError(
+                "restricted decision input exceeds the approved byte ceiling"
+            )
         payload = {
             "model": self._model,
             "messages": prompt.messages_data(),

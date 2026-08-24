@@ -4,9 +4,8 @@ Status: current operating contract for owner-authorized continuous, scheduled,
 and manual development.
 
 The compact contract in `docs/plans/CURRENT.md` is the normal entry point. This
-document expands it. As of August 22, 2026, no implementation goal is active;
-the loop must therefore stop after orientation unless the owner starts a new
-goal or explicitly authorizes a bounded maintenance task.
+document expands it. As of August 23, 2026, First Autonomous 24-Hour Living Day
+is the active owner-approved implementation goal.
 
 ## Purpose and Boundary
 
@@ -150,6 +149,20 @@ outcome. If no honest claim can be made, make no change.
 Record only the current work unit in shared state when an active goal requires
 it. Do not record later tasks or a preferred sequence.
 
+For an implementation work unit, explicitly invoke the installed `$unlazy`
+skill in Solo mode after selecting the current gap and before editing. Write one
+root `GATES.md` containing only observable gates for this work unit, with
+focused checks, the full repository check, and `git diff --check` represented
+as runnable gates where applicable. The file is run-scoped and ignored by Git;
+verified result counts and decisive evidence belong in shared implementation
+state.
+
+Before replacing a prior run's ledger, confirm it contains no unmet gate. If a
+stale ledger has unmet gates that do not agree with shared run state, stop at
+**BASELINE BLOCKED** rather than erasing the discrepancy. Approve only commands
+the main agent has read and understands. Do not install the optional Claude
+Code stop hook for this loop.
+
 ### 3. Partition carefully
 
 The main agent may delegate bounded investigation or implementation only when
@@ -194,6 +207,12 @@ for:
 
 Always run `git diff --check`. Validate documentation links when documentation
 changes.
+
+Re-run the current work unit's approved runnable gates with the skill's
+`--reverify` path after implementation and after any material review fix. An
+unmet gate prevents completion even when another check passed. Any deliberately
+abandoned gate must retain its non-empty reason and be surfaced in the run
+report and shared evidence.
 
 ### 6. Obtain independent review
 
@@ -253,5 +272,6 @@ updated repository state. A one-shot run exits after the commit.
 
 For a completed unit, report the authorized outcome, observed result, changed
 files, validation, review findings, commit, forced or special cases, and any
-remaining owner decision. Keep observation separate from interpretation and do
-not imply that passing a bounded test proves a broader simulation claim.
+remaining owner decision. Include exact met, unmet, and abandoned `unlazy` gate
+counts. Keep observation separate from interpretation and do not imply that
+passing a bounded test proves a broader simulation claim.

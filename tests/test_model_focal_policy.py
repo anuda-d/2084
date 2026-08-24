@@ -1,9 +1,12 @@
+from dataclasses import replace
 import json
 import unittest
 
 from observer.inspector import render_inspector
 from observer.terminal import render_terminal
 from policies.model_focal_policy import (
+    DECISION_HISTORY_PROJECTION_KIND,
+    MAX_RETAINED_DECISION_HISTORY_ENTRIES,
     ModelFocalPolicy,
     ModelUnavailableError,
     RecordedDecisionClient,
@@ -12,7 +15,17 @@ from policies.model_focal_policy import (
     model_input_from_view,
     structured_choice_to_attempt,
 )
+from policies.mara_decision_request import restricted_decision_input_size_bytes
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
+from simulation.actions import ActionAttempt, ActionResult
+from simulation.agents import (
+    MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+    PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
+    PrivateDecisionRecordLimitError,
+    private_decision_records_size_bytes,
+    serialize_private_decision_records,
+    validate_private_decision_record_retention,
+)
 from simulation.events import to_plain_data
 
 
@@ -231,6 +244,418 @@ def model_policy(client):
 
 
 class ModelFocalPolicyTests(unittest.TestCase):
+    def test_unexpected_policy_exception_records_sanitized_terminal_boundary(self):
+        class UnexpectedFailurePolicy:
+            def choose(self, view):
+                raise ValueError("private-provider-marker")
+
+        simulation = build_first_day(
+            seed=42,
+            focal_policy=UnexpectedFailurePolicy(),
+        )
+
+        with self.assertRaisesRegex(ValueError, "private-provider-marker"):
+            simulation.step()
+
+        self.assertFalse(simulation.is_complete)
+        self.assertEqual(simulation.runtime_failure.failure_type, "ValueError")
+        self.assertEqual(simulation.runtime_failure.last_committed_tick, 0)
+        self.assertEqual(simulation.runtime_failure.failed_tick, 1)
+        inspector = render_inspector(simulation)
+        normal = render_terminal(simulation.snapshots)
+        objective = json.dumps(simulation.history_data(), sort_keys=True)
+        self.assertIn('"failure_type": "ValueError"', inspector)
+        self.assertNotIn("private-provider-marker", inspector)
+        self.assertNotIn("runtime_failure", normal)
+        self.assertNotIn("runtime_failure", objective)
+
+    def test_private_record_retention_accepts_exact_limit_and_rejects_overflow(
+        self,
+    ):
+        simulation = build_first_day(
+            seed=42,
+            focal_policy=model_policy(
+                StaticModelDecisionClient(
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "wait briefly",
+                        "decision_reason": "retain boundary evidence",
+                    }
+                )
+            ),
+        )
+        simulation.step()
+        record = simulation.decision_records[0]
+        base = replace(record, model_input={"padding": ""})
+        base_bytes = private_decision_records_size_bytes((base,))
+        padding_bytes = MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES - base_bytes
+        exact = replace(base, model_input={"padding": "x" * padding_bytes})
+        overflow = replace(
+            base,
+            model_input={"padding": "x" * (padding_bytes + 1)},
+        )
+
+        self.assertEqual(
+            private_decision_records_size_bytes((exact,)),
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+        self.assertEqual(
+            validate_private_decision_record_retention((exact,)),
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+        simulation._retain_decision_records((exact,))
+        self.assertEqual(simulation.decision_records, (exact,))
+        self.assertEqual(
+            simulation.private_decision_records_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+        with self.assertRaises(PrivateDecisionRecordLimitError) as raised:
+            simulation._retain_decision_records((overflow,))
+        self.assertEqual(
+            raised.exception.attempted_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES + 1,
+        )
+        self.assertEqual(
+            raised.exception.maximum_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+        self.assertEqual(simulation.decision_records, (exact,))
+        self.assertEqual(
+            simulation.private_decision_records_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+
+        class NearLimitRecordPolicy:
+            def __init__(self, retained_record):
+                self._record = retained_record
+
+            def choose(self, view):
+                return ActionAttempt(
+                    actor_id=view.agent_id,
+                    kind="work",
+                    parameters={},
+                    explanation="attempt work without an oversized record",
+                    decision_reason="exercise private-record preflight",
+                )
+
+            def take_decision_record(self):
+                record_to_return = self._record
+                self._record = None
+                return record_to_return
+
+        near_limit = replace(
+            base,
+            model_input={
+                "padding": "x"
+                * (
+                    padding_bytes
+                    - PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES
+                )
+            },
+        )
+        preflight = build_first_day(
+            seed=42,
+            focal_policy=NearLimitRecordPolicy(near_limit),
+        )
+        preflight.rules = replace(
+            preflight.rules,
+            work_location="w" * 5_000,
+        )
+        prospective_attempt = ActionAttempt(
+            actor_id=FOCAL_AGENT_ID,
+            kind="work",
+            parameters={},
+            explanation="attempt work without an oversized record",
+            decision_reason="exercise private-record preflight",
+        )
+        reserve_bytes = preflight._decision_record_resolution_reserve_bytes(
+            prospective_attempt
+        )
+        with self.assertRaises(PrivateDecisionRecordLimitError) as preflight_error:
+            preflight.step()
+        self.assertEqual(
+            preflight_error.exception.attempted_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+            - PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES
+            + reserve_bytes,
+        )
+        self.assertEqual(preflight.decision_records, ())
+        self.assertEqual(
+            preflight.world.agents[FOCAL_AGENT_ID].action_history,
+            [],
+        )
+        self.assertFalse(
+            any(
+                event.kind == "action_attempted"
+                and event.actor_id == FOCAL_AGENT_ID
+                for event in preflight.events
+            )
+        )
+        self.assertFalse(preflight.is_complete)
+        self.assertEqual(
+            preflight.runtime_failure.to_data(),
+            {
+                "failure_type": "PrivateDecisionRecordLimitError",
+                "last_committed_tick": 0,
+                "failed_tick": 1,
+                "committed_snapshot_count": 0,
+                "event_count_at_failure": len(preflight.events),
+                "observation_count_at_failure": len(
+                    preflight._event_log.observations
+                ),
+                "action_result_count_at_failure": len(
+                    preflight._action_results
+                ),
+            },
+        )
+        failed_boundary = (
+            preflight.tick,
+            preflight.events,
+            preflight.runtime_failure,
+        )
+        with self.assertRaisesRegex(RuntimeError, "stopped after a runtime failure"):
+            preflight.step()
+        self.assertEqual(
+            (preflight.tick, preflight.events, preflight.runtime_failure),
+            failed_boundary,
+        )
+
+    def test_pending_record_overflow_preflights_before_world_completion(self):
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to workplace",
+                "decision_reason": "exercise resolution preflight",
+            }
+        )
+        simulation = build_first_day(seed=42, focal_policy=model_policy(client))
+        simulation.step()
+        pending_record = simulation.decision_records[0]
+        base = replace(pending_record, model_input={"padding": ""})
+        base_bytes = private_decision_records_size_bytes((base,))
+        exact = replace(
+            base,
+            model_input={
+                "padding": "x"
+                * (MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES - base_bytes)
+            },
+        )
+        simulation._retain_decision_records((exact,))
+        simulation.step()
+        focal = simulation.world.agents[FOCAL_AGENT_ID]
+        events_before = simulation.events
+        results_before = tuple(focal.action_results)
+
+        with self.assertRaises(PrivateDecisionRecordLimitError):
+            simulation.step()
+
+        self.assertEqual(focal.location, "home")
+        self.assertEqual(tuple(focal.action_results), results_before)
+        self.assertEqual(simulation.decision_records, (exact,))
+        self.assertIsNone(simulation.decision_records[0].resolution_status)
+        self.assertFalse(
+            any(
+                event.kind == "travel_completed"
+                and event.actor_id == FOCAL_AGENT_ID
+                for event in simulation.events[len(events_before):]
+            )
+        )
+        self.assertIn(FOCAL_AGENT_ID, simulation._pending)
+        self.assertFalse(simulation.is_complete)
+        self.assertEqual(simulation.runtime_failure.last_committed_tick, 2)
+        self.assertEqual(simulation.runtime_failure.failed_tick, 3)
+        failed_boundary = (
+            simulation.tick,
+            simulation.events,
+            tuple(simulation._action_results),
+            dict(simulation._pending),
+        )
+        with self.assertRaisesRegex(RuntimeError, "stopped after a runtime failure"):
+            simulation.step()
+        self.assertEqual(
+            (
+                simulation.tick,
+                simulation.events,
+                tuple(simulation._action_results),
+                dict(simulation._pending),
+            ),
+            failed_boundary,
+        )
+
+    def test_inspector_reports_exact_current_and_peak_private_record_bytes_only(self):
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to workplace",
+                "decision_reason": "follow the current obligation",
+            }
+        )
+        simulation = build_first_day(seed=42, focal_policy=model_policy(client))
+
+        simulation.step()
+        pending_bytes = simulation.private_decision_records_bytes
+        self.assertEqual(
+            pending_bytes,
+            len(
+                serialize_private_decision_records(
+                    simulation.decision_records
+                ).encode("utf-8")
+            ),
+        )
+        simulation.step()
+        simulation.step()
+
+        completed_bytes = private_decision_records_size_bytes(
+            simulation.decision_records
+        )
+        self.assertEqual(simulation.private_decision_records_bytes, completed_bytes)
+        self.assertGreater(completed_bytes, pending_bytes)
+        self.assertEqual(
+            simulation.peak_private_decision_records_bytes,
+            completed_bytes,
+        )
+        inspector_lines = render_inspector(simulation).splitlines()
+        inspector = json.loads("\n".join(inspector_lines[2:]))
+        self.assertEqual(
+            inspector["private_decision_record_storage"],
+            {
+                "retained_bytes": completed_bytes,
+                "peak_retained_bytes": completed_bytes,
+                "maximum_bytes": MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+            },
+        )
+        normal = render_terminal(simulation.snapshots)
+        objective = json.dumps(simulation.history_data(), sort_keys=True)
+        self.assertNotIn("private_decision_record_storage", normal)
+        self.assertNotIn("private_decision_record_storage", objective)
+        self.assertNotIn(str(completed_bytes), normal)
+        self.assertIsNone(inspector["runtime_failure"])
+
+    def test_decision_history_projection_retains_a_bounded_recent_window(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+        lifetime_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        attempts = tuple(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="wait",
+                parameters={},
+                explanation=f"wait attempt {index:02d}",
+                decision_reason=f"reason {index:02d}",
+            )
+            for index in range(lifetime_count)
+        )
+        results = tuple(
+            ActionResult(
+                action_id=f"action-{index:04d}",
+                attempt_event_id=f"event-attempt-{index:04d}",
+                outcome_event_id=f"event-outcome-{index:04d}",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="wait",
+                status="completed",
+                resolved_tick=index + 1,
+                reason=f"completed wait {index:02d}",
+            )
+            for index in range(lifetime_count)
+        )
+        projected = model_input_from_view(
+            replace(
+                view,
+                last_attempt=attempts[-1],
+                action_history=attempts,
+                action_results=results,
+            )
+        )["decision_history"]
+
+        self.assertEqual(
+            projected["projection"],
+            {
+                "kind": DECISION_HISTORY_PROJECTION_KIND,
+                "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "total_attempts": lifetime_count,
+                "total_results": lifetime_count,
+                "omitted_attempts": 3,
+                "omitted_results": 3,
+            },
+        )
+        self.assertEqual(
+            len(projected["attempts"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+        )
+        self.assertEqual(
+            len(projected["results"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+        )
+        self.assertEqual(
+            projected["attempts"][0]["explanation"], "wait attempt 03"
+        )
+        self.assertEqual(
+            projected["attempts"][-1], projected["last_attempt"]
+        )
+        self.assertEqual(
+            projected["results"][0]["action_id"], "action-0003"
+        )
+        self.assertEqual(
+            projected["results"][-1]["action_id"],
+            f"action-{lifetime_count - 1:04d}",
+        )
+
+    def test_decision_history_collection_size_stops_growing_after_its_window(self):
+        simulation = build_first_day(seed=42)
+        view = simulation.agent_view(FOCAL_AGENT_ID)
+
+        def projected_lengths(lifetime_count: int) -> tuple[int, int]:
+            attempts = tuple(
+                ActionAttempt(
+                    actor_id=FOCAL_AGENT_ID,
+                    kind="wait",
+                    parameters={},
+                    explanation="bounded wait",
+                    decision_reason="bounded continuity test",
+                )
+                for _ in range(lifetime_count)
+            )
+            results = tuple(
+                ActionResult(
+                    action_id=f"action-{index:04d}",
+                    attempt_event_id=f"event-attempt-{index:04d}",
+                    outcome_event_id=f"event-outcome-{index:04d}",
+                    actor_id=FOCAL_AGENT_ID,
+                    action_kind="wait",
+                    status="completed",
+                    resolved_tick=index + 1,
+                )
+                for index in range(lifetime_count)
+            )
+            history = model_input_from_view(
+                replace(
+                    view,
+                    last_attempt=attempts[-1],
+                    action_history=attempts,
+                    action_results=results,
+                )
+            )["decision_history"]
+            return len(history["attempts"]), len(history["results"])
+
+        self.assertEqual(
+            projected_lengths(MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            ),
+        )
+        self.assertEqual(
+            projected_lengths(MAX_RETAINED_DECISION_HISTORY_ENTRIES + 80),
+            (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            ),
+        )
+
     def test_recorded_decisions_reproduce_complete_ordered_world_history(self):
         scripted = build_first_day(seed=42)
         scripted.run(max_ticks=30)
@@ -764,6 +1189,10 @@ class ModelFocalPolicyTests(unittest.TestCase):
             and event.actor_id == FOCAL_AGENT_ID
         )
         self.assertEqual(record.status, "selected")
+        self.assertEqual(
+            record.model_input_bytes,
+            restricted_decision_input_size_bytes(record.model_input),
+        )
         self.assertEqual(record.configuration_id, "deterministic-test-v1")
         self.assertIsNone(record.authorship_identity)
         self.assertEqual(record.to_data()["model_input"], client.inputs[0])

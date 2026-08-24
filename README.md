@@ -3,8 +3,10 @@
 2084 is an early, terminal-based social simulation about following one
 autonomous person through a world they can only partly understand.
 
-The long-term idea is to watch a life unfold inside a small society shaped by lies, contradictions, institutions, relationships, limited information, and pressure. The
-focal character is not a player-controlled does not know everything
+The long-term idea is to watch a life unfold inside a small society shaped by
+lies, contradictions, institutions, relationships, limited information, and
+pressure. The focal character is not a player-controlled puppet and does not
+know everything
 the simulation knows. Other people and institutions continue acting while the
 observer sees the world mainly through that character's experience.
 
@@ -169,7 +171,9 @@ stance system.
 The repository also contains a proposed thin-harness/fat-skills direction for
 later model-backed expansion. The current code implements only the narrow Mara
 decision boundary; it does not contain a general skill resolver, tool-using
-agent runtime, or self-modifying skill system. No later product goal is active.
+agent runtime, or self-modifying skill system. The active 24-hour goal preserves
+that narrow model boundary while adding one full-day composition; it does not
+authorize the proposed general runtime.
 
 ## Known limits
 

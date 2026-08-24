@@ -11,7 +11,15 @@ from urllib.error import URLError
 
 from observer.inspector import render_inspector
 from observer.terminal import render_terminal
-from policies.model_focal_policy import ModelFocalPolicy, model_input_from_view
+from policies.mara_decision_request import (
+    MAX_RESTRICTED_DECISION_INPUT_BYTES,
+    restricted_decision_input_size_bytes,
+)
+from policies.model_focal_policy import (
+    ModelFocalPolicy,
+    RestrictedInputTooLargeError,
+    model_input_from_view,
+)
 from policies.ollama_client import (
     OLLAMA_NUM_CTX,
     OLLAMA_MAX_TIMEOUT_SECONDS,
@@ -71,6 +79,89 @@ def valid_wait_content():
 
 
 class OllamaDecisionClientTests(unittest.TestCase):
+    def _model_input_with_size(self, target_bytes):
+        simulation = build_first_day(seed=42)
+        model_input = model_input_from_view(simulation.agent_view(FOCAL_AGENT_ID))
+        model_input["state"]["aim"] = ""
+        base_bytes = restricted_decision_input_size_bytes(model_input)
+        self.assertGreaterEqual(target_bytes, base_bytes)
+        model_input["state"]["aim"] = "x" * (target_bytes - base_bytes)
+        self.assertEqual(
+            restricted_decision_input_size_bytes(model_input),
+            target_bytes,
+        )
+        return model_input
+
+    def test_restricted_input_byte_ceiling_is_exact_and_precedes_transport(self):
+        transport = FakeOllamaTransport(ollama_response(valid_wait_content()))
+        client = OllamaDecisionClient(
+            base_url=TEST_BASE_URL,
+            model="qwen3:4b-instruct",
+            transport=transport,
+        )
+        at_limit = self._model_input_with_size(
+            MAX_RESTRICTED_DECISION_INPUT_BYTES
+        )
+
+        choice = client.choose(at_limit)
+
+        self.assertEqual(choice["kind"], "wait")
+        self.assertEqual(len(transport.calls), 1)
+
+        over_limit = self._model_input_with_size(
+            MAX_RESTRICTED_DECISION_INPUT_BYTES + 1
+        )
+        with self.assertRaises(RestrictedInputTooLargeError):
+            client.choose(over_limit)
+        self.assertEqual(len(transport.calls), 1)
+
+        over_limit["state"]["aim"] = (
+            over_limit["state"]["aim"][:-1] + "é"
+        )
+        self.assertEqual(
+            restricted_decision_input_size_bytes(over_limit),
+            MAX_RESTRICTED_DECISION_INPUT_BYTES + 2,
+        )
+        with self.assertRaises(RestrictedInputTooLargeError):
+            client.choose(over_limit)
+        self.assertEqual(len(transport.calls), 1)
+
+    def test_policy_records_oversized_input_failure_without_provider_call(self):
+        transport = FakeOllamaTransport()
+        client = OllamaDecisionClient(
+            base_url=TEST_BASE_URL,
+            model="qwen3:4b-instruct",
+            transport=transport,
+        )
+        simulation = build_first_day(
+            seed=42,
+            focal_policy=ModelFocalPolicy(
+                client,
+                configuration_id=client.configuration_id,
+                authorship_identity=client.authorship_identity,
+            ),
+        )
+        simulation.world.agents[FOCAL_AGENT_ID].aim = (
+            "é" * MAX_RESTRICTED_DECISION_INPUT_BYTES
+        )
+
+        snapshot = simulation.step()
+
+        self.assertEqual(transport.calls, [])
+        self.assertEqual(snapshot.current_action, "wait because no valid model decision is available")
+        record = simulation.decision_records[0]
+        self.assertEqual(record.status, "failed")
+        self.assertEqual(record.failure_kind, "restricted_input_too_large")
+        self.assertEqual(record.failure_type, "RestrictedInputTooLargeError")
+        self.assertGreater(
+            record.model_input_bytes,
+            MAX_RESTRICTED_DECISION_INPUT_BYTES,
+        )
+        self.assertEqual(
+            record.model_input_bytes,
+            restricted_decision_input_size_bytes(record.model_input),
+        )
+
     def test_exact_native_chat_request_returns_one_candidate_choice(self):
         transport = FakeOllamaTransport(ollama_response(valid_wait_content()))
         client = OllamaDecisionClient(

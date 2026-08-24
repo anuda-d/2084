@@ -30,6 +30,16 @@ def render_inspector(simulation: Simulation) -> str:
         "private_decision_records": [
             record.to_data() for record in simulation.decision_records
         ],
+        "private_decision_record_storage": {
+            "retained_bytes": simulation.private_decision_records_bytes,
+            "peak_retained_bytes": simulation.peak_private_decision_records_bytes,
+            "maximum_bytes": simulation.maximum_private_decision_records_bytes,
+        },
+        "runtime_failure": (
+            simulation.runtime_failure.to_data()
+            if simulation.runtime_failure is not None
+            else None
+        ),
         "institution_records": dict(simulation.world.institution.records),
         "official_record": simulation.world.institution.official_record.to_data(),
         "beliefs": beliefs,

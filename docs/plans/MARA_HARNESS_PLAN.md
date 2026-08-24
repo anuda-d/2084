@@ -4,7 +4,10 @@ Status: completed architecture record for the Model-Backed Focal Character
 goal. This document records the decisions made in the August 22, 2026 harness
 discussion and the boundary they produced. Verified completion evidence lives
 in the goal's [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md).
-It does not authorize work on the later 24-hour simulation foundation.
+This completed record does not authorize later work. The separately
+owner-approved
+[First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md) goal is now
+active and is the sole authority for that work.
 
 Reading note: forward-looking language below preserves the plan-time design
 constraints. The sections on existing code, verified evaluation, resolved
@@ -27,9 +30,10 @@ The completed implementation sequence was:
 5. Document the live entry path and complete MF-10 without weakening MF-1
    through MF-9.
 
-The 24-hour simulation foundation remains deliberately deferred. Model-backed
-Mara can now be observed interacting with the current bounded world, but no
-later foundation goal is active.
+The 24-hour simulation foundation was deliberately deferred from this harness
+plan. Model-backed Mara can now be observed interacting with the current bounded
+world. The separately approved First Autonomous 24-Hour Living Day goal now
+owns the later full-day scope.
 
 ## Architectural Thesis
 
@@ -556,10 +560,11 @@ This plan does not include:
 
 ## Deferred Architecture
 
-A later 24-hour foundation will require its own owner-approved goal and may add
-durable checkpoints, pacing, discrete-event scheduling, and crash recovery.
-Those concerns must remain outside the Mara decision harness so they do not
-turn it into a general runtime.
+A later 24-hour foundation required its own owner-approved goal and could
+consider durable checkpoints, pacing, discrete-event scheduling, and crash
+recovery. The active First Autonomous 24-Hour Living Day goal now makes the
+bounded choices for that work. Those concerns remain outside the Mara decision
+harness so they do not turn it into a general runtime.
 
 No choices about that later foundation were required to finish model-backed
 Mara, and none are authorized by this completed record.
@@ -580,8 +585,9 @@ Mara, and none are authorized by this completed record.
 - The model returns one attempted action and never directly changes the world.
 - Persistent Mara continuity remains explicit simulation state, not provider
   chat history.
-- The completed goal stopped at MF-10; work on the 24-hour foundation still
-  waits for a separate owner-approved goal.
+- The completed goal stopped at MF-10; later 24-hour work required the separate
+  owner approval now recorded by the active First Autonomous 24-Hour Living Day
+  goal.
 
 ## Decisions Resolved by the Initial Integration
 

@@ -7,12 +7,123 @@ first living slice implements them. The implementation is a working feasibility
 slice, not a settled production specification.
 
 The bounded Official Record, Agent Understanding, and Model-Backed Focal
-Character goals are complete. There is currently no active owner-approved
-implementation goal. The separate thin-harness/fat-skills documents describe a
-possible generalization of the completed Mara boundary, not an implemented
-general agent runtime.
+Character goals are complete. The owner-approved
+[First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
+goal is active and targets one accelerated model-backed day with explicit time,
+decision eligibility, a minimally living wider world, bounded model continuity,
+offline reproduction, and one final owner-authorized live run. Its initial
+bounded-model work now enforces restricted-input and retained-private-record
+byte ceilings and projects prior decisions through a finite recent window. The
+24-hour clock and a pure deterministic temporal agenda now host the first
+concrete successor world composition. That narrow composition proves scheduled
+supporting and institutional activity across a full day; focal policy and
+general action integration, full-day proofs, and the live run are not
+implemented. The separate
+thin-harness/fat-skills documents
+describe a possible generalization of the completed Mara boundary, not an
+implemented general agent runtime.
 
 ## Implemented Simulation Loop
+
+### Simulated-time primitive for the 24-hour successor
+
+The active full-day work defines authoritative time as a non-negative integer
+count of whole simulated minutes. That integer is the sole ordering value;
+readable `Day N HH:MM` text is a projection and wall-clock time has no role.
+One `SimulatedDayClock` owns an explicit start, current time, and end at exactly
+start plus 1,440 minutes. It permits equal-time or forward advancement through
+that boundary and rejects backward or beyond-boundary movement.
+
+This primitive is not wired into legacy `Simulation.step()`. A
+`TemporalAgenda` can register uniquely identified work within the remaining
+day, order it by simulated minute, explicit causal phase, and stable identity,
+then move the day clock directly to the next due instant or the exact end
+boundary. The chosen successor equal-time order is scheduled
+world and institutional work, action completions, observation deliveries,
+understanding updates, then decisions. It releases only one phase at a time, so
+work caused by an earlier phase can enter a later phase before already-pending
+decisions are released. Once a phase has been released at a minute, inserting
+that phase or an earlier one is rejected. This seam returns due work; it does
+not execute it or fabricate intervening events.
+
+This chosen order is not an exact copy of every legacy path. In the legacy
+generic-broadcast path, institutional processing also delivers its broadcast
+before same-tick action completions. `first_day_v3` does not use that generic
+broadcast path. The successor agenda separates scheduled activity from
+observation delivery so those causal phases can remain explicit.
+
+The existing `first_day_v3` tick remains unchanged as regression evidence. The
+successor has no full-day command or scenario-level completion claim yet.
+
+An isolated `DecisionEligibility` seam can place only five documented causes
+into the agenda's decision phase: initial activation, a terminal action result,
+a delivered observation, an explicit scheduled wake, or a safe-failure retry.
+Causes for one actor at one minute coalesce into one eligibility record. Time
+passage alone creates no record. The initial safe-failure cadence is one retry
+30 simulated minutes later, with no retry if that instant would cross the day
+boundary. The seam does not call policies or execute actions, and the legacy
+tick loop does not use it yet.
+
+An `AcceleratedDayRuntime` now provides the first isolated executor for these
+temporal seams. A composition registers handlers by authored work kind, and the
+runtime dispatches due batches through the agenda's causal phases. Handlers
+receive only current/end time and a validated scheduling method; they cannot
+advance time, release work, close registration, or re-enter the runtime through
+that interface. A composition may bind a time-advance observer; the autonomous
+day uses it only to synchronize `WorldState.tick` before due handlers execute
+and again at the final boundary. The runtime retains exact
+committed-work order and compact quiet spans, processes work due exactly at the
+end boundary, then closes the agenda against further registration. An
+unexpected handler or dispatch exception creates sanitized terminal evidence
+and freezes subsequent execution and registration to prevent false completion
+or retry mutation. It does not roll back handler side effects: append-only
+objective evidence from a handler that fails after mutation may remain outside
+the committed-work trace and requires direct history inspection.
+
+The runtime now owns the explicit decision-eligibility registry. A composition
+can request one of the five documented causes, and the runtime consumes the
+coalesced record in the decision phase before calling one dedicated decision
+handler. That handler can request the documented 30-minute safe-failure retry
+through its restricted context. Quiet advancement creates no handler call.
+
+A composition explicitly identifies any model-backed actor subject to the
+approved day budget. The runtime records decision-handler counts by actor,
+permits call 128, and turns a would-be call 129 into sanitized terminal failure
+before invoking the handler. Unmarked deterministic supporting actors are not
+silently assigned Mara's model-call ceiling.
+
+`scenarios.autonomous_day` is the first concrete world hosted by this executor.
+Its authored schedule lets Ilan attempt a two-hour workplace shift at minute
+480 and complete it at minute 600. Between those events, the district transit
+authority changes objective tram-service state at minute 510. These events
+append to the shared `EventLog` while Mara is marked model-bounded for runtime
+accounting but remains at home with zero decisions and no configured model
+policy. The service change itself grants no knowledge. A
+separate observation-phase delivery at minute 660 links that event to Mara only
+when she is physically at the authored home bulletin receiver; otherwise it
+remains undelivered. The runtime then jumps to and closes at the exact day
+boundary, which becomes the world's current authoritative minute.
+
+This is deliberately a narrow composition seam, not the completed autonomous
+day. Its supporting action validates only the one authored workplace condition;
+it does not yet reuse a general successor action resolver. The decision handler
+still receives trigger evidence but no `AgentView`, and the delivered bulletin
+does not yet cause decision eligibility, model input, canonical understanding,
+or a complete normal presentation. No focal policy uses the composition yet.
+
+The offline command `python3 -m scenarios.autonomous_day --seed 42` runs this
+narrow composition from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
+Its normal output shows only the declared boundary and Mara's accessible home
+bulletin; supporting work, objective event kinds, stable identifiers, and
+omniscient runtime work evidence remain hidden. This is a runnable time-boundary
+proof, not a claim that the ordinary focal day or model path is complete.
+
+Adding `--inspect` replaces that focal projection with an explicitly
+omniscient JSON document. It includes the successful runtime work order and
+quiet spans, objective events and final state, agent-specific observations,
+action results, and exact counts for the narrow composition. It does not yet
+contain private model-growth measurements, and the runtime committed-work trace
+still cannot reconstruct partial objective tails left by a failed handler.
 
 ```text
 The world and its systems advance
@@ -225,6 +336,25 @@ text, endpoint addressing, raw provider failures, and hidden provider
 chain-of-thought stay out of objective history and normal presentation. Mara's
 concise `decision_reason` is intentionally retained as an attributed action
 explanation and rendered in the normal `Reason:` line.
+
+The active 24-hour goal has added three long-run guardrails to this boundary.
+The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter
+refuses inputs above 48 KiB before transport. Prior attempts and results use a
+16-entry recent window with explicit total and omitted counts. The complete
+private decision-record collection uses canonical compact JSON measurement,
+cannot retain more than 8 MiB, and reports current and peak sizes only in the
+omniscient inspector. These mechanisms do not yet bound delivered observations
+or canonical understanding, prove that older behaviorally relevant results are
+always represented elsewhere, or prove the complete-day model path. The
+successor executor separately enforces 128 decision-handler invocations for a
+marked model-bounded actor, but no successor composition invokes Mara's model
+policy yet.
+
+An exception during `Simulation.step()` creates sanitized inspector-only
+runtime-failure evidence naming the failed tick and last committed snapshot.
+The append-only log may retain a partial failed-tick tail; the simulation is
+then terminal, cannot report completion, and rejects every later step before
+mutation. This is an explicit failure boundary, not rollback or restart.
 
 ## Contradictory Reality
 
