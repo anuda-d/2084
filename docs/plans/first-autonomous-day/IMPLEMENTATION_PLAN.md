@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-5 is met. AD-1 through AD-4 and AD-6 through AD-12 are open.
+Status: active; AD-1 and AD-5 are met. AD-2 through AD-4 and AD-6 through AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,25 +9,25 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: Fourth whole-goal alignment (2026-08-23)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-1 offline autonomous-day command (2026-08-23)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
-| AD-1 Simulation-owned day | open | The accelerated-day runtime now hosts one concrete successor world and owns its explicit minute 0 through minute 1,440 boundary, including exact-end work before registration closes. A time-advance binding synchronizes the world's current minute before each due handler and at the final boundary. It has no documented offline command. |
+| AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
 | AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. Trigger provenance remains caller-asserted, overlapping retry chains can produce aggregate per-minute decisions, no actual policy uses this boundary, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
-| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. The delivered evidence is not yet connected to decision input, canonical understanding, or normal presentation. |
+| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. The accessible bulletin appears in focal-safe normal output, but delivered or undelivered evidence is not yet connected to decision input or canonical understanding. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. The composition marks Mara for this accounting but neither configures nor exercises her model policy; observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, but aggregate chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | The successor runtime summary retains readable start/current/end time, successful committed-work order, compact quiet spans, decision counts for every marked model actor including zero, exact completion, and sanitized failure evidence. A failed handler may leave an objective partial tail outside the committed-work trace. No normal full-day presenter or complete agent/model/event measurement summary exists yet. |
+| AD-11 Watchability and inspection | open | The successor command now presents readable start/end time and Mara's accessible bulletin without hidden supporting or objective detail. The runtime summary retains successful committed-work order, compact quiet spans, decision counts, exact completion, and sanitized failure evidence. Normal output does not yet summarize quiet spans, and no complete inspector or agent/model/event measurement summary exists; failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -192,6 +192,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-1 offline autonomous-day command
+
+- Added the documented offline command
+  `python3 -m scenarios.autonomous_day --seed 42`. It runs the successor from
+  `Day 0 00:00` through exact `Day 1 00:00` and returns zero only when the
+  runtime reports the complete 1,440-minute boundary.
+- Normal output contains only readable boundary information, Mara's location,
+  and her delivered home transit bulletin. It omits Ilan, objective event kinds,
+  stable identifiers, and omniscient runtime work evidence.
+- Focused validation passed three module-command, equality, and controlled
+  argument-error tests. Full offline validation passed 157 repository tests and
+  63 historical checks; all three approved gates were reverified with 3 met, 0
+  unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no behavioral blockers and verified
+  offline and wall-clock independence, cross-process byte equality, incomplete
+  exit 1, unexpected-failure non-success, controlled unknown arguments, and no
+  normal-output leak. Its initial stale-state findings were corrected before
+  commit.
+- AD-1 is met. Scope limit: the command has no inspector mode, quiet-span
+  presentation, focal decisions, general action resolution, or complete
+  ordinary-day claim; AD-6 and AD-11 remain open on those narrower boundaries.
 
 ### 2026-08-23 — AD-6 access-gated background consequence
 

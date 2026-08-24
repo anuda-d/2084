@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 
 from simulation.actions import ActionAttempt, ActionResult, PendingAction
@@ -266,3 +267,48 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
         _event_log=event_log,
         _pending_actions=pending_actions,
     )
+
+
+def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
+    """Render only focal-safe evidence from the narrow successor day."""
+
+    lines = [
+        "2084 — AUTONOMOUS DAY",
+        "Normal observer: focal-character knowledge only",
+        "",
+        f"Start: {summary.start.label} | Mara at Home",
+    ]
+    for observation in day.world.agents[MARA_ID].observations:
+        if observation.details.get("evidence_kind") != "transit_service_status":
+            continue
+        delivered_at = SimulatedTime(observation.delivery_tick)
+        lines.append(
+            f"{delivered_at.label} | Home transit bulletin: "
+            f"{observation.details['route']} service is "
+            f"{observation.details['current_status']}."
+        )
+    lines.extend(
+        [
+            f"End: {summary.current.label}",
+            "Exact 24-hour boundary reached: "
+            + ("yes" if summary.reached_end_boundary else "no"),
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run the narrow offline 2084 autonomous-day successor"
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args(argv)
+
+    day = build_autonomous_day(seed=args.seed)
+    summary = day.run()
+    print(render_autonomous_day(day, summary), end="")
+    return 0 if summary.reached_end_boundary else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

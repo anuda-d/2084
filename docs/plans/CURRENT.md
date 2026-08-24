@@ -37,6 +37,7 @@ unclear.
 
 ## Commands
 
+- Autonomous-day offline run: `python3 -m scenarios.autonomous_day --seed 42`
 - Full check: `./scripts/check.sh`
 - Normal run: `python3 -m scenarios.first_day --seed 42 --ticks 30`
 - Inspector: `python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect`

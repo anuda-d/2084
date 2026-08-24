@@ -109,7 +109,14 @@ day. Its supporting action validates only the one authored workplace condition;
 it does not yet reuse a general successor action resolver. The decision handler
 still receives trigger evidence but no `AgentView`, and the delivered bulletin
 does not yet cause decision eligibility, model input, canonical understanding,
-or normal presentation. No focal policy or command uses the composition yet.
+or a complete normal presentation. No focal policy uses the composition yet.
+
+The offline command `python3 -m scenarios.autonomous_day --seed 42` runs this
+narrow composition from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
+Its normal output shows only the declared boundary and Mara's accessible home
+bulletin; supporting work, objective event kinds, stable identifiers, and
+omniscient runtime work evidence remain hidden. This is a runnable time-boundary
+proof, not a claim that the ordinary focal day or model path is complete.
 
 ```text
 The world and its systems advance
