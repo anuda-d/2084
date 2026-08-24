@@ -9,23 +9,23 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-5 independent successor-world activity (2026-08-23)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: AD-6 access-gated background consequence (2026-08-23)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | The accelerated-day runtime now hosts one concrete successor world and owns its explicit minute 0 through minute 1,440 boundary, including exact-end work before registration closes and synchronization of the world's current minute. It has no documented offline command. |
-| AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion, with an intervening institutional event and quiet-span jumps. No focal action or observation runtime uses it yet. |
+| AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
 | AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. Trigger provenance remains caller-asserted, overlapping retry chains can produce aggregate per-minute decisions, no actual policy uses this boundary, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
-| AD-5 Independently living world | open | The successor composition now gives Ilan one authored two-hour workplace action and the transit authority one independently scheduled objective service change while Mara remains inactive, with exact append-only evidence and no automatic observation delivery. This proves the composition boundary, not a sustained ordinary-day supporting policy or a later accessible consequence. |
-| AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
+| AD-5 Independently living world | open | The successor composition now gives Ilan one authored two-hour workplace action and the transit authority one independently scheduled objective service change while Mara remains inactive, with exact append-only evidence. A later access-gated bulletin can expose the service consequence. This proves the composition boundary, not a sustained ordinary-day supporting policy. |
+| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. The delivered evidence is not yet connected to decision input, canonical understanding, or normal presentation. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime now enforces exactly 128 dedicated decision-handler invocations for each explicitly configured model-backed actor: call 128 is valid and call 129 is terminal before invocation. No full-day composition configures Mara or proves the model-policy path against this budget; observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes mutation; each requested safe-failure retry is delayed 30 minutes. Aggregate retry-chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy safe-failure path still retries every tick. |
-| AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, observations, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
+| AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
 | AD-11 Watchability and inspection | open | The isolated successor runtime summary retains readable start/current/end time, exact committed-work order, compact quiet spans, decision counts for every configured model actor including zero, supporting-actor counts when active, exact completion, and sanitized failure evidence. No normal full-day presenter or complete agent/model/event measurement summary uses it yet. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
@@ -164,6 +164,30 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-6 access-gated background consequence
+
+- Added a distinct observation-phase delivery at minute 660 for the transit
+  authority's minute-510 service change. The delivery links the immutable source
+  event and reports its recorded status rather than rereading later mutable
+  institutional state.
+- Mara retains the bulletin only while physically at the authored home receiver.
+  Moving her to the workplace or transit stop leaves the same three-event
+  objective history and reduced service state intact but creates no observation.
+  Delivery itself appends no objective event and causes no decision or model
+  access.
+- Focused validation passed three positive, negative, and equality tests. Full
+  offline validation passed 152 repository tests and 63 historical scenario
+  checks; all three approved gates were reverified with 3 met, 0 unmet, and 0
+  abandoned.
+- Fresh independent Sol-high review found no blockers and additionally verified
+  both inaccessible locations, immutable source linkage, exact observation
+  phase, repeat-run idempotence, and honest terminal failure for a missing
+  delivery target.
+- Scope limit: AD-6 remains open. The delivered observation does not yet enter
+  decision eligibility, model input, canonical understanding, or normal
+  presentation. This third implementation unit makes whole-goal alignment due
+  before another implementation task is selected.
 
 ### 2026-08-23 — AD-5 independent successor-world activity
 

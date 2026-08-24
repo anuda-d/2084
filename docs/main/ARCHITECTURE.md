@@ -93,15 +93,18 @@ Its authored schedule lets Ilan attempt a two-hour workplace shift at minute
 480 and complete it at minute 600. Between those events, the district transit
 authority changes objective tram-service state at minute 510. These events
 append to the shared `EventLog` while configured model-backed Mara remains at
-home with zero decisions and no observation of either activity. The runtime
-then jumps to and closes at the exact day boundary, which becomes the world's
-current authoritative minute.
+home with zero decisions. The service change itself grants no knowledge. A
+separate observation-phase delivery at minute 660 links that event to Mara only
+when she is physically at the authored home bulletin receiver; otherwise it
+remains undelivered. The runtime then jumps to and closes at the exact day
+boundary, which becomes the world's current authoritative minute.
 
 This is deliberately a narrow composition seam, not the completed autonomous
 day. Its supporting action validates only the one authored workplace condition;
 it does not yet reuse a general successor action resolver. The decision handler
-still receives trigger evidence but no `AgentView`, and no focal policy,
-observation delivery, normal presenter, or command uses the composition yet.
+still receives trigger evidence but no `AgentView`, and the delivered bulletin
+does not yet cause decision eligibility, model input, canonical understanding,
+or normal presentation. No focal policy or command uses the composition yet.
 
 ```text
 The world and its systems advance

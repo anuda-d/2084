@@ -4,7 +4,7 @@ from scenarios.autonomous_day import ILAN_ID, MARA_ID, build_autonomous_day
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
-    def test_supporting_work_and_institution_continue_while_mara_is_inactive(self):
+    def test_background_consequence_reaches_mara_only_through_home_bulletin(self):
         day = build_autonomous_day(seed=42)
 
         summary = day.run()
@@ -37,8 +37,28 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(mara.location, "home")
         self.assertEqual(mara.action_history, [])
         self.assertEqual(mara.action_results, [])
-        self.assertEqual(mara.observations, [])
+        self.assertEqual(len(mara.observations), 1)
+        self.assertEqual(tuple(mara.observations), day.observations)
+        bulletin = mara.observations[0]
+        self.assertEqual(bulletin.event_id, transit_change.event_id)
+        self.assertEqual(bulletin.delivery_tick, 660)
+        self.assertEqual(bulletin.source, "home transit bulletin receiver")
+        self.assertEqual(bulletin.details["evidence_kind"], "transit_service_status")
+        self.assertEqual(bulletin.details["current_status"], "reduced")
+        self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0})
+
+    def test_transit_change_remains_undelivered_without_channel_access(self):
+        day = build_autonomous_day(seed=42)
+        day.world.agents[MARA_ID].location = "workplace"
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(day.world.tick, 1440)
+        self.assertEqual(len(day.events), 3)
+        self.assertEqual(day.world.institution.records["tram_service"], "reduced")
         self.assertEqual(day.observations, ())
+        self.assertEqual(day.world.agents[MARA_ID].observations, [])
         self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0})
 
     def test_equal_seed_builds_equal_ordered_world_evidence(self):
@@ -49,6 +69,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         second_summary = second.run().to_data()
 
         self.assertEqual(first.events, second.events)
+        self.assertEqual(first.observations, second.observations)
         self.assertEqual(first_summary, second_summary)
         self.assertEqual(first.world.institution.records, second.world.institution.records)
         self.assertEqual(

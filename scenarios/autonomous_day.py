@@ -22,10 +22,13 @@ TRANSIT_AUTHORITY_ID = "district-transit-authority"
 _SUPPORTING_WORK_START = "autonomous_day_supporting_work_start"
 _SUPPORTING_WORK_COMPLETION = "autonomous_day_supporting_work_completion"
 _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
+_TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
+_TRANSIT_BULLETIN_MINUTE = 11 * 60
+_TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
 
 
 @dataclass
@@ -99,6 +102,7 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
     )
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
+    transit_change_events: dict[str, Event] = {}
 
     def start_supporting_work(
         work: ScheduledWork,
@@ -184,7 +188,7 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
             raise RuntimeError("institutional work released at the wrong time")
         prior_status = world.institution.records["tram_service"]
         world.institution.records["tram_service"] = "reduced"
-        event_log.record(
+        changed = event_log.record(
             tick=context.current.total_minutes,
             kind="transit_service_changed",
             actor_id=world.institution.institution_id,
@@ -194,6 +198,39 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
                 "current_status": "reduced",
             },
         )
+        delivery_item_id = "home-transit-bulletin-delivery"
+        transit_change_events[delivery_item_id] = changed
+        context.schedule(
+            ScheduledWork(
+                item_id=delivery_item_id,
+                due_time=SimulatedTime(_TRANSIT_BULLETIN_MINUTE),
+                phase=TemporalPhase.OBSERVATION_DELIVERY,
+                kind=_TRANSIT_BULLETIN_DELIVERY,
+            )
+        )
+
+    def deliver_transit_bulletin(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("bulletin delivery released at the wrong time")
+        mara = world.agents[MARA_ID]
+        if mara.location not in _TRANSIT_BULLETIN_LOCATIONS:
+            return
+        source_event = transit_change_events[work.item_id]
+        observation = event_log.deliver(
+            agent_id=mara.agent_id,
+            event_id=source_event.event_id,
+            source="home transit bulletin receiver",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "transit_service_status",
+                "route": "workplace-home",
+                "current_status": source_event.details["current_status"],
+            },
+        )
+        mara.observations.append(observation)
 
     runtime = AcceleratedDayRuntime(
         start=SimulatedTime(0),
@@ -201,6 +238,7 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
             _SUPPORTING_WORK_START: start_supporting_work,
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
+            _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
         },
         model_backed_actor_ids=(MARA_ID,),
     )
