@@ -426,12 +426,16 @@ These records are development infrastructure. They help distinguish emergence fr
 
 The current slice exports detached JSON-compatible configuration, events,
 observations, and belief transitions through `history_data()`. Equal scripted
-runs produce identical ordered history. Separately, `RecordedDecisionClient`
-can consume detached private decision records and reproduce equal ordered world
-history through the same policy, parser, and resolver without another model
-call. This is programmatic full-run reproduction, not a portable persistence
-format, checkpoint system, user-facing replay command, or claim that equal live
-configuration produces equal samples.
+runs produce identical ordered history. `MaraHarness` is the public composition
+facade for model-backed Mara: it accepts only an `AgentView`, delegates one
+choice through the existing collaborators, and returns one `ActionAttempt`.
+It is not a simulation runtime or persistent mind. Separately,
+`MaraHarness.from_records(...)` can consume detached private decision records
+and reproduce equal ordered world history through the same policy, parser, and
+resolver without another model call. This is programmatic full-run
+reproduction, not a portable persistence format, checkpoint system,
+user-facing replay command, or claim that equal live configuration produces
+equal samples.
 
 ## Implemented First Slice
 

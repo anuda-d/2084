@@ -92,6 +92,13 @@ Useful options:
 
 ### Run model-backed Mara
 
+`policies.mara_harness.MaraHarness` is the single public construction point for
+model-backed Mara. It is a composition facade over the existing restricted
+request, client, parser, safe-failure, and private-record collaborators—not a
+simulation runtime or persistent mind. Its complete behavioral boundary is
+`AgentView -> MaraHarness -> ActionAttempt`; the simulation still decides when
+to call it and alone validates and resolves the returned attempt.
+
 The first live integration uses a local Ollama server and exactly
 `qwen3:4b-instruct`. Both the endpoint and model must be supplied at runtime;
 the repository contains no configured or owner endpoint. Replace the example
@@ -109,9 +116,10 @@ python3 -m scenarios.first_day \
 The adapter accepts only a path-free HTTP origin on a private, loopback, or
 link-local numeric IP address. It does not use credentials, provider chat
 history, retries, model pulls, redirects, proxies, or DNS. Each eligible Mara
-decision sends one fresh restricted state and requests one structured attempted
-action. A provider timeout, unavailable service, malformed response, or invalid
-choice produces an explicit safe wait; it never invokes the scripted policy.
+decision sends one fresh restricted state through `MaraHarness.from_ollama(...)`
+and requests one structured attempted action. A provider timeout, unavailable
+service, malformed response, or invalid choice produces an explicit safe wait;
+it never invokes the scripted policy.
 
 Normal output shows Mara's concise attributed `Reason:` and the consequence the
 simulation resolved. Add `--inspect` to see restricted model input, authored

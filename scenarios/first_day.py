@@ -5,8 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 
-from policies.model_focal_policy import ModelFocalPolicy
-from policies.ollama_client import OllamaDecisionClient
+from policies.mara_harness import MaraHarness
 from simulation.agents import AgentState, DecisionPolicy
 from simulation.institutions import (
     InstitutionState,
@@ -190,7 +189,7 @@ def _cli_focal_policy(
     policy_name: str,
     ollama_base_url: str | None,
     ollama_model: str | None,
-    ollama_client_factory: Callable[..., OllamaDecisionClient],
+    mara_harness_factory: Callable[..., MaraHarness],
 ) -> DecisionPolicy | None:
     if policy_name == "scripted":
         return None
@@ -204,21 +203,16 @@ def _cli_focal_policy(
         raise ValueError(
             f"Ollama model must be {_MF10_OLLAMA_MODEL} for this integration"
         )
-    client = ollama_client_factory(
+    return mara_harness_factory(
         base_url=ollama_base_url,
         model=ollama_model.strip(),
-    )
-    return ModelFocalPolicy(
-        client,
-        configuration_id=client.configuration_id,
-        authorship_identity=client.authorship_identity,
     )
 
 
 def main(
     argv: list[str] | None = None,
     *,
-    ollama_client_factory: Callable[..., OllamaDecisionClient] = OllamaDecisionClient,
+    mara_harness_factory: Callable[..., MaraHarness] = MaraHarness.from_ollama,
 ) -> int:
     parser = argparse.ArgumentParser(description="Run the 2084 first living slice")
     parser.add_argument("--seed", type=int, default=42)
@@ -264,7 +258,7 @@ def main(
             policy_name=args.focal_policy,
             ollama_base_url=args.ollama_base_url,
             ollama_model=args.ollama_model,
-            ollama_client_factory=ollama_client_factory,
+            mara_harness_factory=mara_harness_factory,
         )
     except ValueError as error:
         parser.error(str(error))
