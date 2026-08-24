@@ -10,8 +10,8 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: AD-3 runtime decision-trigger dispatch (2026-08-23)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -19,12 +19,12 @@ implementation sequence.
 | --- | --- | --- |
 | AD-1 Simulation-owned day | open | An isolated accelerated-day runtime now owns an explicit start and executes registered work until exactly start plus 1,440 simulated minutes, including exact-end work before registration closes. It has no successor agent/world composition or documented offline command. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. The accelerated-day runtime now executes agenda batches phase by phase, including dynamically caused later-phase work, and jumps across quiet spans without fabricating work. No agent/action/observation runtime uses it yet. |
-| AD-3 Decision eligibility | open | The accelerated-day runtime now owns explicit eligibility for initial activation, terminal action result, delivered observation, scheduled wake, or safe-failure retry; coalesces pre-release simultaneous causes per actor; dispatches one dedicated handler; and creates no calls from quiet time. Same-minute causes after decision-phase release are rejected. No actual agent policy uses this boundary, and every idle legacy policy is still called every tick. |
+| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. Trigger provenance remains caller-asserted, overlapping retry chains can produce aggregate per-minute decisions, no actual policy uses this boundary, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
 | AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. The recent window plus omission counts does not yet prove preservation of every behaviorally relevant older result. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not verified. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes mutation; its decision context can schedule safe-failure retries at 30-minute intervals through explicit eligibility. No model policy is integrated with that path, and the legacy safe-failure path still retries every tick. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes mutation; each requested safe-failure retry is delayed 30 minutes. Aggregate retry-chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy safe-failure path still retries every tick. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
 | AD-11 Watchability and inspection | open | The isolated successor runtime summary retains readable start/current/end time, exact committed-work order, compact quiet spans, exact completion, and sanitized failure evidence. No normal full-day presenter or complete agent/model/event measurement summary uses it yet; current legacy normal output still renders every tick. |
@@ -139,6 +139,30 @@ implementation-run counter after recording the reviewed state.
   The alignment counter resets to zero; no future implementation task was
   selected or recorded.
 
+### 2026-08-23 — Third whole-goal alignment
+
+- Fresh independent Sol-high review compared all AD-1 through AD-12 criteria
+  after the isolated accelerated-day executor and decision-trigger integration.
+  Every criterion remains open; there is still no successor agent/world
+  composition, offline full-day command, or integrated model path.
+- The review corrected one retry overstatement. A single chain produced 49
+  decisions at minutes 0, 30, through the exact end at 1,440, but 30 overlapping
+  valid wake/retry chains produced 1,441 decisions—one per minute—and still
+  completed. Each retry request is delayed 30 minutes; aggregate cadence,
+  retry-chain suppression, and the 128-call ceiling are not enforced.
+- A world-work handler could also assert a retry for an unrelated actor. This
+  is consistent with the recorded caller-asserted provenance limit, not proof
+  of integrated failure authority.
+- Full offline validation passed 146 repository tests and 63 historical
+  checks. Twenty-seven successor clock, agenda, eligibility, and runtime tests
+  and 42 model-policy/Ollama boundary tests passed. `first_day_v3` reproduced at
+  tick 28 with 150 events, 24 observations, 73 action results, and no runtime
+  failure.
+- Existing append-only history, Official Record, observation, attempted-action,
+  policy privacy, normal/inspector, and legacy scenario boundaries remain
+  intact. No mechanism warrants removal. The alignment counter resets to zero;
+  no future implementation task was selected or recorded.
+
 ## Verified Run Log
 
 ### 2026-08-23 — AD-3 runtime decision-trigger dispatch
@@ -148,8 +172,9 @@ implementation-run counter after recording the reviewed state.
   dedicated handler; quiet advancement produces no handler call.
 - The restricted handler context can request another documented trigger or one
   safe-failure retry exactly 30 simulated minutes later. Repeated failures may
-  therefore retry at that cadence through the exact boundary, never once per
-  minute and never beyond the day.
+  therefore form a 30-minute chain through the exact boundary, and no individual
+  retry is placed beyond the day. Overlapping chains are not suppressed and can
+  still produce aggregate per-minute decisions.
 - Preserved the agenda's causal phase invariant: simultaneous causes coalesce
   only before the decision phase is released. A decision handler cannot add a
   same-minute cause to either a pending or already consumed actor record.
