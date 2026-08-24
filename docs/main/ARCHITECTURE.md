@@ -118,6 +118,13 @@ bulletin; supporting work, objective event kinds, stable identifiers, and
 omniscient runtime work evidence remain hidden. This is a runnable time-boundary
 proof, not a claim that the ordinary focal day or model path is complete.
 
+Adding `--inspect` replaces that focal projection with an explicitly
+omniscient JSON document. It includes the successful runtime work order and
+quiet spans, objective events and final state, agent-specific observations,
+action results, and exact counts for the narrow composition. It does not yet
+contain private model-growth measurements, and the runtime committed-work trace
+still cannot reconstruct partial objective tails left by a failed handler.
+
 ```text
 The world and its systems advance
         ↓

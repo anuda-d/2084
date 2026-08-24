@@ -1,4 +1,5 @@
 import io
+import json
 import subprocess
 import sys
 import unittest
@@ -43,6 +44,58 @@ class AutonomousDayCliTests(unittest.TestCase):
             outputs.append(output.getvalue())
 
         self.assertEqual(outputs[0], outputs[1])
+
+    def test_inspector_is_explicit_and_reconstructs_successful_day(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "scenarios.autonomous_day",
+                "--seed",
+                "42",
+                "--inspect",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(
+            result.stdout.startswith(
+                "2084 AUTONOMOUS DAY INSPECTOR — OMNISCIENT\n"
+                "Not part of the normal observer experience.\n"
+            )
+        )
+        data = json.loads(result.stdout[result.stdout.index("{"):])
+        self.assertEqual(data["counts"], {
+            "action_results": 1,
+            "events": 3,
+            "observations": 1,
+        })
+        self.assertEqual(data["model_path"], {
+            "configured": False,
+            "exercised": False,
+            "provider_failure_count": None,
+        })
+        self.assertEqual(data["objective_state"]["tick"], 1440)
+        self.assertEqual(
+            [item["kind"] for item in data["history"]["events"]],
+            ["action_attempted", "transit_service_changed", "work_completed"],
+        )
+        attempted, transit, completed = data["history"]["events"]
+        self.assertEqual(completed["caused_by"], [attempted["event_id"]])
+        self.assertEqual(
+            data["history"]["observations"][0]["event_id"],
+            transit["event_id"],
+        )
+        self.assertEqual(
+            data["history"]["action_results"][0]["outcome_event_id"],
+            completed["event_id"],
+        )
+        self.assertEqual(data["runtime"]["executed_work_count"], 4)
+        self.assertEqual(data["runtime"]["quiet_span_count"], 5)
+        self.assertTrue(data["runtime"]["reached_end_boundary"])
 
     def test_invalid_seed_is_controlled_before_world_construction(self):
         result = subprocess.run(

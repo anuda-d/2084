@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 
 from simulation.actions import ActionAttempt, ActionResult, PendingAction
 from simulation.agents import AgentState
 from simulation.day_runtime import AcceleratedDayRuntime, DayRunSummary, DayWorkContext
-from simulation.events import Event, EventLog, Observation
+from simulation.events import Event, EventLog, Observation, to_plain_data
 from simulation.institutions import InstitutionState
 from simulation.official_record import OfficialRecord
 from simulation.scheduling import ScheduledWork, TemporalPhase
@@ -297,16 +298,114 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
     return "\n".join(lines) + "\n"
 
 
+def autonomous_day_inspector_data(
+    day: AutonomousDay,
+    summary: DayRunSummary,
+) -> dict[str, object]:
+    """Return deterministic omniscient evidence for the successor day."""
+
+    events = [
+        {
+            "event_id": event.event_id,
+            "tick": event.tick,
+            "kind": event.kind,
+            "actor_id": event.actor_id,
+            "action_id": event.action_id,
+            "caused_by": list(event.caused_by),
+            "details": to_plain_data(event.details),
+        }
+        for event in day.events
+    ]
+    observations = [
+        {
+            "observation_id": observation.observation_id,
+            "agent_id": observation.agent_id,
+            "event_id": observation.event_id,
+            "source": observation.source,
+            "delivery_tick": observation.delivery_tick,
+            "details": to_plain_data(observation.details),
+        }
+        for observation in day.observations
+    ]
+    action_results = [
+        {
+            "action_id": result.action_id,
+            "attempt_event_id": result.attempt_event_id,
+            "outcome_event_id": result.outcome_event_id,
+            "actor_id": result.actor_id,
+            "action_kind": result.action_kind,
+            "status": result.status,
+            "resolved_tick": result.resolved_tick,
+            "reason": result.reason,
+        }
+        for actor_id in sorted(day.world.agents)
+        for result in day.world.agents[actor_id].action_results
+    ]
+    return {
+        "runtime": summary.to_data(),
+        "counts": {
+            "events": len(events),
+            "observations": len(observations),
+            "action_results": len(action_results),
+        },
+        "model_path": {
+            "configured": False,
+            "exercised": False,
+            "provider_failure_count": None,
+        },
+        "objective_state": {
+            "tick": day.world.tick,
+            "seed": day.world.seed,
+            "agent_locations": {
+                actor_id: day.world.agents[actor_id].location
+                for actor_id in sorted(day.world.agents)
+            },
+            "institution_records": to_plain_data(day.world.institution.records),
+        },
+        "history": {
+            "events": events,
+            "observations": observations,
+            "action_results": action_results,
+        },
+    }
+
+
+def render_autonomous_day_inspector(
+    day: AutonomousDay,
+    summary: DayRunSummary,
+) -> str:
+    return (
+        "2084 AUTONOMOUS DAY INSPECTOR — OMNISCIENT\n"
+        "Not part of the normal observer experience.\n"
+        + json.dumps(
+            autonomous_day_inspector_data(day, summary),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run the narrow offline 2084 autonomous-day successor"
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--inspect",
+        action="store_true",
+        help="show explicitly omniscient successor-day evidence",
+    )
     args = parser.parse_args(argv)
 
     day = build_autonomous_day(seed=args.seed)
     summary = day.run()
-    print(render_autonomous_day(day, summary), end="")
+    output = (
+        render_autonomous_day_inspector(day, summary)
+        if args.inspect
+        else render_autonomous_day(day, summary)
+    )
+    print(output, end="")
     return 0 if summary.reached_end_boundary else 1
 
 
