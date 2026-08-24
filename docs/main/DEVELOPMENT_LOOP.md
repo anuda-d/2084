@@ -33,15 +33,40 @@ Codex task remains active, completes one reviewed and committed work unit, then
 starts the next unit from updated repository state. It stops when the goal is
 complete, the owner pauses it, or a terminal condition is reached.
 
-### Scheduled or manual one-shot
+### Scheduled relay or manual one-shot
 
-A scheduled or manual one-shot run completes at most one implementation or
-alignment work unit and exits. A trigger supplies timing, not product authority.
-If no active goal or explicit bounded maintenance request exists, the run makes
-no repository change.
+Each scheduled task and manual one-shot completes at most one implementation or
+alignment work unit. A trigger supplies timing, not product authority. If no
+active goal or explicit bounded maintenance request exists, the task makes no
+repository change.
 
-No exact schedule is part of this repository contract. Any external automation
-must obey the same no-overlap, authority, validation, review, and commit rules.
+During an owner-authorized scheduled relay window, `TASK COMPLETE` or
+`ALIGNMENT COMPLETE` may hand off to exactly one fresh Codex task. The current
+task first finishes validation and independent review, records verified state,
+commits, stops every subagent, and resolves its own task ID. Before the local
+cutoff it verifies the exact saved project through the project listing, then
+creates one successor in that project's local checkout with the scheduled
+implementation model and reasoning level. If either ID is unavailable or
+ambiguous, it reports the handoff failure and creates no task. The successor
+prompt names the exact predecessor task ID and directs the successor to reread
+`AGENTS.md` and `docs/plans/CURRENT.md`. The predecessor does no more repository
+work after creating the successor. It uses one bounded successor progress wait
+to confirm dispatch or surface that the child needs attention, does not create a
+second successor if the result is missing or unclear, and then exits.
+
+A successor starts no work at or after the cutoff. The cutoff prevents another
+cycle from starting; it does not interrupt or abandon a work unit already in
+progress. That task finishes its validation, review, recording, and commit, but
+creates no successor. A task ending in any other terminal state also creates no
+successor. External scheduled triggers remain recovery starts: they no-op when
+a task already owns the checkout and can start the relay again when no task
+does. A manual one-shot never relays.
+
+The current external automation uses an 18:00 through 23:00
+`America/Toronto` relay window, with recovery triggers at 18:00, 19:00, 20:00,
+21:00, and 22:00. Exact schedules remain external configuration rather than
+product authority. Any external automation must obey the same no-overlap,
+authority, validation, review, and commit rules.
 
 ### Model routing
 
@@ -55,11 +80,19 @@ model boundary is separate from the development loop.
 
 ## No-Overlap Gate
 
-Before a newly triggered Goal, scheduled run, or manual run first touches the
+Before a newly triggered Goal, scheduled task, or manual run first touches the
 repository, inspect active Codex work for 2084. Ignore only the task performing
-the check. If another 2084 task, loop orchestrator, or subagent is queued or
-running, stop without repository work at **ACTIVE RUN EXISTS**. If task activity
-cannot be inspected reliably, stop at **ACTIVE RUN STATUS UNKNOWN**.
+the check. A scheduled relay successor may also ignore the one exact
+predecessor task ID embedded in its creation prompt, because the relay protocol
+requires that predecessor to have committed, stopped all subagents, and ended
+repository work before creating the successor. The exception does not apply to
+a matching title, summary, or inferred predecessor. A bounded task listing is
+conclusive only when it is exhaustive. If it returns a full page and offers no
+reliable continuation, active work may have been omitted; stop at **ACTIVE RUN
+STATUS UNKNOWN**. If any other visible 2084 task, loop orchestrator, or subagent
+is queued or running, stop without repository work at **ACTIVE RUN EXISTS**. If
+task activity otherwise cannot be inspected reliably, stop at **ACTIVE RUN
+STATUS UNKNOWN**.
 
 Iterations inside the same continuous Goal are not overlap, but every work unit
 must finish, wait for, or stop all of its subagents before beginning another.
@@ -238,7 +271,9 @@ its tests where applicable, and factual progress documentation. Do not include
 unrelated files. Never commit a known failing or partial result as complete.
 
 In continuous Goal mode, begin another unit only after the commit and from the
-updated repository state. A one-shot run exits after the commit.
+updated repository state. A successful scheduled relay task may create one
+fresh successor under the relay contract, then exits. A manual one-shot exits
+after the commit.
 
 ## Alignment and Saturation
 

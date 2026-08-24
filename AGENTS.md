@@ -71,17 +71,34 @@ For now, favor one autonomous focal life, a small living world, understandable a
   active. It selects and completes one small task from the active goal, commits
   it, then starts the next work unit from fresh repository state. It never
   creates a future task queue.
-- Scheduled and manual one-shot runs remain limited to one committed work unit
-  and then exit. A separate work unit performs alignment without selecting
-  later work.
+- Every scheduled task and manual one-shot remains limited to one committed
+  work unit. During an owner-authorized scheduled relay window, a successful
+  scheduled task starts exactly one fresh successor task from the updated local
+  checkout before it exits. Manual one-shots do not relay. A separate work unit
+  performs alignment without selecting later work.
 - Continuous Goal and scheduled implementation and orchestration use
   `gpt-5.6-terra` with high reasoning. Fresh independent review and goal
   alignment use `gpt-5.6-sol` with high reasoning. Do not use Luna in this
   loop.
 - Before a scheduled or Goal-mode run first touches the repository, it must
   confirm that no other 2084 task, loop orchestrator, or subagent thread is
-  still active. Any active project task makes a new trigger a no-op. Iterations
+  still active. A bounded task listing is sufficient only when it is exhaustive;
+  a full page with no reliable continuation is unknown, not proof of absence.
+  Any active project task makes a new trigger a no-op. The sole exception is the
+  explicit predecessor task ID embedded in a scheduled relay successor's
+  prompt: that predecessor has already committed, stopped its subagents,
+  entered handoff-only state, and will do no more repository work. Iterations
   inside the same active Goal-mode task are not overlap.
+- A scheduled relay task may create its successor only after validation,
+  independent review, progress recording, and commit are complete, and only
+  before the configured local-time cutoff. It creates one fresh Codex task in
+  the saved project's local checkout with Terra-high, includes its own task ID
+  as the authorized handoff-only predecessor, then performs no more repository
+  work. It waits for at most one bounded successor progress snapshot to confirm
+  dispatch, never creates a duplicate on an unclear result, and exits. Scheduled
+  triggers remain recovery starts and no-op while a real cycle owns the
+  checkout. The cutoff prevents a new cycle; it does not abandon a cycle already
+  in progress. A terminal or post-cutoff task creates no successor.
 - Manual runs follow the same work-unit, authority, validation, review, and
   no-overlap rules.
 - Scheduled and Continuous Goal implementation work units explicitly invoke
