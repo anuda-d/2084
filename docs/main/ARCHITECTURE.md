@@ -14,10 +14,11 @@ decision eligibility, a minimally living wider world, bounded model continuity,
 offline reproduction, and one final owner-authorized live run. Its initial
 bounded-model work now enforces restricted-input and retained-private-record
 byte ceilings and projects prior decisions through a finite recent window. The
-24-hour clock and a pure deterministic temporal agenda now exist as isolated
-successor-runtime primitives, with a small agenda executor around them.
-Ordinary-day composition, agent and action scheduling, full-day proofs, and the
-live run are not implemented. The separate
+24-hour clock and a pure deterministic temporal agenda now host the first
+concrete successor world composition. That narrow composition proves scheduled
+supporting and institutional activity across a full day; focal policy and
+general action integration, full-day proofs, and the live run are not
+implemented. The separate
 thin-harness/fat-skills documents
 describe a possible generalization of the completed Mara boundary, not an
 implemented general agent runtime.
@@ -33,11 +34,11 @@ One `SimulatedDayClock` owns an explicit start, current time, and end at exactly
 start plus 1,440 minutes. It permits equal-time or forward advancement through
 that boundary and rejects backward or beyond-boundary movement.
 
-This primitive is not yet wired into `Simulation.step()` or a successor
-composition. A `TemporalAgenda` can register uniquely identified work within
-the remaining day, order it by simulated minute, explicit causal phase, and
-stable identity, then move the day clock directly to the next due instant or
-the exact end boundary. The chosen successor equal-time order is scheduled
+This primitive is not wired into legacy `Simulation.step()`. A
+`TemporalAgenda` can register uniquely identified work within the remaining
+day, order it by simulated minute, explicit causal phase, and stable identity,
+then move the day clock directly to the next due instant or the exact end
+boundary. The chosen successor equal-time order is scheduled
 world and institutional work, action completions, observation deliveries,
 understanding updates, then decisions. It releases only one phase at a time, so
 work caused by an earlier phase can enter a later phase before already-pending
@@ -51,9 +52,8 @@ before same-tick action completions. `first_day_v3` does not use that generic
 broadcast path. The successor agenda separates scheduled activity from
 observation delivery so those causal phases can remain explicit.
 
-The existing `first_day_v3` tick remains unchanged as regression evidence, and
-no successor composition, agent/action event schedule, full-day command, or
-scenario-level day-completion claim exists yet.
+The existing `first_day_v3` tick remains unchanged as regression evidence. The
+successor has no full-day command or scenario-level completion claim yet.
 
 An isolated `DecisionEligibility` seam can place only five documented causes
 into the agenda's decision phase: initial activation, a terminal action result,
@@ -88,10 +88,20 @@ permits call 128, and turns a would-be call 129 into sanitized terminal failure
 before invoking the handler. Unmarked deterministic supporting actors are not
 silently assigned Mara's model-call ceiling.
 
-This executor is still infrastructure rather than a successor simulation. The
-decision handler receives trigger evidence but no agent view, and no existing
-policy, action resolver, observation delivery, ordinary-day composition,
-normal presenter, or command uses it yet.
+`scenarios.autonomous_day` is the first concrete world hosted by this executor.
+Its authored schedule lets Ilan attempt a two-hour workplace shift at minute
+480 and complete it at minute 600. Between those events, the district transit
+authority changes objective tram-service state at minute 510. These events
+append to the shared `EventLog` while configured model-backed Mara remains at
+home with zero decisions and no observation of either activity. The runtime
+then jumps to and closes at the exact day boundary, which becomes the world's
+current authoritative minute.
+
+This is deliberately a narrow composition seam, not the completed autonomous
+day. Its supporting action validates only the one authored workplace condition;
+it does not yet reuse a general successor action resolver. The decision handler
+still receives trigger evidence but no `AgentView`, and no focal policy,
+observation delivery, normal presenter, or command uses the composition yet.
 
 ```text
 The world and its systems advance
