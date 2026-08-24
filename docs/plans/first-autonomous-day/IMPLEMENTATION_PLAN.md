@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3 runtime decision-trigger dispatch (2026-08-23)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-7 full-day model decision-call ceiling (2026-08-23)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -23,11 +23,11 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | open | A coworker and institution act independently in the bounded scenario, but the supporting policies complete one bounded interaction and then wait; no sustained full-day activity while Mara is inactive is verified. |
 | AD-6 Knowledge and consequence | open | Existing observation boundaries are verified only in the bounded scenario, not for an independently advancing full day. |
-| AD-7 Bounded model continuity | open | The exact UTF-8 dynamic request size is measured in every private decision record, and the Ollama adapter permits 48 KiB exactly but converts any larger input into explicit safe-failure evidence before transport. Prior attempts and terminal results use an explicit recent-window projection capped at 16 entries each with total and omitted counts. Retained private decision records use canonical UTF-8 measurement, an enforced 8 MiB ceiling, and inspector-only current and peak sizes. The recent window plus omission counts does not yet prove preservation of every behaviorally relevant older result. Delivered observations and canonical understanding remain unbounded in the fresh request, and the full-day call-count ceiling is not verified. |
+| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime now enforces exactly 128 dedicated decision-handler invocations for each explicitly configured model-backed actor: call 128 is valid and call 129 is terminal before invocation. No full-day composition configures Mara or proves the model-policy path against this budget; observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes mutation; each requested safe-failure retry is delayed 30 minutes. Aggregate retry-chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy safe-failure path still retries every tick. |
 | AD-9 Offline full-day proof | open | No deterministic 24-hour soak, equality evidence, final-state comparison, or long-run measurement exists. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | The isolated successor runtime summary retains readable start/current/end time, exact committed-work order, compact quiet spans, exact completion, and sanitized failure evidence. No normal full-day presenter or complete agent/model/event measurement summary uses it yet; current legacy normal output still renders every tick. |
+| AD-11 Watchability and inspection | open | The isolated successor runtime summary retains readable start/current/end time, exact committed-work order, compact quiet spans, decision counts for every configured model actor including zero, supporting-actor counts when active, exact completion, and sanitized failure evidence. No normal full-day presenter or complete agent/model/event measurement summary uses it yet. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -164,6 +164,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-23 — AD-7 full-day model decision-call ceiling
+
+- Added explicit model-backed actor configuration to the successor runtime and
+  enforced the approved maximum of 128 dedicated decision-handler invocations
+  per configured actor. Call 128 remains valid; a would-be call 129 becomes a
+  sanitized terminal failure before handler invocation and cannot complete the
+  day.
+- Runtime summaries now report deterministic decision counts by actor. Every
+  configured model actor appears even at zero with its bounded status, while an
+  active unmarked supporting actor is reported without silently inheriting
+  Mara's ceiling.
+- Focused validation passed three exact-boundary and actor-scope tests. Full
+  offline validation passed 149 repository tests and 63 historical scenario
+  checks; staged and unstaged `git diff --check` passed.
+- Fresh independent Sol-high review initially found that zero-call configured
+  actors were omitted from the summary. After correction, re-review found no
+  blockers and verified two bounded zero-call actors, mixed supporting counts,
+  exact 128-call success, pre-handler refusal at 129, and no false completion.
+- Scope limit: AD-7 and AD-11 remain open. This counts dedicated runtime
+  decision-handler invocations; no successor composition yet configures Mara or
+  connects those invocations to the existing model policy/provider boundary.
 
 ### 2026-08-23 — AD-3 runtime decision-trigger dispatch
 

@@ -17,6 +17,11 @@ from simulation.time import SimulatedDayClock, SimulatedTime
 
 DayWorkHandler = Callable[[ScheduledWork, "DayWorkContext"], None]
 DayDecisionHandler = Callable[[EligibleDecision, "DayWorkContext"], None]
+MAX_MODEL_DECISION_CALLS_PER_DAY = 128
+
+
+class ModelDecisionCallLimitError(RuntimeError):
+    """A configured model-backed actor would exceed the approved day limit."""
 
 
 class DayWorkContext:
@@ -109,6 +114,20 @@ class ExecutedWorkEvidence:
 
 
 @dataclass(frozen=True)
+class DecisionCountEvidence:
+    actor_id: str
+    count: int
+    model_bounded: bool
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "actor_id": self.actor_id,
+            "count": self.count,
+            "model_bounded": self.model_bounded,
+        }
+
+
+@dataclass(frozen=True)
 class DayRuntimeFailureEvidence:
     failure_type: str
     last_committed_time: SimulatedTime
@@ -135,6 +154,7 @@ class DayRunSummary:
     end: SimulatedTime
     executed_work: tuple[ExecutedWorkEvidence, ...]
     quiet_spans: tuple[QuietSpan, ...]
+    decision_counts: tuple[DecisionCountEvidence, ...]
     reached_end_boundary: bool
     runtime_failure: DayRuntimeFailureEvidence | None
 
@@ -145,6 +165,14 @@ class DayRunSummary:
             "end": self.end.to_data(),
             "executed_work": [item.to_data() for item in self.executed_work],
             "quiet_spans": [span.to_data() for span in self.quiet_spans],
+            "decision_counts": [
+                decision_count.to_data()
+                for decision_count in self.decision_counts
+            ],
+            "decision_counts_by_actor": {
+                decision_count.actor_id: decision_count.count
+                for decision_count in self.decision_counts
+            },
             "executed_work_count": len(self.executed_work),
             "quiet_span_count": len(self.quiet_spans),
             "reached_end_boundary": self.reached_end_boundary,
@@ -165,6 +193,7 @@ class AcceleratedDayRuntime:
         start: SimulatedTime,
         handlers: Mapping[str, DayWorkHandler],
         decision_handler: DayDecisionHandler | None = None,
+        model_backed_actor_ids: tuple[str, ...] = (),
     ) -> None:
         if not isinstance(start, SimulatedTime):
             raise TypeError("start must be SimulatedTime")
@@ -183,12 +212,25 @@ class AcceleratedDayRuntime:
             copied_handlers[kind] = handler
         if decision_handler is not None and not callable(decision_handler):
             raise TypeError("decision_handler must be callable")
+        if not isinstance(model_backed_actor_ids, tuple):
+            raise TypeError("model_backed_actor_ids must be a tuple")
+        if any(
+            not isinstance(actor_id, str) or not actor_id.strip()
+            for actor_id in model_backed_actor_ids
+        ):
+            raise ValueError(
+                "model-backed actor identities must be non-empty strings"
+            )
+        if len(set(model_backed_actor_ids)) != len(model_backed_actor_ids):
+            raise ValueError("model-backed actor identities must be unique")
 
         self._clock = SimulatedDayClock(start)
         self._agenda = TemporalAgenda(self._clock)
         self._decision_eligibility = DecisionEligibility(self._agenda)
         self._handlers = copied_handlers
         self._decision_handler = decision_handler
+        self._model_backed_actor_ids = frozenset(model_backed_actor_ids)
+        self._decision_counts_by_actor: dict[str, int] = {}
         self._executed_work: list[ExecutedWorkEvidence] = []
         self._quiet_spans: list[QuietSpan] = []
         self._runtime_failure: DayRuntimeFailureEvidence | None = None
@@ -268,6 +310,17 @@ class AcceleratedDayRuntime:
             end=self._clock.end,
             executed_work=tuple(self._executed_work),
             quiet_spans=tuple(self._quiet_spans),
+            decision_counts=tuple(
+                DecisionCountEvidence(
+                    actor_id=actor_id,
+                    count=self._decision_counts_by_actor.get(actor_id, 0),
+                    model_bounded=actor_id in self._model_backed_actor_ids,
+                )
+                for actor_id in sorted(
+                    set(self._decision_counts_by_actor)
+                    | self._model_backed_actor_ids
+                )
+            ),
             reached_end_boundary=self.is_complete,
             runtime_failure=self._runtime_failure,
         )
@@ -317,6 +370,22 @@ class AcceleratedDayRuntime:
                                 "no decision handler registered"
                             )
                         decision = self._decision_eligibility.consume(work)
+                        prior_count = self._decision_counts_by_actor.get(
+                            decision.actor_id,
+                            0,
+                        )
+                        if (
+                            decision.actor_id in self._model_backed_actor_ids
+                            and prior_count
+                            >= MAX_MODEL_DECISION_CALLS_PER_DAY
+                        ):
+                            raise ModelDecisionCallLimitError(
+                                "model-backed actor exceeded the approved "
+                                "decision-call ceiling"
+                            )
+                        self._decision_counts_by_actor[decision.actor_id] = (
+                            prior_count + 1
+                        )
                         self._decision_handler(decision, context)
                     else:
                         handler = self._handlers.get(work.kind)

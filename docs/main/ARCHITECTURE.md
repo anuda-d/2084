@@ -82,6 +82,12 @@ coalesced record in the decision phase before calling one dedicated decision
 handler. That handler can request the documented 30-minute safe-failure retry
 through its restricted context. Quiet advancement creates no handler call.
 
+A composition explicitly identifies any model-backed actor subject to the
+approved day budget. The runtime records decision-handler counts by actor,
+permits call 128, and turns a would-be call 129 into sanitized terminal failure
+before invoking the handler. Unmarked deterministic supporting actors are not
+silently assigned Mara's model-call ceiling.
+
 This executor is still infrastructure rather than a successor simulation. The
 decision handler receives trigger evidence but no agent view, and no existing
 policy, action resolver, observation delivery, ordinary-day composition,
