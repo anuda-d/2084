@@ -76,8 +76,15 @@ unexpected handler or dispatch exception creates sanitized terminal evidence
 and freezes both execution and registration to prevent false completion or
 retry mutation.
 
-This executor is still infrastructure rather than a successor simulation. No
-agent, policy, action resolver, observation delivery, ordinary-day composition,
+The runtime now owns the explicit decision-eligibility registry. A composition
+can request one of the five documented causes, and the runtime consumes the
+coalesced record in the decision phase before calling one dedicated decision
+handler. That handler can request the documented 30-minute safe-failure retry
+through its restricted context. Quiet advancement creates no handler call.
+
+This executor is still infrastructure rather than a successor simulation. The
+decision handler receives trigger evidence but no agent view, and no existing
+policy, action resolver, observation delivery, ordinary-day composition,
 normal presenter, or command uses it yet.
 
 ```text

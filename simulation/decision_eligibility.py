@@ -10,7 +10,7 @@ from simulation.time import SimulatedTime
 
 
 SAFE_FAILURE_RETRY_MINUTES = 30
-_DECISION_WORK_KIND = "decision_eligibility"
+DECISION_ELIGIBILITY_WORK_KIND = "decision_eligibility"
 
 
 class DecisionTriggerKind(str, Enum):
@@ -84,7 +84,7 @@ class DecisionEligibility:
                 ),
                 due_time=due_time,
                 phase=TemporalPhase.DECISION,
-                kind=_DECISION_WORK_KIND,
+                kind=DECISION_ELIGIBILITY_WORK_KIND,
             )
             self._agenda.schedule(work)
             self._work_by_actor_time[actor_time] = work
@@ -124,7 +124,7 @@ class DecisionEligibility:
         if not isinstance(work, ScheduledWork):
             raise TypeError("work must be ScheduledWork")
         if (
-            work.kind != _DECISION_WORK_KIND
+            work.kind != DECISION_ELIGIBILITY_WORK_KIND
             or work.phase is not TemporalPhase.DECISION
         ):
             raise ValueError("work is not a decision-eligibility item")

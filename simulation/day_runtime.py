@@ -5,11 +5,18 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from simulation.decision_eligibility import (
+    DECISION_ELIGIBILITY_WORK_KIND,
+    DecisionEligibility,
+    DecisionTrigger,
+    EligibleDecision,
+)
 from simulation.scheduling import ScheduledWork, TemporalAgenda
 from simulation.time import SimulatedDayClock, SimulatedTime
 
 
 DayWorkHandler = Callable[[ScheduledWork, "DayWorkContext"], None]
+DayDecisionHandler = Callable[[EligibleDecision, "DayWorkContext"], None]
 
 
 class DayWorkContext:
@@ -21,10 +28,14 @@ class DayWorkContext:
         current: SimulatedTime,
         end: SimulatedTime,
         schedule: Callable[[ScheduledWork], ScheduledWork],
+        request_decision: Callable[..., ScheduledWork],
+        request_safe_failure_retry: Callable[..., ScheduledWork | None],
     ) -> None:
         self._current = current
         self._end = end
         self._schedule = schedule
+        self._request_decision = request_decision
+        self._request_safe_failure_retry = request_safe_failure_retry
 
     @property
     def current(self) -> SimulatedTime:
@@ -36,6 +47,30 @@ class DayWorkContext:
 
     def schedule(self, work: ScheduledWork) -> ScheduledWork:
         return self._schedule(work)
+
+    def request_decision(
+        self,
+        *,
+        actor_id: str,
+        due_time: SimulatedTime,
+        trigger: DecisionTrigger,
+    ) -> ScheduledWork:
+        return self._request_decision(
+            actor_id=actor_id,
+            due_time=due_time,
+            trigger=trigger,
+        )
+
+    def request_safe_failure_retry(
+        self,
+        *,
+        actor_id: str,
+        failure_id: str,
+    ) -> ScheduledWork | None:
+        return self._request_safe_failure_retry(
+            actor_id=actor_id,
+            failure_id=failure_id,
+        )
 
 
 @dataclass(frozen=True)
@@ -129,6 +164,7 @@ class AcceleratedDayRuntime:
         *,
         start: SimulatedTime,
         handlers: Mapping[str, DayWorkHandler],
+        decision_handler: DayDecisionHandler | None = None,
     ) -> None:
         if not isinstance(start, SimulatedTime):
             raise TypeError("start must be SimulatedTime")
@@ -140,11 +176,19 @@ class AcceleratedDayRuntime:
                 raise ValueError("handler kind must be a non-empty string")
             if not callable(handler):
                 raise TypeError("day work handler must be callable")
+            if kind == DECISION_ELIGIBILITY_WORK_KIND:
+                raise ValueError(
+                    "decision eligibility uses the dedicated decision handler"
+                )
             copied_handlers[kind] = handler
+        if decision_handler is not None and not callable(decision_handler):
+            raise TypeError("decision_handler must be callable")
 
         self._clock = SimulatedDayClock(start)
         self._agenda = TemporalAgenda(self._clock)
+        self._decision_eligibility = DecisionEligibility(self._agenda)
         self._handlers = copied_handlers
+        self._decision_handler = decision_handler
         self._executed_work: list[ExecutedWorkEvidence] = []
         self._quiet_spans: list[QuietSpan] = []
         self._runtime_failure: DayRuntimeFailureEvidence | None = None
@@ -179,10 +223,43 @@ class AcceleratedDayRuntime:
     def runtime_failure(self) -> DayRuntimeFailureEvidence | None:
         return self._runtime_failure
 
+    @property
+    def pending_decision_count(self) -> int:
+        return self._decision_eligibility.pending_count
+
     def schedule(self, work: ScheduledWork) -> ScheduledWork:
         if self._runtime_failure is not None:
             raise RuntimeError("accelerated day stopped after a runtime failure")
         return self._agenda.schedule(work)
+
+    def request_decision(
+        self,
+        *,
+        actor_id: str,
+        due_time: SimulatedTime,
+        trigger: DecisionTrigger,
+    ) -> ScheduledWork:
+        if self._runtime_failure is not None:
+            raise RuntimeError("accelerated day stopped after a runtime failure")
+        return self._decision_eligibility.request(
+            actor_id=actor_id,
+            due_time=due_time,
+            trigger=trigger,
+        )
+
+    def request_safe_failure_retry(
+        self,
+        *,
+        actor_id: str,
+        failure_id: str,
+    ) -> ScheduledWork | None:
+        if self._runtime_failure is not None:
+            raise RuntimeError("accelerated day stopped after a runtime failure")
+        return self._decision_eligibility.request_safe_failure_retry(
+            actor_id=actor_id,
+            failed_at=self._clock.current,
+            failure_id=failure_id,
+        )
 
     def summary(self) -> DayRunSummary:
         return DayRunSummary(
@@ -224,20 +301,30 @@ class AcceleratedDayRuntime:
                 return self.summary()
 
             for index, work in enumerate(batch):
-                handler = self._handlers.get(work.kind)
                 try:
-                    if handler is None:
-                        raise RuntimeError(
-                            "no handler registered for scheduled work kind"
-                        )
-                    handler(
-                        work,
-                        DayWorkContext(
-                            current=self._clock.current,
-                            end=self._clock.end,
-                            schedule=self.schedule,
+                    context = DayWorkContext(
+                        current=self._clock.current,
+                        end=self._clock.end,
+                        schedule=self.schedule,
+                        request_decision=self.request_decision,
+                        request_safe_failure_retry=(
+                            self.request_safe_failure_retry
                         ),
                     )
+                    if work.kind == DECISION_ELIGIBILITY_WORK_KIND:
+                        if self._decision_handler is None:
+                            raise RuntimeError(
+                                "no decision handler registered"
+                            )
+                        decision = self._decision_eligibility.consume(work)
+                        self._decision_handler(decision, context)
+                    else:
+                        handler = self._handlers.get(work.kind)
+                        if handler is None:
+                            raise RuntimeError(
+                                "no handler registered for scheduled work kind"
+                            )
+                        handler(work, context)
                 except Exception as error:
                     self._record_failure(
                         error,

@@ -8,7 +8,7 @@ implementation sequence.
 
 ## Run State
 
-- Incomplete run: none
+- Incomplete run: AD-3 runtime decision-trigger dispatch
 - Last completed run: AD-1/AD-2 accelerated-day agenda runtime (2026-08-23)
 - Verified implementation runs since alignment: 2
 - Alignment due: no
@@ -58,7 +58,14 @@ ledger because they do not implement a work unit.
 
 ## Current Run
 
-None. The last selected work unit is complete.
+AD-3 runtime decision-trigger dispatch: make the accelerated-day runtime own
+the explicit eligibility registry and dispatch each coalesced record to one
+dedicated decision handler. Public requests must still accept only the five
+documented trigger kinds; safe failure must schedule one retry 30 simulated
+minutes later; quiet advancement must call no decision handler. Focused tests
+will verify initial activation, simultaneous-cause coalescing, silent time, and
+bounded retry. This unit will not construct an agent view, call an existing
+policy, or resolve an attempted action.
 
 ## Completion Rules
 
