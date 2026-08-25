@@ -33,6 +33,7 @@ _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
+_MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
@@ -330,6 +331,15 @@ def build_autonomous_day(
             kind=_SUPPORTING_WORK_START,
         )
     )
+    if on_mara_decision is not None:
+        runtime.request_decision(
+            actor_id=MARA_ID,
+            due_time=SimulatedTime(_MARA_SCHEDULED_WAKE_MINUTE),
+            trigger=DecisionTrigger(
+                kind=DecisionTriggerKind.SCHEDULED_WAKE,
+                source_id="autonomous-day-mara-morning-wake",
+            ),
+        )
     runtime.schedule(
         ScheduledWork(
             item_id="district-transit-morning-service-change",

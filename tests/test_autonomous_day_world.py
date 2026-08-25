@@ -6,6 +6,45 @@ from simulation.decision_eligibility import DecisionTriggerKind
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_scheduled_wake_dispatches_one_restricted_mara_decision(self):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(len(dispatched), 2)
+        decision, view = dispatched[0]
+        self.assertEqual(decision.actor_id, MARA_ID)
+        self.assertEqual(decision.due_time.total_minutes, 7 * 60)
+        self.assertEqual(
+            decision.triggers[0].kind,
+            DecisionTriggerKind.SCHEDULED_WAKE,
+        )
+        self.assertEqual(
+            decision.triggers[0].source_id,
+            "autonomous-day-mara-morning-wake",
+        )
+        self.assertEqual(view.tick, 7 * 60)
+        self.assertEqual(view.agent_id, MARA_ID)
+        self.assertEqual(view.location, "home")
+        self.assertEqual(view.observations, ())
+        self.assertEqual(view.reachable_destinations, ("workplace",))
+        self.assertFalse(hasattr(view, "institution"))
+        self.assertFalse(hasattr(view, "world"))
+        self.assertEqual(
+            [item.kind for item in summary.executed_work[:1]],
+            ["decision_eligibility"],
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+        )
+
     def test_accessible_bulletin_dispatches_one_restricted_mara_decision(self):
         dispatched = []
         day = build_autonomous_day(
@@ -18,8 +57,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
-        self.assertEqual(len(dispatched), 1)
-        decision, view = dispatched[0]
+        self.assertEqual(len(dispatched), 2)
+        decision, view = dispatched[1]
         bulletin = day.observations[0]
         self.assertEqual(decision.actor_id, MARA_ID)
         self.assertEqual(decision.due_time.total_minutes, bulletin.delivery_tick)
@@ -44,7 +83,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ["autonomous_day_transit_bulletin_delivery", "decision_eligibility"],
         )
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 1}
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
         )
 
     def test_inaccessible_transit_change_does_not_dispatch_mara_decision(self):
@@ -60,10 +99,14 @@ class AutonomousDayWorldTests(unittest.TestCase):
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
-        self.assertEqual(dispatched, [])
+        self.assertEqual(len(dispatched), 1)
+        self.assertEqual(
+            dispatched[0][0].triggers[0].kind,
+            DecisionTriggerKind.SCHEDULED_WAKE,
+        )
         self.assertEqual(day.observations, ())
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0}
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 1}
         )
 
     def test_background_consequence_reaches_mara_only_through_home_bulletin(self):

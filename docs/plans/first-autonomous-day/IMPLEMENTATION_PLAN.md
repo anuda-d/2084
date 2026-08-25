@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3/AD-6 access-gated decision callback (2026-08-24)
-- Verified implementation runs since alignment: 5
+- Last completed run: AD-3 scheduled focal wake eligibility (2026-08-24)
+- Verified implementation runs since alignment: 6
 - Alignment due: no
 
 ## Goal Progress
@@ -19,7 +19,7 @@ implementation sequence.
 | --- | --- | --- |
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
-| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an accessible transit bulletin can now trigger one injected Mara decision callback after observation delivery; an inaccessible bulletin triggers none. Trigger provenance otherwise remains caller-asserted, no model policy is configured here, and every idle legacy policy is still called every tick. |
+| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one callback after observation delivery, while an inaccessible bulletin does not add that callback. Trigger provenance otherwise remains caller-asserted, no model policy is configured here, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara decision callback, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding and an actual model-policy/action path remain unconfigured. |
@@ -192,6 +192,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-3 scheduled focal wake eligibility
+
+- The successor composition now requests one `SCHEDULED_WAKE` decision for
+  Mara at minute 420 only when an explicit decision callback is supplied. The
+  runtime dispatches it in the later decision phase with the authoritative
+  world clock at minute 420, a restricted home `AgentView`, no delivered
+  observations, and no world or institution reference. The existing accessible
+  bulletin remains a later, separately observation-gated decision.
+- The default no-callback composition still produces zero Mara decisions and
+  unchanged focal-safe output; it does not create or disclose the wake.
+- Focused validation passed seven successor-world tests and four CLI tests.
+  Full offline validation passed 172 repository tests and 63 historical
+  checks; all four Solo gates were reverified with 4 met, 0 unmet, and 0
+  abandoned. `git diff --check` passed.
+- Fresh independent Sol-high review found no blockers. It confirmed the
+  decision-phase order, restricted view, inaccessible-bulletin behavior, and
+  unchanged default composition.
+- Scope limit: AD-3 remains open. This is a callback-only scheduled trigger,
+  not a configured model policy, focal attempted-action resolver, safe-failure
+  integration, or complete ordinary-day rhythm.
 
 ### 2026-08-24 — AD-3/AD-6 access-gated decision callback
 
