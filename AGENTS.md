@@ -82,9 +82,22 @@ For now, favor one autonomous focal life, a small living world, understandable a
   loop.
 - Before a scheduled or Goal-mode run first touches the repository, it must
   confirm that no other 2084 task, loop orchestrator, or subagent thread is
-  still active. A bounded task listing is sufficient only when it is exhaustive;
-  a full page with no reliable continuation is unknown, not proof of absence.
-  Any active project task makes a new trigger a no-op. The sole exception is the
+  still active. Inspect every returned pinned and non-pinned task from the
+  bounded task listing. Any visible other active or queued 2084 task makes a
+  new trigger a no-op. A full task-list page is not itself terminal: the app
+  exposes no continuation, so it cannot be the exclusive proof of checkout
+  ownership. After the visible screen and before repository work, resolve the
+  current task ID and claim durable local ownership with
+  `python3 scripts/autonomous_loop_lock.py acquire --task-id <current-id>`.
+  If the lock is held, inspect that exact recorded owner with `read_thread`.
+  Stop unless `read_thread` reports an `idle` or `notLoaded` owner whose latest
+  turn is terminal (`completed`, `failed`, or `interrupted`). Only then may a new task replace
+  it with `takeover --expected-task-id <owner-id> --verified-inactive`.
+  Before every subsequent repository-working turn or resumed work unit, assert
+  ownership with `assert-owner --task-id <current-id>`; a task that has lost
+  ownership stops without further repository work.
+  Release the lock after a non-relaying terminal state or immediately before
+  dispatching a successor. The sole exception to the visible-task screen is the
   explicit predecessor task ID embedded in a scheduled relay successor's
   prompt: that predecessor has already committed, stopped its subagents,
   entered handoff-only state, and will do no more repository work. Iterations

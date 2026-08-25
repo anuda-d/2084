@@ -47,9 +47,15 @@ unclear.
 ## Run Contract
 
 - Confirm the no-overlap gate before repository work.
-- Treat a bounded task listing as conclusive only when it returns fewer entries
-  than its limit; a full page without reliable continuation is
-  `ACTIVE RUN STATUS UNKNOWN`.
+- Inspect returned task activity for visible other active or queued 2084 work,
+  then claim durable local ownership before repository work with
+  `python3 scripts/autonomous_loop_lock.py acquire --task-id <current-id>`.
+  A full task-list page is not itself terminal: recover a held lock only after
+  `read_thread` reports its exact owner `idle` or `notLoaded` with a terminal
+  `completed`, `failed`, or `interrupted` latest turn, then
+  `takeover --expected-task-id <owner-id> --verified-inactive` succeeds. Before
+  each later repository-working turn, `assert-owner --task-id <current-id>`
+  must still succeed.
 - If alignment is due, review goal evidence without selecting later work.
 - Otherwise select one smallest useful gap from the goal and current evidence.
 - For implementation, state one criterion, one behavior, and one evidence claim
@@ -68,14 +74,15 @@ unclear.
   work unit. After `TASK COMPLETE` or `ALIGNMENT COMPLETE`, a task finishing
   before 23:00 `America/Toronto` starts exactly one fresh Terra-high task in
   this saved project's local checkout after verifying the exact saved project
-  through the project listing, embeds its own task ID as the authorized
-  handoff-only predecessor, and then does no more repository work. If either ID
-  cannot be resolved unambiguously, the handoff fails safely without creating a
-  successor. After creation, the predecessor waits for one bounded progress
-  snapshot to confirm dispatch, never creates a duplicate if that result is
-  unclear, and exits. The successor rereads this index from fresh repository
-  state and, before any repository work, stops without change if its start time
-  is at or after 23:00 `America/Toronto`.
+  through the project listing, releases its durable local ownership record,
+  embeds its own task ID as the authorized handoff-only predecessor, and then
+  does no more repository work. If either ID cannot be resolved unambiguously,
+  the handoff fails safely without creating a successor and releases its lock.
+  After creation, the predecessor waits for one bounded progress snapshot to
+  confirm dispatch, never creates a duplicate if that result is unclear, and
+  exits. The successor rereads this index from fresh repository state and,
+  before any repository work, stops without change if its start time is at or
+  after 23:00 `America/Toronto`.
 - The current external triggers at 18:00, 19:00, 20:00, 21:00, and 22:00 are
   recovery starts. They make no repository change when a cycle already owns the
   checkout. At or after 23:00, or after any other terminal state, do not create

@@ -86,13 +86,30 @@ the check. A scheduled relay successor may also ignore the one exact
 predecessor task ID embedded in its creation prompt, because the relay protocol
 requires that predecessor to have committed, stopped all subagents, and ended
 repository work before creating the successor. The exception does not apply to
-a matching title, summary, or inferred predecessor. A bounded task listing is
-conclusive only when it is exhaustive. If it returns a full page and offers no
-reliable continuation, active work may have been omitted; stop at **ACTIVE RUN
-STATUS UNKNOWN**. If any other visible 2084 task, loop orchestrator, or subagent
-is queued or running, stop without repository work at **ACTIVE RUN EXISTS**. If
-task activity otherwise cannot be inspected reliably, stop at **ACTIVE RUN
-STATUS UNKNOWN**.
+a matching title, summary, or inferred predecessor. Inspect every returned
+pinned and non-pinned task. If any other visible 2084 task, loop orchestrator,
+or subagent is queued or running, stop without repository work at **ACTIVE RUN
+EXISTS**. If task activity otherwise cannot be inspected reliably, stop at
+**ACTIVE RUN STATUS UNKNOWN**.
+
+A full task-list page is not itself terminal because the app exposes no reliable
+continuation. After the visible activity screen and before repository work,
+resolve the current task ID and run
+`python3 scripts/autonomous_loop_lock.py acquire --task-id <current-id>`. This
+durable local record is the checkout-ownership proof. If it reports another
+owner, inspect that exact task ID with `read_thread`; takeover is allowed only
+when it reports `idle` or `notLoaded` and its latest turn is terminal
+(`completed`, `failed`, or `interrupted`). Every other result, including an uninspectable owner,
+blocks the new task. Only then may a new task use `takeover
+--expected-task-id <owner-id> --verified-inactive`. Before every subsequent
+repository-working turn or resumed work unit, the owner must run
+`assert-owner --task-id <current-id>` and stop on a mismatch. This makes a task
+that resumes after handoff observe that it lost ownership before it resumes
+repository work. A task releases its own record on a non-relaying terminal
+state, or immediately before it dispatches its successor and becomes
+handoff-only. The lock utility rejects simultaneous claims, wrong-owner release,
+stale-owner assertions, and recovery without the explicit terminal-owner
+verification.
 
 Iterations inside the same continuous Goal are not overlap, but every work unit
 must finish, wait for, or stop all of its subagents before beginning another.

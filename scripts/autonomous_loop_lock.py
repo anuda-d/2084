@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Durable local ownership for the scheduled 2084 development loop."""
+
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+import sys
+import tempfile
+import time
+from pathlib import Path
+from typing import Iterator
+
+
+def default_lock_path() -> Path:
+    repository = Path(__file__).resolve().parents[1]
+    digest = hashlib.sha256(str(repository).encode("utf-8")).hexdigest()[:16]
+    return Path(tempfile.gettempdir()) / f"2084-autonomous-loop-{digest}.json"
+
+
+@contextlib.contextmanager
+def guarded(path: Path) -> Iterator[None]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    guard_path = path.with_suffix(path.suffix + ".guard")
+    with guard_path.open("a+", encoding="utf-8") as guard:
+        fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(guard.fileno(), fcntl.LOCK_UN)
+
+
+def read_owner(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"UNREADABLE_LOCK {path}: {error}") from error
+    if (
+        not isinstance(record, dict)
+        or not isinstance(record.get("task_id"), str)
+        or not record["task_id"].strip()
+    ):
+        raise ValueError(f"UNREADABLE_LOCK {path}: missing task_id")
+    return record
+
+
+def write_owner(path: Path, task_id: str) -> None:
+    record = {"task_id": task_id, "claimed_at": int(time.time())}
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def task_id(record: dict[str, object]) -> str:
+    return str(record["task_id"])
+
+
+def acquire(path: Path, current_task_id: str) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+        if owner is not None:
+            print(f"HELD_BY {task_id(owner)}", file=sys.stderr)
+            return 1
+        write_owner(path, current_task_id)
+    print(f"ACQUIRED {current_task_id}")
+    return 0
+
+
+def status(path: Path) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+    if owner is None:
+        print("UNLOCKED")
+    else:
+        print(f"HELD {task_id(owner)}")
+    return 0
+
+
+def assert_owner(path: Path, current_task_id: str) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+        if owner is None:
+            print("NO_OWNER", file=sys.stderr)
+            return 1
+        if task_id(owner) != current_task_id:
+            print(f"OWNER_MISMATCH {task_id(owner)}", file=sys.stderr)
+            return 1
+    print(f"OWNERSHIP_CONFIRMED {current_task_id}")
+    return 0
+
+
+def takeover(
+    path: Path,
+    current_task_id: str,
+    expected_task_id: str,
+    verified_inactive: bool,
+) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+        if owner is None:
+            print("NO_OWNER", file=sys.stderr)
+            return 1
+        previous_task_id = task_id(owner)
+        if previous_task_id != expected_task_id:
+            print(f"EXPECTED_OWNER_MISMATCH {previous_task_id}", file=sys.stderr)
+            return 1
+        if not verified_inactive:
+            print("RECOVERY_REQUIRES --verified-inactive", file=sys.stderr)
+            return 2
+        write_owner(path, current_task_id)
+    print(f"TAKEN_OVER {expected_task_id} {current_task_id}")
+    return 0
+
+
+def release(path: Path, current_task_id: str) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+        if owner is None:
+            print("NO_OWNER", file=sys.stderr)
+            return 1
+        if task_id(owner) != current_task_id:
+            print(f"OWNER_MISMATCH {task_id(owner)}", file=sys.stderr)
+            return 1
+        path.unlink()
+    print(f"RELEASED {current_task_id}")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--path", type=Path, default=default_lock_path())
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    for name in ("acquire", "assert-owner", "release"):
+        command = commands.add_parser(name)
+        command.add_argument("--task-id", required=True)
+
+    commands.add_parser("status")
+
+    takeover_command = commands.add_parser("takeover")
+    takeover_command.add_argument("--task-id", required=True)
+    takeover_command.add_argument("--expected-task-id", required=True)
+    takeover_command.add_argument("--verified-inactive", action="store_true")
+    return parser
+
+
+def main(arguments: list[str] | None = None) -> int:
+    args = build_parser().parse_args(arguments)
+    try:
+        if args.command == "acquire":
+            return acquire(args.path, args.task_id)
+        if args.command == "status":
+            return status(args.path)
+        if args.command == "assert-owner":
+            return assert_owner(args.path, args.task_id)
+        if args.command == "takeover":
+            return takeover(
+                args.path,
+                args.task_id,
+                args.expected_task_id,
+                args.verified_inactive,
+            )
+        return release(args.path, args.task_id)
+    except (OSError, ValueError) as error:
+        print(f"LOCK_ERROR {error}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
