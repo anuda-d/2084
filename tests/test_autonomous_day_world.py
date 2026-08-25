@@ -143,6 +143,23 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "maximum_retained_private_record_bytes": (
                     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
                 ),
+                "peak_context_counts": {
+                    "decision_history": {
+                        "attempts_included": 2,
+                        "results_included": 2,
+                        "total_attempts": 2,
+                        "total_results": 2,
+                        "omitted_attempts": 0,
+                        "omitted_results": 0,
+                    },
+                    "peak_delivered_observation_count": 1,
+                    "understanding": {
+                        "beliefs": 0,
+                        "memory_traces": 1,
+                        "interpreted_claims": 1,
+                        "contextual_stance_present": 0,
+                    },
+                },
             },
         )
         self.assertGreater(
@@ -151,6 +168,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("model_input", model_path["growth"])
         self.assertNotIn("private_decision_records", model_path["growth"])
+        self.assertNotIn("delivered_observations", model_path["growth"])
 
     def test_completed_rest_dispatches_later_action_result_decision(self):
         client = _SequenceClient(

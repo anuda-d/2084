@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from policies.mara_harness import MaraHarness
@@ -1037,6 +1037,9 @@ def autonomous_day_inspector_data(
             "maximum_retained_private_record_bytes": (
                 MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
             ),
+            "peak_context_counts": model_context_count_measurements(
+                day.private_decision_records
+            ),
         }
     return {
         "runtime": summary.to_data(),
@@ -1072,6 +1075,74 @@ def autonomous_day_inspector_data(
             "observations": observations,
             "action_results": action_results,
         },
+    }
+
+
+def model_context_count_measurements(
+    records: tuple[PolicyDecisionRecord, ...],
+) -> dict[str, object]:
+    """Measure private model-context shape without exposing its material."""
+
+    decision_history = {
+        "attempts_included": 0,
+        "results_included": 0,
+        "total_attempts": 0,
+        "total_results": 0,
+        "omitted_attempts": 0,
+        "omitted_results": 0,
+    }
+    understanding = {
+        "beliefs": 0,
+        "memory_traces": 0,
+        "interpreted_claims": 0,
+        "contextual_stance_present": 0,
+    }
+    peak_delivered_observation_count = 0
+
+    for record in records:
+        model_input = record.model_input
+        history = model_input.get("decision_history")
+        if isinstance(history, Mapping):
+            projection = history.get("projection")
+            if isinstance(projection, Mapping):
+                for field in (
+                    "total_attempts",
+                    "total_results",
+                    "omitted_attempts",
+                    "omitted_results",
+                ):
+                    value = projection.get(field)
+                    if isinstance(value, int) and not isinstance(value, bool):
+                        decision_history[field] = max(decision_history[field], value)
+            for field, input_field in (
+                ("attempts_included", "attempts"),
+                ("results_included", "results"),
+            ):
+                entries = history.get(input_field)
+                if isinstance(entries, tuple):
+                    decision_history[field] = max(
+                        decision_history[field], len(entries)
+                    )
+
+        delivered_observations = model_input.get("delivered_observations")
+        if isinstance(delivered_observations, tuple):
+            peak_delivered_observation_count = max(
+                peak_delivered_observation_count, len(delivered_observations)
+            )
+
+        model_understanding = model_input.get("understanding")
+        if isinstance(model_understanding, Mapping):
+            for field in ("beliefs", "memory_traces", "interpreted_claims"):
+                entries = model_understanding.get(field)
+                if isinstance(entries, tuple):
+                    understanding[field] = max(understanding[field], len(entries))
+            if model_understanding.get("contextual_stance") is not None:
+                understanding["contextual_stance_present"] = 1
+
+    return {
+        "decision_history": decision_history,
+        "peak_delivered_observation_count": peak_delivered_observation_count,
+        "understanding": understanding,
     }
 
 

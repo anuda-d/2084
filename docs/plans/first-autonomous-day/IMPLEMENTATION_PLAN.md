@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-8/AD-11 sanitized failed-day presentation (2026-08-25)
-- Verified implementation runs since alignment: 17
+- Last completed run: AD-11 numeric model-context measurements (2026-08-25)
+- Verified implementation runs since alignment: 18
 - Alignment due: no
 
 ## Goal Progress
@@ -192,6 +192,24 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-11 numeric model-context measurements
+
+- The explicit omniscient inspector now reports numeric peak counts for the
+  restricted decision-history projection, delivered observations, and
+  understanding categories supplied across an injected Mara harness run. It
+  derives them from retained private records but does not emit model inputs,
+  observation material, or private records themselves.
+- The deterministic harness regression verifies the exact aggregate shape for
+  its complete day while normal focal-safe rendering remains unchanged.
+- Focused autonomous-day world validation, the full offline check, and
+  whitespace validation passed. The three Solo gates were reverified with 3
+  met, 0 unmet, and 0 abandoned. Fresh independent Sol-high review found no
+  blockers: the measurements are deterministic, do not alter state or policy
+  behavior, and preserve the existing privacy boundary.
+- Scope limit: AD-11 remains open. This makes context shape inspectable for the
+  exercised harness path; it neither bounds unbounded observation or
+  understanding collections nor proves full long-run continuity relevance.
 
 ### 2026-08-25 — AD-8/AD-11 sanitized failed-day presentation
 
