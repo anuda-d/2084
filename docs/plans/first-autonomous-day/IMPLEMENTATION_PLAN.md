@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 focal-safe normal activity rendering (2026-08-24)
-- Verified implementation runs since alignment: 13
+- Last completed run: AD-10 recorded autonomous-day reproduction (2026-08-24)
+- Verified implementation runs since alignment: 14
 - Alignment due: no
 
 ## Goal Progress
@@ -26,7 +26,7 @@ implementation sequence.
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
-| AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
+| AD-10 Recorded full-day reproduction | open | Recorded choices from one complete deterministic-harness autonomous-day run now reproduce equal runtime summary, ordered objective events and observations, inspector objective state, and restricted inputs through minute 1,440 without invoking the source client. Altered input or exhausted records cause an explicit `RecordedDecisionError`, preserve terminal runtime failure evidence, and never report day completion. This remains one narrow deterministic composition rather than complete recorded-choice coverage or a live-provider claim. |
 | AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
@@ -192,6 +192,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-10 recorded autonomous-day reproduction
+
+- Private records from a complete deterministic-harness day now replay through
+  the existing recorded-client boundary. The replay reaches the exact minute
+  1,440 boundary with the same runtime summary, ordered objective events,
+  observations, inspector objective state, and restricted model inputs, while
+  making no additional source-client call.
+- Altering a recorded restricted input or exhausting the record sequence raises
+  an explicit `RecordedDecisionError`; the runtime remains incomplete and
+  retains terminal failure evidence rather than reporting a completed day.
+- Focused validation passed two replay and failure-path tests. Full offline
+  validation passed 183 repository tests and 63 historical checks; `git diff
+  --check` passed. The two Solo gates were reverified with 2 met, 0 unmet, and
+  0 abandoned.
+- Fresh independent Sol-high review found no blockers. It confirmed that replay
+  constructs only the recorded-client boundary and that this test does not add
+  private decision material to normal output or objective history.
+- Scope limit: AD-10 remains open. This proves one deterministic full-day
+  recording and its strict failure paths, not coverage of every choice route,
+  complete-day recorded-choice interfaces, or deterministic live-model output.
 
 ### 2026-08-24 — AD-11 focal-safe normal activity rendering
 

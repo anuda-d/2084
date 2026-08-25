@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from policies.mara_harness import MaraHarness
 from scenarios.autonomous_day import (
@@ -8,7 +9,10 @@ from scenarios.autonomous_day import (
     build_autonomous_day,
     render_autonomous_day,
 )
-from policies.model_focal_policy import model_input_from_view
+from policies.model_focal_policy import (
+    RecordedDecisionError,
+    model_input_from_view,
+)
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
 from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
@@ -755,6 +759,124 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             first.world.agents[ILAN_ID].action_results,
             second.world.agents[ILAN_ID].action_results,
+        )
+
+    def test_recorded_decisions_replay_complete_autonomous_day_without_provider_calls(
+        self,
+    ):
+        source_client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "rest at home after the scheduled wake",
+                "decision_reason": "the morning begins with time to rest",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the completed rest",
+                "decision_reason": "no further action is required immediately",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the accessible bulletin",
+                "decision_reason": "the bulletin changes no immediate action",
+            },
+        )
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="deterministic-autonomous-day-replay-source",
+            ),
+        )
+        source_summary = source.run()
+        source_record_count = len(source.private_decision_records)
+
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_records(source.private_decision_records),
+        )
+        replay_summary = replay.run()
+
+        self.assertTrue(source_summary.reached_end_boundary)
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(len(source_client.inputs), source_record_count)
+        self.assertEqual(replay_summary.to_data(), source_summary.to_data())
+        self.assertEqual(replay.events, source.events)
+        self.assertEqual(replay.observations, source.observations)
+        self.assertEqual(
+            autonomous_day_inspector_data(replay, replay_summary)["objective_state"],
+            autonomous_day_inspector_data(source, source_summary)["objective_state"],
+        )
+        self.assertEqual(
+            [record.model_input for record in replay.private_decision_records],
+            [record.model_input for record in source.private_decision_records],
+        )
+
+    def test_recorded_autonomous_day_failure_is_explicit_for_altered_or_exhausted_evidence(
+        self,
+    ):
+        source_client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "rest at home after the scheduled wake",
+                "decision_reason": "the morning begins with time to rest",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the completed rest",
+                "decision_reason": "no further action is required immediately",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the accessible bulletin",
+                "decision_reason": "the bulletin changes no immediate action",
+            },
+        )
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="deterministic-autonomous-day-replay-failure-source",
+            ),
+        )
+        source.run()
+
+        altered_input = dict(source.private_decision_records[0].model_input)
+        altered_input["tick"] = 421
+        altered_records = (
+            replace(source.private_decision_records[0], model_input=altered_input),
+            *source.private_decision_records[1:],
+        )
+        altered = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_records(altered_records),
+        )
+        with self.assertRaisesRegex(RecordedDecisionError, "input mismatch"):
+            altered.run()
+        self.assertFalse(altered.runtime.is_complete)
+        self.assertEqual(
+            altered.runtime.summary().runtime_failure.failure_type,
+            "RecordedDecisionError",
+        )
+
+        exhausted = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_records(
+                source.private_decision_records[:1]
+            ),
+        )
+        with self.assertRaisesRegex(RecordedDecisionError, "exhausted"):
+            exhausted.run()
+        self.assertFalse(exhausted.runtime.is_complete)
+        self.assertEqual(
+            exhausted.runtime.summary().runtime_failure.failure_type,
+            "RecordedDecisionError",
         )
 
 
