@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-4 basic home household opportunity (2026-08-24)
-- Verified implementation runs since alignment: 12
+- Last completed run: AD-11 focal-safe normal activity rendering (2026-08-24)
+- Verified implementation runs since alignment: 13
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, two compact intervals with no focal updates, and Mara's accessible bulletin without hidden detail. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -192,6 +192,26 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-11 focal-safe normal activity rendering
+
+- Normal autonomous-day output now renders Mara's completed household, rest,
+  travel, and workplace activities from world-confirmed action results using
+  fixed readable labels. It excludes immediate waits, private decision records,
+  raw event identifiers/details, and supporting-character activity.
+- Same-minute focal updates retain the runtime's causal order: Mara's action
+  completion is shown before an observation delivery at the same simulated
+  minute. Quiet-span rendering remains compact and creates no zero-length
+  interval between tied updates.
+- Focused validation passed 14 autonomous-day world tests; full offline
+  validation passed 181 repository tests and 63 historical checks. `git diff
+  --check` passed. The two Solo gates were reverified with 2 met, 0 unmet, and
+  0 abandoned.
+- Fresh independent Sol-high review found and the implementation fixed the
+  same-minute ordering issue; closure review found no remaining blocker.
+- Scope limit: AD-11 remains open. This improves normal focal-safe watchability
+  only; it does not configure a default model path, expose private evidence, or
+  replace the inspector's exact causal record.
 
 ### 2026-08-24 — AD-4 basic home household opportunity
 

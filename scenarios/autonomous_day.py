@@ -873,6 +873,21 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         f"Start: {summary.start.label} | Mara at Home",
     ]
     focal_updates: list[tuple[SimulatedTime, str]] = []
+    completed_activity_labels = {
+        "household_time_completed": "Mara completed household time.",
+        "rest_completed": "Mara completed a rest period.",
+        "travel_completed": "Mara completed travel.",
+        "work_completed": "Mara completed workplace work.",
+    }
+    event_kinds_by_id = {event.event_id: event.kind for event in day.events}
+    for result in day.world.agents[MARA_ID].action_results:
+        activity_label = completed_activity_labels.get(
+            event_kinds_by_id.get(result.outcome_event_id)
+        )
+        if result.status != "completed" or activity_label is None:
+            continue
+        completed_at = SimulatedTime(result.resolved_tick)
+        focal_updates.append((completed_at, f"{completed_at.label} | {activity_label}"))
     for observation in day.world.agents[MARA_ID].observations:
         if observation.details.get("evidence_kind") != "transit_service_status":
             continue
@@ -886,7 +901,7 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
             )
         )
     current_visible_time = summary.start
-    for delivered_at, update in sorted(focal_updates):
+    for delivered_at, update in sorted(focal_updates, key=lambda update: update[0]):
         if delivered_at > current_visible_time:
             lines.append(
                 f"{current_visible_time.label}–{delivered_at.label} "

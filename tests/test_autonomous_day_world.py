@@ -6,6 +6,7 @@ from scenarios.autonomous_day import (
     MARA_ID,
     autonomous_day_inspector_data,
     build_autonomous_day,
+    render_autonomous_day,
 )
 from policies.model_focal_policy import model_input_from_view
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
@@ -492,6 +493,61 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 ),
             ),
         )
+        normal_output = render_autonomous_day(day, summary)
+        self.assertIn("Day 0 08:00 | Mara completed household time.", normal_output)
+        self.assertNotIn("decision_reason", normal_output)
+        self.assertNotIn("Ilan", normal_output)
+        self.assertNotIn("event-", normal_output)
+
+    def test_normal_output_preserves_same_minute_focal_causal_order(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the workplace obligation",
+                "decision_reason": "work is available here",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after work",
+                "decision_reason": "home is reachable",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time at home",
+                "decision_reason": "household time is available here",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the completed activity",
+                "decision_reason": "no immediate action is needed",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deterministic-autonomous-day-order-test",
+            ),
+        )
+
+        summary = day.run()
+        normal_output = render_autonomous_day(day, summary)
+
+        household_update = "Day 0 11:00 | Mara completed household time."
+        bulletin_update = "Day 0 11:00 | Home transit bulletin"
+        self.assertIn(household_update, normal_output)
+        self.assertIn(bulletin_update, normal_output)
+        self.assertLess(normal_output.index(household_update), normal_output.index(bulletin_update))
 
     def test_scheduled_wake_dispatches_one_restricted_mara_decision(self):
         dispatched = []
