@@ -30,6 +30,10 @@ from simulation.institutions import InstitutionState
 from simulation.official_record import OfficialRecord
 from simulation.scheduling import ScheduledWork, TemporalPhase
 from simulation.time import SimulatedTime
+from simulation.understanding import (
+    link_official_version_conflicts,
+    trace_from_delivered_observation,
+)
 from simulation.world import ResourceState, WorldState
 
 
@@ -41,6 +45,7 @@ _SUPPORTING_WORK_START = "autonomous_day_supporting_work_start"
 _SUPPORTING_WORK_COMPLETION = "autonomous_day_supporting_work_completion"
 _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
+_MARA_TRANSIT_UNDERSTANDING_UPDATE = "autonomous_day_mara_transit_understanding_update"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
@@ -161,6 +166,7 @@ def build_autonomous_day(
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
+    transit_bulletin_observations: dict[str, Observation] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -788,9 +794,21 @@ def build_autonomous_day(
                 "evidence_kind": "transit_service_status",
                 "route": "workplace-home",
                 "current_status": source_event.details["current_status"],
+                "proposition": "workplace-home tram service is reduced",
+                "asserted_value": 1,
             },
         )
         mara.observations.append(observation)
+        understanding_item_id = f"mara-understanding-{observation.observation_id}"
+        transit_bulletin_observations[understanding_item_id] = observation
+        context.schedule(
+            ScheduledWork(
+                item_id=understanding_item_id,
+                due_time=context.current,
+                phase=TemporalPhase.UNDERSTANDING_UPDATE,
+                kind=_MARA_TRANSIT_UNDERSTANDING_UPDATE,
+            )
+        )
         if on_mara_decision is not None or mara_harness is not None:
             context.request_decision(
                 actor_id=mara.agent_id,
@@ -801,6 +819,32 @@ def build_autonomous_day(
                 ),
             )
 
+    def update_mara_transit_understanding(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("transit understanding released at the wrong time")
+        observation = transit_bulletin_observations[work.item_id]
+        mara = world.agents[MARA_ID]
+        derived = trace_from_delivered_observation(
+            observation,
+            trace_id=f"trace-{observation.observation_id}",
+            claim_id=f"claim-{observation.observation_id}",
+            existing_claims=mara.interpreted_claims,
+        )
+        if derived is None:
+            raise RuntimeError("transit bulletin did not support understanding")
+        trace, new_claim = derived
+        mara.memory_traces += (trace,)
+        if new_claim is not None:
+            mara.interpreted_claims = link_official_version_conflicts(
+                mara.interpreted_claims,
+                mara.memory_traces[:-1],
+                new_claim,
+                trace,
+            )
+
     runtime = AcceleratedDayRuntime(
         start=SimulatedTime(0),
         handlers={
@@ -808,6 +852,7 @@ def build_autonomous_day(
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
+            _MARA_TRANSIT_UNDERSTANDING_UPDATE: update_mara_transit_understanding,
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,
             _MARA_REST_COMPLETION: complete_mara_rest,
             _MARA_WORK_COMPLETION: complete_mara_work,

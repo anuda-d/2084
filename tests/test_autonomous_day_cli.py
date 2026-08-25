@@ -102,7 +102,17 @@ class AutonomousDayCliTests(unittest.TestCase):
             data["history"]["action_results"][0]["outcome_event_id"],
             completed["event_id"],
         )
-        self.assertEqual(data["runtime"]["executed_work_count"], 4)
+        self.assertEqual(data["runtime"]["executed_work_count"], 5)
+        self.assertEqual(
+            [item["kind"] for item in data["runtime"]["executed_work"]],
+            [
+                "autonomous_day_supporting_work_start",
+                "autonomous_day_institutional_service_change",
+                "autonomous_day_supporting_work_completion",
+                "autonomous_day_transit_bulletin_delivery",
+                "autonomous_day_mara_transit_understanding_update",
+            ],
+        )
         self.assertEqual(data["runtime"]["quiet_span_count"], 5)
         self.assertTrue(data["runtime"]["reached_end_boundary"])
 

@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-9 paired deterministic-harness offline proof (2026-08-24)
-- Verified implementation runs since alignment: 15
+- Last completed run: AD-2/AD-6 source-linked transit understanding (2026-08-24)
+- Verified implementation runs since alignment: 16
 - Alignment due: no
 
 ## Goal Progress
@@ -18,11 +18,11 @@ implementation sequence.
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
-| AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. Focal travel and scheduled-home rest completions now use action-completion ordering before later same-minute decisions; no understanding runtime uses the order yet. |
+| AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. Focal travel and scheduled-home rest completions now use action-completion ordering before later same-minute decisions. One home transit bulletin now schedules a source-linked understanding update in the next same-minute phase before any resulting decision; no broader understanding-order coverage exists yet. |
 | AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback or injected `MaraHarness` receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one decision after observation delivery, while an inaccessible bulletin does not add one. A completed model-selected travel action or scheduled-home rest requests one `ACTION_RESULT` decision in the later same-minute decision phase, linked to its append-only completion event; immediate waits, rejections, and safe-failure waits do not do so. Retry provenance remains caller-asserted. Every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | At the explicit minute-420 home wake, a model-selected `wait` can become a world-owned 60-minute rest. It retains an attempted-action record, completes at minute 480, and can create a later action-result decision; safe-failure waits remain immediate rather than being misrepresented as rest. After a model-selected travel reaches the workplace, Mara's restricted view exposes `work`; a selected work attempt then completes under world authority after 120 minutes and creates a later action-result decision. This provides narrow rest and workplace-obligation opportunities, not a complete rest, obligation, movement, or private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
-| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding remains unconfigured. |
+| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. That accessible bulletin now creates one source-linked canonical trace and claim in the later same-minute understanding phase before an optional decision sees the restricted view; inaccessible locations create neither delivery nor understanding. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
@@ -192,6 +192,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-2/AD-6 source-linked transit understanding
+
+- The authored minute-660 home transit bulletin now schedules one
+  `UNDERSTANDING_UPDATE` after its observation delivery and before a resulting
+  decision. That update creates Mara's canonical trace and claim only from the
+  delivered observation, preserving links to its immutable source event and
+  delivery identity.
+- Focused evidence confirms that the later same-minute restricted view contains
+  the source-linked trace and claim. The existing inaccessible-location path
+  still creates no observation, understanding, callback, or decision.
+- Focused validation passed 18 autonomous-day world tests; the full offline
+  validation passed 185 repository tests and 63 historical checks after the
+  inspector's executed-work expectation was updated. `git diff --check` passed.
+  The two Solo gates were reverified with 2 met, 0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no blockers. It confirmed causal
+  delivery-to-understanding-to-decision ordering, the absence of objective
+  institutional state from Mara's view, and deterministic equal-seed traces.
+- Scope limit: AD-2 and AD-6 remain open. This is one static transit-status
+  interpretation, not general inference, conflict handling, bounded continuity,
+  or full knowledge-and-consequence coverage.
 
 ### 2026-08-24 — AD-9 paired deterministic-harness offline proof
 

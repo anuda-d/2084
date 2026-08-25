@@ -715,12 +715,55 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("institution_records", model_input)
         self.assertEqual(
-            [item.kind for item in summary.executed_work[-2:]],
-            ["autonomous_day_transit_bulletin_delivery", "decision_eligibility"],
+            [item.kind for item in summary.executed_work[-3:]],
+            [
+                "autonomous_day_transit_bulletin_delivery",
+                "autonomous_day_mara_transit_understanding_update",
+                "decision_eligibility",
+            ],
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
         )
+
+    def test_home_transit_bulletin_updates_source_linked_understanding_before_decision(
+        self,
+    ):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+
+        summary = day.run()
+
+        bulletin = day.observations[0]
+        decision, view = dispatched[1]
+        self.assertEqual(decision.due_time.total_minutes, 660)
+        self.assertEqual(len(view.memory_traces), 1)
+        trace = view.memory_traces[0]
+        self.assertEqual(trace.source_observation_id, bulletin.observation_id)
+        self.assertEqual(trace.source_event_id, bulletin.event_id)
+        self.assertEqual(trace.delivery_tick, bulletin.delivery_tick)
+        self.assertEqual(trace.proposition, "workplace-home tram service is reduced")
+        self.assertEqual(len(view.interpreted_claims), 1)
+        claim = view.interpreted_claims[0]
+        self.assertEqual(claim.claim_id, trace.interpreted_claim_id)
+        self.assertEqual(claim.origin_trace_id, trace.trace_id)
+        self.assertEqual(
+            [item.kind for item in summary.executed_work[-3:]],
+            [
+                "autonomous_day_transit_bulletin_delivery",
+                "autonomous_day_mara_transit_understanding_update",
+                "decision_eligibility",
+            ],
+        )
+
+        mara = day.world.agents[MARA_ID]
+        self.assertEqual(mara.memory_traces, view.memory_traces)
+        self.assertEqual(mara.interpreted_claims, view.interpreted_claims)
 
     def test_inaccessible_transit_change_does_not_dispatch_mara_decision(self):
         dispatched = []
