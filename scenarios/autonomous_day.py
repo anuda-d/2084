@@ -959,6 +959,11 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
             f"{current_visible_time.label}–{summary.current.label} "
             "| No focal updates."
         )
+    if summary.runtime_failure is not None:
+        lines.append(
+            "Run status: stopped without completing the day at "
+            f"{summary.current.label}."
+        )
     lines.extend(
         [
             f"End: {summary.current.label}",
@@ -1099,7 +1104,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     day = build_autonomous_day(seed=args.seed)
-    summary = day.run()
+    try:
+        summary = day.run()
+    except Exception:
+        summary = day.runtime.summary()
+        if summary.runtime_failure is None:
+            raise
     output = (
         render_autonomous_day_inspector(day, summary)
         if args.inspect

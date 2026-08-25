@@ -1,5 +1,9 @@
+import json
+import io
 import unittest
+from contextlib import redirect_stdout
 from dataclasses import replace
+from unittest.mock import patch
 
 from policies.mara_harness import MaraHarness
 from scenarios.autonomous_day import (
@@ -7,6 +11,7 @@ from scenarios.autonomous_day import (
     MARA_ID,
     autonomous_day_inspector_data,
     build_autonomous_day,
+    main,
     render_autonomous_day,
 )
 from policies.model_focal_policy import (
@@ -16,6 +21,7 @@ from policies.model_focal_policy import (
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
 from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
+from simulation.scheduling import ScheduledWork, TemporalPhase
 
 
 class _SequenceClient:
@@ -992,10 +998,81 @@ class AutonomousDayWorldTests(unittest.TestCase):
         with self.assertRaisesRegex(RecordedDecisionError, "input mismatch"):
             altered.run()
         self.assertFalse(altered.runtime.is_complete)
+        altered_summary = altered.runtime.summary()
         self.assertEqual(
-            altered.runtime.summary().runtime_failure.failure_type,
+            altered_summary.runtime_failure.failure_type,
             "RecordedDecisionError",
         )
+        normal_output = render_autonomous_day(altered, altered_summary)
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 0 07:00.",
+            normal_output,
+        )
+        self.assertIn("Exact 24-hour boundary reached: no", normal_output)
+        self.assertNotIn("RecordedDecisionError", normal_output)
+        self.assertNotIn("input mismatch", normal_output)
+        inspector_data = autonomous_day_inspector_data(altered, altered_summary)
+        self.assertEqual(
+            inspector_data["runtime"]["runtime_failure"],
+            {
+                "failure_type": "RecordedDecisionError",
+                "last_committed_time": {
+                    "total_minutes": 0,
+                    "day_index": 0,
+                    "hour": 0,
+                    "minute": 0,
+                    "label": "Day 0 00:00",
+                },
+                "failed_time": {
+                    "total_minutes": 420,
+                    "day_index": 0,
+                    "hour": 7,
+                    "minute": 0,
+                    "label": "Day 0 07:00",
+                },
+                "committed_work_count": 0,
+                "released_uncommitted_count": 1,
+                "pending_work_count": 2,
+            },
+        )
+        self.assertNotIn("input mismatch", json.dumps(inspector_data))
+        command_output = io.StringIO()
+        with patch(
+            "scenarios.autonomous_day.build_autonomous_day", return_value=altered
+        ), redirect_stdout(command_output):
+            self.assertEqual(main(["--seed", "42"]), 1)
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 0 07:00.",
+            command_output.getvalue(),
+        )
+        self.assertNotIn("RecordedDecisionError", command_output.getvalue())
+        self.assertNotIn("input mismatch", command_output.getvalue())
+
+        end_failed = build_autonomous_day(seed=42)
+
+        def fail_at_end(work, context):
+            raise RuntimeError("private-end-failure")
+
+        end_failed.runtime._handlers["test_end_failure"] = fail_at_end
+        end_failed.runtime.schedule(
+            ScheduledWork(
+                "test-end-failure",
+                end_failed.runtime.end,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_end_failure",
+            )
+        )
+        with self.assertRaisesRegex(RuntimeError, "private-end-failure"):
+            end_failed.run()
+        end_failure_output = render_autonomous_day(
+            end_failed,
+            end_failed.runtime.summary(),
+        )
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 1 00:00.",
+            end_failure_output,
+        )
+        self.assertNotIn("before the day boundary", end_failure_output)
 
         exhausted = build_autonomous_day(
             seed=42,

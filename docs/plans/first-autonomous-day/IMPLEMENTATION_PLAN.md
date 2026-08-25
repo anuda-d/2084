@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-2/AD-6 source-linked transit understanding (2026-08-24)
-- Verified implementation runs since alignment: 16
+- Last completed run: AD-8/AD-11 sanitized failed-day presentation (2026-08-25)
+- Verified implementation runs since alignment: 17
 - Alignment due: no
 
 ## Goal Progress
@@ -24,10 +24,10 @@ implementation sequence.
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. That accessible bulletin now creates one source-linked canonical trace and claim in the later same-minute understanding phase before an optional decision sees the restricted view; inaccessible locations create neither delivery nor understanding. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. The autonomous-day command now catches only a runtime-recorded failure, returns nonzero, and shows a focal-safe stopped-without-completion status rather than a traceback. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | open | Recorded choices from one complete deterministic-harness autonomous-day run now reproduce equal runtime summary, ordered objective events and observations, inspector objective state, and restricted inputs through minute 1,440 without invoking the source client. Altered input or exhausted records cause an explicit `RecordedDecisionError`, preserve terminal runtime failure evidence, and never report day completion. This remains one narrow deterministic composition rather than complete recorded-choice coverage or a live-provider claim. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. A runtime-recorded failure now adds a stopped-without-completion line, including when failure occurs at the exact end time, instead of presenting the terminal time as ordinary quiet completion. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -192,6 +192,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-8/AD-11 sanitized failed-day presentation
+
+- The autonomous-day command now catches only exceptions for which the runtime
+  has already recorded sanitized terminal evidence. It returns nonzero and
+  renders a focal-safe line saying the day stopped without completing, rather
+  than letting a provider or replay exception escape as normal command output.
+- A recorded-choice mismatch regression verifies the normal output omits the
+  exception type and detailed mismatch text while inspector JSON retains the
+  failure type, last committed time, failed time, and work counts. A separate
+  exact-end failure regression confirms `Day 1 00:00` is described truthfully
+  as incomplete, not as a failure before the boundary.
+- The three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned:
+  focused autonomous-day/CLI tests, the full offline check, and `git diff
+  --check`. Fresh independent Sol-high review found and corrected the initial
+  CLI escape and exact-end wording issues; fresh closure review found no
+  blockers.
+- Scope limit: AD-8 and AD-11 remain open. This reports runtime-recorded
+  failure honestly; it does not add rollback, recovery, generic failure
+  handling outside the runtime boundary, or reconstruction of uncommitted
+  objective tails.
 
 ### 2026-08-24 — AD-2/AD-6 source-linked transit understanding
 
