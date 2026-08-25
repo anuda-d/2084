@@ -809,7 +809,9 @@ class ModelFocalPolicyTests(unittest.TestCase):
 
         self.assertEqual(replay.history_data(), source.history_data())
         self.assertEqual(recorded_client.consumed_count, 1)
-        self.assertEqual(replay.decision_records[0].status, "selected")
+        self.assertEqual(replay.decision_records[0].status, "failed")
+        self.assertEqual(replay.decision_records[0].failure_kind, "timeout")
+        self.assertEqual(replay.decision_records[0].failure_type, "TimeoutError")
         self.assertEqual(
             replay.decision_records[0].attempted_action_kind, "wait"
         )

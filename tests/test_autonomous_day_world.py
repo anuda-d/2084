@@ -31,7 +31,10 @@ class _SequenceClient:
 
     def choose(self, model_input):
         self.inputs.append(model_input)
-        return self._responses[len(self.inputs) - 1]
+        response = self._responses[len(self.inputs) - 1]
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
@@ -983,6 +986,95 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             [record.model_input for record in replay.private_decision_records],
             [record.model_input for record in source.private_decision_records],
+        )
+
+    def test_recorded_safe_failure_decisions_replay_complete_autonomous_day_without_provider_calls(
+        self,
+    ):
+        source_client = _SequenceClient(
+            TimeoutError("provider unavailable"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the recorded retry",
+                "decision_reason": "the retry made no immediate task available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the accessible bulletin",
+                "decision_reason": "the bulletin changes no immediate action",
+            },
+        )
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="deterministic-autonomous-day-replay-failure-source",
+            ),
+        )
+        source_summary = source.run()
+        source_call_count = len(source_client.inputs)
+
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_records(source.private_decision_records),
+        )
+        replay_summary = replay.run()
+
+        self.assertTrue(source_summary.reached_end_boundary)
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(source_call_count, len(source.private_decision_records))
+        self.assertEqual(len(source_client.inputs), source_call_count)
+        self.assertEqual(replay_summary.to_data(), source_summary.to_data())
+        self.assertEqual(replay.events, source.events)
+        self.assertEqual(replay.observations, source.observations)
+        replay_inspector = autonomous_day_inspector_data(replay, replay_summary)
+        source_inspector = autonomous_day_inspector_data(source, source_summary)
+        self.assertEqual(
+            replay_inspector["objective_state"],
+            source_inspector["objective_state"],
+        )
+        self.assertEqual(
+            replay_inspector["history"]["action_results"],
+            source_inspector["history"]["action_results"],
+        )
+        self.assertEqual(
+            [record.model_input for record in replay.private_decision_records],
+            [record.model_input for record in source.private_decision_records],
+        )
+        self.assertEqual(
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in replay.private_decision_records
+            ],
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in source.private_decision_records
+            ],
+        )
+        self.assertEqual(
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in source.private_decision_records
+            ],
+            [
+                ("failed", "timeout", "TimeoutError"),
+                ("selected", None, None),
+                ("selected", None, None),
+            ],
+        )
+        replay_model_path = replay_inspector["model_path"]
+        source_model_path = source_inspector["model_path"]
+        self.assertEqual(
+            {
+                key: replay_model_path[key]
+                for key in ("exercised", "decision_status_counts", "provider_failure_count")
+            },
+            {
+                key: source_model_path[key]
+                for key in ("exercised", "decision_status_counts", "provider_failure_count")
+            },
         )
 
     def test_recorded_autonomous_day_failure_is_explicit_for_altered_or_exhausted_evidence(

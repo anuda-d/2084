@@ -38,6 +38,14 @@ class RecordedDecisionError(RuntimeError):
     """Recorded decision data cannot be applied to the current restricted input."""
 
 
+class _RecordedSafeFailure(RuntimeError):
+    """A replayed record preserves one prior explicit model failure."""
+
+    def __init__(self, *, failure_kind: str, failure_type: str) -> None:
+        self.failure_kind = failure_kind
+        self.failure_type = failure_type
+
+
 class _InvalidStructuredAttemptError(StructuredChoiceError):
     """A response cannot describe one supported attempted action."""
 
@@ -112,6 +120,18 @@ class RecordedDecisionClient:
         if to_plain_data(freeze_mapping(model_input)) != expected_input:
             raise RecordedDecisionError(
                 f"recorded decision input mismatch at index {self._index}"
+            )
+        if record["status"] == "failed":
+            failure_kind = record["failure_kind"]
+            failure_type = record["failure_type"]
+            if not isinstance(failure_kind, str) or not isinstance(failure_type, str):
+                raise RecordedDecisionError(
+                    "recorded safe failure is missing failure evidence"
+                )
+            self._index += 1
+            raise _RecordedSafeFailure(
+                failure_kind=failure_kind,
+                failure_type=failure_type,
             )
         response = _recorded_choice(record)
         self._index += 1
@@ -438,6 +458,14 @@ class ModelFocalPolicy:
         model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
         try:
             response = self._client.choose(model_input)
+        except _RecordedSafeFailure as error:
+            return self._safe_failure(
+                view,
+                recorded_input,
+                model_input_bytes,
+                error.failure_kind,
+                error.failure_type,
+            )
         except RestrictedInputTooLargeError as error:
             return self._safe_failure(
                 view,
@@ -634,12 +662,16 @@ def _validate_recorded_choice(
         raise RecordedDecisionError("recorded attempted action kind does not match")
     if record["status"] == "failed":
         failure_kind = record.get("failure_kind")
+        failure_type = record.get("failure_type")
         if (
             kind != "wait"
             or to_plain_data(response["parameters"]) != {}
             or response["explanation"]
             != "wait because no valid model decision is available"
             or not isinstance(failure_kind, str)
+            or not failure_kind
+            or not isinstance(failure_type, str)
+            or not failure_type
             or response["decision_reason"]
             != f"model decision failed safely: {failure_kind}"
         ):

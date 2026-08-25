@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-8 safe-failure retry authority (2026-08-25)
-- Verified implementation runs since alignment: 19
-- Alignment due: no
+- Last completed run: AD-10 recorded safe-failure replay (2026-08-25)
+- Verified implementation runs since alignment: 20
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -26,7 +26,7 @@ implementation sequence.
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. The autonomous-day command now catches only a runtime-recorded failure, returns nonzero, and shows a focal-safe stopped-without-completion status rather than a traceback. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor. Only the currently active decision handler can request its own retry through an expiring capability; scheduled work, stale contexts, mismatched actors, and generic forged retry triggers are rejected. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
-| AD-10 Recorded full-day reproduction | open | Recorded choices from one complete deterministic-harness autonomous-day run now reproduce equal runtime summary, ordered objective events and observations, inspector objective state, and restricted inputs through minute 1,440 without invoking the source client. Altered input or exhausted records cause an explicit `RecordedDecisionError`, preserve terminal runtime failure evidence, and never report day completion. This remains one narrow deterministic composition rather than complete recorded-choice coverage or a live-provider claim. |
+| AD-10 Recorded full-day reproduction | open | Recorded choices from complete deterministic-harness autonomous-day runs now reproduce equal runtime summary, ordered objective events, observations, action results, inspector objective state, and restricted inputs through minute 1,440 without invoking the source client. One recorded timeout now also preserves its explicit failed private record and replays the same safe wait and delayed retry. Altered input or exhausted records cause an explicit `RecordedDecisionError`, preserve terminal runtime failure evidence, and never report day completion. This remains narrow deterministic composition evidence rather than complete recorded-choice coverage or a live-provider claim. |
 | AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. A runtime-recorded failure now adds a stopped-without-completion line, including when failure occurs at the exact end time, instead of presenting the terminal time as ordinary quiet completion. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
@@ -192,6 +192,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-10 recorded safe-failure replay
+
+- A recorded timeout now re-enters the policy boundary as the same explicit
+  safe failure rather than being silently replayed as a selected wait. It
+  creates the same safe wait, source-linked delayed retry, runtime summary,
+  ordered objective events, observations, action results, and inspector
+  objective state through minute 1,440, without calling the source client.
+- Focused evidence asserts the preserved private failure tuple
+  `failed`/`timeout`/`TimeoutError`, exact replayed restricted inputs, and
+  aggregate inspector failure counts. The replay keeps its own recorded
+  configuration identity and does not expose private evidence in objective
+  history or normal output.
+- Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned:
+  the focused timeout/retry reproduction, the full offline check (187 current
+  and 63 historical tests), and `git diff --check`. Fresh independent reviews
+  corrected two evidence gaps before a final Sol-high closure review found no
+  blockers.
+- Scope limit: AD-10 remains open. This proves one recorded timeout/retry
+  route, not every failure or tampering form, durable or user-facing replay,
+  provenance authenticity for caller-provided failure metadata, or live-model
+  determinism.
 
 ### 2026-08-25 — AD-8 safe-failure retry authority
 
