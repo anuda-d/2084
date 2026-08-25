@@ -22,6 +22,7 @@ from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
 from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
 from simulation.scheduling import ScheduledWork, TemporalPhase
+from simulation.time import SimulatedTime
 
 
 class _SequenceClient:
@@ -38,6 +39,104 @@ class _SequenceClient:
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_inspector_exposes_consumed_decisions_and_understanding_transitions(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "rest before the workday",
+                "decision_reason": "the morning is quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after resting",
+                "decision_reason": "rest is complete",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the bulletin",
+                "decision_reason": "the bulletin needs no action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-causal-evidence-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+
+        self.assertEqual(
+            inspector["runtime"]["consumed_decisions"],
+            [
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(420).to_data(),
+                    "scheduled_work_id": "decision:420:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "scheduled_wake",
+                            "source_id": "autonomous-day-mara-morning-wake",
+                        }
+                    ],
+                },
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(480).to_data(),
+                    "scheduled_work_id": "decision:480:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "action_result",
+                            "source_id": "event-0003",
+                        }
+                    ],
+                },
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(660).to_data(),
+                    "scheduled_work_id": "decision:660:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "observation_delivered",
+                            "source_id": "observation-0001",
+                        }
+                    ],
+                },
+            ],
+        )
+        observation = inspector["history"]["observations"][0]
+        self.assertEqual(
+            inspector["history"]["understanding_transitions"],
+            [
+                {
+                    "agent_id": MARA_ID,
+                    "tick": 660,
+                    "source_observation_id": observation["observation_id"],
+                    "source_event_id": observation["event_id"],
+                    "trace_id": f"trace-{observation['observation_id']}",
+                    "claim_id": f"claim-{observation['observation_id']}",
+                    "claim_created": True,
+                }
+            ],
+        )
+        inspector["history"]["understanding_transitions"][0]["claim_id"] = (
+            "forged-claim"
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(day, day.run())["history"][
+                "understanding_transitions"
+            ][0]["claim_id"],
+            f"claim-{observation['observation_id']}",
+        )
+        self.assertNotIn("model_input", json.dumps(inspector))
+        self.assertNotIn("private_decision_records", json.dumps(inspector))
+
     def test_harness_choice_becomes_private_evidence_and_resolved_wait(self):
         client = _SequenceClient(
             {

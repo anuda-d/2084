@@ -75,6 +75,7 @@ class AutonomousDay:
     _pending_actions: dict[str, PendingAction]
     _private_decision_records: list[PolicyDecisionRecord]
     _private_decision_record_byte_measurements: list[int]
+    _understanding_transitions: list[dict[str, object]]
     _mara_harness_configured: bool
 
     @property
@@ -106,6 +107,11 @@ class AutonomousDay:
     @property
     def mara_harness_configured(self) -> bool:
         return self._mara_harness_configured
+
+    @property
+    def understanding_transitions(self) -> tuple[dict[str, object], ...]:
+        """Return inspector-only records of canonical understanding changes."""
+        return tuple(self._understanding_transitions)
 
     def run(self) -> DayRunSummary:
         return self.runtime.run()
@@ -167,6 +173,7 @@ def build_autonomous_day(
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
+    understanding_transitions: list[dict[str, object]] = []
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -844,6 +851,17 @@ def build_autonomous_day(
                 new_claim,
                 trace,
             )
+        understanding_transitions.append(
+            {
+                "agent_id": mara.agent_id,
+                "tick": context.current.total_minutes,
+                "source_observation_id": observation.observation_id,
+                "source_event_id": observation.event_id,
+                "trace_id": trace.trace_id,
+                "claim_id": trace.interpreted_claim_id,
+                "claim_created": new_claim is not None,
+            }
+        )
 
     runtime = AcceleratedDayRuntime(
         start=SimulatedTime(0),
@@ -904,6 +922,7 @@ def build_autonomous_day(
         _private_decision_record_byte_measurements=(
             private_decision_record_byte_measurements
         ),
+        _understanding_transitions=understanding_transitions,
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -1087,6 +1106,7 @@ def autonomous_day_inspector_data(
             "events": events,
             "observations": observations,
             "action_results": action_results,
+            "understanding_transitions": to_plain_data(day.understanding_transitions),
         },
     }
 

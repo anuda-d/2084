@@ -134,6 +134,30 @@ class DecisionCountEvidence:
 
 
 @dataclass(frozen=True)
+class ConsumedDecisionEvidence:
+    """Inspector-only causal evidence for one committed decision dispatch."""
+
+    actor_id: str
+    due_time: SimulatedTime
+    scheduled_work_id: str
+    triggers: tuple[DecisionTrigger, ...]
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "actor_id": self.actor_id,
+            "due_time": self.due_time.to_data(),
+            "scheduled_work_id": self.scheduled_work_id,
+            "triggers": [
+                {
+                    "kind": trigger.kind.value,
+                    "source_id": trigger.source_id,
+                }
+                for trigger in self.triggers
+            ],
+        }
+
+
+@dataclass(frozen=True)
 class DayRuntimeFailureEvidence:
     failure_type: str
     last_committed_time: SimulatedTime
@@ -161,6 +185,7 @@ class DayRunSummary:
     executed_work: tuple[ExecutedWorkEvidence, ...]
     quiet_spans: tuple[QuietSpan, ...]
     decision_counts: tuple[DecisionCountEvidence, ...]
+    consumed_decisions: tuple[ConsumedDecisionEvidence, ...]
     reached_end_boundary: bool
     runtime_failure: DayRuntimeFailureEvidence | None
 
@@ -179,6 +204,9 @@ class DayRunSummary:
                 decision_count.actor_id: decision_count.count
                 for decision_count in self.decision_counts
             },
+            "consumed_decisions": [
+                decision.to_data() for decision in self.consumed_decisions
+            ],
             "executed_work_count": len(self.executed_work),
             "quiet_span_count": len(self.quiet_spans),
             "reached_end_boundary": self.reached_end_boundary,
@@ -243,6 +271,7 @@ class AcceleratedDayRuntime:
         self._decision_counts_by_actor: dict[str, int] = {}
         self._executed_work: list[ExecutedWorkEvidence] = []
         self._quiet_spans: list[QuietSpan] = []
+        self._consumed_decisions: list[ConsumedDecisionEvidence] = []
         self._runtime_failure: DayRuntimeFailureEvidence | None = None
         self._completed = False
         self._active_safe_failure_retry_authority: tuple[str, object] | None = None
@@ -347,6 +376,7 @@ class AcceleratedDayRuntime:
                     | self._model_backed_actor_ids
                 )
             ),
+            consumed_decisions=tuple(self._consumed_decisions),
             reached_end_boundary=self.is_complete,
             runtime_failure=self._runtime_failure,
         )
@@ -472,6 +502,15 @@ class AcceleratedDayRuntime:
                         kind=work.kind,
                     )
                 )
+                if active_decision is not None:
+                    self._consumed_decisions.append(
+                        ConsumedDecisionEvidence(
+                            actor_id=active_decision.actor_id,
+                            due_time=active_decision.due_time,
+                            scheduled_work_id=active_decision.scheduled_work_id,
+                            triggers=active_decision.triggers,
+                        )
+                    )
 
     def _record_failure(
         self,

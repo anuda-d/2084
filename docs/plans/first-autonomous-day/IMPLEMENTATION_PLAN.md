@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-10 recorded safe-failure replay (2026-08-25)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-11 inspector causal provenance (2026-08-25)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered input, exhaustion, and tampered records fail explicitly and preserve incomplete terminal evidence. This proves recorded reproduction of the exercised full-day paths, not deterministic live sampling. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs successful runtime work, objective history/state, observations, action results, and counts; configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. It still omits consumed decision-trigger provenance/coalescing and understanding transitions, while failed-handler objective tails fall outside committed-work evidence. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs successful runtime work, objective history/state, observations, action results, source-linked understanding transitions, and ordered consumed decision-trigger provenance; configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. Failed-handler objective tails remain outside committed-work evidence, so the full criterion is still open. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -217,6 +217,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-11 inspector causal provenance
+
+- The explicit omniscient inspector now reports each successfully committed
+  decision dispatch with its ordered coalesced trigger kind/source pair and
+  reports Mara's source-linked transit understanding transition. The exported
+  transition data is detached, so mutating an inspector payload cannot modify
+  retained run evidence.
+- A deterministic harness regression verifies the three exercised decision
+  causes (scheduled wake, completed action result, and delivered observation),
+  the understanding transition's observation/event links, and the absence of
+  model input or private decision records from inspector output. Normal
+  focal-safe rendering remains unchanged.
+- Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: the
+  focused causal-inspection regression, the full offline check (188 current
+  and 63 historical tests), and whitespace validation. A fresh Sol-high review
+  found the original mutable-payload leak, the fix was reverified, and a fresh
+  closure review found no blockers.
+- Scope limit: AD-11 remains open. This reconstructs successful decision
+  provenance and one understanding transition, but failed-handler objective
+  tails remain outside the runtime's committed-work evidence.
 
 ### 2026-08-25 — AD-10 recorded safe-failure replay
 
