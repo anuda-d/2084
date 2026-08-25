@@ -193,6 +193,23 @@ implementation-run counter after recording the reviewed state.
 
 ## Verified Run Log
 
+### 2026-08-25 — AD-11 inspector model-status counts
+
+- The explicit omniscient inspector now reports deterministic aggregate counts
+  for retained Mara decision-record statuses. The unconfigured path states that
+  this aggregate is unavailable; injected harness coverage proves both an
+  all-selected run and a run containing one safe-failed decision.
+- The status aggregate contains only status names and integer counts. Focused
+  assertions confirm the model-path output excludes model inputs and private
+  decision records, while normal focal-safe output remains unchanged.
+- The four Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned:
+  autonomous-day world tests, CLI tests, the full offline check (185 current
+  and 63 historical tests), and the manual privacy review. `git diff --check`
+  passed. Fresh independent Sol-high review found no blockers.
+- Scope limit: AD-11 remains open. These are counts of retained Mara records in
+  the explicit inspector, not runtime-wide model-status counts; an exception
+  before a private record is retained may make runtime decision totals differ.
+
 ### 2026-08-25 — AD-11 numeric model-context measurements
 
 - The explicit omniscient inspector now reports numeric peak counts for the

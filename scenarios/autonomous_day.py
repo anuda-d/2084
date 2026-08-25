@@ -1051,6 +1051,19 @@ def autonomous_day_inspector_data(
         "model_path": {
             "configured": day.mara_harness_configured,
             "exercised": bool(day.private_decision_records),
+            "decision_status_counts": (
+                {
+                    status: sum(
+                        record.status == status
+                        for record in day.private_decision_records
+                    )
+                    for status in sorted(
+                        {record.status for record in day.private_decision_records}
+                    )
+                }
+                if day.mara_harness_configured
+                else None
+            ),
             "provider_failure_count": (
                 sum(
                     record.status == "failed"

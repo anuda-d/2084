@@ -118,11 +118,17 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             {
                 key: model_path[key]
-                for key in ("configured", "exercised", "provider_failure_count")
+                for key in (
+                    "configured",
+                    "exercised",
+                    "decision_status_counts",
+                    "provider_failure_count",
+                )
             },
             {
                 "configured": True,
                 "exercised": True,
+                "decision_status_counts": {"selected": 3},
                 "provider_failure_count": 0,
             },
         )
@@ -169,6 +175,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertNotIn("model_input", model_path["growth"])
         self.assertNotIn("private_decision_records", model_path["growth"])
         self.assertNotIn("delivered_observations", model_path["growth"])
+        self.assertNotIn("model_input", model_path)
+        self.assertNotIn("private_decision_records", model_path)
 
     def test_completed_rest_dispatches_later_action_result_decision(self):
         client = _SequenceClient(
@@ -294,6 +302,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             [record.status for record in day.private_decision_records],
             ["failed", "selected", "selected"],
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(day, summary)["model_path"][
+                "decision_status_counts"
+            ],
+            {"failed": 1, "selected": 2},
         )
         self.assertEqual(
             dispatched[1].triggers,

@@ -83,6 +83,7 @@ class AutonomousDayCliTests(unittest.TestCase):
         })
         self.assertEqual(data["model_path"], {
             "configured": False,
+            "decision_status_counts": None,
             "exercised": False,
             "provider_failure_count": None,
             "growth": None,
