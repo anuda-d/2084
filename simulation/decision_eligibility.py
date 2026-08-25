@@ -56,6 +56,7 @@ class DecisionEligibility:
         self._triggers_by_work_id: dict[
             str, dict[tuple[str, str], DecisionTrigger]
         ] = {}
+        self._retry_work_by_actor: dict[str, ScheduledWork] = {}
 
     @property
     def pending_count(self) -> int:
@@ -110,10 +111,13 @@ class DecisionEligibility:
             raise ValueError("failure_id must be a non-empty string")
         if failed_at != self._agenda.clock.current:
             raise ValueError("failed_at must equal current simulated time")
+        pending_retry = self._retry_work_by_actor.get(actor_id)
+        if pending_retry is not None:
+            return pending_retry
         retry_at = failed_at.plus_minutes(SAFE_FAILURE_RETRY_MINUTES)
         if retry_at > self._agenda.clock.end:
             return None
-        return self.request(
+        retry = self.request(
             actor_id=actor_id,
             due_time=retry_at,
             trigger=DecisionTrigger(
@@ -121,6 +125,8 @@ class DecisionEligibility:
                 source_id=failure_id,
             ),
         )
+        self._retry_work_by_actor[actor_id] = retry
+        return retry
 
     def consume(self, work: ScheduledWork) -> EligibleDecision:
         if not isinstance(work, ScheduledWork):
@@ -146,6 +152,8 @@ class DecisionEligibility:
         actor_id = self._actor_id_from(work)
         del self._triggers_by_work_id[work.item_id]
         del self._work_by_actor_time[(actor_id, work.due_time.total_minutes)]
+        if self._retry_work_by_actor.get(actor_id) == work:
+            del self._retry_work_by_actor[actor_id]
         return EligibleDecision(
             actor_id=actor_id,
             due_time=work.due_time,

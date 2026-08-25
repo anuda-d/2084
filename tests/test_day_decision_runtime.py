@@ -117,6 +117,52 @@ class AcceleratedDayDecisionRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(len(summary.executed_work), 2)
 
+    def test_overlapping_safe_failures_share_one_pending_retry_chain(self):
+        decisions = []
+
+        def decide(decision, context):
+            decisions.append(decision)
+            if decision.triggers[0].kind is DecisionTriggerKind.SCHEDULED_WAKE:
+                context.request_safe_failure_retry(
+                    actor_id=decision.actor_id,
+                    failure_id=f"provider-timeout-{decision.due_time.total_minutes}",
+                )
+
+        runtime = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={},
+            decision_handler=decide,
+        )
+        for offset in (0, 1):
+            runtime.request_decision(
+                actor_id="mara-vale",
+                due_time=runtime.start.plus_minutes(offset),
+                trigger=DecisionTrigger(
+                    DecisionTriggerKind.SCHEDULED_WAKE,
+                    f"wake-{offset}",
+                ),
+            )
+
+        summary = runtime.run()
+
+        self.assertEqual(
+            [
+                decision.due_time.total_minutes - runtime.start.total_minutes
+                for decision in decisions
+            ],
+            [0, 1, SAFE_FAILURE_RETRY_MINUTES],
+        )
+        self.assertEqual(
+            decisions[-1].triggers,
+            (
+                DecisionTrigger(
+                    DecisionTriggerKind.SAFE_FAILURE_RETRY,
+                    f"provider-timeout-{runtime.start.total_minutes}",
+                ),
+            ),
+        )
+        self.assertEqual(len(summary.executed_work), 3)
+
     def test_trigger_without_decision_handler_is_terminal_not_complete(self):
         runtime = AcceleratedDayRuntime(start=self._start(), handlers={})
         runtime.request_decision(
