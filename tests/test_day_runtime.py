@@ -225,6 +225,14 @@ class AcceleratedDayRuntimeTests(unittest.TestCase):
         self.assertEqual(failure.failed_time, failed_time)
         self.assertEqual(failure.committed_work_count, 0)
         self.assertEqual(failure.released_uncommitted_count, 1)
+        self.assertEqual(
+            failure.failed_dispatch.to_data(),
+            {
+                "due_time": failed_time.to_data(),
+                "phase": "scheduled_world",
+                "sequence": 1,
+            },
+        )
         serialized = json.dumps(runtime.summary().to_data(), sort_keys=True)
         self.assertNotIn("private-provider-marker", serialized)
         self.assertNotIn("private-work-id", serialized)
@@ -241,6 +249,49 @@ class AcceleratedDayRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "stopped after"):
             runtime.run()
         self.assertEqual(runtime.summary().to_data(), before_retry)
+
+    def test_failed_dispatch_sequence_follows_committed_same_minute_work(self):
+        def fail(work, context):
+            raise ValueError()
+
+        runtime = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={
+                "commit": lambda work, context: None,
+                "fail": fail,
+            },
+        )
+        due_time = runtime.start.plus_minutes(10)
+        runtime.schedule(
+            ScheduledWork(
+                "committed-first",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "commit",
+            )
+        )
+        runtime.schedule(
+            ScheduledWork(
+                "private-second",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "fail",
+            )
+        )
+
+        with self.assertRaises(ValueError):
+            runtime.run()
+
+        failure = runtime.runtime_failure
+        self.assertEqual(failure.committed_work_count, 1)
+        self.assertEqual(
+            failure.failed_dispatch.to_data(),
+            {
+                "due_time": due_time.to_data(),
+                "phase": "scheduled_world",
+                "sequence": 2,
+            },
+        )
 
     def test_only_active_decision_actor_can_schedule_safe_failure_retry(self):
         attempted_retries = []

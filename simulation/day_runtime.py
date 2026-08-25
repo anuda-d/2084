@@ -19,6 +19,7 @@ from simulation.time import SimulatedDayClock, SimulatedTime
 DayWorkHandler = Callable[[ScheduledWork, "DayWorkContext"], None]
 DayDecisionHandler = Callable[[EligibleDecision, "DayWorkContext"], None]
 DayTimeObserver = Callable[[SimulatedTime], None]
+DayDispatchObserver = Callable[[int, ScheduledWork], None]
 MAX_MODEL_DECISION_CALLS_PER_DAY = 128
 
 
@@ -158,6 +159,26 @@ class ConsumedDecisionEvidence:
 
 
 @dataclass(frozen=True)
+class FailedDispatchEvidence:
+    """Safe ordering context for work that failed before commitment.
+
+    Scheduled work identifiers and kinds are composition-provided and may carry
+    private material, so inspector evidence retains only stable temporal order.
+    """
+
+    due_time: SimulatedTime
+    phase: str
+    sequence: int
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "due_time": self.due_time.to_data(),
+            "phase": self.phase,
+            "sequence": self.sequence,
+        }
+
+
+@dataclass(frozen=True)
 class DayRuntimeFailureEvidence:
     failure_type: str
     last_committed_time: SimulatedTime
@@ -165,6 +186,7 @@ class DayRuntimeFailureEvidence:
     committed_work_count: int
     released_uncommitted_count: int
     pending_work_count: int
+    failed_dispatch: FailedDispatchEvidence | None
 
     def to_data(self) -> dict[str, object]:
         return {
@@ -174,6 +196,11 @@ class DayRuntimeFailureEvidence:
             "committed_work_count": self.committed_work_count,
             "released_uncommitted_count": self.released_uncommitted_count,
             "pending_work_count": self.pending_work_count,
+            "failed_dispatch": (
+                self.failed_dispatch.to_data()
+                if self.failed_dispatch is not None
+                else None
+            ),
         }
 
 
@@ -229,6 +256,7 @@ class AcceleratedDayRuntime:
         decision_handler: DayDecisionHandler | None = None,
         model_backed_actor_ids: tuple[str, ...] = (),
         on_time_advanced: DayTimeObserver | None = None,
+        on_dispatch_started: DayDispatchObserver | None = None,
     ) -> None:
         if not isinstance(start, SimulatedTime):
             raise TypeError("start must be SimulatedTime")
@@ -249,6 +277,8 @@ class AcceleratedDayRuntime:
             raise TypeError("decision_handler must be callable")
         if on_time_advanced is not None and not callable(on_time_advanced):
             raise TypeError("on_time_advanced must be callable")
+        if on_dispatch_started is not None and not callable(on_dispatch_started):
+            raise TypeError("on_dispatch_started must be callable")
         if not isinstance(model_backed_actor_ids, tuple):
             raise TypeError("model_backed_actor_ids must be a tuple")
         if any(
@@ -267,6 +297,7 @@ class AcceleratedDayRuntime:
         self._handlers = copied_handlers
         self._decision_handler = decision_handler
         self._on_time_advanced = on_time_advanced
+        self._on_dispatch_started = on_dispatch_started
         self._model_backed_actor_ids = frozenset(model_backed_actor_ids)
         self._decision_counts_by_actor: dict[str, int] = {}
         self._executed_work: list[ExecutedWorkEvidence] = []
@@ -420,6 +451,11 @@ class AcceleratedDayRuntime:
 
             for index, work in enumerate(batch):
                 try:
+                    if self._on_dispatch_started is not None:
+                        self._on_dispatch_started(
+                            len(self._executed_work) + 1,
+                            work,
+                        )
                     active_decision = None
                     retry_authority = None
                     if work.kind == DECISION_ELIGIBILITY_WORK_KIND:
@@ -491,6 +527,7 @@ class AcceleratedDayRuntime:
                     self._record_failure(
                         error,
                         released_uncommitted_count=len(batch) - index,
+                        failed_work=work,
                     )
                     raise
                 self._executed_work.append(
@@ -517,6 +554,7 @@ class AcceleratedDayRuntime:
         error: Exception,
         *,
         released_uncommitted_count: int,
+        failed_work: ScheduledWork | None = None,
     ) -> None:
         last_committed_time = (
             self._executed_work[-1].due_time
@@ -530,4 +568,13 @@ class AcceleratedDayRuntime:
             committed_work_count=len(self._executed_work),
             released_uncommitted_count=released_uncommitted_count,
             pending_work_count=len(self._agenda.pending),
+            failed_dispatch=(
+                FailedDispatchEvidence(
+                    due_time=failed_work.due_time,
+                    phase=failed_work.phase.name.lower(),
+                    sequence=len(self._executed_work) + 1,
+                )
+                if failed_work is not None
+                else None
+            ),
         )

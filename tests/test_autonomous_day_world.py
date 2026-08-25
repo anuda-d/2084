@@ -39,6 +39,98 @@ class _SequenceClient:
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_inspector_places_objective_tail_from_failed_dispatch(self):
+        day = build_autonomous_day(seed=42)
+
+        def record_then_commit(work, context):
+            day._event_log.record(
+                tick=context.current.total_minutes,
+                kind="test_committed_objective_event",
+                actor_id=None,
+                action_id=None,
+                details={"source": "committed"},
+            )
+
+        def record_then_fail(work, context):
+            day._event_log.record(
+                tick=context.current.total_minutes,
+                kind="test_uncommitted_objective_event",
+                actor_id=None,
+                action_id=None,
+                details={"source": "test"},
+            )
+            raise RuntimeError("private-failure-marker")
+
+        day.runtime._handlers["test_committed_handler"] = record_then_commit
+        day.runtime._handlers["test_uncommitted_handler"] = record_then_fail
+        due_time = SimulatedTime(15)
+        day.runtime.schedule(
+            ScheduledWork(
+                "committed-first-work-id",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_committed_handler",
+            )
+        )
+        day.runtime.schedule(
+            ScheduledWork(
+                "private-uncommitted-work-id",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_uncommitted_handler",
+            )
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "private-failure-marker"):
+            day.run()
+
+        inspector = autonomous_day_inspector_data(day, day.runtime.summary())
+        self.assertEqual(inspector["runtime"]["executed_work_count"], 1)
+        self.assertEqual(
+            inspector["runtime"]["runtime_failure"]["failed_dispatch"],
+            {
+                "due_time": due_time.to_data(),
+                "phase": "scheduled_world",
+                "sequence": 2,
+            },
+        )
+        self.assertEqual(
+            inspector["history"]["events"],
+            [
+                {
+                    "event_id": "event-0001",
+                    "tick": 15,
+                    "kind": "test_committed_objective_event",
+                    "actor_id": None,
+                    "action_id": None,
+                    "caused_by": [],
+                    "details": {"source": "committed"},
+                },
+                {
+                    "event_id": "event-0002",
+                    "tick": 15,
+                    "kind": "test_uncommitted_objective_event",
+                    "actor_id": None,
+                    "action_id": None,
+                    "caused_by": [],
+                    "details": {"source": "test"},
+                }
+            ],
+        )
+        self.assertEqual(
+            inspector["history"]["uncommitted_objective_tail"],
+            {
+                "events": [inspector["history"]["events"][1]],
+                "observations": [],
+                "action_results": [],
+            },
+        )
+        rendered = json.dumps(inspector)
+        self.assertNotIn("private-failure-marker", rendered)
+        self.assertNotIn("private-uncommitted-work-id", rendered)
+        self.assertNotIn("private-second", rendered)
+        self.assertNotIn("test_uncommitted_handler", rendered)
+
     def test_inspector_exposes_consumed_decisions_and_understanding_transitions(
         self,
     ):
@@ -1256,6 +1348,17 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "committed_work_count": 0,
                 "released_uncommitted_count": 1,
                 "pending_work_count": 2,
+                "failed_dispatch": {
+                    "due_time": {
+                        "total_minutes": 420,
+                        "day_index": 0,
+                        "hour": 7,
+                        "minute": 0,
+                        "label": "Day 0 07:00",
+                    },
+                    "phase": "decision",
+                    "sequence": 1,
+                },
             },
         )
         self.assertNotIn("input mismatch", json.dumps(inspector_data))

@@ -76,6 +76,9 @@ class AutonomousDay:
     _private_decision_records: list[PolicyDecisionRecord]
     _private_decision_record_byte_measurements: list[int]
     _understanding_transitions: list[dict[str, object]]
+    _dispatch_history_checkpoints: dict[
+        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+    ]
     _mara_harness_configured: bool
 
     @property
@@ -174,6 +177,9 @@ def build_autonomous_day(
     transit_change_events: dict[str, Event] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
     understanding_transitions: list[dict[str, object]] = []
+    dispatch_history_checkpoints: dict[
+        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+    ] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -183,6 +189,22 @@ def build_autonomous_day(
     def measure_private_decision_record_footprint() -> None:
         private_decision_record_byte_measurements.append(
             private_decision_records_size_bytes(tuple(private_decision_records)),
+        )
+
+    def checkpoint_objective_history(
+        sequence: int,
+        work: ScheduledWork,
+    ) -> None:
+        """Remember the objective boundary before a dispatch may mutate it."""
+        del work
+        dispatch_history_checkpoints[sequence] = (
+            frozenset(event.event_id for event in event_log.events),
+            frozenset(observation.observation_id for observation in event_log.observations),
+            frozenset(
+                result.action_id
+                for actor in world.agents.values()
+                for result in actor.action_results
+            ),
         )
 
     def mara_view() -> AgentView:
@@ -887,6 +909,7 @@ def build_autonomous_day(
             "tick",
             current.total_minutes,
         ),
+        on_dispatch_started=checkpoint_objective_history,
     )
     runtime.schedule(
         ScheduledWork(
@@ -923,6 +946,7 @@ def build_autonomous_day(
             private_decision_record_byte_measurements
         ),
         _understanding_transitions=understanding_transitions,
+        _dispatch_history_checkpoints=dispatch_history_checkpoints,
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -1036,6 +1060,30 @@ def autonomous_day_inspector_data(
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
     ]
+    uncommitted_objective_tail = None
+    if summary.runtime_failure is not None:
+        failed_dispatch = summary.runtime_failure.failed_dispatch
+        if failed_dispatch is not None:
+            checkpoint = day._dispatch_history_checkpoints.get(
+                failed_dispatch.sequence
+            )
+            if checkpoint is not None:
+                event_ids, observation_ids, action_ids = checkpoint
+                uncommitted_objective_tail = {
+                    "events": [
+                        event for event in events if event["event_id"] not in event_ids
+                    ],
+                    "observations": [
+                        observation
+                        for observation in observations
+                        if observation["observation_id"] not in observation_ids
+                    ],
+                    "action_results": [
+                        result
+                        for result in action_results
+                        if result["action_id"] not in action_ids
+                    ],
+                }
     model_growth = None
     if day.mara_harness_configured:
         model_growth = {
@@ -1107,6 +1155,7 @@ def autonomous_day_inspector_data(
             "observations": observations,
             "action_results": action_results,
             "understanding_transitions": to_plain_data(day.understanding_transitions),
+            "uncommitted_objective_tail": uncommitted_objective_tail,
         },
     }
 

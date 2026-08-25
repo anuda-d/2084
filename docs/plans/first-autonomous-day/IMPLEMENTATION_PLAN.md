@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6 and AD-8 through AD-10 are met. AD-7, AD-11, and AD-12 are open.
+Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 inspector causal provenance (2026-08-25)
-- Verified implementation runs since alignment: 1
+- Last completed run: AD-11 failed-dispatch objective-tail inspection (2026-08-25)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered input, exhaustion, and tampered records fail explicitly and preserve incomplete terminal evidence. This proves recorded reproduction of the exercised full-day paths, not deterministic live sampling. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs successful runtime work, objective history/state, observations, action results, source-linked understanding transitions, and ordered consumed decision-trigger provenance; configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. Failed-handler objective tails remain outside committed-work evidence, so the full criterion is still open. |
+| AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -217,6 +217,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-11 failed-dispatch objective-tail inspection
+
+- Before every autonomous-day dispatch, the composition captures the existing
+  objective event, observation, and action-result identities. If that dispatch
+  fails after mutation, the explicit inspector reports only its safe time,
+  phase, and sequence position, then derives the uncommitted objective tail
+  from the pre-dispatch checkpoint. Arbitrary scheduled-work IDs, kinds, and
+  exception material remain absent.
+- The regression places a successful and a failing handler in the same phase
+  and minute. It verifies that the committed event stays outside the failed
+  tail, the appended failed-handler event is identified exactly, and the failed
+  dispatch is sequence two. A runtime regression independently proves the
+  sequence-two ordering evidence.
+- Four Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned: the
+  focused runtime module, the autonomous-day tail regression, the full offline
+  check (190 current and 63 historical tests), and whitespace validation. The
+  first fresh Sol-high review found the missing tail boundary; after this fix,
+  a second fresh Sol-high closure review found no blockers.
+- This completes AD-11's explicit watchability and inspection boundary for the
+  successor. It does not add recovery or rollback, expose private model
+  material, or claim that arbitrary handler side effects are reversible.
 
 ### 2026-08-25 — AD-11 inspector causal provenance
 

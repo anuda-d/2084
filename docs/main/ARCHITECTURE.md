@@ -121,9 +121,12 @@ proof, not a claim that the ordinary focal day or model path is complete.
 Adding `--inspect` replaces that focal projection with an explicitly
 omniscient JSON document. It includes the successful runtime work order and
 quiet spans, objective events and final state, agent-specific observations,
-action results, and exact counts for the narrow composition. It does not yet
-contain private model-growth measurements, and the runtime committed-work trace
-still cannot reconstruct partial objective tails left by a failed handler.
+action results, and exact counts for the narrow composition. It also places an
+uncommitted failed dispatch by its time, phase, and execution sequence. The
+composition records the objective-history boundary immediately before every
+dispatch, allowing the inspector to identify the events, observations, and
+action results appended by a failed dispatch without exposing its arbitrary
+identifier, kind, or exception material.
 
 ```text
 The world and its systems advance
