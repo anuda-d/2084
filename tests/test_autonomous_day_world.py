@@ -8,6 +8,8 @@ from scenarios.autonomous_day import (
     build_autonomous_day,
 )
 from policies.model_focal_policy import model_input_from_view
+from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
+from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
 from simulation.decision_eligibility import DecisionTriggerKind
 
 
@@ -88,14 +90,43 @@ class AutonomousDayWorldTests(unittest.TestCase):
             client.inputs[1]["delivered_observations"][0]["details"]["current_status"],
             "reduced",
         )
+        model_path = autonomous_day_inspector_data(day, summary)["model_path"]
         self.assertEqual(
-            autonomous_day_inspector_data(day, summary)["model_path"],
+            {
+                key: model_path[key]
+                for key in ("configured", "exercised", "provider_failure_count")
+            },
             {
                 "configured": True,
                 "exercised": True,
                 "provider_failure_count": 0,
             },
         )
+        self.assertEqual(
+            model_path["growth"],
+            {
+                "peak_restricted_input_bytes": max(
+                    record.model_input_bytes
+                    for record in day.private_decision_records
+                ),
+                "maximum_restricted_input_bytes": (
+                    MAX_RESTRICTED_DECISION_INPUT_BYTES
+                ),
+                "retained_private_record_count": 2,
+                "peak_retained_private_record_bytes": (
+                    day.peak_retained_private_decision_records_bytes
+                ),
+                "maximum_retained_private_record_bytes": (
+                    MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+                ),
+            },
+        )
+        self.assertGreater(
+            model_path["growth"]["peak_retained_private_record_bytes"],
+            day.private_decision_records_bytes - 1,
+        )
+        self.assertNotIn("model_input", model_path["growth"])
+        self.assertNotIn("private_decision_records", model_path["growth"])
 
     def test_harness_travel_uses_world_route_and_can_remove_bulletin_access(self):
         day = build_autonomous_day(

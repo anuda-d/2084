@@ -37,6 +37,8 @@ class AutonomousDayCliTests(unittest.TestCase):
             "event-",
             "executed_work",
             "district-transit-authority",
+            "peak_restricted_input_bytes",
+            "retained_private_record",
         ):
             self.assertNotIn(hidden, result.stdout)
 
@@ -83,6 +85,7 @@ class AutonomousDayCliTests(unittest.TestCase):
             "configured": False,
             "exercised": False,
             "provider_failure_count": None,
+            "growth": None,
         })
         self.assertEqual(data["objective_state"]["tick"], 1440)
         self.assertEqual(

@@ -12,11 +12,13 @@ from simulation.actions import ActionAttempt, ActionResult, PendingAction
 from simulation.agents import (
     AgentState,
     AgentView,
+    MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
     PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
     PolicyDecisionRecord,
     private_decision_records_size_bytes,
     validate_private_decision_record_retention,
 )
+from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.day_runtime import AcceleratedDayRuntime, DayRunSummary, DayWorkContext
 from simulation.decision_eligibility import (
     DecisionTrigger,
@@ -61,6 +63,7 @@ class AutonomousDay:
     _event_log: EventLog
     _pending_actions: dict[str, PendingAction]
     _private_decision_records: list[PolicyDecisionRecord]
+    _private_decision_record_byte_measurements: list[int]
     _mara_harness_configured: bool
 
     @property
@@ -83,6 +86,11 @@ class AutonomousDay:
     @property
     def private_decision_records_bytes(self) -> int:
         return private_decision_records_size_bytes(self.private_decision_records)
+
+    @property
+    def peak_retained_private_decision_records_bytes(self) -> int:
+        """Return the largest retained private-evidence footprint this run saw."""
+        return max(self._private_decision_record_byte_measurements)
 
     @property
     def mara_harness_configured(self) -> bool:
@@ -148,7 +156,15 @@ def build_autonomous_day(
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
+    private_decision_record_byte_measurements = [
+        private_decision_records_size_bytes(())
+    ]
     mara_action_count = 0
+
+    def measure_private_decision_record_footprint() -> None:
+        private_decision_record_byte_measurements.append(
+            private_decision_records_size_bytes(tuple(private_decision_records)),
+        )
 
     def mara_view() -> AgentView:
         """Construct the same agent-safe shape used at Mara's decision seam."""
@@ -210,6 +226,7 @@ def build_autonomous_day(
             reserved_bytes=mara_decision_record_resolution_reserve(attempt),
         )
         private_decision_records.append(decision_record)
+        measure_private_decision_record_footprint()
         resolve_mara_attempt(attempt, context, decision_record)
 
     def replace_latest_private_decision_record(
@@ -220,6 +237,7 @@ def build_autonomous_day(
         candidate = (*private_decision_records[:-1], record)
         validate_private_decision_record_retention(candidate)
         private_decision_records[-1] = record
+        measure_private_decision_record_footprint()
 
     def mara_decision_record_resolution_reserve(attempt: ActionAttempt) -> int:
         """Reserve bounded private-record space before objective mutation."""
@@ -251,6 +269,7 @@ def build_autonomous_day(
                 candidate[index] = record.resolved_with(result)
                 validate_private_decision_record_retention(tuple(candidate))
                 private_decision_records[:] = candidate
+                measure_private_decision_record_footprint()
                 return
         raise RuntimeError("Mara action result has no private decision record")
 
@@ -604,6 +623,9 @@ def build_autonomous_day(
         _event_log=event_log,
         _pending_actions=pending_actions,
         _private_decision_records=private_decision_records,
+        _private_decision_record_byte_measurements=(
+            private_decision_record_byte_measurements
+        ),
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -697,6 +719,27 @@ def autonomous_day_inspector_data(
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
     ]
+    model_growth = None
+    if day.mara_harness_configured:
+        model_growth = {
+            "peak_restricted_input_bytes": max(
+                (
+                    record.model_input_bytes
+                    for record in day.private_decision_records
+                ),
+                default=0,
+            ),
+            "maximum_restricted_input_bytes": (
+                MAX_RESTRICTED_DECISION_INPUT_BYTES
+            ),
+            "retained_private_record_count": len(day.private_decision_records),
+            "peak_retained_private_record_bytes": (
+                day.peak_retained_private_decision_records_bytes
+            ),
+            "maximum_retained_private_record_bytes": (
+                MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+            ),
+        }
     return {
         "runtime": summary.to_data(),
         "counts": {
@@ -715,6 +758,7 @@ def autonomous_day_inspector_data(
                 if day.mara_harness_configured
                 else None
             ),
+            "growth": model_growth,
         },
         "objective_state": {
             "tick": day.world.tick,

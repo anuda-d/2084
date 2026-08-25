@@ -193,6 +193,29 @@ implementation-run counter after recording the reviewed state.
 
 ## Verified Run Log
 
+### 2026-08-24 — AD-7/AD-11 omniscient model-growth measurements
+
+- The explicit autonomous-day inspector now reports aggregate-only model-growth
+  evidence when a `MaraHarness` is configured: the peak restricted-input byte
+  count, retained private-record count, peak retained private-record footprint,
+  and their existing ceilings. It does not serialize a private record, model
+  input, or provider conversation into this summary. An unconfigured model path
+  reports `growth: null` rather than invented zero measurements.
+- Retained private-evidence measurements sample the empty collection and every
+  accepted record append, linkage replacement, and resolution replacement, so
+  the reported peak is not inferred solely from final state. Restricted-input
+  peak derives from canonical per-record byte measurements.
+- Focused successor-world and CLI validation passed 13 tests. The full offline
+  check passed 174 repository tests and 63 historical checks; `git diff --check`
+  passed. All four Solo gates were reverified with 4 met, 0 unmet, and 0
+  abandoned.
+- Fresh independent Sol-high review found no blockers and confirmed aggregate
+  privacy, mutation-time peak sampling, deterministic measurements, and
+  focal-safe normal output.
+- Scope limit: AD-7 and AD-11 remain open. This adds inspector measurement
+  evidence only; it does not prove continuity relevance, full-day focal action
+  cadence, recorded reproduction, or a live day.
+
 ### 2026-08-24 — AD-3/AD-7 Mara harness decision seam
 
 - `build_autonomous_day` now accepts an explicitly injected `MaraHarness` as an alternative to the callback-only seam. At the existing scheduled-wake and access-gated bulletin triggers, the harness receives only Mara's restricted view. Its choice becomes one append-only action attempt, while the successor world owns validation and resolution: wait completes at the current minute, a reachable travel completes 30 simulated minutes later, and other choices are recorded then rejected without scripted focal substitution.
