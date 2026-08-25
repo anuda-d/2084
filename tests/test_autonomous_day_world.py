@@ -213,23 +213,48 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
 
     def test_safe_failure_wait_does_not_become_rest(self):
+        client = _SequenceClient(
+            TimeoutError("unavailable provider"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the retry succeeds",
+                "decision_reason": "there is no immediate movement to make",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after reading the home bulletin",
+                "decision_reason": "the delivered status does not require travel",
+            },
+        )
         day = build_autonomous_day(
             seed=42,
             mara_harness=MaraHarness.from_client(
-                _SequenceClient(
-                    TimeoutError("unavailable provider"),
-                    TimeoutError("unavailable provider"),
-                ),
+                client,
                 configuration_id="deterministic-autonomous-day-failure-test",
             ),
         )
+        dispatched = []
+        original_handler = day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def capture_decision(decision, context):
+            dispatched.append(decision)
+            original_handler(decision, context)
+
+        day.runtime._decision_handler = capture_decision
 
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(len(client.inputs), 3)
+        self.assertEqual([model_input["tick"] for model_input in client.inputs], [420, 450, 660])
         self.assertEqual(
             [event.kind for event in day.events if event.actor_id == MARA_ID],
             [
+                "action_attempted",
+                "wait_completed",
                 "action_attempted",
                 "wait_completed",
                 "action_attempted",
@@ -239,11 +264,20 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertFalse(any(event.kind == "rest_completed" for event in day.events))
         self.assertEqual(
             [record.status for record in day.private_decision_records],
-            ["failed", "failed"],
+            ["failed", "selected", "selected"],
+        )
+        self.assertEqual(
+            dispatched[1].triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.SAFE_FAILURE_RETRY,
+                    source_id="model-decision-mara-vale-0420",
+                ),
+            ),
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {MARA_ID: 2},
+            {MARA_ID: 3},
         )
 
     def test_completed_travel_dispatches_action_result_decision(self):

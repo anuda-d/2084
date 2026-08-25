@@ -230,6 +230,11 @@ def build_autonomous_day(
         private_decision_records.append(decision_record)
         measure_private_decision_record_footprint()
         resolve_mara_attempt(attempt, context, decision_record, decision)
+        if decision_record.status == "failed":
+            context.request_safe_failure_retry(
+                actor_id=MARA_ID,
+                failure_id=decision_record.decision_id,
+            )
 
     def replace_latest_private_decision_record(
         record: PolicyDecisionRecord,

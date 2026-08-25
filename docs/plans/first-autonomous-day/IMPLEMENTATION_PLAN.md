@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3/AD-4 scheduled-home rest completion (2026-08-24)
-- Verified implementation runs since alignment: 9
+- Last completed run: AD-3/AD-8 safe-failure retry cadence (2026-08-24)
+- Verified implementation runs since alignment: 10
 - Alignment due: no
 
 ## Goal Progress
@@ -24,7 +24,7 @@ implementation sequence.
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding remains unconfigured. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness uses the existing safe-wait failure result but does not yet request a model-owned retry; the legacy path still retries every tick. |
+| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
 | AD-11 Watchability and inspection | open | The successor command presents readable start/end time, two compact intervals with no focal updates, and Mara's accessible bulletin without hidden detail. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
@@ -192,6 +192,14 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-3/AD-8 safe-failure retry cadence
+
+- A failed configured `MaraHarness` decision now resolves to the existing immediate safe wait and, only after that private record and objective result are resolved, requests the runtime's single 30-minute `SAFE_FAILURE_RETRY`. The retry is sourced by the private decision ID and is not exposed in objective history or normal output.
+- Focused evidence exercises a timeout at minute 420, one retry at minute 450, and the separate accessible-bulletin decision at minute 660. It proves three total calls rather than per-minute polling, a retry trigger sourced by `model-decision-mara-vale-0420`, and no fabricated `rest_completed` event.
+- Focused validation passed the retry regression and all 11 autonomous-day world tests. Full offline validation passed 176 repository tests and 63 historical checks; `git diff --check` passed. The two Solo gates were reverified with 2 met, 0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no blockers. It noted only that the focused test does not separately assert private decision-ID absence from normal or inspector output; the selected runtime behavior does not serialize these records, and this change adds no presentation path.
+- Scope limit: AD-8 remains open. This configures only Mara's successor-harness retry cadence; it does not provide retry authority provenance beyond the configured caller, change the legacy per-tick path, prove all provider failure modes through a full-day composition, or establish final live-day behavior.
 
 ### 2026-08-24 — AD-3/AD-4 scheduled-home rest completion
 
