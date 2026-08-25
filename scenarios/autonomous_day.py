@@ -7,8 +7,16 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
-from simulation.agents import AgentState, AgentView
+from policies.mara_harness import MaraHarness
+from simulation.actions import ActionAttempt, ActionResult, PendingAction
+from simulation.agents import (
+    AgentState,
+    AgentView,
+    PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
+    PolicyDecisionRecord,
+    private_decision_records_size_bytes,
+    validate_private_decision_record_retention,
+)
 from simulation.day_runtime import AcceleratedDayRuntime, DayRunSummary, DayWorkContext
 from simulation.decision_eligibility import (
     DecisionTrigger,
@@ -31,6 +39,7 @@ _SUPPORTING_WORK_START = "autonomous_day_supporting_work_start"
 _SUPPORTING_WORK_COMPLETION = "autonomous_day_supporting_work_completion"
 _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
+_MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -38,6 +47,7 @@ _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
 _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
+_MARA_TRAVEL_DURATION_MINUTES = 30
 
 MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
@@ -50,6 +60,8 @@ class AutonomousDay:
     runtime: AcceleratedDayRuntime
     _event_log: EventLog
     _pending_actions: dict[str, PendingAction]
+    _private_decision_records: list[PolicyDecisionRecord]
+    _mara_harness_configured: bool
 
     @property
     def events(self) -> tuple[Event, ...]:
@@ -63,6 +75,19 @@ class AutonomousDay:
     def pending_action_count(self) -> int:
         return len(self._pending_actions)
 
+    @property
+    def private_decision_records(self) -> tuple[PolicyDecisionRecord, ...]:
+        """Return inspector-only model evidence, never objective history."""
+        return tuple(self._private_decision_records)
+
+    @property
+    def private_decision_records_bytes(self) -> int:
+        return private_decision_records_size_bytes(self.private_decision_records)
+
+    @property
+    def mara_harness_configured(self) -> bool:
+        return self._mara_harness_configured
+
     def run(self) -> DayRunSummary:
         return self.runtime.run()
 
@@ -71,6 +96,7 @@ def build_autonomous_day(
     *,
     seed: int = 42,
     on_mara_decision: MaraDecisionCallback | None = None,
+    mara_harness: MaraHarness | None = None,
 ) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
@@ -78,6 +104,10 @@ def build_autonomous_day(
         raise ValueError("seed must be an integer")
     if on_mara_decision is not None and not callable(on_mara_decision):
         raise TypeError("on_mara_decision must be callable")
+    if mara_harness is not None and not isinstance(mara_harness, MaraHarness):
+        raise TypeError("mara_harness must be MaraHarness")
+    if on_mara_decision is not None and mara_harness is not None:
+        raise ValueError("choose either on_mara_decision or mara_harness")
 
     world = WorldState(
         tick=0,
@@ -117,6 +147,8 @@ def build_autonomous_day(
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
+    private_decision_records: list[PolicyDecisionRecord] = []
+    mara_action_count = 0
 
     def mara_view() -> AgentView:
         """Construct the same agent-safe shape used at Mara's decision seam."""
@@ -153,20 +185,235 @@ def build_autonomous_day(
             reachable_destinations=tuple(
                 world.travel_graph.get(mara.location, ())
             ),
-            work_action_available=mara.location == "workplace",
+            work_action_available=False,
             allocation_action_available=False,
-            valid_actions=tuple(sorted(ACTION_KINDS)),
+            valid_actions=("travel", "wait"),
         )
 
     def dispatch_mara_decision(
         decision: EligibleDecision,
-        _context: DayWorkContext,
+        context: DayWorkContext,
     ) -> None:
         if decision.actor_id != MARA_ID:
             raise RuntimeError("autonomous day has no decision callback for actor")
-        if on_mara_decision is None:
+        if on_mara_decision is not None:
+            on_mara_decision(decision, mara_view())
+            return
+        if mara_harness is None:
             raise RuntimeError("Mara decision was requested without a callback")
-        on_mara_decision(decision, mara_view())
+        attempt = mara_harness.choose(mara_view())
+        decision_record = mara_harness.take_decision_record()
+        if decision_record is None:
+            raise RuntimeError("Mara harness produced no private decision record")
+        validate_private_decision_record_retention(
+            (*private_decision_records, decision_record),
+            reserved_bytes=mara_decision_record_resolution_reserve(attempt),
+        )
+        private_decision_records.append(decision_record)
+        resolve_mara_attempt(attempt, context, decision_record)
+
+    def replace_latest_private_decision_record(
+        record: PolicyDecisionRecord,
+    ) -> None:
+        if not private_decision_records:
+            raise RuntimeError("Mara has no private decision record to update")
+        candidate = (*private_decision_records[:-1], record)
+        validate_private_decision_record_retention(candidate)
+        private_decision_records[-1] = record
+
+    def mara_decision_record_resolution_reserve(attempt: ActionAttempt) -> int:
+        """Reserve bounded private-record space before objective mutation."""
+        dynamic_material = (
+            attempt.actor_id,
+            attempt.kind,
+            "home",
+            "workplace",
+            "transit_stop",
+            json.dumps(
+                to_plain_data(attempt.parameters),
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+        )
+        return PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES + sum(
+            len(value.encode("utf-8")) for value in dynamic_material
+        )
+
+    def resolve_private_decision_record(result: ActionResult) -> None:
+        for index in range(len(private_decision_records) - 1, -1, -1):
+            record = private_decision_records[index]
+            if (
+                record.action_id == result.action_id
+                and record.resolution_status is None
+            ):
+                candidate = list(private_decision_records)
+                candidate[index] = record.resolved_with(result)
+                validate_private_decision_record_retention(tuple(candidate))
+                private_decision_records[:] = candidate
+                return
+        raise RuntimeError("Mara action result has no private decision record")
+
+    def append_mara_result(
+        *,
+        action_id: str,
+        attempt_event_id: str,
+        action_kind: str,
+        outcome: Event,
+        status: str,
+        reason: str | None = None,
+    ) -> ActionResult:
+        result = ActionResult(
+            action_id=action_id,
+            attempt_event_id=attempt_event_id,
+            outcome_event_id=outcome.event_id,
+            actor_id=MARA_ID,
+            action_kind=action_kind,
+            status=status,
+            resolved_tick=outcome.tick,
+            reason=reason,
+        )
+        world.agents[MARA_ID].action_results.append(result)
+        return result
+
+    def reject_mara_attempt(
+        attempt: ActionAttempt,
+        attempted: Event,
+        reason: str,
+    ) -> None:
+        rejected = event_log.record(
+            tick=attempted.tick,
+            kind="action_rejected",
+            actor_id=MARA_ID,
+            action_id=attempted.action_id,
+            caused_by=(attempted.event_id,),
+            details={"reason": reason},
+        )
+        result = append_mara_result(
+            action_id=attempted.action_id or "",
+            attempt_event_id=attempted.event_id,
+            action_kind=attempt.kind,
+            outcome=rejected,
+            status="rejected",
+            reason=reason,
+        )
+        resolve_private_decision_record(result)
+
+    def resolve_mara_attempt(
+        attempt: ActionAttempt,
+        context: DayWorkContext,
+        decision_record: PolicyDecisionRecord,
+    ) -> None:
+        nonlocal mara_action_count
+        if attempt.actor_id != MARA_ID:
+            raise ValueError("Mara harness attempted an action for another actor")
+        mara_action_count += 1
+        action_id = f"autonomous-day-mara-action-{mara_action_count:04d}"
+        attempted = event_log.record(
+            tick=context.current.total_minutes,
+            kind="action_attempted",
+            actor_id=MARA_ID,
+            action_id=action_id,
+            details={
+                "action_kind": attempt.kind,
+                "decision_explanation": attempt.explanation,
+            },
+        )
+        mara = world.agents[MARA_ID]
+        mara.last_attempt = attempt
+        mara.action_history.append(attempt)
+        travel_destination = attempt.parameters.get("destination")
+        accepted = attempt.kind == "wait" or (
+            attempt.kind == "travel"
+            and isinstance(travel_destination, str)
+            and travel_destination in world.travel_graph.get(mara.location, ())
+        )
+        replace_latest_private_decision_record(
+            decision_record.linked_to(
+                attempt_event_id=attempted.event_id,
+                action_id=action_id,
+                validation_status="accepted" if accepted else "rejected",
+            )
+        )
+        if attempt.kind == "wait":
+            completed = event_log.record(
+                tick=context.current.total_minutes,
+                kind="wait_completed",
+                actor_id=MARA_ID,
+                action_id=action_id,
+                caused_by=(attempted.event_id,),
+                details={"location": mara.location},
+            )
+            result = append_mara_result(
+                action_id=action_id,
+                attempt_event_id=attempted.event_id,
+                action_kind=attempt.kind,
+                outcome=completed,
+                status="completed",
+            )
+            resolve_private_decision_record(result)
+            return
+        if attempt.kind != "travel":
+            reject_mara_attempt(
+                attempt,
+                attempted,
+                "action is not available in the autonomous-day composition",
+            )
+            return
+        destination = travel_destination
+        if not isinstance(destination, str) or destination not in world.travel_graph.get(
+            mara.location, ()
+        ):
+            reject_mara_attempt(
+                attempt,
+                attempted,
+                "travel destination is not reachable from Mara's location",
+            )
+            return
+        completion_time = context.current.plus_minutes(_MARA_TRAVEL_DURATION_MINUTES)
+        pending_actions[MARA_ID] = PendingAction(
+            action_id=action_id,
+            attempt_event_id=attempted.event_id,
+            attempt=attempt,
+            started_tick=context.current.total_minutes,
+            completes_tick=completion_time.total_minutes,
+        )
+        context.schedule(
+            ScheduledWork(
+                item_id=f"{action_id}-completion",
+                due_time=completion_time,
+                phase=TemporalPhase.ACTION_COMPLETION,
+                kind=_MARA_TRAVEL_COMPLETION,
+            )
+        )
+
+    def complete_mara_travel(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        pending = pending_actions.pop(MARA_ID)
+        if pending.completes_tick != context.current.total_minutes:
+            raise RuntimeError("Mara travel released at the wrong time")
+        destination = pending.attempt.parameters["destination"]
+        if not isinstance(destination, str):
+            raise RuntimeError("Mara travel is missing its destination")
+        world.agents[MARA_ID].location = destination
+        completed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="travel_completed",
+            actor_id=MARA_ID,
+            action_id=pending.action_id,
+            caused_by=(pending.attempt_event_id,),
+            details={"destination": destination},
+        )
+        result = append_mara_result(
+            action_id=pending.action_id,
+            attempt_event_id=pending.attempt_event_id,
+            action_kind=pending.attempt.kind,
+            outcome=completed,
+            status="completed",
+        )
+        resolve_private_decision_record(result)
 
     def start_supporting_work(
         work: ScheduledWork,
@@ -295,7 +542,7 @@ def build_autonomous_day(
             },
         )
         mara.observations.append(observation)
-        if on_mara_decision is not None:
+        if on_mara_decision is not None or mara_harness is not None:
             context.request_decision(
                 actor_id=mara.agent_id,
                 due_time=context.current,
@@ -312,9 +559,12 @@ def build_autonomous_day(
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
+            _MARA_TRAVEL_COMPLETION: complete_mara_travel,
         },
         decision_handler=(
-            dispatch_mara_decision if on_mara_decision is not None else None
+            dispatch_mara_decision
+            if on_mara_decision is not None or mara_harness is not None
+            else None
         ),
         model_backed_actor_ids=(MARA_ID,),
         on_time_advanced=lambda current: setattr(
@@ -331,7 +581,7 @@ def build_autonomous_day(
             kind=_SUPPORTING_WORK_START,
         )
     )
-    if on_mara_decision is not None:
+    if on_mara_decision is not None or mara_harness is not None:
         runtime.request_decision(
             actor_id=MARA_ID,
             due_time=SimulatedTime(_MARA_SCHEDULED_WAKE_MINUTE),
@@ -353,6 +603,8 @@ def build_autonomous_day(
         runtime=runtime,
         _event_log=event_log,
         _pending_actions=pending_actions,
+        _private_decision_records=private_decision_records,
+        _mara_harness_configured=mara_harness is not None,
     )
 
 
@@ -453,9 +705,16 @@ def autonomous_day_inspector_data(
             "action_results": len(action_results),
         },
         "model_path": {
-            "configured": False,
-            "exercised": False,
-            "provider_failure_count": None,
+            "configured": day.mara_harness_configured,
+            "exercised": bool(day.private_decision_records),
+            "provider_failure_count": (
+                sum(
+                    record.status == "failed"
+                    for record in day.private_decision_records
+                )
+                if day.mara_harness_configured
+                else None
+            ),
         },
         "objective_state": {
             "tick": day.world.tick,
