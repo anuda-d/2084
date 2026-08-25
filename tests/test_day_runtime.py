@@ -2,6 +2,7 @@ import json
 import unittest
 
 from simulation.day_runtime import AcceleratedDayRuntime
+from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
 from simulation.scheduling import ScheduledWork, TemporalPhase
 from simulation.time import MINUTES_PER_DAY, SimulatedTime
 
@@ -240,6 +241,107 @@ class AcceleratedDayRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "stopped after"):
             runtime.run()
         self.assertEqual(runtime.summary().to_data(), before_retry)
+
+    def test_only_active_decision_actor_can_schedule_safe_failure_retry(self):
+        attempted_retries = []
+        retained_contexts = []
+
+        def unrelated_work(work, context):
+            with self.assertRaisesRegex(RuntimeError, "only available"):
+                context.request_safe_failure_retry(
+                    actor_id="mara-vale",
+                    failure_id="unrelated-work-failure",
+                )
+            with self.assertRaisesRegex(
+                RuntimeError, "active decision|expired"
+            ):
+                retained_contexts[0].request_safe_failure_retry(
+                    actor_id="mara-vale",
+                    failure_id="stale-decision-failure",
+                )
+            with self.assertRaisesRegex(ValueError, "require the active"):
+                context.request_decision(
+                    actor_id="ilan-reed",
+                    due_time=runtime.start.plus_minutes(21),
+                    trigger=DecisionTrigger(
+                        DecisionTriggerKind.SAFE_FAILURE_RETRY,
+                        "forged-unrelated-retry",
+                    ),
+                )
+            with self.assertRaisesRegex(ValueError, "require the active"):
+                retained_contexts[0].request_decision(
+                    actor_id="ilan-reed",
+                    due_time=runtime.start.plus_minutes(21),
+                    trigger=DecisionTrigger(
+                        DecisionTriggerKind.SAFE_FAILURE_RETRY,
+                        "forged-stale-retry",
+                    ),
+                )
+
+        def handle_decision(decision, context):
+            if any(
+                trigger.kind is DecisionTriggerKind.SAFE_FAILURE_RETRY
+                for trigger in decision.triggers
+            ):
+                return
+            retained_contexts.append(context)
+            with self.assertRaisesRegex(ValueError, "match the active decision"):
+                context.request_safe_failure_retry(
+                    actor_id="ilan-reed",
+                    failure_id="mismatched-actor-failure",
+                )
+            attempted_retries.append(
+                context.request_safe_failure_retry(
+                    actor_id=decision.actor_id,
+                    failure_id="mara-decision-failure",
+                )
+            )
+
+        runtime = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={"unrelated": unrelated_work},
+            decision_handler=handle_decision,
+        )
+        runtime.schedule(
+            ScheduledWork(
+                "unrelated-work",
+                runtime.start.plus_minutes(20),
+                TemporalPhase.SCHEDULED_WORLD,
+                "unrelated",
+            )
+        )
+        runtime.request_decision(
+            actor_id="mara-vale",
+            due_time=runtime.start.plus_minutes(10),
+            trigger=DecisionTrigger(
+                DecisionTriggerKind.SCHEDULED_WAKE,
+                "mara-morning-wake",
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "require the active"):
+            runtime.request_decision(
+                actor_id="ilan-reed",
+                due_time=runtime.start.plus_minutes(1),
+                trigger=DecisionTrigger(
+                    DecisionTriggerKind.SAFE_FAILURE_RETRY,
+                    "forged-direct-retry",
+                ),
+            )
+
+        summary = runtime.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertFalse(hasattr(runtime, "request_safe_failure_retry"))
+        self.assertEqual(len(retained_contexts), 1)
+        self.assertEqual(len(attempted_retries), 1)
+        self.assertIsNotNone(attempted_retries[0])
+        self.assertEqual(
+            attempted_retries[0].due_time,
+            runtime.start.plus_minutes(40),
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"], {"mara-vale": 2}
+        )
 
 
 if __name__ == "__main__":

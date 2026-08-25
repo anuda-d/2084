@@ -9,6 +9,7 @@ from simulation.decision_eligibility import (
     DECISION_ELIGIBILITY_WORK_KIND,
     DecisionEligibility,
     DecisionTrigger,
+    DecisionTriggerKind,
     EligibleDecision,
 )
 from simulation.scheduling import ScheduledWork, TemporalAgenda
@@ -35,7 +36,7 @@ class DayWorkContext:
         end: SimulatedTime,
         schedule: Callable[[ScheduledWork], ScheduledWork],
         request_decision: Callable[..., ScheduledWork],
-        request_safe_failure_retry: Callable[..., ScheduledWork | None],
+        request_safe_failure_retry: Callable[..., ScheduledWork | None] | None,
     ) -> None:
         self._current = current
         self._end = end
@@ -73,6 +74,10 @@ class DayWorkContext:
         actor_id: str,
         failure_id: str,
     ) -> ScheduledWork | None:
+        if self._request_safe_failure_retry is None:
+            raise RuntimeError(
+                "safe-failure retries are only available to a decision handler"
+            )
         return self._request_safe_failure_retry(
             actor_id=actor_id,
             failure_id=failure_id,
@@ -240,6 +245,7 @@ class AcceleratedDayRuntime:
         self._quiet_spans: list[QuietSpan] = []
         self._runtime_failure: DayRuntimeFailureEvidence | None = None
         self._completed = False
+        self._active_safe_failure_retry_authority: tuple[str, object] | None = None
 
     @property
     def start(self) -> SimulatedTime:
@@ -288,20 +294,35 @@ class AcceleratedDayRuntime:
     ) -> ScheduledWork:
         if self._runtime_failure is not None:
             raise RuntimeError("accelerated day stopped after a runtime failure")
+        if trigger.kind is DecisionTriggerKind.SAFE_FAILURE_RETRY:
+            raise ValueError(
+                "safe-failure retry triggers require the active decision authority"
+            )
         return self._decision_eligibility.request(
             actor_id=actor_id,
             due_time=due_time,
             trigger=trigger,
         )
 
-    def request_safe_failure_retry(
+    def _request_safe_failure_retry(
         self,
         *,
+        authority: object,
         actor_id: str,
         failure_id: str,
     ) -> ScheduledWork | None:
         if self._runtime_failure is not None:
             raise RuntimeError("accelerated day stopped after a runtime failure")
+        active = self._active_safe_failure_retry_authority
+        if active is None:
+            raise RuntimeError(
+                "safe-failure retries are only available during the active decision"
+            )
+        active_actor_id, active_authority = active
+        if authority is not active_authority:
+            raise RuntimeError("safe-failure retry authority has expired")
+        if actor_id != active_actor_id:
+            raise ValueError("safe-failure retry actor must match the active decision")
         return self._decision_eligibility.request_safe_failure_retry(
             actor_id=actor_id,
             failed_at=self._clock.current,
@@ -369,21 +390,46 @@ class AcceleratedDayRuntime:
 
             for index, work in enumerate(batch):
                 try:
+                    active_decision = None
+                    retry_authority = None
+                    if work.kind == DECISION_ELIGIBILITY_WORK_KIND:
+                        if self._decision_handler is None:
+                            raise RuntimeError("no decision handler registered")
+                        active_decision = self._decision_eligibility.consume(work)
+                        retry_authority = object()
+                        self._active_safe_failure_retry_authority = (
+                            active_decision.actor_id,
+                            retry_authority,
+                        )
+
+                    def request_safe_failure_retry(
+                        *,
+                        actor_id: str,
+                        failure_id: str,
+                        authority: object | None = retry_authority,
+                    ) -> ScheduledWork | None:
+                        if authority is None:
+                            raise RuntimeError(
+                                "safe-failure retries are only available to a "
+                                "decision handler"
+                            )
+                        return self._request_safe_failure_retry(
+                            authority=authority,
+                            actor_id=actor_id,
+                            failure_id=failure_id,
+                        )
+
                     context = DayWorkContext(
                         current=self._clock.current,
                         end=self._clock.end,
                         schedule=self.schedule,
                         request_decision=self.request_decision,
-                        request_safe_failure_retry=(
-                            self.request_safe_failure_retry
-                        ),
+                        request_safe_failure_retry=request_safe_failure_retry,
                     )
                     if work.kind == DECISION_ELIGIBILITY_WORK_KIND:
-                        if self._decision_handler is None:
-                            raise RuntimeError(
-                                "no decision handler registered"
-                            )
-                        decision = self._decision_eligibility.consume(work)
+                        if active_decision is None:
+                            raise RuntimeError("decision eligibility was not consumed")
+                        decision = active_decision
                         prior_count = self._decision_counts_by_actor.get(
                             decision.actor_id,
                             0,
@@ -400,7 +446,10 @@ class AcceleratedDayRuntime:
                         self._decision_counts_by_actor[decision.actor_id] = (
                             prior_count + 1
                         )
-                        self._decision_handler(decision, context)
+                        try:
+                            self._decision_handler(decision, context)
+                        finally:
+                            self._active_safe_failure_retry_authority = None
                     else:
                         handler = self._handlers.get(work.kind)
                         if handler is None:
