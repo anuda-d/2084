@@ -553,6 +553,95 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIn(bulletin_update, normal_output)
         self.assertLess(normal_output.index(household_update), normal_output.index(bulletin_update))
 
+    def test_equal_deterministic_harness_runs_reproduce_complete_day_evidence(
+        self,
+    ):
+        responses = (
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the workplace obligation",
+                "decision_reason": "work is available at the workplace",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after workplace work",
+                "decision_reason": "home is reachable from the workplace",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time at home",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the completed household activity",
+                "decision_reason": "no immediate action is required",
+            },
+        )
+        first_client = _SequenceClient(*responses)
+        second_client = _SequenceClient(*responses)
+        first = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                first_client,
+                configuration_id="deterministic-autonomous-day-offline-proof",
+            ),
+        )
+        second = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                second_client,
+                configuration_id="deterministic-autonomous-day-offline-proof",
+            ),
+        )
+
+        first_summary = first.run()
+        second_summary = second.run()
+
+        self.assertTrue(first_summary.reached_end_boundary)
+        self.assertTrue(second_summary.reached_end_boundary)
+        self.assertEqual(len(first_client.inputs), 5)
+        self.assertEqual(second_client.inputs, first_client.inputs)
+        self.assertEqual(second_summary.to_data(), first_summary.to_data())
+        self.assertEqual(second.events, first.events)
+        self.assertEqual(second.observations, first.observations)
+        self.assertEqual(
+            second.private_decision_records,
+            first.private_decision_records,
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(second, second_summary),
+            autonomous_day_inspector_data(first, first_summary),
+        )
+        self.assertEqual(
+            first_summary.to_data()["decision_counts_by_actor"][MARA_ID],
+            len(first.private_decision_records),
+        )
+        self.assertLessEqual(
+            len(first.private_decision_records),
+            128,
+        )
+        self.assertTrue(
+            all(
+                record.model_input_bytes <= MAX_RESTRICTED_DECISION_INPUT_BYTES
+                for record in first.private_decision_records
+            )
+        )
+        self.assertLessEqual(
+            first.peak_retained_private_decision_records_bytes,
+            MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+        )
+
     def test_scheduled_wake_dispatches_one_restricted_mara_decision(self):
         dispatched = []
         day = build_autonomous_day(
