@@ -340,18 +340,25 @@ chain-of-thought stay out of objective history and normal presentation. Mara's
 concise `decision_reason` is intentionally retained as an attributed action
 explanation and rendered in the normal `Reason:` line.
 
-The active 24-hour goal has added three long-run guardrails to this boundary.
+The active 24-hour goal has added four long-run guardrails to this boundary.
 The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter
 refuses inputs above 48 KiB before transport. Prior attempts and results use a
 16-entry recent window with explicit total and omitted counts. The complete
 private decision-record collection uses canonical compact JSON measurement,
 cannot retain more than 8 MiB, and reports current and peak sizes only in the
-omniscient inspector. These mechanisms do not yet bound delivered observations
-or canonical understanding, prove that older behaviorally relevant results are
-always represented elsewhere, or prove the complete-day model path. The
-successor executor separately enforces 128 decision-handler invocations for a
-marked model-bounded actor, but no successor composition invokes Mara's model
-policy yet.
+omniscient inspector. Delivered observations and each source-linked
+understanding collection now use a 64-entry recent projection with explicit
+total, included, and omitted counts. A model request is allowed only when that
+projection is complete and every retained belief, trace, claim, and contextual
+stance still has its source closure in the request. If it is not, Mara records
+an explicit safe failure before any provider call rather than silently asking a
+model to act on a partial continuity view. Canonical agent evidence remains
+unchanged. This conservative boundary does not yet prove an older
+behaviorally relevant fact can always be represented within a continuing
+full-day path. The successor executor separately enforces 128
+decision-handler invocations for a marked model-bounded actor. Its default
+offline composition does not configure Mara's model policy, while an injected
+`MaraHarness` can exercise the same restricted boundary in tests and replay.
 
 An exception during `Simulation.step()` creates sanitized inspector-only
 runtime-failure evidence naming the failed tick and last committed snapshot.

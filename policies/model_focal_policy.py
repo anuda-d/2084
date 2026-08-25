@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Protocol
 
 from policies.mara_decision_request import (
@@ -20,6 +21,8 @@ from simulation.events import freeze_mapping, to_plain_data
 
 MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
 DECISION_HISTORY_PROJECTION_KIND = "recent_terminal_window_v0"
+MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
+RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
 
 class StructuredChoiceError(ValueError):
@@ -182,6 +185,87 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
     }
 
 
+def _restricted_continuity_view(
+    view: AgentView,
+) -> tuple[AgentView, dict[str, object]]:
+    """Bound fresh evidence while refusing to hide an omitted live fact.
+
+    The recent window makes the retained private input finite.  When any
+    delivered evidence or canonical understanding falls outside that window,
+    the metadata marks the projection incomplete and ``ModelFocalPolicy``
+    returns a safe failure before a provider can receive a partial view.
+    """
+
+    collections = {
+        "delivered_observations": view.observations,
+        "beliefs": view.beliefs,
+        "memory_traces": view.memory_traces,
+        "interpreted_claims": view.interpreted_claims,
+    }
+    projected = {
+        name: entries[-MAX_RESTRICTED_CONTINUITY_ENTRIES:]
+        for name, entries in collections.items()
+    }
+    counts = {
+        name: {
+            "total": len(entries),
+            "included": len(projected[name]),
+            "omitted": len(entries) - len(projected[name]),
+        }
+        for name, entries in collections.items()
+    }
+    delivered_ids = {
+        observation.observation_id
+        for observation in projected["delivered_observations"]
+    }
+    trace_ids = {trace.trace_id for trace in projected["memory_traces"]}
+    source_links_complete = (
+        all(
+            set(belief.source_observation_ids).issubset(delivered_ids)
+            for belief in projected["beliefs"]
+        )
+        and all(
+            trace.source_observation_id in delivered_ids
+            for trace in projected["memory_traces"]
+        )
+        and all(
+            claim.origin_trace_id in trace_ids
+            for claim in projected["interpreted_claims"]
+        )
+        and (
+            view.contextual_stance is None
+            or (
+                view.contextual_stance.source_claim_id
+                in {claim.claim_id for claim in projected["interpreted_claims"]}
+                and view.contextual_stance.source_trace_id in trace_ids
+                and set(
+                    view.contextual_stance.source_observation_ids
+                ).issubset(delivered_ids)
+            )
+        )
+    )
+    complete = (
+        all(count["omitted"] == 0 for count in counts.values())
+        and source_links_complete
+    )
+    return (
+        replace(
+            view,
+            observations=projected["delivered_observations"],
+            beliefs=projected["beliefs"],
+            memory_traces=projected["memory_traces"],
+            interpreted_claims=projected["interpreted_claims"],
+        ),
+        {
+            "kind": RESTRICTED_CONTINUITY_PROJECTION_KIND,
+            "maximum_entries_per_collection": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+            "complete": complete,
+            "source_links_complete": source_links_complete,
+            "collections": counts,
+        },
+    )
+
+
 def _grounded_claim_options(view: AgentView) -> list[dict[str, object]]:
     options: list[dict[str, object]] = []
     for belief in view.beliefs:
@@ -304,25 +388,27 @@ def _action_affordances(view: AgentView) -> dict[str, dict[str, object]]:
 
 def model_input_from_view(view: AgentView) -> dict[str, object]:
     """Serialize only the restricted agent view into detached JSON-like data."""
-    stance = view.contextual_stance
-    affordances = _action_affordances(view)
+    continuity_view, continuity_projection = _restricted_continuity_view(view)
+    stance = continuity_view.contextual_stance
+    affordances = _action_affordances(continuity_view)
     return {
-        "tick": view.tick,
+        "tick": continuity_view.tick,
         "character": {
-            "agent_id": view.agent_id,
-            "display_name": view.display_name,
-            "role": view.role,
+            "agent_id": continuity_view.agent_id,
+            "display_name": continuity_view.display_name,
+            "role": continuity_view.role,
         },
         "state": {
-            "location": view.location,
-            "aim": view.aim,
-            "required_resource_id": view.required_resource_id,
-            "required_units": view.required_units,
-            "resource_holdings": to_plain_data(view.resource_holdings),
-            "remaining_required_units": view.remaining_required_units,
-            "obligations": list(view.obligations),
+            "location": continuity_view.location,
+            "aim": continuity_view.aim,
+            "required_resource_id": continuity_view.required_resource_id,
+            "required_units": continuity_view.required_units,
+            "resource_holdings": to_plain_data(continuity_view.resource_holdings),
+            "remaining_required_units": continuity_view.remaining_required_units,
+            "obligations": list(continuity_view.obligations),
         },
-        "decision_history": _decision_history_data(view),
+        "decision_history": _decision_history_data(continuity_view),
+        "continuity_projection": continuity_projection,
         "delivered_observations": [
             {
                 "observation_id": observation.observation_id,
@@ -332,7 +418,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                 "delivery_tick": observation.delivery_tick,
                 "details": to_plain_data(observation.details),
             }
-            for observation in view.observations
+            for observation in continuity_view.observations
         ],
         "understanding": {
             "beliefs": [
@@ -346,7 +432,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "context": belief.context,
                     "conflicts_with": list(belief.conflicts_with),
                 }
-                for belief in view.beliefs
+                for belief in continuity_view.beliefs
             ],
             "memory_traces": [
                 {
@@ -361,7 +447,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "delivery_tick": trace.delivery_tick,
                     "period_id": trace.period_id,
                 }
-                for trace in view.memory_traces
+                for trace in continuity_view.memory_traces
             ],
             "interpreted_claims": [
                 {
@@ -372,7 +458,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "origin_trace_id": claim.origin_trace_id,
                     "conflicts_with": list(claim.conflicts_with),
                 }
-                for claim in view.interpreted_claims
+                for claim in continuity_view.interpreted_claims
             ],
             "contextual_stance": (
                 {
@@ -392,8 +478,8 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
         "accessible_objects": {
             "diary": (
                 {
-                    "object_id": view.accessible_diary_id,
-                    "entry_count": view.accessible_diary_entry_count,
+                    "object_id": continuity_view.accessible_diary_id,
+                    "entry_count": continuity_view.accessible_diary_entry_count,
                     "entries": [
                         {
                             "entry_id": entry.entry_id,
@@ -405,14 +491,14 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                             "started_tick": entry.started_tick,
                             "completed_tick": entry.completed_tick,
                         }
-                        for entry in view.accessible_diary_entries
+                        for entry in continuity_view.accessible_diary_entries
                     ],
                 }
-                if view.accessible_diary_id is not None
+                if continuity_view.accessible_diary_id is not None
                 else None
             ),
             "consultable_official_record_ids": list(
-                view.consultable_official_record_ids
+                continuity_view.consultable_official_record_ids
             ),
         },
         "action_contract": {
@@ -456,6 +542,31 @@ class ModelFocalPolicy:
         model_input = model_input_from_view(view)
         recorded_input = freeze_mapping(model_input)
         model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
+        continuity_projection = model_input["continuity_projection"]
+        if not continuity_projection["complete"]:
+            if isinstance(self._client, RecordedDecisionClient):
+                try:
+                    self._client.choose(model_input)
+                except _RecordedSafeFailure as error:
+                    if (
+                        error.failure_kind != "continuity_projection_incomplete"
+                        or error.failure_type
+                        != "RestrictedContinuityProjectionError"
+                    ):
+                        raise RecordedDecisionError(
+                            "recorded incomplete continuity failure does not match"
+                        ) from error
+                else:
+                    raise RecordedDecisionError(
+                        "recorded selected decision has incomplete continuity"
+                    )
+            return self._safe_failure(
+                view,
+                recorded_input,
+                model_input_bytes,
+                "continuity_projection_incomplete",
+                "RestrictedContinuityProjectionError",
+            )
         try:
             response = self._client.choose(model_input)
         except _RecordedSafeFailure as error:

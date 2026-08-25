@@ -7,7 +7,9 @@ from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     DECISION_HISTORY_PROJECTION_KIND,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+    MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
+    RESTRICTED_CONTINUITY_PROJECTION_KIND,
     ModelUnavailableError,
     RecordedDecisionClient,
     RecordedDecisionError,
@@ -26,7 +28,7 @@ from simulation.agents import (
     serialize_private_decision_records,
     validate_private_decision_record_retention,
 )
-from simulation.events import to_plain_data
+from simulation.events import Observation, freeze_mapping, to_plain_data
 
 
 class StructuredModelChoiceTests(unittest.TestCase):
@@ -670,6 +672,99 @@ class ModelFocalPolicyTests(unittest.TestCase):
             ),
         )
 
+    def test_incomplete_delivered_evidence_projection_fails_safely_without_provider_call(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        lifetime_count = MAX_RESTRICTED_CONTINUITY_ENTRIES + 3
+        observations = tuple(
+            Observation(
+                observation_id=f"observation-{index:04d}",
+                agent_id=FOCAL_AGENT_ID,
+                event_id=f"event-{index:04d}",
+                source="bounded-continuity-test",
+                delivery_tick=index,
+                details=freeze_mapping({"sequence": index}),
+            )
+            for index in range(lifetime_count)
+        )
+        incomplete_view = replace(view, observations=observations)
+        projected = model_input_from_view(incomplete_view)
+        projection = projected["continuity_projection"]
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "the provider should not be called",
+            }
+        )
+
+        policy = model_policy(client)
+        attempt = policy.choose(incomplete_view)
+
+        self.assertEqual(
+            [item["observation_id"] for item in projected["delivered_observations"]],
+            [f"observation-{index:04d}" for index in range(3, lifetime_count)],
+        )
+        self.assertEqual(
+            projection,
+            {
+                "kind": RESTRICTED_CONTINUITY_PROJECTION_KIND,
+                "maximum_entries_per_collection": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+                "complete": False,
+                "source_links_complete": True,
+                "collections": {
+                    "delivered_observations": {
+                        "total": lifetime_count,
+                        "included": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+                        "omitted": 3,
+                    },
+                    "beliefs": {"total": 0, "included": 0, "omitted": 0},
+                    "memory_traces": {
+                        "total": 0,
+                        "included": 0,
+                        "omitted": 0,
+                    },
+                    "interpreted_claims": {
+                        "total": 0,
+                        "included": 0,
+                        "omitted": 0,
+                    },
+                },
+            },
+        )
+        self.assertEqual(client.inputs, [])
+        self.assertEqual(attempt.kind, "wait")
+        record = policy.take_decision_record()
+        self.assertIsNotNone(record)
+        self.assertEqual(record.status, "failed")
+        self.assertEqual(record.failure_kind, "continuity_projection_incomplete")
+        self.assertEqual(record.failure_type, "RestrictedContinuityProjectionError")
+        self.assertEqual(record.model_input, freeze_mapping(projected))
+
+        replay_client = RecordedDecisionClient.from_records((record,))
+        replay_policy = ModelFocalPolicy(
+            replay_client,
+            configuration_id="recorded:incomplete-continuity-test",
+        )
+        replay_attempt = replay_policy.choose(incomplete_view)
+        replay_record = replay_policy.take_decision_record()
+
+        self.assertEqual(replay_attempt, attempt)
+        self.assertEqual(replay_client.consumed_count, 1)
+        self.assertEqual(replay_client.remaining_count, 0)
+        self.assertEqual(replay_record.status, "failed")
+        self.assertEqual(
+            replay_record.failure_kind,
+            "continuity_projection_incomplete",
+        )
+        self.assertEqual(
+            replay_record.failure_type,
+            "RestrictedContinuityProjectionError",
+        )
+        self.assertEqual(replay_record.model_input, record.model_input)
+
     def test_recorded_decisions_reproduce_complete_ordered_world_history(self):
         scripted = build_first_day(seed=42)
         scripted.run(max_ticks=30)
@@ -842,6 +937,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "character",
                 "state",
                 "decision_history",
+                "continuity_projection",
                 "delivered_observations",
                 "understanding",
                 "accessible_objects",

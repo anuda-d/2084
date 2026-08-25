@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 failed-dispatch objective-tail inspection (2026-08-25)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-7 bounded delivered-evidence continuity projection (2026-08-25)
+- Verified implementation runs since alignment: 3
 - Alignment due: no
 
 ## Goal Progress
@@ -217,6 +217,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-7 bounded delivered-evidence continuity projection
+
+- Each fresh restricted input now caps delivered observations, beliefs, memory
+  traces, and interpreted claims at 64 entries and records exact total,
+  included, and omitted counts. It also verifies source closure for retained
+  beliefs, traces, claims, and contextual stance.
+- A request with omitted evidence or broken source closure takes the explicit
+  safe-failure path before a live provider call. Canonical agent evidence is
+  not changed. Recorded replay validates and consumes the matching private
+  safe-failure record; a recorded selected choice at that same incomplete input
+  remains an explicit error rather than bypassing the boundary.
+- Four Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned: the
+  focused bounded-projection and replay regression, complete-view regression,
+  full offline check (191 current and 63 historical tests), and whitespace
+  validation. The first fresh Sol-high review found the replay-consumption
+  issue; the correction was reverified, and a fresh Sol-high closure review
+  found no code blocker.
+- Scope limit: AD-7 remains open. This prevents a model from acting on silently
+  incomplete continuity, but it does not prove that an older behaviorally
+  relevant fact can always be represented within a continuing full-day path.
 
 ### 2026-08-25 — AD-11 failed-dispatch objective-tail inspection
 
