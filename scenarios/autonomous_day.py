@@ -44,6 +44,7 @@ _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
+_MARA_HOUSEHOLD_COMPLETION = "autonomous_day_mara_household_completion"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -54,6 +55,7 @@ _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
 _MARA_TRAVEL_DURATION_MINUTES = 30
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
+_MARA_HOUSEHOLD_DURATION_MINUTES = 60
 
 MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
@@ -210,8 +212,9 @@ def build_autonomous_day(
             valid_actions=(
                 ("travel", "work", "wait")
                 if mara.location == "workplace"
-                else ("travel", "wait")
+                else ("household", "travel", "wait")
             ),
+            household_action_available=mara.location == "home",
         )
 
     def dispatch_mara_decision(
@@ -358,6 +361,7 @@ def build_autonomous_day(
         travel_destination = attempt.parameters.get("destination")
         accepted = (
             attempt.kind == "wait"
+            or (attempt.kind == "household" and mara.location == "home")
             or (
                 attempt.kind == "work" and mara.location == "workplace"
             )
@@ -419,6 +423,33 @@ def build_autonomous_day(
                 status="completed",
             )
             resolve_private_decision_record(result)
+            return
+        if attempt.kind == "household":
+            if mara.location != "home":
+                reject_mara_attempt(
+                    attempt,
+                    attempted,
+                    "household activity requires Mara to be at home",
+                )
+                return
+            completion_time = context.current.plus_minutes(
+                _MARA_HOUSEHOLD_DURATION_MINUTES
+            )
+            pending_actions[MARA_ID] = PendingAction(
+                action_id=action_id,
+                attempt_event_id=attempted.event_id,
+                attempt=attempt,
+                started_tick=context.current.total_minutes,
+                completes_tick=completion_time.total_minutes,
+            )
+            context.schedule(
+                ScheduledWork(
+                    item_id=f"{action_id}-household-completion",
+                    due_time=completion_time,
+                    phase=TemporalPhase.ACTION_COMPLETION,
+                    kind=_MARA_HOUSEHOLD_COMPLETION,
+                )
+            )
             return
         if attempt.kind == "work":
             if mara.location != "workplace":
@@ -594,6 +625,45 @@ def build_autonomous_day(
             ),
         )
 
+    def complete_mara_household(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        pending = pending_actions.pop(MARA_ID)
+        if (
+            pending.attempt.kind != "household"
+            or pending.completes_tick != context.current.total_minutes
+            or world.agents[MARA_ID].location != "home"
+        ):
+            raise RuntimeError("Mara household activity released in an invalid state")
+        completed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="household_time_completed",
+            actor_id=MARA_ID,
+            action_id=pending.action_id,
+            caused_by=(pending.attempt_event_id,),
+            details={
+                "location": world.agents[MARA_ID].location,
+                "duration_minutes": _MARA_HOUSEHOLD_DURATION_MINUTES,
+            },
+        )
+        result = append_mara_result(
+            action_id=pending.action_id,
+            attempt_event_id=pending.attempt_event_id,
+            action_kind=pending.attempt.kind,
+            outcome=completed,
+            status="completed",
+        )
+        resolve_private_decision_record(result)
+        context.request_decision(
+            actor_id=MARA_ID,
+            due_time=context.current,
+            trigger=DecisionTrigger(
+                kind=DecisionTriggerKind.ACTION_RESULT,
+                source_id=completed.event_id,
+            ),
+        )
+
     def start_supporting_work(
         work: ScheduledWork,
         context: DayWorkContext,
@@ -741,6 +811,7 @@ def build_autonomous_day(
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,
             _MARA_REST_COMPLETION: complete_mara_rest,
             _MARA_WORK_COMPLETION: complete_mara_work,
+            _MARA_HOUSEHOLD_COMPLETION: complete_mara_household,
         },
         decision_handler=(
             dispatch_mara_decision

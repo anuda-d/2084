@@ -220,7 +220,7 @@ def _action_affordances(view: AgentView) -> dict[str, dict[str, object]]:
         for entry in view.accessible_diary_entries
         if view.accessible_diary_id is not None
     ]
-    return {
+    affordances = {
         "travel": {
             "currently_applicable": bool(view.reachable_destinations),
             "parameter_options": {
@@ -274,6 +274,12 @@ def _action_affordances(view: AgentView) -> dict[str, dict[str, object]]:
         },
         "wait": {"currently_applicable": True, "parameter_options": {}},
     }
+    if "household" in view.valid_actions:
+        affordances["household"] = {
+            "currently_applicable": view.household_action_available,
+            "parameter_options": {},
+        }
+    return affordances
 
 
 def model_input_from_view(view: AgentView) -> dict[str, object]:

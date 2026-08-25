@@ -58,11 +58,11 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(len(client.inputs), 3)
         self.assertEqual(
             client.inputs[0]["action_contract"]["supported_kinds"],
-            ["travel", "wait"],
+            ["household", "travel", "wait"],
         )
         self.assertEqual(
             client.inputs[0]["action_contract"]["currently_applicable_kinds"],
-            ["travel", "wait"],
+            ["household", "travel", "wait"],
         )
         self.assertEqual(
             [event.kind for event in day.events if event.actor_id == MARA_ID],
@@ -425,6 +425,70 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 DecisionTrigger(
                     kind=DecisionTriggerKind.ACTION_RESULT,
                     source_id=work_completed.event_id,
+                ),
+            ),
+        )
+
+    def test_home_household_activity_completes_after_model_selection(self):
+        client = _SequenceClient(
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete a basic task at home",
+                "decision_reason": "household time is available before leaving",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the household task",
+                "decision_reason": "the completed task needs no immediate follow-up",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the accessible bulletin",
+                "decision_reason": "the delivered status needs no immediate action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deterministic-autonomous-day-household-test",
+            ),
+        )
+        dispatched = []
+        original_handler = day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def capture_decision(decision, context):
+            dispatched.append(decision)
+            original_handler(decision, context)
+
+        day.runtime._decision_handler = capture_decision
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual([model_input["tick"] for model_input in client.inputs], [420, 480, 660])
+        self.assertEqual(
+            client.inputs[0]["action_contract"]["supported_kinds"],
+            ["household", "travel", "wait"],
+        )
+        household_completed = next(
+            event for event in day.events if event.kind == "household_time_completed"
+        )
+        self.assertEqual(household_completed.tick, 480)
+        self.assertEqual(household_completed.details["duration_minutes"], 60)
+        self.assertEqual(
+            [result.action_kind for result in day.world.agents[MARA_ID].action_results],
+            ["household", "wait", "wait"],
+        )
+        self.assertEqual(
+            dispatched[1].triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.ACTION_RESULT,
+                    source_id=household_completed.event_id,
                 ),
             ),
         )

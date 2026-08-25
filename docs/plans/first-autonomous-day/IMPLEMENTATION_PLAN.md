@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-4 workplace obligation resolution (2026-08-24)
-- Verified implementation runs since alignment: 11
+- Last completed run: AD-4 basic home household opportunity (2026-08-24)
+- Verified implementation runs since alignment: 12
 - Alignment due: no
 
 ## Goal Progress
@@ -192,6 +192,31 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-4 basic home household opportunity
+
+- At home, Mara's successor-only restricted view offers one parameter-free
+  `household` attempted action. World authority completes it after 60 minutes
+  with append-only `household_time_completed` evidence, resolves the linked
+  private decision record, and requests one source-linked `ACTION_RESULT`
+  decision in the later same-minute phase.
+- Focused evidence selects household time at minute 420, completes it at minute
+  480, and verifies the home-only contract, duration, attempted/completed
+  evidence, terminal result, and later decision trigger. The default
+  no-harness command remains unchanged.
+- The action is intentionally successor-only: legacy restricted model input
+  does not advertise it, and direct legacy resolution records a deterministic
+  rejection with its source-linked `ActionResult` rather than leaving an
+  orphaned attempt.
+- Focused validation passed 13 autonomous-day tests and 97 affected
+  cross-boundary tests. Full offline validation passed 180 repository tests and
+  63 historical checks; `git diff --check` passed. The two Solo gates were
+  reverified with 2 met, 0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found and corrected the legacy action
+  boundary; a final fresh Sol-high closure review found no blockers.
+- Scope limit: AD-4 remains open. This adds one basic home/private opportunity
+  without prescribing a route, changing the legacy composition, or adding a
+  general household, needs, diary-consequence, or employment system.
 
 ### 2026-08-24 — AD-4 workplace obligation resolution
 

@@ -160,6 +160,20 @@ class StructuredModelChoiceTests(unittest.TestCase):
         self.assertEqual(simulation.inspector_state(), state_before)
         self.assertEqual(simulation.events, events_before)
 
+    def test_successor_only_household_choice_is_rejected_by_legacy_view(self):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+
+        with self.assertRaises(StructuredChoiceError):
+            structured_choice_to_attempt(
+                view,
+                {
+                    "kind": "household",
+                    "parameters": {},
+                    "explanation": "complete a task at home",
+                    "decision_reason": "the activity is not in this scenario",
+                },
+            )
+
 
 class StaticModelDecisionClient:
     def __init__(self, response):
@@ -852,6 +866,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(
             action_contract["currently_applicable_kinds"], ["travel", "wait"]
         )
+        self.assertNotIn("household", action_contract["affordances_by_kind"])
         self.assertEqual(
             action_contract["affordances_by_kind"]["travel"][
                 "parameter_options"

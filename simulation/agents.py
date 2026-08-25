@@ -90,6 +90,7 @@ class AgentView:
     work_action_available: bool
     allocation_action_available: bool
     valid_actions: tuple[str, ...]
+    household_action_available: bool = False
 
 
 @dataclass(frozen=True)
