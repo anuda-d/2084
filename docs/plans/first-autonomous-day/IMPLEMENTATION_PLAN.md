@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3/AD-8 safe-failure retry-chain suppression (2026-08-24)
-- Verified implementation runs since alignment: 4
+- Last completed run: AD-3/AD-6 access-gated decision callback (2026-08-24)
+- Verified implementation runs since alignment: 5
 - Alignment due: no
 
 ## Goal Progress
@@ -19,10 +19,10 @@ implementation sequence.
 | --- | --- | --- |
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
-| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. Trigger provenance remains caller-asserted, no actual policy uses this boundary, and every idle legacy policy is still called every tick. |
+| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an accessible transit bulletin can now trigger one injected Mara decision callback after observation delivery; an inaccessible bulletin triggers none. Trigger provenance otherwise remains caller-asserted, no model policy is configured here, and every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
-| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. The accessible bulletin appears in focal-safe normal output, but delivered or undelivered evidence is not yet connected to decision input or canonical understanding. |
+| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara decision callback, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding and an actual model-policy/action path remain unconfigured. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. The composition marks Mara for this accounting but neither configures nor exercises her model policy; observations/understanding remain unbounded and older relevance remains unproven. |
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor; any work handler can still assert a retry for any actor, no model policy is integrated, and the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
@@ -192,6 +192,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-3/AD-6 access-gated decision callback
+
+- The autonomous-day composition can now receive an explicitly injected Mara
+  decision callback. An accessible home transit bulletin first appends its
+  source-linked observation, then requests one same-minute
+  `OBSERVATION_DELIVERED` decision; the runtime releases that callback in the
+  later decision phase. A workplace Mara receives no bulletin, callback, or
+  decision count.
+- The callback receives only the eligibility evidence and a frozen, Mara-safe
+  `AgentView`. Its detached model input contains the delivered bulletin but no
+  institution record, event log, world object, or scheduling authority.
+- Focused validation passed two access-and-callback boundary tests. Full
+  offline validation passed 169 repository tests and 63 historical checks; all
+  four Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no blockers and confirmed the phase
+  order, restricted callback authority, inaccessible-path suppression, and
+  compatibility of the no-callback command.
+- Scope limit: AD-3 and AD-6 remain open. This is a callback/input bridge, not
+  a configured model policy, an attempted-action resolver, or canonical
+  understanding.
 
 ### 2026-08-24 — AD-3/AD-8 safe-failure retry-chain suppression
 

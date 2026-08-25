@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from simulation.actions import ActionAttempt, ActionResult, PendingAction
-from simulation.agents import AgentState
+from simulation.actions import ACTION_KINDS, ActionAttempt, ActionResult, PendingAction
+from simulation.agents import AgentState, AgentView
 from simulation.day_runtime import AcceleratedDayRuntime, DayRunSummary, DayWorkContext
-from simulation.events import Event, EventLog, Observation, to_plain_data
+from simulation.decision_eligibility import (
+    DecisionTrigger,
+    DecisionTriggerKind,
+    EligibleDecision,
+)
+from simulation.events import Event, EventLog, Observation, freeze_mapping, to_plain_data
 from simulation.institutions import InstitutionState
 from simulation.official_record import OfficialRecord
 from simulation.scheduling import ScheduledWork, TemporalPhase
@@ -31,6 +37,8 @@ _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
 _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
+
+MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
 
 @dataclass
@@ -58,11 +66,17 @@ class AutonomousDay:
         return self.runtime.run()
 
 
-def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
+def build_autonomous_day(
+    *,
+    seed: int = 42,
+    on_mara_decision: MaraDecisionCallback | None = None,
+) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise ValueError("seed must be an integer")
+    if on_mara_decision is not None and not callable(on_mara_decision):
+        raise TypeError("on_mara_decision must be callable")
 
     world = WorldState(
         tick=0,
@@ -102,6 +116,56 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
+
+    def mara_view() -> AgentView:
+        """Construct the same agent-safe shape used at Mara's decision seam."""
+        mara = world.agents[MARA_ID]
+        held_units = (
+            mara.resource_holdings.get(mara.required_resource_id, 0)
+            if mara.required_resource_id is not None
+            else 0
+        )
+        return AgentView(
+            tick=world.tick,
+            agent_id=mara.agent_id,
+            display_name=mara.display_name,
+            role=mara.role,
+            location=mara.location,
+            aim=mara.aim,
+            required_resource_id=mara.required_resource_id,
+            required_units=mara.required_units,
+            resource_holdings=freeze_mapping(mara.resource_holdings),
+            remaining_required_units=max(0, mara.required_units - held_units),
+            obligations=mara.obligations,
+            last_attempt=mara.last_attempt,
+            action_history=tuple(mara.action_history),
+            action_results=tuple(mara.action_results),
+            observations=tuple(mara.observations),
+            beliefs=tuple(mara.beliefs),
+            memory_traces=mara.memory_traces,
+            interpreted_claims=mara.interpreted_claims,
+            contextual_stance=mara.contextual_stance,
+            accessible_diary_id=None,
+            accessible_diary_entry_count=0,
+            accessible_diary_entries=(),
+            consultable_official_record_ids=(),
+            reachable_destinations=tuple(
+                world.travel_graph.get(mara.location, ())
+            ),
+            work_action_available=mara.location == "workplace",
+            allocation_action_available=False,
+            valid_actions=tuple(sorted(ACTION_KINDS)),
+        )
+
+    def dispatch_mara_decision(
+        decision: EligibleDecision,
+        _context: DayWorkContext,
+    ) -> None:
+        if decision.actor_id != MARA_ID:
+            raise RuntimeError("autonomous day has no decision callback for actor")
+        if on_mara_decision is None:
+            raise RuntimeError("Mara decision was requested without a callback")
+        on_mara_decision(decision, mara_view())
 
     def start_supporting_work(
         work: ScheduledWork,
@@ -230,6 +294,15 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
             },
         )
         mara.observations.append(observation)
+        if on_mara_decision is not None:
+            context.request_decision(
+                actor_id=mara.agent_id,
+                due_time=context.current,
+                trigger=DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=observation.observation_id,
+                ),
+            )
 
     runtime = AcceleratedDayRuntime(
         start=SimulatedTime(0),
@@ -239,6 +312,9 @@ def build_autonomous_day(*, seed: int = 42) -> AutonomousDay:
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
         },
+        decision_handler=(
+            dispatch_mara_decision if on_mara_decision is not None else None
+        ),
         model_backed_actor_ids=(MARA_ID,),
         on_time_advanced=lambda current: setattr(
             world,

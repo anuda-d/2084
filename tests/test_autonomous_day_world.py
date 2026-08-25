@@ -1,9 +1,71 @@
 import unittest
 
 from scenarios.autonomous_day import ILAN_ID, MARA_ID, build_autonomous_day
+from policies.model_focal_policy import model_input_from_view
+from simulation.decision_eligibility import DecisionTriggerKind
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_accessible_bulletin_dispatches_one_restricted_mara_decision(self):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(len(dispatched), 1)
+        decision, view = dispatched[0]
+        bulletin = day.observations[0]
+        self.assertEqual(decision.actor_id, MARA_ID)
+        self.assertEqual(decision.due_time.total_minutes, bulletin.delivery_tick)
+        self.assertEqual(
+            decision.triggers[0].kind,
+            DecisionTriggerKind.OBSERVATION_DELIVERED,
+        )
+        self.assertEqual(decision.triggers[0].source_id, bulletin.observation_id)
+        self.assertEqual(view.tick, bulletin.delivery_tick)
+        self.assertEqual(view.agent_id, MARA_ID)
+        self.assertEqual(view.observations, (bulletin,))
+        self.assertFalse(hasattr(view, "institution"))
+        self.assertFalse(hasattr(view, "world"))
+        model_input = model_input_from_view(view)
+        self.assertEqual(
+            model_input["delivered_observations"][0]["observation_id"],
+            bulletin.observation_id,
+        )
+        self.assertNotIn("institution_records", model_input)
+        self.assertEqual(
+            [item.kind for item in summary.executed_work[-2:]],
+            ["autonomous_day_transit_bulletin_delivery", "decision_eligibility"],
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 1}
+        )
+
+    def test_inaccessible_transit_change_does_not_dispatch_mara_decision(self):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+        day.world.agents[MARA_ID].location = "workplace"
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(dispatched, [])
+        self.assertEqual(day.observations, ())
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0}
+        )
+
     def test_background_consequence_reaches_mara_only_through_home_bulletin(self):
         day = build_autonomous_day(seed=42)
 
