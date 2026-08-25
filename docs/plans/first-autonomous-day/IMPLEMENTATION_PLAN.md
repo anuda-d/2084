@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1, AD-5, and AD-9 are met. AD-2 through AD-4, AD-6 through AD-8, and AD-10 through AD-12 are open.
+Status: active; AD-1 through AD-6 and AD-8 through AD-10 are met. AD-7, AD-11, and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -10,24 +10,24 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: AD-10 recorded safe-failure replay (2026-08-25)
-- Verified implementation runs since alignment: 20
-- Alignment due: yes
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
 | Criterion | Status | Verified evidence |
 | --- | --- | --- |
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
-| AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. Focal travel and scheduled-home rest completions now use action-completion ordering before later same-minute decisions. One home transit bulletin now schedules a source-linked understanding update in the next same-minute phase before any resulting decision; no broader understanding-order coverage exists yet. |
-| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback or injected `MaraHarness` receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one decision after observation delivery, while an inaccessible bulletin does not add one. A completed model-selected travel action or scheduled-home rest requests one `ACTION_RESULT` decision in the later same-minute decision phase, linked to its append-only completion event; immediate waits, rejections, and safe-failure waits do not do so. Retry provenance remains caller-asserted. Every idle legacy policy is still called every tick. |
-| AD-4 Ordinary focal rhythm | open | At the explicit minute-420 home wake, a model-selected `wait` can become a world-owned 60-minute rest. It retains an attempted-action record, completes at minute 480, and can create a later action-result decision; safe-failure waits remain immediate rather than being misrepresented as rest. After a model-selected travel reaches the workplace, Mara's restricted view exposes `work`; a selected work attempt then completes under world authority after 120 minutes and creates a later action-result decision. This provides narrow rest and workplace-obligation opportunities, not a complete rest, obligation, movement, or private-time day rhythm. |
+| AD-2 Deterministic temporal order | met | Non-negative integer minutes, stable identities, and an explicit phase order deterministically dispatch actions, scheduled world work, completions, deliveries, understanding updates, and decisions. Tests cover equal-time ordering, dynamic registration into a later same-minute phase, and quiet-time advancement to the exact boundary. This is the successor ordering rule; the legacy generic broadcast path remains a separate regression. |
+| AD-3 Decision eligibility | met | The successor runtime owns five explicit eligibility causes, coalesces simultaneous pre-release causes per actor, and does not call Mara during an empty quiet interval. Its Mara seam is reached only by a scheduled wake, delivered observation, completed action result, or consumed safe-failure retry as configured; retries are actor-bound, delayed 30 minutes, and limited to one pending chain. Legacy idle policies remain outside this successor proof. |
+| AD-4 Ordinary focal rhythm | met | Model-selected choices give Mara world-owned opportunities for a 60-minute rest, travel, 120-minute workplace work, and 60-minute household activity. Each is an attempted action resolved by the world, with no required dramatic route or scripted focal substitution. This establishes the goal's basic ordinary rhythm, not a general needs or employment system. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
-| AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. That accessible bulletin now creates one source-linked canonical trace and claim in the later same-minute understanding phase before an optional decision sees the restricted view; inaccessible locations create neither delivery nor understanding. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. |
+| AD-6 Knowledge and consequence | met | The objective transit change grants Mara no knowledge itself. Only the authored home bulletin delivers its source-linked consequence; that delivery creates canonical understanding before an optional restricted decision view. Inaccessible locations produce no delivery, understanding, callback, or model input. This proves one concrete access path, not general inference or conflict handling. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
-| AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. The autonomous-day command now catches only a runtime-recorded failure, returns nonzero, and shows a focal-safe stopped-without-completion status rather than a traceback. Each requested safe-failure retry is delayed 30 minutes, and only one pending retry chain can exist per actor. Only the currently active decision handler can request its own retry through an expiring capability; scheduled work, stale contexts, mismatched actors, and generic forged retry triggers are rejected. The optional successor harness now resolves its failed private record as an immediate safe wait, then requests a source-linked retry through the runtime; the legacy path still retries every tick. |
+| AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
-| AD-10 Recorded full-day reproduction | open | Recorded choices from complete deterministic-harness autonomous-day runs now reproduce equal runtime summary, ordered objective events, observations, action results, inspector objective state, and restricted inputs through minute 1,440 without invoking the source client. One recorded timeout now also preserves its explicit failed private record and replays the same safe wait and delayed retry. Altered input or exhausted records cause an explicit `RecordedDecisionError`, preserve terminal runtime failure evidence, and never report day completion. This remains narrow deterministic composition evidence rather than complete recorded-choice coverage or a live-provider claim. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed Mara activity using fixed focal-safe labels. A runtime-recorded failure now adds a stopped-without-completion line, including when failure occurs at the exact end time, instead of presenting the terminal time as ordinary quiet completion. Equal-time updates retain causal action-completion-before-observation order without raw event details, hidden activity, or private model material. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it distinguishes the default unconfigured path from an injected/exercised harness and counts recorded provider failures without exposing private records. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
+| AD-10 Recorded full-day reproduction | met | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered input, exhaustion, and tampered records fail explicitly and preserve incomplete terminal evidence. This proves recorded reproduction of the exercised full-day paths, not deterministic live sampling. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs successful runtime work, objective history/state, observations, action results, and counts; configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. It still omits consumed decision-trigger provenance/coalescing and understanding transitions, while failed-handler objective tails fall outside committed-work evidence. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,31 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-25 — Fifth whole-goal alignment
+
+- A fresh independent Sol-high read-only review compared all AD-1 through
+  AD-12 criteria with the goal, current successor implementation, tests, and
+  retained boundaries. It found AD-2, AD-3, AD-4, AD-6, AD-8, and AD-10 now
+  meet their stated boundaries, alongside AD-1, AD-5, and AD-9. AD-7, AD-11,
+  and AD-12 remain open.
+- The review corrected the AD-11 record: configured-harness inspector output
+  already reports numeric growth, decision-status, and provider-failure
+  aggregates. It remains incomplete because consumed decision provenance and
+  understanding transitions are absent, and failed-handler objective tails are
+  not part of its committed-work trace.
+- AD-7 remains open because delivered observations and canonical understanding
+  are unbounded and the recent-16 action window does not prove retention of
+  older behaviorally relevant continuity. AD-12 remains open: no
+  owner-authorized full-day live `qwen3:4b-instruct` run has occurred.
+- Focused temporal/runtime/autonomous-day coverage passed 90 tests; the full
+  offline check passed 187 current and 63 historical tests. The default
+  autonomous-day command reached minute 1,440, and `git diff --check` passed.
+- No runtime mechanism warrants removal. Broader general behavior beyond the
+  stated criteria remains a scope limit, not a blocker. `ARCHITECTURE.md`
+  materially lags the verified successor state; this alignment records the
+  drift without expanding a state-only work unit. The alignment counter resets
+  to zero; no future implementation task was selected or recorded.
 
 ### 2026-08-23 — Fourth whole-goal alignment
 
