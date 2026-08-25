@@ -279,14 +279,32 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         "",
         f"Start: {summary.start.label} | Mara at Home",
     ]
+    focal_updates: list[tuple[SimulatedTime, str]] = []
     for observation in day.world.agents[MARA_ID].observations:
         if observation.details.get("evidence_kind") != "transit_service_status":
             continue
         delivered_at = SimulatedTime(observation.delivery_tick)
+        focal_updates.append(
+            (
+                delivered_at,
+                f"{delivered_at.label} | Home transit bulletin: "
+                f"{observation.details['route']} service is "
+                f"{observation.details['current_status']}.",
+            )
+        )
+    current_visible_time = summary.start
+    for delivered_at, update in sorted(focal_updates):
+        if delivered_at > current_visible_time:
+            lines.append(
+                f"{current_visible_time.label}–{delivered_at.label} "
+                "| No focal updates."
+            )
+        lines.append(update)
+        current_visible_time = delivered_at
+    if current_visible_time < summary.current:
         lines.append(
-            f"{delivered_at.label} | Home transit bulletin: "
-            f"{observation.details['route']} service is "
-            f"{observation.details['current_status']}."
+            f"{current_visible_time.label}–{summary.current.label} "
+            "| No focal updates."
         )
     lines.extend(
         [

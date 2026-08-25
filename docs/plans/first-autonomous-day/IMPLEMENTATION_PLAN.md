@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 autonomous-day inspector (2026-08-23)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-11 focal-safe normal quiet intervals (2026-08-24)
+- Verified implementation runs since alignment: 3
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | open | Known model failures are explicit in the bounded path. An unexpected legacy step exception creates sanitized terminal evidence. The successor runtime records sanitized handler/dispatch failure evidence and freezes subsequent execution and registration; handler side effects and append-only events before an exception are not rolled back or fully represented by its committed-work trace. Each requested safe-failure retry is delayed 30 minutes, but aggregate chain suppression is absent, any work handler can assert a retry for any actor, no model policy is integrated, and the legacy path still retries every tick. |
 | AD-9 Offline full-day proof | open | Two equal-seed runs of the narrow successor world produce equal three-event histories, one source-linked observation, runtime summaries, institutional state, and supporting results through minute 1,440. No focal choices, private evidence, growth measurements, or complete ordinary-day composition participate yet. |
 | AD-10 Recorded full-day reproduction | open | Recorded decisions reproduce the 28-tick scenario only; no complete-day reproduction exists. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time and Mara's accessible bulletin without hidden detail. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it marks the model path unconfigured and provider failures unavailable. Normal output does not yet summarize quiet spans, private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, two compact intervals with no focal updates, and Mara's accessible bulletin without hidden detail. Explicit `--inspect` JSON reconstructs successful runtime work, quiet spans, objective events/state, observations, action results, and independently derived counts; it marks the model path unconfigured and provider failures unavailable. Private model-growth measurements are absent, and failed-handler objective tails remain outside the committed-work trace. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -192,6 +192,26 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-11 focal-safe normal quiet intervals
+
+- Normal autonomous-day output now shows the two intervals without a
+  Mara-visible update: `Day 0 00:00` through the accessible bulletin at `Day 0
+  11:00`, and from that bulletin through `Day 1 00:00`. The renderer derives
+  those intervals only from the declared runtime boundary and the observations
+  it already presents; it does not expose the hidden supporting or
+  institutional schedule.
+- Focused CLI validation passed four tests, including the two interval lines
+  and the existing supporting/institutional non-leak assertions. Full offline
+  validation passed 158 repository tests and 63 historical checks; all three
+  approved gates were reverified with 3 met, 0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no blockers. It confirmed that the
+  normal output has no visible boundary at the hidden minute-480, -510, or
+  -600 activity, and that this remains a narrow AD-11 slice rather than a
+  complete watchability claim.
+- Scope limit: AD-11 remains open. Private model-growth measurements and
+  reconstruction of partial objective tails after failed handlers are still
+  absent.
 
 ### 2026-08-23 — AD-11 autonomous-day inspector
 

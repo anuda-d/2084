@@ -20,7 +20,13 @@ class AutonomousDayCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         self.assertIn("Start: Day 0 00:00 | Mara at Home", result.stdout)
+        self.assertIn(
+            "Day 0 00:00–Day 0 11:00 | No focal updates.", result.stdout
+        )
         self.assertIn("Day 0 11:00 | Home transit bulletin", result.stdout)
+        self.assertIn(
+            "Day 0 11:00–Day 1 00:00 | No focal updates.", result.stdout
+        )
         self.assertIn("End: Day 1 00:00", result.stdout)
         self.assertIn("Exact 24-hour boundary reached: yes", result.stdout)
         for hidden in (
