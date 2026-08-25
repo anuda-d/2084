@@ -68,7 +68,11 @@ def trace_from_delivered_observation(
 ) -> tuple[MemoryTrace, InterpretedClaim | None] | None:
     """Interpret one supported delivery without consulting objective world state."""
     evidence_kind = observation.details.get("evidence_kind")
-    if evidence_kind not in {"direct_resource_claim", "official_record_version"}:
+    if evidence_kind not in {
+        "direct_resource_claim",
+        "official_record_version",
+        "transit_service_status",
+    }:
         return None
 
     proposition = observation.details.get("proposition")

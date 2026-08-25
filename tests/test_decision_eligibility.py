@@ -139,6 +139,53 @@ class DecisionEligibilityTests(unittest.TestCase):
                 failure_id="decision-failure-stale",
             )
 
+    def test_existing_retry_remains_available_after_a_later_boundary_failure(self):
+        agenda, eligibility = self._components()
+        first_failure = SimulatedTime(
+            agenda.clock.end.total_minutes - SAFE_FAILURE_RETRY_MINUTES - 5
+        )
+        agenda.clock.advance_to(first_failure)
+        pending_retry = eligibility.request_safe_failure_retry(
+            actor_id="mara-vale",
+            failed_at=first_failure,
+            failure_id="decision-failure-first",
+        )
+        self.assertIsNotNone(pending_retry)
+
+        later_failure = SimulatedTime(agenda.clock.end.total_minutes - 20)
+        agenda.clock.advance_to(later_failure)
+        self.assertIs(
+            eligibility.request_safe_failure_retry(
+                actor_id="mara-vale",
+                failed_at=later_failure,
+                failure_id="decision-failure-too-late",
+            ),
+            pending_retry,
+        )
+
+    def test_consumed_retry_can_start_the_next_retry_chain_link(self):
+        agenda, eligibility = self._components()
+        first_retry = eligibility.request_safe_failure_retry(
+            actor_id="mara-vale",
+            failed_at=agenda.clock.current,
+            failure_id="decision-failure-first",
+        )
+        self.assertIsNotNone(first_retry)
+        agenda.advance_to_next_due()
+        eligibility.consume(first_retry)
+
+        second_retry = eligibility.request_safe_failure_retry(
+            actor_id="mara-vale",
+            failed_at=agenda.clock.current,
+            failure_id="decision-failure-second",
+        )
+
+        self.assertIsNotNone(second_retry)
+        self.assertEqual(
+            second_retry.due_time,
+            first_retry.due_time.plus_minutes(SAFE_FAILURE_RETRY_MINUTES),
+        )
+
     def test_duplicate_trigger_is_idempotent_and_consumption_is_once_only(self):
         agenda, eligibility = self._components()
         trigger = DecisionTrigger(

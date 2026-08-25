@@ -123,6 +123,29 @@ class LivingSimulationStepTests(unittest.TestCase):
         self.assertEqual(result.status, "rejected")
         self.assertEqual(result.reason, rejection.details["reason"])
 
+    def test_successor_only_household_action_is_rejected_by_legacy_resolver(self):
+        simulation = build_first_day(seed=42)
+
+        attempt = simulation.resolve_attempt(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="household",
+                parameters={},
+                explanation="complete a basic task at home",
+            )
+        )
+
+        rejection = simulation.events[-1]
+        self.assertEqual(rejection.kind, "action_rejected")
+        self.assertEqual(rejection.caused_by, (attempt.event_id,))
+        self.assertEqual(
+            rejection.details["reason"],
+            "action kind is not available in this simulation",
+        )
+        result = simulation.agent_view(FOCAL_AGENT_ID).action_results[-1]
+        self.assertEqual(result.action_kind, "household")
+        self.assertEqual(result.status, "rejected")
+
     def test_arrival_is_delivered_as_an_observation_before_work_is_selected(self):
         simulation = build_first_day(seed=42)
 

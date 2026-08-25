@@ -46,6 +46,7 @@ ACTION_PARAMETER_CONTRACTS: Mapping[str, ActionParameterContract] = MappingProxy
     {
         "travel": _contract(required={"destination": "non_empty_string"}),
         "work": _contract(),
+        "household": _contract(),
         "consult_official_record": _contract(
             required={"artifact_id": "non_empty_string"}
         ),
@@ -161,7 +162,7 @@ class ActionAttempt:
     parameters: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.kind not in ACTION_KINDS:
+        if self.kind not in ACTION_PARAMETER_CONTRACTS:
             raise ValueError(f"unsupported action kind: {self.kind}")
         object.__setattr__(self, "parameters", freeze_mapping(self.parameters))
 

@@ -20,7 +20,13 @@ class AutonomousDayCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         self.assertIn("Start: Day 0 00:00 | Mara at Home", result.stdout)
+        self.assertIn(
+            "Day 0 00:00–Day 0 11:00 | No focal updates.", result.stdout
+        )
         self.assertIn("Day 0 11:00 | Home transit bulletin", result.stdout)
+        self.assertIn(
+            "Day 0 11:00–Day 1 00:00 | No focal updates.", result.stdout
+        )
         self.assertIn("End: Day 1 00:00", result.stdout)
         self.assertIn("Exact 24-hour boundary reached: yes", result.stdout)
         for hidden in (
@@ -31,6 +37,8 @@ class AutonomousDayCliTests(unittest.TestCase):
             "event-",
             "executed_work",
             "district-transit-authority",
+            "peak_restricted_input_bytes",
+            "retained_private_record",
         ):
             self.assertNotIn(hidden, result.stdout)
 
@@ -77,6 +85,7 @@ class AutonomousDayCliTests(unittest.TestCase):
             "configured": False,
             "exercised": False,
             "provider_failure_count": None,
+            "growth": None,
         })
         self.assertEqual(data["objective_state"]["tick"], 1440)
         self.assertEqual(
@@ -93,7 +102,17 @@ class AutonomousDayCliTests(unittest.TestCase):
             data["history"]["action_results"][0]["outcome_event_id"],
             completed["event_id"],
         )
-        self.assertEqual(data["runtime"]["executed_work_count"], 4)
+        self.assertEqual(data["runtime"]["executed_work_count"], 5)
+        self.assertEqual(
+            [item["kind"] for item in data["runtime"]["executed_work"]],
+            [
+                "autonomous_day_supporting_work_start",
+                "autonomous_day_institutional_service_change",
+                "autonomous_day_supporting_work_completion",
+                "autonomous_day_transit_bulletin_delivery",
+                "autonomous_day_mara_transit_understanding_update",
+            ],
+        )
         self.assertEqual(data["runtime"]["quiet_span_count"], 5)
         self.assertTrue(data["runtime"]["reached_end_boundary"])
 

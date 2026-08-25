@@ -551,6 +551,13 @@ class Simulation:
             return attempted
         actor.last_attempt = attempt
         actor.action_history.append(attempt)
+        if attempt.kind not in ACTION_KINDS:
+            self._record_rejection(
+                attempted=attempted,
+                actor_id=attempt.actor_id,
+                reason="action kind is not available in this simulation",
+            )
+            return attempted
         parameter_error = self._unexpected_parameter_error(attempt)
         if parameter_error is not None:
             self._record_rejection(
