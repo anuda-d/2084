@@ -43,6 +43,7 @@ _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
+_MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -52,6 +53,7 @@ _TRANSIT_BULLETIN_MINUTE = 11 * 60
 _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
 _MARA_TRAVEL_DURATION_MINUTES = 30
 _MARA_REST_DURATION_MINUTES = 60
+_MARA_WORK_DURATION_MINUTES = 120
 
 MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
@@ -203,9 +205,13 @@ def build_autonomous_day(
             reachable_destinations=tuple(
                 world.travel_graph.get(mara.location, ())
             ),
-            work_action_available=False,
+            work_action_available=mara.location == "workplace",
             allocation_action_available=False,
-            valid_actions=("travel", "wait"),
+            valid_actions=(
+                ("travel", "work", "wait")
+                if mara.location == "workplace"
+                else ("travel", "wait")
+            ),
         )
 
     def dispatch_mara_decision(
@@ -350,10 +356,16 @@ def build_autonomous_day(
         mara.last_attempt = attempt
         mara.action_history.append(attempt)
         travel_destination = attempt.parameters.get("destination")
-        accepted = attempt.kind == "wait" or (
-            attempt.kind == "travel"
-            and isinstance(travel_destination, str)
-            and travel_destination in world.travel_graph.get(mara.location, ())
+        accepted = (
+            attempt.kind == "wait"
+            or (
+                attempt.kind == "work" and mara.location == "workplace"
+            )
+            or (
+                attempt.kind == "travel"
+                and isinstance(travel_destination, str)
+                and travel_destination in world.travel_graph.get(mara.location, ())
+            )
         )
         replace_latest_private_decision_record(
             decision_record.linked_to(
@@ -407,6 +419,33 @@ def build_autonomous_day(
                 status="completed",
             )
             resolve_private_decision_record(result)
+            return
+        if attempt.kind == "work":
+            if mara.location != "workplace":
+                reject_mara_attempt(
+                    attempt,
+                    attempted,
+                    "work requires Mara to be at the workplace",
+                )
+                return
+            completion_time = context.current.plus_minutes(
+                _MARA_WORK_DURATION_MINUTES
+            )
+            pending_actions[MARA_ID] = PendingAction(
+                action_id=action_id,
+                attempt_event_id=attempted.event_id,
+                attempt=attempt,
+                started_tick=context.current.total_minutes,
+                completes_tick=completion_time.total_minutes,
+            )
+            context.schedule(
+                ScheduledWork(
+                    item_id=f"{action_id}-work-completion",
+                    due_time=completion_time,
+                    phase=TemporalPhase.ACTION_COMPLETION,
+                    kind=_MARA_WORK_COMPLETION,
+                )
+            )
             return
         if attempt.kind != "travel":
             reject_mara_attempt(
@@ -497,6 +536,45 @@ def build_autonomous_day(
             details={
                 "location": world.agents[MARA_ID].location,
                 "duration_minutes": _MARA_REST_DURATION_MINUTES,
+            },
+        )
+        result = append_mara_result(
+            action_id=pending.action_id,
+            attempt_event_id=pending.attempt_event_id,
+            action_kind=pending.attempt.kind,
+            outcome=completed,
+            status="completed",
+        )
+        resolve_private_decision_record(result)
+        context.request_decision(
+            actor_id=MARA_ID,
+            due_time=context.current,
+            trigger=DecisionTrigger(
+                kind=DecisionTriggerKind.ACTION_RESULT,
+                source_id=completed.event_id,
+            ),
+        )
+
+    def complete_mara_work(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        pending = pending_actions.pop(MARA_ID)
+        if (
+            pending.attempt.kind != "work"
+            or pending.completes_tick != context.current.total_minutes
+            or world.agents[MARA_ID].location != "workplace"
+        ):
+            raise RuntimeError("Mara work released in an invalid state")
+        completed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="work_completed",
+            actor_id=MARA_ID,
+            action_id=pending.action_id,
+            caused_by=(pending.attempt_event_id,),
+            details={
+                "location": world.agents[MARA_ID].location,
+                "duration_minutes": _MARA_WORK_DURATION_MINUTES,
             },
         )
         result = append_mara_result(
@@ -662,6 +740,7 @@ def build_autonomous_day(
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,
             _MARA_REST_COMPLETION: complete_mara_rest,
+            _MARA_WORK_COMPLETION: complete_mara_work,
         },
         decision_handler=(
             dispatch_mara_decision

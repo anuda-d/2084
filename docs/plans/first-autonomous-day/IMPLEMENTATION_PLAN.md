@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3/AD-8 safe-failure retry cadence (2026-08-24)
-- Verified implementation runs since alignment: 10
+- Last completed run: AD-4 workplace obligation resolution (2026-08-24)
+- Verified implementation runs since alignment: 11
 - Alignment due: no
 
 ## Goal Progress
@@ -20,7 +20,7 @@ implementation sequence.
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. Focal travel and scheduled-home rest completions now use action-completion ordering before later same-minute decisions; no understanding runtime uses the order yet. |
 | AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback or injected `MaraHarness` receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one decision after observation delivery, while an inaccessible bulletin does not add one. A completed model-selected travel action or scheduled-home rest requests one `ACTION_RESULT` decision in the later same-minute decision phase, linked to its append-only completion event; immediate waits, rejections, and safe-failure waits do not do so. Retry provenance remains caller-asserted. Every idle legacy policy is still called every tick. |
-| AD-4 Ordinary focal rhythm | open | At the explicit minute-420 home wake, a model-selected `wait` can become a world-owned 60-minute rest. It retains an attempted-action record, completes at minute 480, and can create a later action-result decision; safe-failure waits remain immediate rather than being misrepresented as rest. This provides one narrow rest opportunity, not a complete rest, obligation, movement, or private-time day rhythm. |
+| AD-4 Ordinary focal rhythm | open | At the explicit minute-420 home wake, a model-selected `wait` can become a world-owned 60-minute rest. It retains an attempted-action record, completes at minute 480, and can create a later action-result decision; safe-failure waits remain immediate rather than being misrepresented as rest. After a model-selected travel reaches the workplace, Mara's restricted view exposes `work`; a selected work attempt then completes under world authority after 120 minutes and creates a later action-result decision. This provides narrow rest and workplace-obligation opportunities, not a complete rest, obligation, movement, or private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding remains unconfigured. |
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
@@ -192,6 +192,29 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-4 workplace obligation resolution
+
+- Once a model-selected travel action has placed Mara at the workplace, her
+  restricted decision view offers `work` alongside reachable travel and wait.
+  A selected work attempt remains append-only objective evidence, completes
+  under successor-world authority after 120 minutes, and then requests one
+  source-linked `ACTION_RESULT` decision in the later same-minute phase.
+- Focused evidence follows travel at minute 420, workplace work at minute 450,
+  and `work_completed` at minute 570. It verifies the workplace-only action
+  contract, the completed action history, and the later decision trigger.
+- Focused validation passed the new regression and all 12 autonomous-day world
+  tests. Full offline validation passed 177 repository tests and 63 historical
+  checks; the default autonomous-day command reached `Day 1 00:00`, and
+  `git diff --check` passed. The two Solo gates were reverified with 2 met,
+  0 unmet, and 0 abandoned.
+- Fresh independent Sol-high review found no blockers, including on restricted
+  input, world-owned resolution, deterministic pending-action handling, and
+  private-record isolation.
+- Scope limit: AD-4 remains open. This adds one authored workplace opportunity
+  after Mara chooses to travel there; it does not prescribe that route, add
+  household or private activity, create a general employment system, or
+  complete the full ordinary-day rhythm.
 
 ### 2026-08-24 — AD-3/AD-8 safe-failure retry cadence
 
