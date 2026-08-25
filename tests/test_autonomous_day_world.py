@@ -35,6 +35,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {
                 "kind": "wait",
                 "parameters": {},
+                "explanation": "pause after completing a rest period",
+                "decision_reason": "the completed rest leaves no immediate task",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
                 "explanation": "pause after reading the home bulletin",
                 "decision_reason": "the delivery does not require immediate travel",
             },
@@ -49,7 +55,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
-        self.assertEqual(len(client.inputs), 2)
+        self.assertEqual(len(client.inputs), 3)
         self.assertEqual(
             client.inputs[0]["action_contract"]["supported_kinds"],
             ["travel", "wait"],
@@ -62,17 +68,25 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [event.kind for event in day.events if event.actor_id == MARA_ID],
             [
                 "action_attempted",
+                "rest_completed",
+                "action_attempted",
                 "wait_completed",
                 "action_attempted",
                 "wait_completed",
             ],
         )
         mara = day.world.agents[MARA_ID]
-        self.assertEqual([attempt.kind for attempt in mara.action_history], ["wait", "wait"])
-        self.assertEqual([result.status for result in mara.action_results], ["completed", "completed"])
+        self.assertEqual(
+            [attempt.kind for attempt in mara.action_history],
+            ["wait", "wait", "wait"],
+        )
+        self.assertEqual(
+            [result.status for result in mara.action_results],
+            ["completed", "completed", "completed"],
+        )
         self.assertEqual(
             [record.status for record in day.private_decision_records],
-            ["selected", "selected"],
+            ["selected", "selected", "selected"],
         )
         self.assertTrue(
             all(
@@ -84,9 +98,9 @@ class AutonomousDayWorldTests(unittest.TestCase):
             )
         )
         self.assertGreater(day.private_decision_records_bytes, 0)
-        self.assertNotIn("institution_records", client.inputs[1])
+        self.assertNotIn("institution_records", client.inputs[2])
         self.assertEqual(
-            client.inputs[1]["delivered_observations"][0]["details"]["current_status"],
+            client.inputs[2]["delivered_observations"][0]["details"]["current_status"],
             "reduced",
         )
         model_path = autonomous_day_inspector_data(day, summary)["model_path"]
@@ -111,7 +125,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "maximum_restricted_input_bytes": (
                     MAX_RESTRICTED_DECISION_INPUT_BYTES
                 ),
-                "retained_private_record_count": 2,
+                "retained_private_record_count": 3,
                 "peak_retained_private_record_bytes": (
                     day.peak_retained_private_decision_records_bytes
                 ),
@@ -126,6 +140,111 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("model_input", model_path["growth"])
         self.assertNotIn("private_decision_records", model_path["growth"])
+
+    def test_completed_rest_dispatches_later_action_result_decision(self):
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "rest at home before leaving",
+                "decision_reason": "the scheduled wake allows a quiet interval",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home after resting",
+                "decision_reason": "the workplace is reachable after rest",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after arriving",
+                "decision_reason": "arrival creates a new decision opportunity",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deterministic-autonomous-day-rest-test",
+            ),
+        )
+        dispatched = []
+        original_handler = day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def capture_decision(decision, context):
+            dispatched.append(decision)
+            original_handler(decision, context)
+
+        day.runtime._decision_handler = capture_decision
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        rest_completed = next(
+            event for event in day.events if event.kind == "rest_completed"
+        )
+        self.assertEqual(rest_completed.tick, 480)
+        self.assertEqual(rest_completed.details["duration_minutes"], 60)
+        self.assertEqual(rest_completed.caused_by, ("event-0001",))
+        self.assertEqual(client.inputs[1]["tick"], 480)
+        self.assertEqual(client.inputs[1]["state"]["location"], "home")
+        self.assertEqual(
+            dispatched[1].triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.ACTION_RESULT,
+                    source_id=rest_completed.event_id,
+                ),
+            ),
+        )
+        self.assertEqual(
+            [
+                (item.phase, item.kind)
+                for item in summary.executed_work
+                if item.due_time.total_minutes == 480
+            ],
+            [
+                ("scheduled_world", "autonomous_day_supporting_work_start"),
+                ("action_completion", "autonomous_day_mara_rest_completion"),
+                ("decision", "decision_eligibility"),
+            ],
+        )
+
+    def test_safe_failure_wait_does_not_become_rest(self):
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                _SequenceClient(
+                    TimeoutError("unavailable provider"),
+                    TimeoutError("unavailable provider"),
+                ),
+                configuration_id="deterministic-autonomous-day-failure-test",
+            ),
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(
+            [event.kind for event in day.events if event.actor_id == MARA_ID],
+            [
+                "action_attempted",
+                "wait_completed",
+                "action_attempted",
+                "wait_completed",
+            ],
+        )
+        self.assertFalse(any(event.kind == "rest_completed" for event in day.events))
+        self.assertEqual(
+            [record.status for record in day.private_decision_records],
+            ["failed", "failed"],
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {MARA_ID: 2},
+        )
 
     def test_completed_travel_dispatches_action_result_decision(self):
         client = _SequenceClient(
