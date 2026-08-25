@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-3/AD-7 Mara harness decision seam (2026-08-24)
-- Verified implementation runs since alignment: 7
+- Last completed run: AD-3 travel-completion action-result eligibility (2026-08-24)
+- Verified implementation runs since alignment: 8
 - Alignment due: no
 
 ## Goal Progress
@@ -19,7 +19,7 @@ implementation sequence.
 | --- | --- | --- |
 | AD-1 Simulation-owned day | met | `python3 -m scenarios.autonomous_day --seed 42` runs the successor world offline from declared `Day 0 00:00` through exact `Day 1 00:00`, independently of wall-clock time and the legacy plot checklist. It returns success only when the runtime reaches the complete 1,440-minute boundary. |
 | AD-2 Deterministic temporal order | open | Non-negative integer minutes, the chosen causal phases, and stable identities order successor work. One authored supporting action now starts in scheduled-world phase and dynamically registers its later completion; an institutional event dynamically registers a later observation-phase delivery. No focal action or understanding runtime uses the order yet. |
-| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback or injected `MaraHarness` receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one decision after observation delivery, while an inaccessible bulletin does not add one. The harness route converts its selected choice into a world-owned wait, travel, or rejection result, but terminal actions do not yet trigger later decisions and retry provenance remains caller-asserted. Every idle legacy policy is still called every tick. |
+| AD-3 Decision eligibility | open | The accelerated-day runtime owns explicit eligibility for five documented causes, coalesces pre-release simultaneous causes per actor, dispatches one dedicated handler, and creates no call from an otherwise empty quiet interval. Same-minute causes after decision-phase release are rejected. One actor has at most one pending safe-failure retry chain; it can continue only after consumption. In the successor composition, an explicitly configured Mara callback or injected `MaraHarness` receives one restricted scheduled-wake decision at minute 420; an accessible transit bulletin can later trigger one decision after observation delivery, while an inaccessible bulletin does not add one. A completed model-chosen travel action requests one `ACTION_RESULT` decision in the later same-minute decision phase, linked to its append-only completion event; waits and rejections do not do so. Retry provenance remains caller-asserted. Every idle legacy policy is still called every tick. |
 | AD-4 Ordinary focal rhythm | open | The existing 28-tick authored route does not provide a complete rest, obligation, movement, and private-time day rhythm. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | open | The successor transit change grants no knowledge by itself. A distinct observation-phase bulletin at minute 660 links the immutable source event to Mara only at the authored home receiver; workplace and transit-stop locations retain no observation. When the composition is given an explicit Mara callback or injected `MaraHarness`, the accessible bulletin enters its restricted `AgentView` and can therefore enter detached model input; an inaccessible bulletin creates neither a callback nor a decision. Canonical understanding remains unconfigured. |
@@ -192,6 +192,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-24 — AD-3 travel-completion action-result eligibility
+
+- A model-chosen Mara travel attempt now completes under world authority at
+  minute 450 and then creates one same-minute `ACTION_RESULT` eligibility item
+  for the later decision phase. Its trigger is linked to the append-only
+  `travel_completed` event; the next harness request receives only the updated
+  restricted workplace view, not the event log or scheduling authority.
+- This work deliberately excludes synchronous waits and rejected choices, which
+  resolve during decision handling and cannot safely create another
+  same-minute decision. It therefore does not add a quiet-time polling path.
+- Focused validation passed the causal trigger test; the full offline check
+  passed 175 repository tests and 63 historical checks. All three Solo gates
+  were reverified with 3 met, 0 unmet, and 0 abandoned; `git diff --check`
+  passed.
+- Fresh independent Sol-high review initially requested direct trigger/source
+  evidence. The revised test captures the dispatched decision and confirms its
+  sole trigger is `ACTION_RESULT` sourced by the minute-450 travel completion;
+  the re-review found no remaining blocker.
+- Scope limit: AD-3 remains open. This covers only completed travel in the
+  configured successor harness and does not add wait or rejection eligibility,
+  safe-failure retry authority, full-day focal cadence, or ordinary-day rhythm.
 
 ### 2026-08-24 — AD-7/AD-11 omniscient model-growth measurements
 

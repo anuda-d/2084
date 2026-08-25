@@ -10,7 +10,7 @@ from scenarios.autonomous_day import (
 from policies.model_focal_policy import model_input_from_view
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
-from simulation.decision_eligibility import DecisionTriggerKind
+from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
 
 
 class _SequenceClient:
@@ -46,7 +46,6 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 configuration_id="deterministic-autonomous-day-test",
             ),
         )
-
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
@@ -128,36 +127,83 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertNotIn("model_input", model_path["growth"])
         self.assertNotIn("private_decision_records", model_path["growth"])
 
-    def test_harness_travel_uses_world_route_and_can_remove_bulletin_access(self):
+    def test_completed_travel_dispatches_action_result_decision(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the workplace",
+                "decision_reason": "the authored work obligation is nearby",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after arriving at the workplace",
+                "decision_reason": "arrival creates a new decision opportunity",
+            },
+        )
         day = build_autonomous_day(
             seed=42,
             mara_harness=MaraHarness.from_client(
-                _SequenceClient(
-                    {
-                        "kind": "travel",
-                        "parameters": {"destination": "workplace"},
-                        "explanation": "leave home for the workplace",
-                        "decision_reason": "the authored work obligation is nearby",
-                    }
-                ),
+                client,
                 configuration_id="deterministic-autonomous-day-test",
             ),
         )
+        dispatched = []
+        original_handler = day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def capture_decision(decision, context):
+            dispatched.append(decision)
+            original_handler(decision, context)
+
+        day.runtime._decision_handler = capture_decision
 
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(len(client.inputs), 2)
+        self.assertEqual(client.inputs[1]["tick"], 450)
+        self.assertEqual(client.inputs[1]["state"]["location"], "workplace")
         self.assertEqual(day.world.agents[MARA_ID].location, "workplace")
         self.assertEqual(day.observations, ())
         self.assertEqual(
             [event.kind for event in day.events if event.actor_id == MARA_ID],
-            ["action_attempted", "travel_completed"],
+            [
+                "action_attempted",
+                "travel_completed",
+                "action_attempted",
+                "wait_completed",
+            ],
         )
+        travel_completed = next(
+            event for event in day.events if event.kind == "travel_completed"
+        )
+        action_result_work = next(
+            item
+            for item in summary.executed_work
+            if item.due_time.total_minutes == 450
+            and item.kind == "decision_eligibility"
+        )
+        self.assertEqual(travel_completed.tick, 450)
+        self.assertEqual(action_result_work.phase, "decision")
         self.assertEqual(
             [result.action_kind for result in day.world.agents[MARA_ID].action_results],
-            ["travel"],
+            ["travel", "wait"],
         )
-        self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 1})
+        self.assertEqual(len(dispatched), 2)
+        self.assertEqual(
+            dispatched[1].triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.ACTION_RESULT,
+                    source_id=travel_completed.event_id,
+                ),
+            ),
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+        )
 
     def test_scheduled_wake_dispatches_one_restricted_mara_decision(self):
         dispatched = []

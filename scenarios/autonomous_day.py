@@ -433,6 +433,14 @@ def build_autonomous_day(
             status="completed",
         )
         resolve_private_decision_record(result)
+        context.request_decision(
+            actor_id=MARA_ID,
+            due_time=context.current,
+            trigger=DecisionTrigger(
+                kind=DecisionTriggerKind.ACTION_RESULT,
+                source_id=completed.event_id,
+            ),
+        )
 
     def start_supporting_work(
         work: ScheduledWork,
