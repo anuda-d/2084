@@ -188,29 +188,105 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
 def _restricted_continuity_view(
     view: AgentView,
 ) -> tuple[AgentView, dict[str, object]]:
-    """Bound fresh evidence while refusing to hide an omitted live fact.
+    """Bound fresh evidence while refusing to hide an omitted relevant fact.
 
-    The recent window makes the retained private input finite.  When any
-    delivered evidence or canonical understanding falls outside that window,
-    the metadata marks the projection incomplete and ``ModelFocalPolicy``
-    returns a safe failure before a provider can receive a partial view.
+    Source-linked canonical understanding is behaviorally relevant: an older
+    delivered observation that supports a retained belief, trace, stance, or
+    accessible diary entry must stay in the fresh decision input. Older
+    delivered material outside that explicit closure is context only, so the
+    bounded recent window may omit it. When the required closure itself does
+    not fit, the metadata marks the projection incomplete and
+    ``ModelFocalPolicy`` returns a safe failure before a provider can receive a
+    partial view.
     """
 
+    required_observation_ids = {
+        observation_id
+        for belief in view.beliefs
+        for observation_id in belief.source_observation_ids
+    }
+    required_observation_ids.update(
+        trace.source_observation_id for trace in view.memory_traces
+    )
+    required_observation_ids.update(
+        observation_id
+        for entry in view.accessible_diary_entries
+        for observation_id in entry.source_observation_ids
+    )
+    if view.contextual_stance is not None:
+        required_observation_ids.update(
+            view.contextual_stance.source_observation_ids
+        )
     collections = {
         "delivered_observations": view.observations,
         "beliefs": view.beliefs,
         "memory_traces": view.memory_traces,
         "interpreted_claims": view.interpreted_claims,
+        "accessible_diary_entries": view.accessible_diary_entries,
+    }
+    required_observations = tuple(
+        observation
+        for observation in view.observations
+        if observation.observation_id in required_observation_ids
+    )
+    optional_observations = tuple(
+        observation
+        for observation in view.observations
+        if observation.observation_id not in required_observation_ids
+    )
+    remaining_observation_capacity = max(
+        0,
+        MAX_RESTRICTED_CONTINUITY_ENTRIES - len(required_observations),
+    )
+    recent_optional_observations = (
+        optional_observations[-remaining_observation_capacity:]
+        if remaining_observation_capacity
+        else ()
+    )
+    included_observation_ids = {
+        observation.observation_id
+        for observation in (
+            required_observations[-MAX_RESTRICTED_CONTINUITY_ENTRIES:]
+            + recent_optional_observations
+        )
     }
     projected = {
-        name: entries[-MAX_RESTRICTED_CONTINUITY_ENTRIES:]
-        for name, entries in collections.items()
+        "delivered_observations": tuple(
+            observation
+            for observation in view.observations
+            if observation.observation_id in included_observation_ids
+        ),
+        "beliefs": view.beliefs[-MAX_RESTRICTED_CONTINUITY_ENTRIES:],
+        "memory_traces": view.memory_traces[-MAX_RESTRICTED_CONTINUITY_ENTRIES:],
+        "interpreted_claims": view.interpreted_claims[
+            -MAX_RESTRICTED_CONTINUITY_ENTRIES:
+        ],
+        "accessible_diary_entries": view.accessible_diary_entries[
+            -MAX_RESTRICTED_CONTINUITY_ENTRIES:
+        ],
     }
     counts = {
         name: {
             "total": len(entries),
             "included": len(projected[name]),
             "omitted": len(entries) - len(projected[name]),
+            "required": (
+                len(required_observations)
+                if name == "delivered_observations"
+                else len(entries)
+            ),
+            "required_omitted": (
+                len(required_observations)
+                - len(
+                    {
+                        observation.observation_id
+                        for observation in projected["delivered_observations"]
+                    }
+                    & required_observation_ids
+                )
+                if name == "delivered_observations"
+                else len(entries) - len(projected[name])
+            ),
         }
         for name, entries in collections.items()
     }
@@ -232,6 +308,10 @@ def _restricted_continuity_view(
             claim.origin_trace_id in trace_ids
             for claim in projected["interpreted_claims"]
         )
+        and all(
+            set(entry.source_observation_ids).issubset(delivered_ids)
+            for entry in projected["accessible_diary_entries"]
+        )
         and (
             view.contextual_stance is None
             or (
@@ -245,7 +325,7 @@ def _restricted_continuity_view(
         )
     )
     complete = (
-        all(count["omitted"] == 0 for count in counts.values())
+        all(count["required_omitted"] == 0 for count in counts.values())
         and source_links_complete
     )
     return (
@@ -255,6 +335,10 @@ def _restricted_continuity_view(
             beliefs=projected["beliefs"],
             memory_traces=projected["memory_traces"],
             interpreted_claims=projected["interpreted_claims"],
+            accessible_diary_entry_count=len(
+                projected["accessible_diary_entries"]
+            ),
+            accessible_diary_entries=projected["accessible_diary_entries"],
         ),
         {
             "kind": RESTRICTED_CONTINUITY_PROJECTION_KIND,

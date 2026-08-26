@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 bounded delivered-evidence continuity projection (2026-08-25)
-- Verified implementation runs since alignment: 3
-- Alignment due: no
+- Last completed run: AD-7 source-closed relevant continuity projection (2026-08-25)
+- Verified implementation runs since alignment: 4
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | met | Model-selected choices give Mara world-owned opportunities for a 60-minute rest, travel, 120-minute workplace work, and 60-minute household activity. Each is an attempted action resolved by the world, with no required dramatic route or scripted focal substitution. This establishes the goal's basic ordinary rhythm, not a general needs or employment system. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | met | The objective transit change grants Mara no knowledge itself. Only the authored home bulletin delivers its source-linked consequence; that delivery creates canonical understanding before an optional restricted decision view. Inaccessible locations produce no delivery, understanding, callback, or model input. This proves one concrete access path, not general inference or conflict handling. |
-| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Observations/understanding remain unbounded and older relevance remains unproven. |
+| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. Older behaviorally relevant action/result selection remains unproven. |
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered input, exhaustion, and tampered records fail explicitly and preserve incomplete terminal evidence. This proves recorded reproduction of the exercised full-day paths, not deterministic live sampling. |
@@ -217,6 +217,28 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-7 source-closed relevant continuity projection
+
+- A restricted input now keeps older delivered observations when they source a
+  retained belief, memory trace, contextual stance, or accessible diary entry,
+  then fills only remaining capacity with newer context. The 64-entry cap still
+  applies to every projected evidence collection, including accessible diary
+  entries; a missing source or any required closure that exceeds that cap takes
+  the explicit safe-failure path before a provider call.
+- Focused regressions prove that an old belief source survives otherwise
+  irrelevant observation growth, an oversized required observation closure is
+  capped and fails before provider use, and an accessible diary entry cannot
+  introduce an undelivered fact. Recorded safe-failure replay remains exact.
+- Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: the
+  focused policy suite (30 tests), the full offline check (191 current and 63
+  historical tests), and whitespace validation. A fresh Sol-high review found
+  two cap/source-closure defects; both were fixed, reverified, and a second
+  fresh Sol-high closure review found no blockers.
+- Scope limit: AD-7 remains open. This defines and proves source-linked
+  relevance for delivered evidence and accessible diary entries, but does not
+  prove that every older behaviorally relevant attempted action or result is
+  selected within the bounded continuity projection.
 
 ### 2026-08-25 — AD-7 bounded delivered-evidence continuity projection
 
