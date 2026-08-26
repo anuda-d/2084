@@ -9,19 +9,16 @@ slice, not a settled production specification.
 The bounded Official Record, Agent Understanding, and Model-Backed Focal
 Character goals are complete. The owner-approved
 [First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
-goal is active and targets one accelerated model-backed day with explicit time,
-decision eligibility, a minimally living wider world, bounded model continuity,
-offline reproduction, and one final owner-authorized live run. Its initial
-bounded-model work now enforces restricted-input and retained-private-record
-byte ceilings and projects prior decisions through a finite recent window. The
-24-hour clock and a pure deterministic temporal agenda now host the first
-concrete successor world composition. That narrow composition proves scheduled
-supporting and institutional activity across a full day; focal policy and
-general action integration, full-day proofs, and the live run are not
-implemented. The separate
-thin-harness/fat-skills documents
-describe a possible generalization of the completed Mara boundary, not an
-implemented general agent runtime.
+goal is active. Its full 24-hour successor composition now combines explicit
+simulated time, restricted model decisions, ordinary focal opportunities,
+independent supporting and institutional activity, bounded private evidence,
+offline reproduction, and focal-safe observation. The remaining goal limits
+are intentionally narrow: the continuity projection has not yet proved that
+every older behaviorally relevant attempted action or result is selected, and
+the exact live day still requires an explicit owner-authorized live Ollama
+run. The separate thin-harness/fat-skills documents describe a possible
+generalization of the completed Mara boundary, not an implemented general
+agent runtime.
 
 ## Implemented Simulation Loop
 
@@ -53,16 +50,17 @@ broadcast path. The successor agenda separates scheduled activity from
 observation delivery so those causal phases can remain explicit.
 
 The existing `first_day_v3` tick remains unchanged as regression evidence. The
-successor has no full-day command or scenario-level completion claim yet.
+successor's offline command is a separate composition with its own exact
+24-hour completion boundary; it does not redefine the legacy plot scenario.
 
-An isolated `DecisionEligibility` seam can place only five documented causes
+The successor `DecisionEligibility` seam places only five documented causes
 into the agenda's decision phase: initial activation, a terminal action result,
 a delivered observation, an explicit scheduled wake, or a safe-failure retry.
 Causes for one actor at one minute coalesce into one eligibility record. Time
-passage alone creates no record. The initial safe-failure cadence is one retry
-30 simulated minutes later, with no retry if that instant would cross the day
-boundary. The seam does not call policies or execute actions, and the legacy
-tick loop does not use it yet.
+passage alone creates no record. The safe-failure cadence is one retry 30
+simulated minutes later, with no retry if that instant would cross the day
+boundary. The successor consumes these records only at its dedicated Mara
+decision handler; the legacy tick loop does not use this seam.
 
 An `AcceleratedDayRuntime` now provides the first isolated executor for these
 temporal seams. A composition registers handlers by authored work kind, and the
@@ -92,38 +90,49 @@ permits call 128, and turns a would-be call 129 into sanitized terminal failure
 before invoking the handler. Unmarked deterministic supporting actors are not
 silently assigned Mara's model-call ceiling.
 
-`scenarios.autonomous_day` is the first concrete world hosted by this executor.
-Its authored schedule lets Ilan attempt a two-hour workplace shift at minute
-480 and complete it at minute 600. Between those events, the district transit
-authority changes objective tram-service state at minute 510. These events
-append to the shared `EventLog` while Mara is marked model-bounded for runtime
-accounting but remains at home with zero decisions and no configured model
-policy. The service change itself grants no knowledge. A
-separate observation-phase delivery at minute 660 links that event to Mara only
-when she is physically at the authored home bulletin receiver; otherwise it
-remains undelivered. The runtime then jumps to and closes at the exact day
-boundary, which becomes the world's current authoritative minute.
+`scenarios.autonomous_day` is the first concrete full 24-hour successor
+composition hosted by this executor. Its authored schedule lets Ilan
+independently attempt a two-hour workplace shift at minute 480 and complete it
+at minute 600. Between those events, the district transit authority changes
+objective tram-service state at minute 510. These events append to the shared
+`EventLog` independently of Mara. The service change itself grants her no
+knowledge. A separate observation-phase delivery at minute 660 links it to
+Mara only when she is physically at the authored home bulletin receiver;
+otherwise it remains undelivered.
 
-This is deliberately a narrow composition seam, not the completed autonomous
-day. Its supporting action validates only the one authored workplace condition;
-it does not yet reuse a general successor action resolver. The decision handler
-still receives trigger evidence but no `AgentView`, and the delivered bulletin
-does not yet cause decision eligibility, model input, canonical understanding,
-or a complete normal presentation. No focal policy uses the composition yet.
+When an injected `MaraHarness` is configured, the successor gives it only
+Mara's restricted `AgentView` at documented eligibility points. Mara chooses
+attempted travel, workplace work, household activity, or an allowed `wait`;
+the composition validates and resolves those attempts, links the private
+decision evidence to their outcomes, and schedules only the resulting
+world-owned consequences. A scheduled-wake `wait` at home may be resolved as
+the world's 60-minute rest action; the model does not declare rest complete.
+The delivered bulletin updates source-linked understanding before any later
+restricted view. No choice receives objective history, another actor's private
+state, or authority to change time or resolve itself. The unconfigured default
+command is retained as an offline composition check; deterministic-harness and
+recorded-replay tests exercise the same model boundary without a live provider.
 
-The offline command `python3 -m scenarios.autonomous_day --seed 42` runs this
-narrow composition from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
-Its normal output shows only the declared boundary and Mara's accessible home
-bulletin; supporting work, objective event kinds, stable identifiers, and
-omniscient runtime work evidence remain hidden. This is a runnable time-boundary
-proof, not a claim that the ordinary focal day or model path is complete.
+The offline command `python3 -m scenarios.autonomous_day --seed 42` runs from
+`Day 0 00:00` through the exact `Day 1 00:00` boundary. Its unconfigured
+normal output presents the boundary, compact quiet spans, and Mara's accessible
+bulletin. A configured-harness run additionally presents world-confirmed focal
+activity without identifiers, private decision records, or hidden supporting
+activity. `--inspect` is explicitly omniscient. The composition is still a
+deliberately small world rather than a general schedule, employment, or social
+simulation; it proves an ordinary-day opportunity set, not one required
+dramatic route or generally believable live behavior.
 
 Adding `--inspect` replaces that focal projection with an explicitly
 omniscient JSON document. It includes the successful runtime work order and
 quiet spans, objective events and final state, agent-specific observations,
-action results, and exact counts for the narrow composition. It does not yet
-contain private model-growth measurements, and the runtime committed-work trace
-still cannot reconstruct partial objective tails left by a failed handler.
+action results, and exact counts for the narrow composition. When a terminal
+runtime failure occurs during a dispatch, it also places that uncommitted failed
+dispatch by its time, phase, and execution sequence. The composition records
+the objective-history boundary immediately before every dispatch, allowing the
+inspector to identify the events, observations, and action results appended by
+a failed dispatch without exposing its arbitrary identifier, kind, or exception
+material.
 
 ```text
 The world and its systems advance
@@ -337,18 +346,25 @@ chain-of-thought stay out of objective history and normal presentation. Mara's
 concise `decision_reason` is intentionally retained as an attributed action
 explanation and rendered in the normal `Reason:` line.
 
-The active 24-hour goal has added three long-run guardrails to this boundary.
+The active 24-hour goal has added four long-run guardrails to this boundary.
 The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter
 refuses inputs above 48 KiB before transport. Prior attempts and results use a
 16-entry recent window with explicit total and omitted counts. The complete
 private decision-record collection uses canonical compact JSON measurement,
 cannot retain more than 8 MiB, and reports current and peak sizes only in the
-omniscient inspector. These mechanisms do not yet bound delivered observations
-or canonical understanding, prove that older behaviorally relevant results are
-always represented elsewhere, or prove the complete-day model path. The
-successor executor separately enforces 128 decision-handler invocations for a
-marked model-bounded actor, but no successor composition invokes Mara's model
-policy yet.
+omniscient inspector. Delivered observations and each source-linked
+understanding collection now use a 64-entry recent projection with explicit
+total, included, and omitted counts. A model request is allowed only when that
+projection is complete and every retained belief, trace, claim, and contextual
+stance still has its source closure in the request. If it is not, Mara records
+an explicit safe failure before any provider call rather than silently asking a
+model to act on a partial continuity view. Canonical agent evidence remains
+unchanged. This conservative boundary does not yet prove an older
+behaviorally relevant fact can always be represented within a continuing
+full-day path. The successor executor separately enforces 128
+decision-handler invocations for a marked model-bounded actor. Its default
+offline composition does not configure Mara's model policy, while an injected
+`MaraHarness` can exercise the same restricted boundary in tests and replay.
 
 An exception during `Simulation.step()` creates sanitized inspector-only
 runtime-failure evidence naming the failed tick and last committed snapshot.
@@ -430,12 +446,14 @@ runs produce identical ordered history. `MaraHarness` is the public composition
 facade for model-backed Mara: it accepts only an `AgentView`, delegates one
 choice through the existing collaborators, and returns one `ActionAttempt`.
 It is not a simulation runtime or persistent mind. Separately,
-`MaraHarness.from_records(...)` can consume detached private decision records
-and reproduce equal ordered world history through the same policy, parser, and
-resolver without another model call. This is programmatic full-run
-reproduction, not a portable persistence format, checkpoint system,
-user-facing replay command, or claim that equal live configuration produces
-equal samples.
+`MaraHarness.from_recorded_archive(...)` accepts private decision records
+sealed with a caller-held verification key and reproduces equal ordered world
+history through the same policy, parser, and resolver without another model
+call. A changed archive fails before replay can apply it, provided that key
+remains trusted. This is programmatic full-run reproduction, not a portable
+persistence format, checkpoint system, user-facing replay command, proof of
+record provenance against a party that controls the key, or a claim that equal
+live configuration produces equal samples.
 
 ## Implemented First Slice
 

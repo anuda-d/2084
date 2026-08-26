@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass, replace
+import hashlib
+import hmac
+import json
 from typing import Protocol
 
 from policies.mara_decision_request import (
@@ -10,6 +14,7 @@ from policies.mara_decision_request import (
     restricted_decision_input_size_bytes,
 )
 from simulation.actions import (
+    ACTION_PARAMETER_CONTRACTS,
     ActionAttempt,
     action_parameter_contract_data,
     action_parameter_shape_error,
@@ -19,7 +24,11 @@ from simulation.events import freeze_mapping, to_plain_data
 
 
 MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
-DECISION_HISTORY_PROJECTION_KIND = "recent_terminal_window_v0"
+MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
+MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
+DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_latest_action_kind_v1"
+MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
+RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
 
 class StructuredChoiceError(ValueError):
@@ -38,6 +47,49 @@ class RecordedDecisionError(RuntimeError):
     """Recorded decision data cannot be applied to the current restricted input."""
 
 
+class _RecordedSafeFailure(RuntimeError):
+    """A replayed record preserves one prior explicit model failure."""
+
+    def __init__(self, *, failure_kind: str, failure_type: str) -> None:
+        self.failure_kind = failure_kind
+        self.failure_type = failure_type
+
+
+@dataclass(frozen=True)
+class RecordedDecisionArchive:
+    """Private, integrity-sealed evidence for one recorded decision replay.
+
+    The caller retains the verification key separately from this archive. That
+    lets replay reject a changed record before it can become an attempted
+    action, without placing key material or the seal in objective history.
+    This detects modification only while the key remains trusted; it is not a
+    provenance claim about a party that controls that key.
+    """
+
+    records: tuple[PolicyDecisionRecord, ...]
+    integrity_digest: str
+
+    @classmethod
+    def seal(
+        cls,
+        records: tuple[PolicyDecisionRecord, ...],
+        *,
+        integrity_key: bytes,
+    ) -> RecordedDecisionArchive:
+        """Create detached replay evidence authenticated by a caller-held key."""
+        frozen_records = tuple(records)
+        return cls(
+            records=frozen_records,
+            integrity_digest=_recorded_archive_digest(frozen_records, integrity_key),
+        )
+
+    def verify(self, *, integrity_key: bytes) -> None:
+        """Fail closed when private replay evidence no longer matches its seal."""
+        expected_digest = _recorded_archive_digest(self.records, integrity_key)
+        if not hmac.compare_digest(self.integrity_digest, expected_digest):
+            raise RecordedDecisionError("recorded decision archive integrity mismatch")
+
+
 class _InvalidStructuredAttemptError(StructuredChoiceError):
     """A response cannot describe one supported attempted action."""
 
@@ -47,6 +99,32 @@ class ModelDecisionClient(Protocol):
 
     def choose(self, model_input: Mapping[str, object]) -> object:
         ...
+
+
+def _recorded_archive_digest(
+    records: tuple[PolicyDecisionRecord, ...], integrity_key: bytes
+) -> str:
+    if not isinstance(integrity_key, bytes) or not integrity_key:
+        raise RecordedDecisionError(
+            "recorded decision archive requires a non-empty verification key"
+        )
+    serialized_records = "[" + ",".join(
+        _canonical_record_data(record) for record in records
+    ) + "]"
+    return hmac.new(
+        integrity_key,
+        serialized_records.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _canonical_record_data(record: PolicyDecisionRecord) -> str:
+    return json.dumps(
+        record.to_data(),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
 
 
 class RecordedDecisionClient:
@@ -96,6 +174,17 @@ class RecordedDecisionClient:
     ) -> RecordedDecisionClient:
         return cls(tuple(record.to_data() for record in records))
 
+    @classmethod
+    def from_archive(
+        cls,
+        archive: RecordedDecisionArchive,
+        *,
+        integrity_key: bytes,
+    ) -> RecordedDecisionClient:
+        """Construct replay only after its caller-held integrity seal verifies."""
+        archive.verify(integrity_key=integrity_key)
+        return cls.from_records(archive.records)
+
     @property
     def consumed_count(self) -> int:
         return self._index
@@ -112,6 +201,18 @@ class RecordedDecisionClient:
         if to_plain_data(freeze_mapping(model_input)) != expected_input:
             raise RecordedDecisionError(
                 f"recorded decision input mismatch at index {self._index}"
+            )
+        if record["status"] == "failed":
+            failure_kind = record["failure_kind"]
+            failure_type = record["failure_type"]
+            if not isinstance(failure_kind, str) or not isinstance(failure_type, str):
+                raise RecordedDecisionError(
+                    "recorded safe failure is missing failure evidence"
+                )
+            self._index += 1
+            raise _RecordedSafeFailure(
+                failure_kind=failure_kind,
+                failure_type=failure_type,
             )
         response = _recorded_choice(record)
         self._index += 1
@@ -131,14 +232,66 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
 
 
 def _decision_history_data(view: AgentView) -> dict[str, object]:
-    """Project recent evidence without retaining lifetime-sized collections."""
-    attempts = view.action_history[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
-    results = view.action_results[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
+    """Project recent history plus bounded latest attempts and outcomes by kind.
+
+    The recent window gives the model short-term cadence. An older attempted
+    action or its successful or rejected outcome can still explain a current
+    choice, however, so retain the latest entry for each supported action kind
+    as an explicit bounded continuity rule. Only supported action kinds
+    qualify; this cannot grow with arbitrary lifetime history data.
+    """
+    supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
+    latest_attempt_index_by_kind: dict[str, int] = {}
+    for index, attempt in enumerate(view.action_history):
+        if attempt.kind in supported_kinds:
+            latest_attempt_index_by_kind[attempt.kind] = index
+    included_attempt_indexes = set(
+        range(
+            max(0, len(view.action_history) - MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            len(view.action_history),
+        )
+    )
+    included_attempt_indexes.update(latest_attempt_index_by_kind.values())
+    attempts = tuple(
+        attempt
+        for index, attempt in enumerate(view.action_history)
+        if index in included_attempt_indexes
+    )
+    latest_result_index_by_kind: dict[str, int] = {}
+    for index, result in enumerate(view.action_results):
+        if result.action_kind in supported_kinds:
+            latest_result_index_by_kind[result.action_kind] = index
+    included_result_indexes = set(
+        range(
+            max(0, len(view.action_results) - MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            len(view.action_results),
+        )
+    )
+    included_result_indexes.update(latest_result_index_by_kind.values())
+    results = tuple(
+        result
+        for index, result in enumerate(view.action_results)
+        if index in included_result_indexes
+    )
     return {
         "projection": {
             "kind": DECISION_HISTORY_PROJECTION_KIND,
-            "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-            "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_recent_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_latest_attempts_by_action_kind": (
+                MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+            ),
+            "maximum_attempts": (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+            ),
+            "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_latest_results_by_action_kind": (
+                MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+            ),
+            "maximum_results": (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+            ),
             "total_attempts": len(view.action_history),
             "total_results": len(view.action_results),
             "omitted_attempts": len(view.action_history) - len(attempts),
@@ -160,6 +313,171 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
             for result in results
         ],
     }
+
+
+def _restricted_continuity_view(
+    view: AgentView,
+) -> tuple[AgentView, dict[str, object]]:
+    """Bound fresh evidence while refusing to hide an omitted relevant fact.
+
+    Source-linked canonical understanding is behaviorally relevant: an older
+    delivered observation that supports a retained belief, trace, stance, or
+    accessible diary entry must stay in the fresh decision input. Older
+    delivered material outside that explicit closure is context only, so the
+    bounded recent window may omit it. When the required closure itself does
+    not fit, the metadata marks the projection incomplete and
+    ``ModelFocalPolicy`` returns a safe failure before a provider can receive a
+    partial view.
+    """
+
+    required_observation_ids = {
+        observation_id
+        for belief in view.beliefs
+        for observation_id in belief.source_observation_ids
+    }
+    required_observation_ids.update(
+        trace.source_observation_id for trace in view.memory_traces
+    )
+    required_observation_ids.update(
+        observation_id
+        for entry in view.accessible_diary_entries
+        for observation_id in entry.source_observation_ids
+    )
+    if view.contextual_stance is not None:
+        required_observation_ids.update(
+            view.contextual_stance.source_observation_ids
+        )
+    collections = {
+        "delivered_observations": view.observations,
+        "beliefs": view.beliefs,
+        "memory_traces": view.memory_traces,
+        "interpreted_claims": view.interpreted_claims,
+        "accessible_diary_entries": view.accessible_diary_entries,
+    }
+    required_observations = tuple(
+        observation
+        for observation in view.observations
+        if observation.observation_id in required_observation_ids
+    )
+    optional_observations = tuple(
+        observation
+        for observation in view.observations
+        if observation.observation_id not in required_observation_ids
+    )
+    remaining_observation_capacity = max(
+        0,
+        MAX_RESTRICTED_CONTINUITY_ENTRIES - len(required_observations),
+    )
+    recent_optional_observations = (
+        optional_observations[-remaining_observation_capacity:]
+        if remaining_observation_capacity
+        else ()
+    )
+    included_observation_ids = {
+        observation.observation_id
+        for observation in (
+            required_observations[-MAX_RESTRICTED_CONTINUITY_ENTRIES:]
+            + recent_optional_observations
+        )
+    }
+    projected = {
+        "delivered_observations": tuple(
+            observation
+            for observation in view.observations
+            if observation.observation_id in included_observation_ids
+        ),
+        "beliefs": view.beliefs[-MAX_RESTRICTED_CONTINUITY_ENTRIES:],
+        "memory_traces": view.memory_traces[-MAX_RESTRICTED_CONTINUITY_ENTRIES:],
+        "interpreted_claims": view.interpreted_claims[
+            -MAX_RESTRICTED_CONTINUITY_ENTRIES:
+        ],
+        "accessible_diary_entries": view.accessible_diary_entries[
+            -MAX_RESTRICTED_CONTINUITY_ENTRIES:
+        ],
+    }
+    counts = {
+        name: {
+            "total": len(entries),
+            "included": len(projected[name]),
+            "omitted": len(entries) - len(projected[name]),
+            "required": (
+                len(required_observations)
+                if name == "delivered_observations"
+                else len(entries)
+            ),
+            "required_omitted": (
+                len(required_observations)
+                - len(
+                    {
+                        observation.observation_id
+                        for observation in projected["delivered_observations"]
+                    }
+                    & required_observation_ids
+                )
+                if name == "delivered_observations"
+                else len(entries) - len(projected[name])
+            ),
+        }
+        for name, entries in collections.items()
+    }
+    delivered_ids = {
+        observation.observation_id
+        for observation in projected["delivered_observations"]
+    }
+    trace_ids = {trace.trace_id for trace in projected["memory_traces"]}
+    source_links_complete = (
+        all(
+            set(belief.source_observation_ids).issubset(delivered_ids)
+            for belief in projected["beliefs"]
+        )
+        and all(
+            trace.source_observation_id in delivered_ids
+            for trace in projected["memory_traces"]
+        )
+        and all(
+            claim.origin_trace_id in trace_ids
+            for claim in projected["interpreted_claims"]
+        )
+        and all(
+            set(entry.source_observation_ids).issubset(delivered_ids)
+            for entry in projected["accessible_diary_entries"]
+        )
+        and (
+            view.contextual_stance is None
+            or (
+                view.contextual_stance.source_claim_id
+                in {claim.claim_id for claim in projected["interpreted_claims"]}
+                and view.contextual_stance.source_trace_id in trace_ids
+                and set(
+                    view.contextual_stance.source_observation_ids
+                ).issubset(delivered_ids)
+            )
+        )
+    )
+    complete = (
+        all(count["required_omitted"] == 0 for count in counts.values())
+        and source_links_complete
+    )
+    return (
+        replace(
+            view,
+            observations=projected["delivered_observations"],
+            beliefs=projected["beliefs"],
+            memory_traces=projected["memory_traces"],
+            interpreted_claims=projected["interpreted_claims"],
+            accessible_diary_entry_count=len(
+                projected["accessible_diary_entries"]
+            ),
+            accessible_diary_entries=projected["accessible_diary_entries"],
+        ),
+        {
+            "kind": RESTRICTED_CONTINUITY_PROJECTION_KIND,
+            "maximum_entries_per_collection": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+            "complete": complete,
+            "source_links_complete": source_links_complete,
+            "collections": counts,
+        },
+    )
 
 
 def _grounded_claim_options(view: AgentView) -> list[dict[str, object]]:
@@ -284,25 +602,27 @@ def _action_affordances(view: AgentView) -> dict[str, dict[str, object]]:
 
 def model_input_from_view(view: AgentView) -> dict[str, object]:
     """Serialize only the restricted agent view into detached JSON-like data."""
-    stance = view.contextual_stance
-    affordances = _action_affordances(view)
+    continuity_view, continuity_projection = _restricted_continuity_view(view)
+    stance = continuity_view.contextual_stance
+    affordances = _action_affordances(continuity_view)
     return {
-        "tick": view.tick,
+        "tick": continuity_view.tick,
         "character": {
-            "agent_id": view.agent_id,
-            "display_name": view.display_name,
-            "role": view.role,
+            "agent_id": continuity_view.agent_id,
+            "display_name": continuity_view.display_name,
+            "role": continuity_view.role,
         },
         "state": {
-            "location": view.location,
-            "aim": view.aim,
-            "required_resource_id": view.required_resource_id,
-            "required_units": view.required_units,
-            "resource_holdings": to_plain_data(view.resource_holdings),
-            "remaining_required_units": view.remaining_required_units,
-            "obligations": list(view.obligations),
+            "location": continuity_view.location,
+            "aim": continuity_view.aim,
+            "required_resource_id": continuity_view.required_resource_id,
+            "required_units": continuity_view.required_units,
+            "resource_holdings": to_plain_data(continuity_view.resource_holdings),
+            "remaining_required_units": continuity_view.remaining_required_units,
+            "obligations": list(continuity_view.obligations),
         },
-        "decision_history": _decision_history_data(view),
+        "decision_history": _decision_history_data(continuity_view),
+        "continuity_projection": continuity_projection,
         "delivered_observations": [
             {
                 "observation_id": observation.observation_id,
@@ -312,7 +632,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                 "delivery_tick": observation.delivery_tick,
                 "details": to_plain_data(observation.details),
             }
-            for observation in view.observations
+            for observation in continuity_view.observations
         ],
         "understanding": {
             "beliefs": [
@@ -326,7 +646,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "context": belief.context,
                     "conflicts_with": list(belief.conflicts_with),
                 }
-                for belief in view.beliefs
+                for belief in continuity_view.beliefs
             ],
             "memory_traces": [
                 {
@@ -341,7 +661,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "delivery_tick": trace.delivery_tick,
                     "period_id": trace.period_id,
                 }
-                for trace in view.memory_traces
+                for trace in continuity_view.memory_traces
             ],
             "interpreted_claims": [
                 {
@@ -352,7 +672,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                     "origin_trace_id": claim.origin_trace_id,
                     "conflicts_with": list(claim.conflicts_with),
                 }
-                for claim in view.interpreted_claims
+                for claim in continuity_view.interpreted_claims
             ],
             "contextual_stance": (
                 {
@@ -372,8 +692,8 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
         "accessible_objects": {
             "diary": (
                 {
-                    "object_id": view.accessible_diary_id,
-                    "entry_count": view.accessible_diary_entry_count,
+                    "object_id": continuity_view.accessible_diary_id,
+                    "entry_count": continuity_view.accessible_diary_entry_count,
                     "entries": [
                         {
                             "entry_id": entry.entry_id,
@@ -385,14 +705,14 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
                             "started_tick": entry.started_tick,
                             "completed_tick": entry.completed_tick,
                         }
-                        for entry in view.accessible_diary_entries
+                        for entry in continuity_view.accessible_diary_entries
                     ],
                 }
-                if view.accessible_diary_id is not None
+                if continuity_view.accessible_diary_id is not None
                 else None
             ),
             "consultable_official_record_ids": list(
-                view.consultable_official_record_ids
+                continuity_view.consultable_official_record_ids
             ),
         },
         "action_contract": {
@@ -436,8 +756,41 @@ class ModelFocalPolicy:
         model_input = model_input_from_view(view)
         recorded_input = freeze_mapping(model_input)
         model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
+        continuity_projection = model_input["continuity_projection"]
+        if not continuity_projection["complete"]:
+            if isinstance(self._client, RecordedDecisionClient):
+                try:
+                    self._client.choose(model_input)
+                except _RecordedSafeFailure as error:
+                    if (
+                        error.failure_kind != "continuity_projection_incomplete"
+                        or error.failure_type
+                        != "RestrictedContinuityProjectionError"
+                    ):
+                        raise RecordedDecisionError(
+                            "recorded incomplete continuity failure does not match"
+                        ) from error
+                else:
+                    raise RecordedDecisionError(
+                        "recorded selected decision has incomplete continuity"
+                    )
+            return self._safe_failure(
+                view,
+                recorded_input,
+                model_input_bytes,
+                "continuity_projection_incomplete",
+                "RestrictedContinuityProjectionError",
+            )
         try:
             response = self._client.choose(model_input)
+        except _RecordedSafeFailure as error:
+            return self._safe_failure(
+                view,
+                recorded_input,
+                model_input_bytes,
+                error.failure_kind,
+                error.failure_type,
+            )
         except RestrictedInputTooLargeError as error:
             return self._safe_failure(
                 view,
@@ -634,12 +987,16 @@ def _validate_recorded_choice(
         raise RecordedDecisionError("recorded attempted action kind does not match")
     if record["status"] == "failed":
         failure_kind = record.get("failure_kind")
+        failure_type = record.get("failure_type")
         if (
             kind != "wait"
             or to_plain_data(response["parameters"]) != {}
             or response["explanation"]
             != "wait because no valid model decision is available"
             or not isinstance(failure_kind, str)
+            or not failure_kind
+            or not isinstance(failure_type, str)
+            or not failure_type
             or response["decision_reason"]
             != f"model decision failed safely: {failure_kind}"
         ):

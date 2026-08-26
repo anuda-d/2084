@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from policies.mara_harness import MaraHarness
@@ -75,6 +75,10 @@ class AutonomousDay:
     _pending_actions: dict[str, PendingAction]
     _private_decision_records: list[PolicyDecisionRecord]
     _private_decision_record_byte_measurements: list[int]
+    _understanding_transitions: list[dict[str, object]]
+    _dispatch_history_checkpoints: dict[
+        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+    ]
     _mara_harness_configured: bool
 
     @property
@@ -106,6 +110,11 @@ class AutonomousDay:
     @property
     def mara_harness_configured(self) -> bool:
         return self._mara_harness_configured
+
+    @property
+    def understanding_transitions(self) -> tuple[dict[str, object], ...]:
+        """Return inspector-only records of canonical understanding changes."""
+        return tuple(self._understanding_transitions)
 
     def run(self) -> DayRunSummary:
         return self.runtime.run()
@@ -167,6 +176,10 @@ def build_autonomous_day(
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
+    understanding_transitions: list[dict[str, object]] = []
+    dispatch_history_checkpoints: dict[
+        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+    ] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -176,6 +189,22 @@ def build_autonomous_day(
     def measure_private_decision_record_footprint() -> None:
         private_decision_record_byte_measurements.append(
             private_decision_records_size_bytes(tuple(private_decision_records)),
+        )
+
+    def checkpoint_objective_history(
+        sequence: int,
+        work: ScheduledWork,
+    ) -> None:
+        """Remember the objective boundary before a dispatch may mutate it."""
+        del work
+        dispatch_history_checkpoints[sequence] = (
+            frozenset(event.event_id for event in event_log.events),
+            frozenset(observation.observation_id for observation in event_log.observations),
+            frozenset(
+                result.action_id
+                for actor in world.agents.values()
+                for result in actor.action_results
+            ),
         )
 
     def mara_view() -> AgentView:
@@ -844,6 +873,17 @@ def build_autonomous_day(
                 new_claim,
                 trace,
             )
+        understanding_transitions.append(
+            {
+                "agent_id": mara.agent_id,
+                "tick": context.current.total_minutes,
+                "source_observation_id": observation.observation_id,
+                "source_event_id": observation.event_id,
+                "trace_id": trace.trace_id,
+                "claim_id": trace.interpreted_claim_id,
+                "claim_created": new_claim is not None,
+            }
+        )
 
     runtime = AcceleratedDayRuntime(
         start=SimulatedTime(0),
@@ -869,6 +909,7 @@ def build_autonomous_day(
             "tick",
             current.total_minutes,
         ),
+        on_dispatch_started=checkpoint_objective_history,
     )
     runtime.schedule(
         ScheduledWork(
@@ -904,6 +945,8 @@ def build_autonomous_day(
         _private_decision_record_byte_measurements=(
             private_decision_record_byte_measurements
         ),
+        _understanding_transitions=understanding_transitions,
+        _dispatch_history_checkpoints=dispatch_history_checkpoints,
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -959,6 +1002,11 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
             f"{current_visible_time.label}–{summary.current.label} "
             "| No focal updates."
         )
+    if summary.runtime_failure is not None:
+        lines.append(
+            "Run status: stopped without completing the day at "
+            f"{summary.current.label}."
+        )
     lines.extend(
         [
             f"End: {summary.current.label}",
@@ -1012,6 +1060,30 @@ def autonomous_day_inspector_data(
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
     ]
+    uncommitted_objective_tail = None
+    if summary.runtime_failure is not None:
+        failed_dispatch = summary.runtime_failure.failed_dispatch
+        if failed_dispatch is not None:
+            checkpoint = day._dispatch_history_checkpoints.get(
+                failed_dispatch.sequence
+            )
+            if checkpoint is not None:
+                event_ids, observation_ids, action_ids = checkpoint
+                uncommitted_objective_tail = {
+                    "events": [
+                        event for event in events if event["event_id"] not in event_ids
+                    ],
+                    "observations": [
+                        observation
+                        for observation in observations
+                        if observation["observation_id"] not in observation_ids
+                    ],
+                    "action_results": [
+                        result
+                        for result in action_results
+                        if result["action_id"] not in action_ids
+                    ],
+                }
     model_growth = None
     if day.mara_harness_configured:
         model_growth = {
@@ -1032,6 +1104,9 @@ def autonomous_day_inspector_data(
             "maximum_retained_private_record_bytes": (
                 MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
             ),
+            "peak_context_counts": model_context_count_measurements(
+                day.private_decision_records
+            ),
         }
     return {
         "runtime": summary.to_data(),
@@ -1043,6 +1118,19 @@ def autonomous_day_inspector_data(
         "model_path": {
             "configured": day.mara_harness_configured,
             "exercised": bool(day.private_decision_records),
+            "decision_status_counts": (
+                {
+                    status: sum(
+                        record.status == status
+                        for record in day.private_decision_records
+                    )
+                    for status in sorted(
+                        {record.status for record in day.private_decision_records}
+                    )
+                }
+                if day.mara_harness_configured
+                else None
+            ),
             "provider_failure_count": (
                 sum(
                     record.status == "failed"
@@ -1066,7 +1154,77 @@ def autonomous_day_inspector_data(
             "events": events,
             "observations": observations,
             "action_results": action_results,
+            "understanding_transitions": to_plain_data(day.understanding_transitions),
+            "uncommitted_objective_tail": uncommitted_objective_tail,
         },
+    }
+
+
+def model_context_count_measurements(
+    records: tuple[PolicyDecisionRecord, ...],
+) -> dict[str, object]:
+    """Measure private model-context shape without exposing its material."""
+
+    decision_history = {
+        "attempts_included": 0,
+        "results_included": 0,
+        "total_attempts": 0,
+        "total_results": 0,
+        "omitted_attempts": 0,
+        "omitted_results": 0,
+    }
+    understanding = {
+        "beliefs": 0,
+        "memory_traces": 0,
+        "interpreted_claims": 0,
+        "contextual_stance_present": 0,
+    }
+    peak_delivered_observation_count = 0
+
+    for record in records:
+        model_input = record.model_input
+        history = model_input.get("decision_history")
+        if isinstance(history, Mapping):
+            projection = history.get("projection")
+            if isinstance(projection, Mapping):
+                for field in (
+                    "total_attempts",
+                    "total_results",
+                    "omitted_attempts",
+                    "omitted_results",
+                ):
+                    value = projection.get(field)
+                    if isinstance(value, int) and not isinstance(value, bool):
+                        decision_history[field] = max(decision_history[field], value)
+            for field, input_field in (
+                ("attempts_included", "attempts"),
+                ("results_included", "results"),
+            ):
+                entries = history.get(input_field)
+                if isinstance(entries, tuple):
+                    decision_history[field] = max(
+                        decision_history[field], len(entries)
+                    )
+
+        delivered_observations = model_input.get("delivered_observations")
+        if isinstance(delivered_observations, tuple):
+            peak_delivered_observation_count = max(
+                peak_delivered_observation_count, len(delivered_observations)
+            )
+
+        model_understanding = model_input.get("understanding")
+        if isinstance(model_understanding, Mapping):
+            for field in ("beliefs", "memory_traces", "interpreted_claims"):
+                entries = model_understanding.get(field)
+                if isinstance(entries, tuple):
+                    understanding[field] = max(understanding[field], len(entries))
+            if model_understanding.get("contextual_stance") is not None:
+                understanding["contextual_stance_present"] = 1
+
+    return {
+        "decision_history": decision_history,
+        "peak_delivered_observation_count": peak_delivered_observation_count,
+        "understanding": understanding,
     }
 
 
@@ -1099,7 +1257,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     day = build_autonomous_day(seed=args.seed)
-    summary = day.run()
+    try:
+        summary = day.run()
+    except Exception:
+        summary = day.runtime.summary()
+        if summary.runtime_failure is None:
+            raise
     output = (
         render_autonomous_day_inspector(day, summary)
         if args.inspect

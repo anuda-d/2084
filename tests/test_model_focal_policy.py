@@ -6,8 +6,12 @@ from observer.inspector import render_inspector
 from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     DECISION_HISTORY_PROJECTION_KIND,
+    MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
+    MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+    MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
+    RESTRICTED_CONTINUITY_PROJECTION_KIND,
     ModelUnavailableError,
     RecordedDecisionClient,
     RecordedDecisionError,
@@ -19,6 +23,7 @@ from policies.mara_decision_request import restricted_decision_input_size_bytes
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.agents import (
+    DiaryEntryKnowledge,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
     PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
     PrivateDecisionRecordLimitError,
@@ -26,7 +31,8 @@ from simulation.agents import (
     serialize_private_decision_records,
     validate_private_decision_record_retention,
 )
-from simulation.events import to_plain_data
+from simulation.beliefs import Belief
+from simulation.events import Observation, freeze_mapping, to_plain_data
 
 
 class StructuredModelChoiceTests(unittest.TestCase):
@@ -588,8 +594,22 @@ class ModelFocalPolicyTests(unittest.TestCase):
             projected["projection"],
             {
                 "kind": DECISION_HISTORY_PROJECTION_KIND,
-                "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-                "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_recent_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_latest_attempts_by_action_kind": (
+                    MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                ),
+                "maximum_attempts": (
+                    MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                    + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                ),
+                "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_latest_results_by_action_kind": (
+                    MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                ),
+                "maximum_results": (
+                    MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                    + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                ),
                 "total_attempts": lifetime_count,
                 "total_results": lifetime_count,
                 "omitted_attempts": 3,
@@ -617,6 +637,120 @@ class ModelFocalPolicyTests(unittest.TestCase):
             projected["results"][-1]["action_id"],
             f"action-{lifetime_count - 1:04d}",
         )
+
+    def test_decision_history_projection_preserves_latest_attempt_per_action_kind(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        recent_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        attempts = (
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="earliest workplace work attempt",
+                decision_reason="an earlier obligation",
+            ),
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="latest workplace work attempt",
+                decision_reason="the current obligation remains relevant",
+            ),
+            *(
+                ActionAttempt(
+                    actor_id=FOCAL_AGENT_ID,
+                    kind="wait",
+                    parameters={},
+                    explanation=f"later wait attempt {index:02d}",
+                    decision_reason="recent cadence",
+                )
+                for index in range(recent_count)
+            ),
+        )
+
+        history = model_input_from_view(
+            replace(view, action_history=attempts, last_attempt=attempts[-1])
+        )["decision_history"]
+
+        self.assertEqual(
+            [attempt["explanation"] for attempt in history["attempts"]],
+            [
+                "latest workplace work attempt",
+                *(
+                    f"later wait attempt {index:02d}"
+                    for index in range(3, recent_count)
+                ),
+            ],
+        )
+        self.assertNotIn(
+            "earliest workplace work attempt",
+            [attempt["explanation"] for attempt in history["attempts"]],
+        )
+        self.assertEqual(history["projection"]["omitted_attempts"], 4)
+        self.assertLessEqual(
+            len(history["attempts"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
+        )
+        print("latest action-attempt continuity verification passed")
+
+    def test_decision_history_projection_preserves_latest_result_per_action_kind(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        recent_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        results = (
+            ActionResult(
+                action_id="action-work-old",
+                attempt_event_id="event-attempt-work-old",
+                outcome_event_id="event-outcome-work-old",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=1,
+                reason="completed earlier workplace work",
+            ),
+            *(
+                ActionResult(
+                    action_id=f"action-wait-{index:04d}",
+                    attempt_event_id=f"event-attempt-wait-{index:04d}",
+                    outcome_event_id=f"event-outcome-wait-{index:04d}",
+                    actor_id=FOCAL_AGENT_ID,
+                    action_kind="wait",
+                    status="completed",
+                    resolved_tick=index + 2,
+                    reason="completed later wait",
+                )
+                for index in range(recent_count)
+            ),
+        )
+
+        history = model_input_from_view(
+            replace(view, action_results=results)
+        )["decision_history"]
+
+        self.assertEqual(
+            [result["action_id"] for result in history["results"]],
+            [
+                "action-work-old",
+                *(
+                    f"action-wait-{index:04d}"
+                    for index in range(3, recent_count)
+                ),
+            ],
+        )
+        self.assertEqual(
+            history["projection"]["omitted_results"],
+            3,
+        )
+        self.assertLessEqual(
+            len(history["results"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
+        )
+        print("latest action-result continuity verification passed")
 
     def test_decision_history_collection_size_stops_growing_after_its_window(self):
         simulation = build_first_day(seed=42)
@@ -669,6 +803,231 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES,
             ),
         )
+
+    def test_relevant_old_observation_survives_an_irrelevant_context_window(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        lifetime_count = MAX_RESTRICTED_CONTINUITY_ENTRIES + 3
+        observations = tuple(
+            Observation(
+                observation_id=f"observation-{index:04d}",
+                agent_id=FOCAL_AGENT_ID,
+                event_id=f"event-{index:04d}",
+                source="bounded-continuity-test",
+                delivery_tick=index,
+                details=freeze_mapping({"sequence": index}),
+            )
+            for index in range(lifetime_count)
+        )
+        relevant_observation = observations[0]
+        continuity_view = replace(
+            view,
+            observations=observations,
+            beliefs=(
+                Belief(
+                    belief_id="belief-oldest-delivery",
+                    proposition="ordinary_day_commitment",
+                    asserted_value=1,
+                    source_observation_ids=(relevant_observation.observation_id,),
+                    confidence=0.9,
+                    last_updated_tick=relevant_observation.delivery_tick,
+                    context="private",
+                ),
+            ),
+        )
+        projected = model_input_from_view(continuity_view)
+        projection = projected["continuity_projection"]
+        client = StaticModelDecisionClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the retained commitment remains relevant",
+            }
+        )
+
+        policy = model_policy(client)
+        attempt = policy.choose(continuity_view)
+
+        self.assertEqual(
+            [item["observation_id"] for item in projected["delivered_observations"]],
+            [
+                "observation-0000",
+                *[
+                    f"observation-{index:04d}"
+                    for index in range(4, lifetime_count)
+                ],
+            ],
+        )
+        self.assertEqual(
+            projection,
+            {
+                "kind": RESTRICTED_CONTINUITY_PROJECTION_KIND,
+                "maximum_entries_per_collection": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+                "complete": True,
+                "source_links_complete": True,
+                "collections": {
+                    "delivered_observations": {
+                        "total": lifetime_count,
+                        "included": MAX_RESTRICTED_CONTINUITY_ENTRIES,
+                        "omitted": 3,
+                        "required": 1,
+                        "required_omitted": 0,
+                    },
+                    "beliefs": {
+                        "total": 1,
+                        "included": 1,
+                        "omitted": 0,
+                        "required": 1,
+                        "required_omitted": 0,
+                    },
+                    "memory_traces": {
+                        "total": 0,
+                        "included": 0,
+                        "omitted": 0,
+                        "required": 0,
+                        "required_omitted": 0,
+                    },
+                    "interpreted_claims": {
+                        "total": 0,
+                        "included": 0,
+                        "omitted": 0,
+                        "required": 0,
+                        "required_omitted": 0,
+                    },
+                    "accessible_diary_entries": {
+                        "total": 0,
+                        "included": 0,
+                        "omitted": 0,
+                        "required": 0,
+                        "required_omitted": 0,
+                    },
+                },
+            },
+        )
+        self.assertEqual(client.inputs, [projected])
+        self.assertEqual(attempt.kind, "travel")
+        record = policy.take_decision_record()
+        self.assertIsNotNone(record)
+        self.assertEqual(record.status, "selected")
+        self.assertEqual(record.model_input, freeze_mapping(projected))
+
+    def test_oversized_relevant_observation_closure_fails_before_provider_call(self):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        lifetime_count = MAX_RESTRICTED_CONTINUITY_ENTRIES + 1
+        observations = tuple(
+            Observation(
+                observation_id=f"observation-{index:04d}",
+                agent_id=FOCAL_AGENT_ID,
+                event_id=f"event-{index:04d}",
+                source="bounded-continuity-test",
+                delivery_tick=index,
+                details=freeze_mapping({"sequence": index}),
+            )
+            for index in range(lifetime_count)
+        )
+        continuity_view = replace(
+            view,
+            observations=observations,
+            beliefs=tuple(
+                Belief(
+                    belief_id=f"belief-{index:04d}",
+                    proposition=f"commitment-{index:04d}",
+                    asserted_value=index,
+                    source_observation_ids=(observation.observation_id,),
+                    confidence=0.9,
+                    last_updated_tick=index,
+                    context="private",
+                )
+                for index, observation in enumerate(observations)
+            ),
+        )
+        projected = model_input_from_view(continuity_view)
+        projection = projected["continuity_projection"]
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "the provider should not be called",
+            }
+        )
+
+        policy = model_policy(client)
+        attempt = policy.choose(continuity_view)
+
+        self.assertEqual(client.inputs, [])
+        self.assertEqual(attempt.kind, "wait")
+        self.assertEqual(
+            len(projected["delivered_observations"]),
+            MAX_RESTRICTED_CONTINUITY_ENTRIES,
+        )
+        self.assertFalse(projection["complete"])
+        self.assertEqual(
+            projection["collections"]["delivered_observations"][
+                "required_omitted"
+            ],
+            1,
+        )
+        record = policy.take_decision_record()
+        self.assertIsNotNone(record)
+        self.assertEqual(record.status, "failed")
+        self.assertEqual(record.failure_kind, "continuity_projection_incomplete")
+        self.assertEqual(record.failure_type, "RestrictedContinuityProjectionError")
+
+        replay_client = RecordedDecisionClient.from_records((record,))
+        replay_policy = ModelFocalPolicy(
+            replay_client,
+            configuration_id="recorded:incomplete-continuity-test",
+        )
+        replay_attempt = replay_policy.choose(continuity_view)
+        replay_record = replay_policy.take_decision_record()
+
+        self.assertEqual(replay_attempt, attempt)
+        self.assertEqual(replay_client.consumed_count, 1)
+        self.assertEqual(replay_client.remaining_count, 0)
+        self.assertEqual(replay_record.status, "failed")
+        self.assertEqual(
+            replay_record.failure_kind,
+            "continuity_projection_incomplete",
+        )
+        self.assertEqual(
+            replay_record.failure_type,
+            "RestrictedContinuityProjectionError",
+        )
+        self.assertEqual(replay_record.model_input, record.model_input)
+
+    def test_diary_continuity_requires_a_delivered_source(self):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        continuity_view = replace(
+            view,
+            accessible_diary_id="mara-private-diary",
+            accessible_diary_entry_count=1,
+            accessible_diary_entries=(
+                DiaryEntryKnowledge(
+                    entry_id="entry-undelivered",
+                    proposition="unavailable_fact",
+                    asserted_value=1,
+                    source_observation_ids=("observation-not-delivered",),
+                    started_tick=0,
+                    completed_tick=1,
+                ),
+            ),
+        )
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "the provider should not be called",
+            }
+        )
+
+        attempt = model_policy(client).choose(continuity_view)
+
+        self.assertEqual(client.inputs, [])
+        self.assertEqual(attempt.kind, "wait")
 
     def test_recorded_decisions_reproduce_complete_ordered_world_history(self):
         scripted = build_first_day(seed=42)
@@ -809,7 +1168,9 @@ class ModelFocalPolicyTests(unittest.TestCase):
 
         self.assertEqual(replay.history_data(), source.history_data())
         self.assertEqual(recorded_client.consumed_count, 1)
-        self.assertEqual(replay.decision_records[0].status, "selected")
+        self.assertEqual(replay.decision_records[0].status, "failed")
+        self.assertEqual(replay.decision_records[0].failure_kind, "timeout")
+        self.assertEqual(replay.decision_records[0].failure_type, "TimeoutError")
         self.assertEqual(
             replay.decision_records[0].attempted_action_kind, "wait"
         )
@@ -840,6 +1201,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "character",
                 "state",
                 "decision_history",
+                "continuity_projection",
                 "delivered_observations",
                 "understanding",
                 "accessible_objects",

@@ -1,5 +1,9 @@
+import json
+import io
 import unittest
+from contextlib import redirect_stdout
 from dataclasses import replace
+from unittest.mock import patch
 
 from policies.mara_harness import MaraHarness
 from scenarios.autonomous_day import (
@@ -7,15 +11,19 @@ from scenarios.autonomous_day import (
     MARA_ID,
     autonomous_day_inspector_data,
     build_autonomous_day,
+    main,
     render_autonomous_day,
 )
 from policies.model_focal_policy import (
+    RecordedDecisionArchive,
     RecordedDecisionError,
     model_input_from_view,
 )
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
 from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
 from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
+from simulation.scheduling import ScheduledWork, TemporalPhase
+from simulation.time import SimulatedTime
 
 
 class _SequenceClient:
@@ -25,10 +33,203 @@ class _SequenceClient:
 
     def choose(self, model_input):
         self.inputs.append(model_input)
-        return self._responses[len(self.inputs) - 1]
+        response = self._responses[len(self.inputs) - 1]
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_inspector_places_objective_tail_from_failed_dispatch(self):
+        day = build_autonomous_day(seed=42)
+
+        def record_then_commit(work, context):
+            day._event_log.record(
+                tick=context.current.total_minutes,
+                kind="test_committed_objective_event",
+                actor_id=None,
+                action_id=None,
+                details={"source": "committed"},
+            )
+
+        def record_then_fail(work, context):
+            day._event_log.record(
+                tick=context.current.total_minutes,
+                kind="test_uncommitted_objective_event",
+                actor_id=None,
+                action_id=None,
+                details={"source": "test"},
+            )
+            raise RuntimeError("private-failure-marker")
+
+        day.runtime._handlers["test_committed_handler"] = record_then_commit
+        day.runtime._handlers["test_uncommitted_handler"] = record_then_fail
+        due_time = SimulatedTime(15)
+        day.runtime.schedule(
+            ScheduledWork(
+                "committed-first-work-id",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_committed_handler",
+            )
+        )
+        day.runtime.schedule(
+            ScheduledWork(
+                "private-uncommitted-work-id",
+                due_time,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_uncommitted_handler",
+            )
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "private-failure-marker"):
+            day.run()
+
+        inspector = autonomous_day_inspector_data(day, day.runtime.summary())
+        self.assertEqual(inspector["runtime"]["executed_work_count"], 1)
+        self.assertEqual(
+            inspector["runtime"]["runtime_failure"]["failed_dispatch"],
+            {
+                "due_time": due_time.to_data(),
+                "phase": "scheduled_world",
+                "sequence": 2,
+            },
+        )
+        self.assertEqual(
+            inspector["history"]["events"],
+            [
+                {
+                    "event_id": "event-0001",
+                    "tick": 15,
+                    "kind": "test_committed_objective_event",
+                    "actor_id": None,
+                    "action_id": None,
+                    "caused_by": [],
+                    "details": {"source": "committed"},
+                },
+                {
+                    "event_id": "event-0002",
+                    "tick": 15,
+                    "kind": "test_uncommitted_objective_event",
+                    "actor_id": None,
+                    "action_id": None,
+                    "caused_by": [],
+                    "details": {"source": "test"},
+                }
+            ],
+        )
+        self.assertEqual(
+            inspector["history"]["uncommitted_objective_tail"],
+            {
+                "events": [inspector["history"]["events"][1]],
+                "observations": [],
+                "action_results": [],
+            },
+        )
+        rendered = json.dumps(inspector)
+        self.assertNotIn("private-failure-marker", rendered)
+        self.assertNotIn("private-uncommitted-work-id", rendered)
+        self.assertNotIn("private-second", rendered)
+        self.assertNotIn("test_uncommitted_handler", rendered)
+
+    def test_inspector_exposes_consumed_decisions_and_understanding_transitions(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "rest before the workday",
+                "decision_reason": "the morning is quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after resting",
+                "decision_reason": "rest is complete",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the bulletin",
+                "decision_reason": "the bulletin needs no action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-causal-evidence-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+
+        self.assertEqual(
+            inspector["runtime"]["consumed_decisions"],
+            [
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(420).to_data(),
+                    "scheduled_work_id": "decision:420:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "scheduled_wake",
+                            "source_id": "autonomous-day-mara-morning-wake",
+                        }
+                    ],
+                },
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(480).to_data(),
+                    "scheduled_work_id": "decision:480:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "action_result",
+                            "source_id": "event-0003",
+                        }
+                    ],
+                },
+                {
+                    "actor_id": MARA_ID,
+                    "due_time": SimulatedTime(660).to_data(),
+                    "scheduled_work_id": "decision:660:mara-vale",
+                    "triggers": [
+                        {
+                            "kind": "observation_delivered",
+                            "source_id": "observation-0001",
+                        }
+                    ],
+                },
+            ],
+        )
+        observation = inspector["history"]["observations"][0]
+        self.assertEqual(
+            inspector["history"]["understanding_transitions"],
+            [
+                {
+                    "agent_id": MARA_ID,
+                    "tick": 660,
+                    "source_observation_id": observation["observation_id"],
+                    "source_event_id": observation["event_id"],
+                    "trace_id": f"trace-{observation['observation_id']}",
+                    "claim_id": f"claim-{observation['observation_id']}",
+                    "claim_created": True,
+                }
+            ],
+        )
+        inspector["history"]["understanding_transitions"][0]["claim_id"] = (
+            "forged-claim"
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(day, day.run())["history"][
+                "understanding_transitions"
+            ][0]["claim_id"],
+            f"claim-{observation['observation_id']}",
+        )
+        self.assertNotIn("model_input", json.dumps(inspector))
+        self.assertNotIn("private_decision_records", json.dumps(inspector))
+
     def test_harness_choice_becomes_private_evidence_and_resolved_wait(self):
         client = _SequenceClient(
             {
@@ -112,11 +313,17 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             {
                 key: model_path[key]
-                for key in ("configured", "exercised", "provider_failure_count")
+                for key in (
+                    "configured",
+                    "exercised",
+                    "decision_status_counts",
+                    "provider_failure_count",
+                )
             },
             {
                 "configured": True,
                 "exercised": True,
+                "decision_status_counts": {"selected": 3},
                 "provider_failure_count": 0,
             },
         )
@@ -137,6 +344,23 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "maximum_retained_private_record_bytes": (
                     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
                 ),
+                "peak_context_counts": {
+                    "decision_history": {
+                        "attempts_included": 2,
+                        "results_included": 2,
+                        "total_attempts": 2,
+                        "total_results": 2,
+                        "omitted_attempts": 0,
+                        "omitted_results": 0,
+                    },
+                    "peak_delivered_observation_count": 1,
+                    "understanding": {
+                        "beliefs": 0,
+                        "memory_traces": 1,
+                        "interpreted_claims": 1,
+                        "contextual_stance_present": 0,
+                    },
+                },
             },
         )
         self.assertGreater(
@@ -145,6 +369,9 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("model_input", model_path["growth"])
         self.assertNotIn("private_decision_records", model_path["growth"])
+        self.assertNotIn("delivered_observations", model_path["growth"])
+        self.assertNotIn("model_input", model_path)
+        self.assertNotIn("private_decision_records", model_path)
 
     def test_completed_rest_dispatches_later_action_result_decision(self):
         client = _SequenceClient(
@@ -270,6 +497,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             [record.status for record in day.private_decision_records],
             ["failed", "selected", "selected"],
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(day, summary)["model_path"][
+                "decision_status_counts"
+            ],
+            {"failed": 1, "selected": 2},
         )
         self.assertEqual(
             dispatched[1].triggers,
@@ -925,10 +1158,18 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         source_summary = source.run()
         source_record_count = len(source.private_decision_records)
+        integrity_key = b"autonomous-day-replay-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
 
         replay = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(source.private_decision_records),
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
         )
         replay_summary = replay.run()
 
@@ -946,6 +1187,163 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [record.model_input for record in replay.private_decision_records],
             [record.model_input for record in source.private_decision_records],
         )
+
+    def test_recorded_safe_failure_decisions_replay_complete_autonomous_day_without_provider_calls(
+        self,
+    ):
+        source_client = _SequenceClient(
+            TimeoutError("provider unavailable"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the recorded retry",
+                "decision_reason": "the retry made no immediate task available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the accessible bulletin",
+                "decision_reason": "the bulletin changes no immediate action",
+            },
+        )
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="deterministic-autonomous-day-replay-failure-source",
+            ),
+        )
+        source_summary = source.run()
+        source_call_count = len(source_client.inputs)
+        integrity_key = b"autonomous-day-replay-failure-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
+
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+        )
+        replay_summary = replay.run()
+
+        self.assertTrue(source_summary.reached_end_boundary)
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(source_call_count, len(source.private_decision_records))
+        self.assertEqual(len(source_client.inputs), source_call_count)
+        self.assertEqual(replay_summary.to_data(), source_summary.to_data())
+        self.assertEqual(replay.events, source.events)
+        self.assertEqual(replay.observations, source.observations)
+        replay_inspector = autonomous_day_inspector_data(replay, replay_summary)
+        source_inspector = autonomous_day_inspector_data(source, source_summary)
+        self.assertEqual(
+            replay_inspector["objective_state"],
+            source_inspector["objective_state"],
+        )
+        self.assertEqual(
+            replay_inspector["history"]["action_results"],
+            source_inspector["history"]["action_results"],
+        )
+        self.assertEqual(
+            [record.model_input for record in replay.private_decision_records],
+            [record.model_input for record in source.private_decision_records],
+        )
+        self.assertEqual(
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in replay.private_decision_records
+            ],
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in source.private_decision_records
+            ],
+        )
+        self.assertEqual(
+            [
+                (record.status, record.failure_kind, record.failure_type)
+                for record in source.private_decision_records
+            ],
+            [
+                ("failed", "timeout", "TimeoutError"),
+                ("selected", None, None),
+                ("selected", None, None),
+            ],
+        )
+        replay_model_path = replay_inspector["model_path"]
+        source_model_path = source_inspector["model_path"]
+        self.assertEqual(
+            {
+                key: replay_model_path[key]
+                for key in ("exercised", "decision_status_counts", "provider_failure_count")
+            },
+            {
+                key: source_model_path[key]
+                for key in ("exercised", "decision_status_counts", "provider_failure_count")
+            },
+        )
+
+    def test_sealed_recording_rejects_a_self_consistent_selected_action_edit(self):
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                _SequenceClient(
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "rest after the scheduled wake",
+                        "decision_reason": "the morning is quiet",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after completing rest",
+                        "decision_reason": "no immediate action is needed",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after the accessible bulletin",
+                        "decision_reason": "the bulletin changes no immediate action",
+                    },
+                ),
+                configuration_id="deterministic-autonomous-day-integrity-source",
+            ),
+        )
+        source.run()
+        integrity_key = b"autonomous-day-recording-edit-detection-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        selected_index = next(
+            index
+            for index, record in enumerate(archive.records)
+            if record.status == "selected"
+        )
+        selected_record = archive.records[selected_index]
+        altered_response = dict(selected_record.structured_response)
+        altered_response["explanation"] = "a changed but schema-valid explanation"
+        altered_attempt = dict(selected_record.attempted_action)
+        altered_attempt["explanation"] = altered_response["explanation"]
+        altered_records = list(archive.records)
+        altered_records[selected_index] = replace(
+            selected_record,
+            structured_response=altered_response,
+            attempted_action=altered_attempt,
+        )
+        altered_archive = replace(archive, records=tuple(altered_records))
+
+        with self.assertRaisesRegex(
+            RecordedDecisionError,
+            "archive integrity mismatch",
+        ):
+            MaraHarness.from_recorded_archive(
+                altered_archive,
+                integrity_key=integrity_key,
+            )
 
     def test_recorded_autonomous_day_failure_is_explicit_for_altered_or_exhausted_evidence(
         self,
@@ -985,22 +1383,116 @@ class AutonomousDayWorldTests(unittest.TestCase):
             replace(source.private_decision_records[0], model_input=altered_input),
             *source.private_decision_records[1:],
         )
+        altered_integrity_key = b"autonomous-day-input-mismatch-integrity-v1"
         altered = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(altered_records),
+            mara_harness=MaraHarness.from_recorded_archive(
+                RecordedDecisionArchive.seal(
+                    altered_records,
+                    integrity_key=altered_integrity_key,
+                ),
+                integrity_key=altered_integrity_key,
+            ),
         )
         with self.assertRaisesRegex(RecordedDecisionError, "input mismatch"):
             altered.run()
         self.assertFalse(altered.runtime.is_complete)
+        altered_summary = altered.runtime.summary()
         self.assertEqual(
-            altered.runtime.summary().runtime_failure.failure_type,
+            altered_summary.runtime_failure.failure_type,
             "RecordedDecisionError",
         )
+        normal_output = render_autonomous_day(altered, altered_summary)
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 0 07:00.",
+            normal_output,
+        )
+        self.assertIn("Exact 24-hour boundary reached: no", normal_output)
+        self.assertNotIn("RecordedDecisionError", normal_output)
+        self.assertNotIn("input mismatch", normal_output)
+        inspector_data = autonomous_day_inspector_data(altered, altered_summary)
+        self.assertEqual(
+            inspector_data["runtime"]["runtime_failure"],
+            {
+                "failure_type": "RecordedDecisionError",
+                "last_committed_time": {
+                    "total_minutes": 0,
+                    "day_index": 0,
+                    "hour": 0,
+                    "minute": 0,
+                    "label": "Day 0 00:00",
+                },
+                "failed_time": {
+                    "total_minutes": 420,
+                    "day_index": 0,
+                    "hour": 7,
+                    "minute": 0,
+                    "label": "Day 0 07:00",
+                },
+                "committed_work_count": 0,
+                "released_uncommitted_count": 1,
+                "pending_work_count": 2,
+                "failed_dispatch": {
+                    "due_time": {
+                        "total_minutes": 420,
+                        "day_index": 0,
+                        "hour": 7,
+                        "minute": 0,
+                        "label": "Day 0 07:00",
+                    },
+                    "phase": "decision",
+                    "sequence": 1,
+                },
+            },
+        )
+        self.assertNotIn("input mismatch", json.dumps(inspector_data))
+        command_output = io.StringIO()
+        with patch(
+            "scenarios.autonomous_day.build_autonomous_day", return_value=altered
+        ), redirect_stdout(command_output):
+            self.assertEqual(main(["--seed", "42"]), 1)
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 0 07:00.",
+            command_output.getvalue(),
+        )
+        self.assertNotIn("RecordedDecisionError", command_output.getvalue())
+        self.assertNotIn("input mismatch", command_output.getvalue())
 
+        end_failed = build_autonomous_day(seed=42)
+
+        def fail_at_end(work, context):
+            raise RuntimeError("private-end-failure")
+
+        end_failed.runtime._handlers["test_end_failure"] = fail_at_end
+        end_failed.runtime.schedule(
+            ScheduledWork(
+                "test-end-failure",
+                end_failed.runtime.end,
+                TemporalPhase.SCHEDULED_WORLD,
+                "test_end_failure",
+            )
+        )
+        with self.assertRaisesRegex(RuntimeError, "private-end-failure"):
+            end_failed.run()
+        end_failure_output = render_autonomous_day(
+            end_failed,
+            end_failed.runtime.summary(),
+        )
+        self.assertIn(
+            "Run status: stopped without completing the day at Day 1 00:00.",
+            end_failure_output,
+        )
+        self.assertNotIn("before the day boundary", end_failure_output)
+
+        exhausted_integrity_key = b"autonomous-day-exhausted-integrity-v1"
         exhausted = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(
-                source.private_decision_records[:1]
+            mara_harness=MaraHarness.from_recorded_archive(
+                RecordedDecisionArchive.seal(
+                    source.private_decision_records[:1],
+                    integrity_key=exhausted_integrity_key,
+                ),
+                integrity_key=exhausted_integrity_key,
             ),
         )
         with self.assertRaisesRegex(RecordedDecisionError, "exhausted"):
