@@ -14,6 +14,7 @@ from policies.mara_decision_request import (
     restricted_decision_input_size_bytes,
 )
 from simulation.actions import (
+    ACTION_PARAMETER_CONTRACTS,
     ActionAttempt,
     action_parameter_contract_data,
     action_parameter_shape_error,
@@ -23,7 +24,8 @@ from simulation.events import freeze_mapping, to_plain_data
 
 
 MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
-DECISION_HISTORY_PROJECTION_KIND = "recent_terminal_window_v0"
+MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
+DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_latest_action_kind_v1"
 MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
 RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
@@ -229,14 +231,44 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
 
 
 def _decision_history_data(view: AgentView) -> dict[str, object]:
-    """Project recent evidence without retaining lifetime-sized collections."""
+    """Project recent history plus bounded latest outcomes by action kind.
+
+    The recent window gives the model short-term cadence.  A successful or
+    rejected outcome from an older distinct action kind can still explain a
+    current choice, however, so retain that kind's latest result as an
+    explicit bounded continuity rule.  Only supported action kinds qualify;
+    this cannot grow with arbitrary lifetime result data.
+    """
     attempts = view.action_history[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
-    results = view.action_results[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
+    latest_result_index_by_kind: dict[str, int] = {}
+    supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
+    for index, result in enumerate(view.action_results):
+        if result.action_kind in supported_kinds:
+            latest_result_index_by_kind[result.action_kind] = index
+    included_result_indexes = set(
+        range(
+            max(0, len(view.action_results) - MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            len(view.action_results),
+        )
+    )
+    included_result_indexes.update(latest_result_index_by_kind.values())
+    results = tuple(
+        result
+        for index, result in enumerate(view.action_results)
+        if index in included_result_indexes
+    )
     return {
         "projection": {
             "kind": DECISION_HISTORY_PROJECTION_KIND,
             "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-            "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_latest_results_by_action_kind": (
+                MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+            ),
+            "maximum_results": (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+            ),
             "total_attempts": len(view.action_history),
             "total_results": len(view.action_results),
             "omitted_attempts": len(view.action_history) - len(attempts),

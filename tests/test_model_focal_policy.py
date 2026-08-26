@@ -6,6 +6,7 @@ from observer.inspector import render_inspector
 from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     DECISION_HISTORY_PROJECTION_KIND,
+    MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
     MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
@@ -593,7 +594,14 @@ class ModelFocalPolicyTests(unittest.TestCase):
             {
                 "kind": DECISION_HISTORY_PROJECTION_KIND,
                 "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-                "maximum_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_latest_results_by_action_kind": (
+                    MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                ),
+                "maximum_results": (
+                    MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                    + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                ),
                 "total_attempts": lifetime_count,
                 "total_results": lifetime_count,
                 "omitted_attempts": 3,
@@ -621,6 +629,62 @@ class ModelFocalPolicyTests(unittest.TestCase):
             projected["results"][-1]["action_id"],
             f"action-{lifetime_count - 1:04d}",
         )
+
+    def test_decision_history_projection_preserves_latest_result_per_action_kind(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        recent_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        results = (
+            ActionResult(
+                action_id="action-work-old",
+                attempt_event_id="event-attempt-work-old",
+                outcome_event_id="event-outcome-work-old",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=1,
+                reason="completed earlier workplace work",
+            ),
+            *(
+                ActionResult(
+                    action_id=f"action-wait-{index:04d}",
+                    attempt_event_id=f"event-attempt-wait-{index:04d}",
+                    outcome_event_id=f"event-outcome-wait-{index:04d}",
+                    actor_id=FOCAL_AGENT_ID,
+                    action_kind="wait",
+                    status="completed",
+                    resolved_tick=index + 2,
+                    reason="completed later wait",
+                )
+                for index in range(recent_count)
+            ),
+        )
+
+        history = model_input_from_view(
+            replace(view, action_results=results)
+        )["decision_history"]
+
+        self.assertEqual(
+            [result["action_id"] for result in history["results"]],
+            [
+                "action-work-old",
+                *(
+                    f"action-wait-{index:04d}"
+                    for index in range(3, recent_count)
+                ),
+            ],
+        )
+        self.assertEqual(
+            history["projection"]["omitted_results"],
+            3,
+        )
+        self.assertLessEqual(
+            len(history["results"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
+        )
+        print("latest action-result continuity verification passed")
 
     def test_decision_history_collection_size_stops_growing_after_its_window(self):
         simulation = build_first_day(seed=42)

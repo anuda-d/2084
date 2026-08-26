@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-10 sealed recorded replay integrity (2026-08-25)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-7 latest-action-result continuity (2026-08-25)
+- Verified implementation runs since alignment: 3
 - Alignment due: no
 
 ## Goal Progress
@@ -273,6 +273,24 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — AD-7 latest-action-result continuity
+
+- Each restricted Mara decision input still retains the most recent 16 action
+  results, and now also retains the newest result for each supported action
+  kind when that result is older than the recent window. This is an explicit,
+  bounded relevance rule: retained results keep their original causal order,
+  and the result collection cannot exceed the recent 16 plus the finite
+  supported action-kind count.
+- A focused regression proves an early completed `work` result remains visible
+  after later `wait` results displace it from the recent window, while the
+  projection reports omitted results and remains within its declared maximum.
+  The complete offline repository check and whitespace validation passed on
+  re-verification; the three Solo gates are 3 met, 0 unmet, and 0 abandoned.
+- A fresh independent Sol-high review found no blocker, hidden-knowledge
+  grant, privacy leak, objective-history mutation, or unbounded growth. Scope
+  limit: this does not complete AD-7. Older same-kind results and older
+  attempted actions can still be behaviorally relevant beyond their windows.
 
 ### 2026-08-25 — Autonomous-day architecture refresh
 
