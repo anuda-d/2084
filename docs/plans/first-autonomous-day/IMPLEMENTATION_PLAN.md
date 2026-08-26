@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 chronological inspector action results (2026-08-26)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: eighth whole-goal alignment (2026-08-26)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -92,6 +92,35 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — Eighth whole-goal alignment
+
+- A fresh independent Sol-high read-only review and the main alignment review
+  compared AD-1 through AD-12 with the active goal, current successor runtime,
+  focal-policy boundary, focused tests, and offline validation. AD-1 through
+  AD-6 and AD-8 through AD-10 remain met within their recorded limits. AD-7,
+  AD-11, and AD-12 remain open.
+- The review found one concrete AD-11 blocker: `provider_failure_count` treats
+  a `restricted_input_too_large` safe failure as a provider failure even though
+  the Ollama adapter rejects that input before transport. The marker is set at
+  the model-policy boundary and is therefore not yet an honest provider-call
+  aggregate. AD-11 was already open, so this records a correction to its
+  evidence rather than changing any criterion status or selecting a fix.
+- AD-11 also remains incomplete because its inspector reports aggregates, not
+  an ordered sanitized model-decision status sequence. AD-7 remains open for
+  the documented older same-kind relevance gap, and AD-12 remains blocked on
+  the owner-authorized exact-model live run.
+- No privacy leak, hidden-knowledge grant, impossible authority, scope
+  expansion, or runtime mechanism warranting removal was found. The architecture
+  overview still overstates completion by listing only the continuity and live
+  limits while omitting open AD-11; this is recorded drift, not a documentation
+  repair selected by this alignment.
+- Validation passed the full offline check with 198 current and 63 historical
+  tests, the default autonomous-day command through exact `Day 1 00:00`, and
+  `git diff --check`; the worktree was clean. The independent review separately
+  passed 102 focused successor/model tests and reached the same exact boundary.
+  The implementation-run counter resets to zero; no future work is selected or
+  recorded.
 
 ### 2026-08-26 — AD-11 chronological inspector action results
 
