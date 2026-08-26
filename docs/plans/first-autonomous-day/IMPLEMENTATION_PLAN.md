@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 committed inspector-dispatch linkage (2026-08-26)
-- Verified implementation runs since alignment: 3
-- Alignment due: no
+- Last completed run: AD-11 committed model-decision dispatch links (2026-08-26)
+- Verified implementation runs since alignment: 4
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -92,6 +92,29 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 committed model-decision dispatch links
+
+- Every configured Mara decision-status entry in the omniscient inspector now
+  carries a detached dispatch sequence and named causal phase only after the
+  runtime commits its matching decision work. The link is keyed internally by
+  the private record identity but exposes neither that identity nor any
+  restricted input, response, attempted-action payload, configuration identity,
+  or exception detail.
+- A forced exception after a retained private decision record proves that the
+  inspector reports its dispatch as `null`; it does not falsely describe the
+  failed decision work as committed. A deterministic timeout/retry day proves
+  every committed status link exactly matches ordered
+  `decision_eligibility` work and the `decision` phase.
+- Solo gates were met with 3 met, 0 unmet, and 0 abandoned: the focused status
+  sequence regression, the autonomous-day world suite, and the complete
+  offline check with whitespace validation. A fresh independent Sol-high
+  read-only review found no blocker, including for mutable returned data,
+  privacy, or failure-boundary handling.
+- Scope limit: AD-11 remains open. This makes model-decision invocation
+  provenance reconstructable alongside objective artifact provenance; it does
+  not complete the full watchability and inspection criterion, resolve the
+  explicit AD-7 continuity gap, or authorize the owner-required live day.
 
 ### 2026-08-26 — AD-11 committed inspector-dispatch linkage
 

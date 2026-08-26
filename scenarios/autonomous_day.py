@@ -80,6 +80,7 @@ class AutonomousDay:
         int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ]
     _committed_objective_dispatches: dict[tuple[str, str], dict[str, object]]
+    _committed_model_decision_dispatches: dict[str, dict[str, object]]
     _mara_harness_configured: bool
 
     @property
@@ -182,6 +183,8 @@ def build_autonomous_day(
         int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ] = {}
     committed_objective_dispatches: dict[tuple[str, str], dict[str, object]] = {}
+    committed_model_decision_dispatches: dict[str, dict[str, object]] = {}
+    decision_record_ids_by_scheduled_work_id: dict[str, str] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -247,6 +250,11 @@ def build_autonomous_day(
         committed_objective_dispatches.update(
             {artifact: dispatch for artifact in new_artifacts}
         )
+        decision_record_id = decision_record_ids_by_scheduled_work_id.get(
+            work.item_id
+        )
+        if decision_record_id is not None:
+            committed_model_decision_dispatches[decision_record_id] = dispatch
 
     def mara_view() -> AgentView:
         """Construct the same agent-safe shape used at Mara's decision seam."""
@@ -313,6 +321,9 @@ def build_autonomous_day(
             reserved_bytes=mara_decision_record_resolution_reserve(attempt),
         )
         private_decision_records.append(decision_record)
+        decision_record_ids_by_scheduled_work_id[decision.scheduled_work_id] = (
+            decision_record.decision_id
+        )
         measure_private_decision_record_footprint()
         resolve_mara_attempt(attempt, context, decision_record, decision)
         if decision_record.status == "failed":
@@ -990,6 +1001,9 @@ def build_autonomous_day(
         _understanding_transitions=understanding_transitions,
         _dispatch_history_checkpoints=dispatch_history_checkpoints,
         _committed_objective_dispatches=committed_objective_dispatches,
+        _committed_model_decision_dispatches=(
+            committed_model_decision_dispatches
+        ),
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -1211,6 +1225,16 @@ def autonomous_day_inspector_data(
                 "validation_status": record.validation_status,
                 "resolution_status": record.resolution_status,
                 "resolved_tick": record.resolved_tick,
+                "dispatch": (
+                    None
+                    if (
+                        dispatch := day._committed_model_decision_dispatches.get(
+                            record.decision_id
+                        )
+                    )
+                    is None
+                    else dict(dispatch)
+                ),
             }
             for record in day.private_decision_records
         ]

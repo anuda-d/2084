@@ -79,6 +79,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "validation_status": "accepted",
                     "resolution_status": "completed",
                     "resolved_tick": 420,
+                    "dispatch": {"sequence": 1, "phase": "decision"},
                 },
                 {
                     "tick": 450,
@@ -88,6 +89,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "validation_status": "accepted",
                     "resolution_status": "completed",
                     "resolved_tick": 450,
+                    "dispatch": {"sequence": 2, "phase": "decision"},
                 },
                 {
                     "tick": 660,
@@ -97,6 +99,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "validation_status": "accepted",
                     "resolution_status": "completed",
                     "resolved_tick": 660,
+                    "dispatch": {"sequence": 8, "phase": "decision"},
                 },
             ],
         )
@@ -110,15 +113,60 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "validation_status",
                     "resolution_status",
                     "resolved_tick",
+                    "dispatch",
                 }
                 for entry in model_path["decision_status_sequence"]
             )
+        )
+        runtime_decisions = [
+            work
+            for work in inspector["runtime"]["executed_work"]
+            if work["kind"] == "decision_eligibility"
+        ]
+        self.assertEqual(
+            [entry["dispatch"] for entry in model_path["decision_status_sequence"]],
+            [
+                {"sequence": work["sequence"], "phase": work["phase"]}
+                for work in runtime_decisions
+            ],
         )
         serialized_status_sequence = json.dumps(
             model_path["decision_status_sequence"]
         )
         self.assertNotIn("private provider detail", serialized_status_sequence)
         self.assertNotIn("pause after retry", serialized_status_sequence)
+
+        failed_dispatch_day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                _SequenceClient(
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause before the forced failure",
+                        "decision_reason": "the morning is quiet",
+                    }
+                ),
+                configuration_id="inspector-uncommitted-decision-test",
+            ),
+        )
+        original_handler = failed_dispatch_day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def fail_after_private_decision(decision, context):
+            original_handler(decision, context)
+            raise RuntimeError("private decision dispatch failure")
+
+        failed_dispatch_day.runtime._decision_handler = fail_after_private_decision
+        with self.assertRaisesRegex(RuntimeError, "private decision dispatch failure"):
+            failed_dispatch_day.run()
+        failed_sequence = autonomous_day_inspector_data(
+            failed_dispatch_day,
+            failed_dispatch_day.runtime.summary(),
+        )["model_path"]["decision_status_sequence"]
+        self.assertEqual(len(failed_sequence), 1)
+        self.assertIsNone(failed_sequence[0]["dispatch"])
+        self.assertNotIn("private decision dispatch failure", json.dumps(failed_sequence))
 
         def incomplete_projection(view):
             model_input = model_input_from_view(view)
