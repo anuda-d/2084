@@ -50,9 +50,16 @@ class RecordedDecisionError(RuntimeError):
 class _RecordedSafeFailure(RuntimeError):
     """A replayed record preserves one prior explicit model failure."""
 
-    def __init__(self, *, failure_kind: str, failure_type: str) -> None:
+    def __init__(
+        self,
+        *,
+        failure_kind: str,
+        failure_type: str,
+        provider_call_attempted: bool,
+    ) -> None:
         self.failure_kind = failure_kind
         self.failure_type = failure_type
+        self.provider_call_attempted = provider_call_attempted
 
 
 @dataclass(frozen=True)
@@ -213,6 +220,9 @@ class RecordedDecisionClient:
             raise _RecordedSafeFailure(
                 failure_kind=failure_kind,
                 failure_type=failure_type,
+                provider_call_attempted=bool(
+                    record.get("provider_call_attempted", False)
+                ),
             )
         response = _recorded_choice(record)
         self._index += 1
@@ -780,6 +790,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "continuity_projection_incomplete",
                 "RestrictedContinuityProjectionError",
+                provider_call_attempted=False,
             )
         try:
             response = self._client.choose(model_input)
@@ -790,6 +801,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 error.failure_kind,
                 error.failure_type,
+                provider_call_attempted=error.provider_call_attempted,
             )
         except RestrictedInputTooLargeError as error:
             return self._safe_failure(
@@ -798,6 +810,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "restricted_input_too_large",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         except TimeoutError as error:
             return self._safe_failure(
@@ -806,6 +819,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "timeout",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         except ModelUnavailableError as error:
             return self._safe_failure(
@@ -814,6 +828,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "unavailable_model",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         try:
             attempt = structured_choice_to_attempt(view, response)
@@ -824,6 +839,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "invalid_attempt",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         except StructuredChoiceError as error:
             return self._safe_failure(
@@ -832,6 +848,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "malformed_response",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         self._decision_record = PolicyDecisionRecord(
             decision_id=f"model-decision-{view.agent_id}-{view.tick:04d}",
@@ -846,6 +863,7 @@ class ModelFocalPolicy:
             attempted_action=_attempt_data(attempt) or {},
             attempted_action_kind=attempt.kind,
             authorship_identity=self._authorship_identity,
+            provider_call_attempted=True,
         )
         return attempt
 
@@ -856,6 +874,8 @@ class ModelFocalPolicy:
         model_input_bytes: int,
         failure_kind: str,
         failure_type: str,
+        *,
+        provider_call_attempted: bool,
     ) -> ActionAttempt:
         attempt = ActionAttempt(
             actor_id=view.agent_id,
@@ -878,6 +898,7 @@ class ModelFocalPolicy:
             authorship_identity=self._authorship_identity,
             failure_kind=failure_kind,
             failure_type=failure_type,
+            provider_call_attempted=provider_call_attempted,
             attempted_action_kind=attempt.kind,
         )
         return attempt

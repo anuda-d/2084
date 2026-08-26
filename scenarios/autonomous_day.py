@@ -1133,7 +1133,7 @@ def autonomous_day_inspector_data(
             ),
             "provider_failure_count": (
                 sum(
-                    record.status == "failed"
+                    record.status == "failed" and record.provider_call_attempted
                     for record in day.private_decision_records
                 )
                 if day.mara_harness_configured

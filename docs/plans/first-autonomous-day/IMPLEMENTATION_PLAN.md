@@ -10,7 +10,7 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: Seventh whole-goal alignment (2026-08-25)
-- Verified implementation runs since alignment: 0
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its reported `provider_failure_count`, however, currently includes continuity-projection failures that occur before a provider call, so it does not yet prove the required provider-failure aggregate. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its `provider_failure_count` counts only failed private records whose restricted decision client was reached; continuity-projection failures remain explicit decision failures but do not inflate this aggregate. Full criterion-level watchability evidence remains incomplete. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,26 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 provider-failure aggregate
+
+- Private model-decision records now retain whether the restricted decision
+  client was reached. The inspector's `provider_failure_count` counts only
+  failed records with that marker; it excludes a
+  `continuity_projection_incomplete` safe failure that is stopped before any
+  client call, while still reporting it in `decision_status_counts`.
+- Focused coverage proves a timeout after a client call counts once and that a
+  complete deterministic pre-client failure/replay sequence makes no client
+  call and reports zero provider failures. The marker remains private evidence:
+  it appears in neither objective history nor normal focal-safe output.
+- The three Solo gates were reverified after the replay coverage addition: the
+  focused aggregate regression, the complete offline repository check, and
+  whitespace validation. A fresh independent Sol-high review found no
+  blockers; its replay-coverage observation was incorporated before the final
+  revalidation.
+- Scope limit: AD-11 remains open. This makes one required aggregate honest;
+  it does not by itself prove the complete watchability and inspection
+  criterion or authorize the owner-required live day.
 
 ### 2026-08-25 — Seventh whole-goal alignment
 

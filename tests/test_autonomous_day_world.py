@@ -505,6 +505,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {"failed": 1, "selected": 2},
         )
         self.assertEqual(
+            autonomous_day_inspector_data(day, summary)["model_path"][
+                "provider_failure_count"
+            ],
+            1,
+        )
+        self.assertEqual(
             dispatched[1].triggers,
             (
                 DecisionTrigger(
@@ -516,6 +522,87 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
             {MARA_ID: 3},
+        )
+
+    def test_inspector_provider_failure_count_excludes_pre_client_failures(self):
+        def incomplete_projection(view):
+            model_input = model_input_from_view(view)
+            continuity_projection = dict(model_input["continuity_projection"])
+            continuity_projection["complete"] = False
+            model_input["continuity_projection"] = continuity_projection
+            return model_input
+
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "continuity failure precedes this client",
+            }
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deterministic-autonomous-day-pre-client-failure",
+            ),
+        )
+
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(client.inputs, [])
+        self.assertTrue(day.private_decision_records)
+        self.assertTrue(
+            all(
+                record.status == "failed"
+                and not record.provider_call_attempted
+                and record.failure_kind == "continuity_projection_incomplete"
+                for record in day.private_decision_records
+            )
+        )
+        model_path = autonomous_day_inspector_data(day, summary)["model_path"]
+        self.assertGreater(model_path["decision_status_counts"]["failed"], 0)
+        self.assertEqual(model_path["provider_failure_count"], 0)
+
+        integrity_key = b"autonomous-day-pre-client-failure"
+        archive = RecordedDecisionArchive.seal(
+            day.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+        )
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            replay_summary = replay.run()
+
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(
+            [
+                record.provider_call_attempted
+                for record in replay.private_decision_records
+            ],
+            [
+                record.provider_call_attempted
+                for record in day.private_decision_records
+            ],
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(replay, replay_summary)["model_path"][
+                "provider_failure_count"
+            ],
+            0,
         )
 
     def test_completed_travel_dispatches_action_result_decision(self):

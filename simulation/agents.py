@@ -111,6 +111,7 @@ class PolicyDecisionRecord:
     authorship_identity: Mapping[str, Any] | None = None
     failure_kind: str | None = None
     failure_type: str | None = None
+    provider_call_attempted: bool = False
     attempt_event_id: str | None = None
     action_id: str | None = None
     validation_status: Literal["accepted", "rejected"] | None = None
@@ -189,6 +190,7 @@ class PolicyDecisionRecord:
             "attempted_action": to_plain_data(self.attempted_action),
             "failure_kind": self.failure_kind,
             "failure_type": self.failure_type,
+            "provider_call_attempted": self.provider_call_attempted,
             "attempted_action_kind": self.attempted_action_kind,
             "attempt_event_id": self.attempt_event_id,
             "action_id": self.action_id,
