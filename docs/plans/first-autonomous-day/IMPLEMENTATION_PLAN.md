@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
+Status: active; AD-1 through AD-6 and AD-8 through AD-10 are met. AD-7, AD-11, and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 latest-action-attempt continuity (2026-08-25)
-- Verified implementation runs since alignment: 4
-- Alignment due: yes
+- Last completed run: Seventh whole-goal alignment (2026-08-25)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
-| AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its reported `provider_failure_count`, however, currently includes continuity-projection failures that occur before a provider call, so it does not yet prove the required provider-failure aggregate. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -93,6 +93,35 @@ simplification recommendations.
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
 
+### 2026-08-25 — Seventh whole-goal alignment
+
+- A fresh independent Sol-high read-only review and the main alignment review
+  compared AD-1 through AD-12 against the goal, current successor
+  implementation, focused tests, and full offline validation. AD-1 through
+  AD-6, AD-8, AD-9, and AD-10 remain met within their recorded limits; AD-7
+  and AD-12 remain open for their stated continuity and owner-authorized-live
+  evidence gaps.
+- The review reopens AD-11. The inspector's `provider_failure_count` counts
+  every failed retained decision record, including a
+  `continuity_projection_incomplete` failure that is explicitly stopped before
+  any provider call. The current metric is therefore a model-decision failure
+  aggregate, not the required provider-failure aggregate. No implementation
+  task is selected by this state-only alignment record.
+- AD-10 remains met narrowly. Full-day replay covers equal summaries,
+  objective history/state, observations, results, restricted inputs, and the
+  selected timeout/retry failure fields without a source-provider call; the
+  caller-held HMAC seal rejects a self-consistent selected-record edit. Replay
+  does not prove byte-for-byte equality of every retained private decision
+  record because its configuration identity differs, and this record makes no
+  such claim.
+- Validation in this review passed 62 focused successor/model tests, the full
+  offline check with 196 current and 63 historical tests, the default
+  autonomous-day command through exact `Day 1 00:00`, and `git diff --check`.
+  The worktree was clean. No privacy leak, hidden-knowledge grant, scope
+  expansion, architecture-document drift, or mechanism that warrants removal
+  was found. The alignment counter resets to zero; no future work is selected
+  or recorded.
+
 ### 2026-08-25 — AD-7 latest-action-attempt continuity
 
 - The restricted decision history now retains its recent 16 attempts and also
@@ -121,11 +150,10 @@ implementation-run counter after recording the reviewed state.
   verifies the archive before it constructs a replay client.
 - Complete deterministic source/replay coverage still proves equal day
   summaries, objective history, observations, results, restricted inputs, and
-  retained private evidence without another source-client call, including the
-  timeout-and-retry route. A separate full-day regression changes both the
-  selected structured response and matching attempted action, then proves the
-  original seal rejects that self-consistent alteration before a replay world
-  exists.
+  selected timeout/retry failure fields without another source-client call. A
+  separate full-day regression changes both the selected structured response
+  and matching attempted action, then proves the original seal rejects that
+  self-consistent alteration before a replay world exists.
 - Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: the
   focused autonomous-day suite, the complete offline repository check, and
   whitespace validation. A fresh independent Sol-high review found no
