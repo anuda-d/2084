@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 sanitized model-decision inspector sequence (2026-08-26)
-- Verified implementation runs since alignment: 1
+- Last completed run: AD-11 explicit normal-output causal tie ordering (2026-08-26)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -92,6 +92,27 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 explicit normal-output causal tie ordering
+
+- Same-minute focal updates now sort explicitly by the successor's existing
+  causal phases—action completion before observation delivery—and then by the
+  append-only objective event or observation order within that phase. The
+  renderer derives those phase ranks from `TemporalPhase`; it does not expose
+  phase values, event IDs, private decision reasons, or supporting activity.
+- Focused coverage puts an observation before a completion in its input and
+  gives it the lower source-order value, proving that causal phase rather than
+  incidental stable-sort input order produces the completion-first result. An
+  end-to-end deterministic day separately keeps Mara's 11:00 household result
+  before her accessible transit bulletin.
+- Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: focused
+  ordering coverage, the complete offline repository check, and whitespace
+  validation. A fresh Sol-high read-only closure review found no blockers. The
+  normal offline command still reaches the exact `Day 1 00:00` boundary with
+  the same focal-safe labels.
+- Scope limit: AD-11 remains open. This makes one presentation tie explicit;
+  it does not close the full watchability and inspection criterion, the
+  documented AD-7 continuity gap, or the owner-required live-day run.
 
 ### 2026-08-26 — AD-11 sanitized model-decision inspector sequence
 

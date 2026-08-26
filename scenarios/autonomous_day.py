@@ -951,6 +951,15 @@ def build_autonomous_day(
     )
 
 
+def _focal_update_sort_key(
+    update: tuple[SimulatedTime, int, int, str],
+) -> tuple[int, int, int]:
+    """Order visible ties by runtime phase, then committed source order."""
+
+    visible_time, causal_phase, causal_order, _ = update
+    return (visible_time.total_minutes, causal_phase, causal_order)
+
+
 def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
     """Render only focal-safe evidence from the narrow successor day."""
 
@@ -960,7 +969,7 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         "",
         f"Start: {summary.start.label} | Mara at Home",
     ]
-    focal_updates: list[tuple[SimulatedTime, str]] = []
+    focal_updates: list[tuple[SimulatedTime, int, int, str]] = []
     completed_activity_labels = {
         "household_time_completed": "Mara completed household time.",
         "rest_completed": "Mara completed a rest period.",
@@ -968,6 +977,13 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         "work_completed": "Mara completed workplace work.",
     }
     event_kinds_by_id = {event.event_id: event.kind for event in day.events}
+    event_order_by_id = {
+        event.event_id: index for index, event in enumerate(day.events)
+    }
+    observation_order_by_id = {
+        observation.observation_id: index
+        for index, observation in enumerate(day.observations)
+    }
     for result in day.world.agents[MARA_ID].action_results:
         activity_label = completed_activity_labels.get(
             event_kinds_by_id.get(result.outcome_event_id)
@@ -975,7 +991,14 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         if result.status != "completed" or activity_label is None:
             continue
         completed_at = SimulatedTime(result.resolved_tick)
-        focal_updates.append((completed_at, f"{completed_at.label} | {activity_label}"))
+        focal_updates.append(
+            (
+                completed_at,
+                int(TemporalPhase.ACTION_COMPLETION),
+                event_order_by_id[result.outcome_event_id],
+                f"{completed_at.label} | {activity_label}",
+            )
+        )
     for observation in day.world.agents[MARA_ID].observations:
         if observation.details.get("evidence_kind") != "transit_service_status":
             continue
@@ -983,13 +1006,18 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         focal_updates.append(
             (
                 delivered_at,
+                int(TemporalPhase.OBSERVATION_DELIVERY),
+                observation_order_by_id[observation.observation_id],
                 f"{delivered_at.label} | Home transit bulletin: "
                 f"{observation.details['route']} service is "
                 f"{observation.details['current_status']}.",
             )
         )
     current_visible_time = summary.start
-    for delivered_at, update in sorted(focal_updates, key=lambda update: update[0]):
+    for delivered_at, _, _, update in sorted(
+        focal_updates,
+        key=_focal_update_sort_key,
+    ):
         if delivered_at > current_visible_time:
             lines.append(
                 f"{current_visible_time.label}–{delivered_at.label} "

@@ -9,6 +9,7 @@ from policies.mara_harness import MaraHarness
 from scenarios.autonomous_day import (
     ILAN_ID,
     MARA_ID,
+    _focal_update_sort_key,
     autonomous_day_inspector_data,
     build_autonomous_day,
     main,
@@ -1031,6 +1032,29 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIn(household_update, normal_output)
         self.assertIn(bulletin_update, normal_output)
         self.assertLess(normal_output.index(household_update), normal_output.index(bulletin_update))
+
+    def test_focal_update_sorting_uses_causal_phase_not_input_position(self):
+        simultaneous_updates = [
+            (
+                SimulatedTime(660),
+                int(TemporalPhase.OBSERVATION_DELIVERY),
+                0,
+                "delivery",
+            ),
+            (
+                SimulatedTime(660),
+                int(TemporalPhase.ACTION_COMPLETION),
+                99,
+                "completion",
+            ),
+        ]
+
+        ordered_labels = [
+            update[-1]
+            for update in sorted(simultaneous_updates, key=_focal_update_sort_key)
+        ]
+
+        self.assertEqual(ordered_labels, ["completion", "delivery"])
 
     def test_equal_deterministic_harness_runs_reproduce_complete_day_evidence(
         self,
