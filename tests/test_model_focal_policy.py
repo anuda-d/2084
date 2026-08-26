@@ -603,7 +603,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                     + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
                 ),
                 "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-                "maximum_latest_results_by_action_kind": (
+                "maximum_latest_results_by_action_kind_and_status": (
                     MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
                 ),
                 "maximum_results": (
@@ -696,21 +696,51 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         print("latest action-attempt continuity verification passed")
 
-    def test_decision_history_projection_preserves_latest_result_per_action_kind(
+    def test_decision_history_projection_preserves_latest_result_per_action_kind_and_status(
         self,
     ):
         view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
         recent_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
         results = (
             ActionResult(
-                action_id="action-work-old",
-                attempt_event_id="event-attempt-work-old",
-                outcome_event_id="event-outcome-work-old",
+                action_id="action-work-completed-old",
+                attempt_event_id="event-attempt-work-completed-old",
+                outcome_event_id="event-outcome-work-completed-old",
                 actor_id=FOCAL_AGENT_ID,
                 action_kind="work",
                 status="completed",
                 resolved_tick=1,
                 reason="completed earlier workplace work",
+            ),
+            ActionResult(
+                action_id="action-work-rejected-old",
+                attempt_event_id="event-attempt-work-rejected-old",
+                outcome_event_id="event-outcome-work-rejected-old",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="rejected",
+                resolved_tick=2,
+                reason="work was rejected at the earlier location",
+            ),
+            ActionResult(
+                action_id="action-work-rejected-latest",
+                attempt_event_id="event-attempt-work-rejected-latest",
+                outcome_event_id="event-outcome-work-rejected-latest",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="rejected",
+                resolved_tick=3,
+                reason="work was rejected at the latest earlier location",
+            ),
+            ActionResult(
+                action_id="action-work-completed-latest",
+                attempt_event_id="event-attempt-work-completed-latest",
+                outcome_event_id="event-outcome-work-completed-latest",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=4,
+                reason="completed later workplace work",
             ),
             *(
                 ActionResult(
@@ -720,7 +750,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                     actor_id=FOCAL_AGENT_ID,
                     action_kind="wait",
                     status="completed",
-                    resolved_tick=index + 2,
+                    resolved_tick=index + 5,
                     reason="completed later wait",
                 )
                 for index in range(recent_count)
@@ -734,7 +764,8 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(
             [result["action_id"] for result in history["results"]],
             [
-                "action-work-old",
+                "action-work-rejected-latest",
+                "action-work-completed-latest",
                 *(
                     f"action-wait-{index:04d}"
                     for index in range(3, recent_count)
@@ -743,7 +774,13 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(
             history["projection"]["omitted_results"],
-            3,
+            5,
+        )
+        self.assertTrue(
+            {
+                "action-work-completed-old",
+                "action-work-rejected-old",
+            }.isdisjoint(result["action_id"] for result in history["results"])
         )
         self.assertLessEqual(
             len(history["results"]),
