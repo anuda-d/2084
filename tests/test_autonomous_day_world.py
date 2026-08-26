@@ -40,6 +40,51 @@ class _SequenceClient:
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_inspector_action_results_follow_objective_event_order(self):
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause before the scheduled shift",
+                "decision_reason": "the morning is quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after resting",
+                "decision_reason": "the completed rest needs no response",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the second wait",
+                "decision_reason": "there is no immediate change",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-objective-result-order-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+        results = inspector["history"]["action_results"]
+        event_order = {
+            event["event_id"]: index
+            for index, event in enumerate(inspector["history"]["events"])
+        }
+
+        self.assertEqual(
+            [result["actor_id"] for result in results],
+            [MARA_ID, MARA_ID, ILAN_ID, MARA_ID],
+        )
+        self.assertEqual(
+            [event_order[result["outcome_event_id"]] for result in results],
+            sorted(event_order[result["outcome_event_id"]] for result in results),
+        )
+
     def test_inspector_places_objective_tail_from_failed_dispatch(self):
         day = build_autonomous_day(seed=42)
 

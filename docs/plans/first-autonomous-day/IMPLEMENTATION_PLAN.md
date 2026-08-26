@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 same-kind result continuity (2026-08-26)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: AD-11 chronological inspector action results (2026-08-26)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its `provider_failure_count` counts only failed private records whose restricted decision client was reached; continuity-projection failures remain explicit decision failures but do not inflate this aggregate. Full criterion-level watchability evidence remains incomplete. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its `provider_failure_count` counts only failed private records whose restricted decision client was reached; continuity-projection failures remain explicit decision failures but do not inflate this aggregate. Full criterion-level watchability evidence remains incomplete. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,22 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 chronological inspector action results
+
+- Inspector action results now follow their append-only outcome-event order
+  across actors instead of the previous actor grouping. This makes equal-time
+  ordering inherit the objective log's already-recorded causal order without
+  mutating that log or introducing new world state.
+- A focused deterministic-harness regression produces interleaved Mara and
+  Ilan outcomes and proves the inspector reports Mara, Mara, Ilan, Mara in
+  outcome-event order. Normal focal-safe rendering remains unchanged.
+- Solo gates passed with 3 met, 0 unmet, and 0 abandoned: the focused inspector
+  regression, the complete offline repository check, and whitespace validation.
+  A fresh Sol-high read-only review found no blocking issue.
+- Scope limit: AD-11 remains open. This closes one causal-order presentation
+  gap; it does not claim complete watchability evidence or authorize the
+  owner-required live run.
 
 ### 2026-08-26 — AD-7 same-kind result continuity
 

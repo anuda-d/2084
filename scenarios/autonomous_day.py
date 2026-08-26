@@ -1046,6 +1046,9 @@ def autonomous_day_inspector_data(
         }
         for observation in day.observations
     ]
+    event_order_by_id = {
+        event.event_id: index for index, event in enumerate(day.events)
+    }
     action_results = [
         {
             "action_id": result.action_id,
@@ -1060,6 +1063,9 @@ def autonomous_day_inspector_data(
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
     ]
+    action_results.sort(
+        key=lambda result: event_order_by_id[result["outcome_event_id"]]
+    )
     uncommitted_objective_tail = None
     if summary.runtime_failure is not None:
         failed_dispatch = summary.runtime_failure.failed_dispatch
