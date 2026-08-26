@@ -10,7 +10,7 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: AD-10 sealed recorded replay integrity (2026-08-25)
-- Verified implementation runs since alignment: 1
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -273,6 +273,27 @@ implementation-run counter after recording the reviewed state.
   no future implementation task was selected or recorded.
 
 ## Verified Run Log
+
+### 2026-08-25 — Autonomous-day architecture refresh
+
+- Refreshed the overview to describe the verified full-day successor rather
+  than its earlier scaffold: restricted Mara decisions, world-owned action
+  resolution, independent supporting and institutional activity, access-gated
+  delivery and understanding, offline replay, focal-safe normal output, and
+  omniscient inspection. This is documentation-only and changes no product
+  behavior or goal criterion.
+- Review corrections preserve the precise boundaries: Mara selects a `wait`
+  attempt while the world may resolve a scheduled home wait as rest; the
+  unconfigured command renders only its boundary, quiet spans, and bulletin;
+  and an inspector tail exists only when terminal failure occurs during a
+  dispatch. AD-7 remains open for older behaviorally relevant attempted-action
+  or result selection, and AD-12 remains open for the owner-authorized live
+  Ollama run.
+- Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: direct
+  architecture assertions, the full offline repository check, and whitespace
+  validation. Independent review found and corrected the three initial wording
+  issues plus one dispatch-boundary edge case; a fresh final Sol-high closure
+  review found no blockers.
 
 ### 2026-08-25 — AD-7 source-closed relevant continuity projection
 
