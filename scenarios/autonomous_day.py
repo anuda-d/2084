@@ -1114,6 +1114,20 @@ def autonomous_day_inspector_data(
                 day.private_decision_records
             ),
         }
+    decision_status_sequence = None
+    if day.mara_harness_configured:
+        decision_status_sequence = [
+            {
+                "tick": record.tick,
+                "status": record.status,
+                "failure_kind": record.failure_kind,
+                "provider_call_attempted": record.provider_call_attempted,
+                "validation_status": record.validation_status,
+                "resolution_status": record.resolution_status,
+                "resolved_tick": record.resolved_tick,
+            }
+            for record in day.private_decision_records
+        ]
     return {
         "runtime": summary.to_data(),
         "counts": {
@@ -1124,6 +1138,7 @@ def autonomous_day_inspector_data(
         "model_path": {
             "configured": day.mara_harness_configured,
             "exercised": bool(day.private_decision_records),
+            "decision_status_sequence": decision_status_sequence,
             "decision_status_counts": (
                 {
                     status: sum(

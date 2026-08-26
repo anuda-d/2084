@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: eighth whole-goal alignment (2026-08-26)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-11 sanitized model-decision inspector sequence (2026-08-26)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -92,6 +92,30 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 sanitized model-decision inspector sequence
+
+- The omniscient inspector now emits an ordered `decision_status_sequence` for
+  a configured Mara harness. Every entry carries only its decision tick,
+  selected-or-failed status, safe failure kind, whether the restricted decision
+  client was reached, and world-owned validation and resolution status/timing.
+  It deliberately omits restricted input, structured response, attempted-action
+  payload, configuration identity, authorship identity, and exception detail.
+- Focused coverage exercises a client-reached timeout followed by selected
+  decisions and a pre-client continuity-projection failure. It proves the
+  sequence is chronological, has the exact sanitized field set, distinguishes
+  the two failure boundaries, and does not itself contain private response or
+  exception text. The unconfigured offline inspector continues to report no
+  model sequence.
+- Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: focused
+  sequence coverage, the complete offline repository check, and whitespace
+  validation. A fresh Sol-high read-only review found no blocking issue. The
+  full check passed 199 current and 63 historical tests; the normal offline
+  command reached the exact `Day 1 00:00` boundary.
+- Scope limit: AD-11 remains open. This closes the missing ordered sanitized
+  decision-status evidence; it does not make the inspector focal-safe, prove
+  all watchability requirements, close the documented AD-7 continuity gap, or
+  authorize the owner-required live day.
 
 ### 2026-08-26 — Eighth whole-goal alignment
 

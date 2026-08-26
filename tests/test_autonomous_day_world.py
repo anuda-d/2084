@@ -40,6 +40,120 @@ class _SequenceClient:
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_inspector_reports_sanitized_model_decision_status_sequence(self):
+        client = _SequenceClient(
+            TimeoutError("private provider detail"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after retry",
+                "decision_reason": "the morning remains quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no immediate action is needed",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-decision-status-sequence-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+        model_path = inspector["model_path"]
+
+        self.assertEqual(
+            model_path["decision_status_sequence"],
+            [
+                {
+                    "tick": 420,
+                    "status": "failed",
+                    "failure_kind": "timeout",
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 420,
+                },
+                {
+                    "tick": 450,
+                    "status": "selected",
+                    "failure_kind": None,
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 450,
+                },
+                {
+                    "tick": 660,
+                    "status": "selected",
+                    "failure_kind": None,
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 660,
+                },
+            ],
+        )
+        self.assertTrue(
+            all(
+                set(entry) == {
+                    "tick",
+                    "status",
+                    "failure_kind",
+                    "provider_call_attempted",
+                    "validation_status",
+                    "resolution_status",
+                    "resolved_tick",
+                }
+                for entry in model_path["decision_status_sequence"]
+            )
+        )
+        serialized_status_sequence = json.dumps(
+            model_path["decision_status_sequence"]
+        )
+        self.assertNotIn("private provider detail", serialized_status_sequence)
+        self.assertNotIn("pause after retry", serialized_status_sequence)
+
+        def incomplete_projection(view):
+            model_input = model_input_from_view(view)
+            continuity_projection = dict(model_input["continuity_projection"])
+            continuity_projection["complete"] = False
+            return {
+                **model_input,
+                "continuity_projection": continuity_projection,
+            }
+
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            pre_client_day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    _SequenceClient(),
+                    configuration_id="inspector-pre-client-status-sequence-test",
+                ),
+            )
+            pre_client_sequence = autonomous_day_inspector_data(
+                pre_client_day,
+                pre_client_day.run(),
+            )["model_path"]["decision_status_sequence"]
+
+        self.assertTrue(pre_client_sequence)
+        self.assertTrue(
+            all(
+                entry["status"] == "failed"
+                and entry["failure_kind"] == "continuity_projection_incomplete"
+                and not entry["provider_call_attempted"]
+                for entry in pre_client_sequence
+            )
+        )
+
     def test_inspector_action_results_follow_objective_event_order(self):
         client = _SequenceClient(
             {
