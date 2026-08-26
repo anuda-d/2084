@@ -9,6 +9,7 @@ from policies.model_focal_policy import (
     MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
     MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+    MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS,
     MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
     RESTRICTED_CONTINUITY_PROJECTION_KIND,
@@ -177,6 +178,21 @@ class StructuredModelChoiceTests(unittest.TestCase):
                     "parameters": {},
                     "explanation": "complete a task at home",
                     "decision_reason": "the activity is not in this scenario",
+                },
+            )
+
+    def test_structured_choice_cannot_author_result_continuity_markers(self):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+
+        with self.assertRaises(StructuredChoiceError):
+            structured_choice_to_attempt(
+                view,
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "wait without changing canonical relevance",
+                    "decision_reason": "the world owns result relevance",
+                    "continuity_relevant_action_result_ids": ["action-0001"],
                 },
             )
 
@@ -609,11 +625,20 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "maximum_results": (
                     MAX_RETAINED_DECISION_HISTORY_ENTRIES
                     + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                    + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+                ),
+                "maximum_explicit_relevant_results": (
+                    MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
                 ),
                 "total_attempts": lifetime_count,
                 "total_results": lifetime_count,
                 "omitted_attempts": 3,
                 "omitted_results": 3,
+                "explicit_relevant_results": 0,
+                "included_explicit_relevant_results": 0,
+                "missing_explicit_relevant_results": 0,
+                "invalid_explicit_relevant_result_ids": 0,
+                "complete": True,
             },
         )
         self.assertEqual(
@@ -788,6 +813,150 @@ class ModelFocalPolicyTests(unittest.TestCase):
             + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
         )
         print("latest action-result continuity verification passed")
+
+    def test_decision_history_projection_preserves_explicitly_relevant_old_result(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        later_wait_results = tuple(
+            ActionResult(
+                action_id=f"action-wait-{index:04d}",
+                attempt_event_id=f"event-attempt-wait-{index:04d}",
+                outcome_event_id=f"event-outcome-wait-{index:04d}",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="wait",
+                status="completed",
+                resolved_tick=index + 4,
+                reason="completed later wait",
+            )
+            for index in range(MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3)
+        )
+        results = (
+            ActionResult(
+                action_id="action-work-explicitly-relevant",
+                attempt_event_id="event-attempt-work-explicitly-relevant",
+                outcome_event_id="event-outcome-work-explicitly-relevant",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=1,
+                reason="completed work remains relevant to a current obligation",
+            ),
+            ActionResult(
+                action_id="action-work-unmarked",
+                attempt_event_id="event-attempt-work-unmarked",
+                outcome_event_id="event-outcome-work-unmarked",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=2,
+                reason="an older unmarked work result",
+            ),
+            ActionResult(
+                action_id="action-work-latest",
+                attempt_event_id="event-attempt-work-latest",
+                outcome_event_id="event-outcome-work-latest",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=3,
+                reason="the latest earlier work result",
+            ),
+            *later_wait_results,
+        )
+
+        history = model_input_from_view(
+            replace(
+                view,
+                action_results=results,
+                continuity_relevant_action_result_ids=(
+                    "action-work-explicitly-relevant",
+                ),
+            )
+        )["decision_history"]
+
+        retained_ids = [result["action_id"] for result in history["results"]]
+        self.assertIn("action-work-explicitly-relevant", retained_ids)
+        self.assertIn("action-work-latest", retained_ids)
+        self.assertNotIn("action-work-unmarked", retained_ids)
+        self.assertEqual(history["projection"]["explicit_relevant_results"], 1)
+        self.assertEqual(
+            history["projection"]["included_explicit_relevant_results"], 1
+        )
+        self.assertTrue(history["projection"]["complete"])
+        self.assertLessEqual(
+            len(history["results"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+            + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS,
+        )
+        print("explicit relevant action-result continuity verification passed")
+
+    def test_explicit_relevant_action_result_marker_fails_closed_when_unresolvable(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        client = StaticModelDecisionClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "the provider should not be called",
+            }
+        )
+        unknown_marker_view = replace(
+            view,
+            continuity_relevant_action_result_ids=("action-that-does-not-exist",),
+        )
+
+        attempt = model_policy(client).choose(unknown_marker_view)
+        projection = model_input_from_view(unknown_marker_view)["decision_history"][
+            "projection"
+        ]
+
+        self.assertEqual(client.inputs, [])
+        self.assertEqual(attempt.kind, "wait")
+        self.assertFalse(projection["complete"])
+        self.assertEqual(projection["missing_explicit_relevant_results"], 1)
+
+        over_cap_marker_view = replace(
+            view,
+            action_results=tuple(
+                ActionResult(
+                    action_id=f"action-relevant-{index:04d}",
+                    attempt_event_id=f"event-attempt-relevant-{index:04d}",
+                    outcome_event_id=f"event-outcome-relevant-{index:04d}",
+                    actor_id=FOCAL_AGENT_ID,
+                    action_kind="wait",
+                    status="completed",
+                    resolved_tick=index + 1,
+                    reason="an explicitly relevant result",
+                )
+                for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1)
+            ),
+            continuity_relevant_action_result_ids=tuple(
+                f"action-relevant-{index:04d}"
+                for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1)
+            ),
+        )
+        policy = model_policy(client)
+        over_cap_attempt = policy.choose(over_cap_marker_view)
+        record = policy.take_decision_record()
+        over_cap_projection = model_input_from_view(over_cap_marker_view)[
+            "decision_history"
+        ]["projection"]
+
+        self.assertEqual(client.inputs, [])
+        self.assertEqual(over_cap_attempt.kind, "wait")
+        self.assertFalse(over_cap_projection["complete"])
+        self.assertEqual(
+            over_cap_projection["explicit_relevant_results"],
+            MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1,
+        )
+        self.assertIsNotNone(record)
+        self.assertEqual(record.failure_kind, "continuity_projection_incomplete")
+        self.assertFalse(record.provider_call_attempted)
+        print("explicit relevant action-result marker failure verification passed")
 
     def test_decision_history_collection_size_stops_growing_after_its_window(self):
         simulation = build_first_day(seed=42)

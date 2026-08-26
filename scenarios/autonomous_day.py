@@ -299,6 +299,9 @@ def build_autonomous_day(
                 else ("household", "travel", "wait")
             ),
             household_action_available=mara.location == "home",
+            continuity_relevant_action_result_ids=(
+                mara.continuity_relevant_action_result_ids
+            ),
         )
 
     def dispatch_mara_decision(

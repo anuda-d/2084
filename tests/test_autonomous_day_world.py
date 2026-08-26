@@ -1284,6 +1284,25 @@ class AutonomousDayWorldTests(unittest.TestCase):
             summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
         )
 
+    def test_successor_mara_view_copies_world_owned_result_relevance_markers(self):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+        day.world.agents[MARA_ID].continuity_relevant_action_result_ids = (
+            "action-mara-prior-work",
+        )
+
+        day.run()
+
+        self.assertEqual(
+            dispatched[0][1].continuity_relevant_action_result_ids,
+            ("action-mara-prior-work",),
+        )
+
     def test_accessible_bulletin_dispatches_one_restricted_mara_decision(self):
         dispatched = []
         day = build_autonomous_day(

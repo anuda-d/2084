@@ -52,6 +52,7 @@ class AgentState:
     last_attempt: ActionAttempt | None = None
     action_history: list[ActionAttempt] = field(default_factory=list)
     action_results: list[ActionResult] = field(default_factory=list)
+    continuity_relevant_action_result_ids: tuple[str, ...] = ()
     observations: list[Observation] = field(default_factory=list)
     beliefs: list[Belief] = field(default_factory=list)
     memory_traces: tuple[MemoryTrace, ...] = ()
@@ -91,6 +92,7 @@ class AgentView:
     allocation_action_available: bool
     valid_actions: tuple[str, ...]
     household_action_available: bool = False
+    continuity_relevant_action_result_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

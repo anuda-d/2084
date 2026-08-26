@@ -29,7 +29,8 @@ _ACTION_RESULT_CONTINUITY_STATUSES = frozenset(("completed", "rejected"))
 MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = (
     len(ACTION_PARAMETER_CONTRACTS) * len(_ACTION_RESULT_CONTINUITY_STATUSES)
 )
-DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_latest_action_kind_status_v2"
+MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS = 8
+DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_explicit_relevant_action_result_ids_v3"
 MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
 RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
@@ -245,14 +246,17 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
 
 
 def _decision_history_data(view: AgentView) -> dict[str, object]:
-    """Project recent history plus bounded same-kind continuity entries.
+    """Project recent history plus bounded canonical continuity entries.
 
     The recent window gives the model short-term cadence. An older attempted
     action can still explain a current choice. For outcomes, the latest
     completed and latest rejected result of one supported action kind can each
-    matter, so retain one of each as an explicit bounded continuity rule. Only
-    supported action kinds and these two finite statuses qualify; this cannot
-    grow with arbitrary lifetime history data.
+    matter, so retain one of each as an explicit bounded continuity rule. A
+    world-owned result-id marker can additionally identify a particular older
+    result as relevant to current canonical state. The marker closure is capped
+    and must resolve to actor-safe results; otherwise the policy refuses to
+    send a partial history to a provider. No structured model response can
+    author or change these markers.
     """
     supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
     latest_attempt_index_by_kind: dict[str, int] = {}
@@ -287,10 +291,40 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
         )
     )
     included_result_indexes.update(latest_result_index_by_kind_and_status.values())
+    result_index_by_action_id = {
+        result.action_id: index for index, result in enumerate(view.action_results)
+    }
+    requested_relevant_ids: list[str] = []
+    invalid_relevant_ids = 0
+    for action_id in view.continuity_relevant_action_result_ids:
+        if not isinstance(action_id, str) or not action_id:
+            invalid_relevant_ids += 1
+            continue
+        if action_id not in requested_relevant_ids:
+            requested_relevant_ids.append(action_id)
+    retained_relevant_ids = tuple(
+        requested_relevant_ids[:MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS]
+    )
+    missing_relevant_ids = tuple(
+        action_id
+        for action_id in retained_relevant_ids
+        if action_id not in result_index_by_action_id
+    )
+    included_result_indexes.update(
+        result_index_by_action_id[action_id]
+        for action_id in retained_relevant_ids
+        if action_id in result_index_by_action_id
+    )
     results = tuple(
         result
         for index, result in enumerate(view.action_results)
         if index in included_result_indexes
+    )
+    relevant_result_closure_complete = (
+        invalid_relevant_ids == 0
+        and len(requested_relevant_ids)
+        <= MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+        and not missing_relevant_ids
     )
     return {
         "projection": {
@@ -310,11 +344,21 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
             "maximum_results": (
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES
                 + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+            ),
+            "maximum_explicit_relevant_results": (
+                MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
             ),
             "total_attempts": len(view.action_history),
             "total_results": len(view.action_results),
             "omitted_attempts": len(view.action_history) - len(attempts),
             "omitted_results": len(view.action_results) - len(results),
+            "explicit_relevant_results": len(requested_relevant_ids),
+            "included_explicit_relevant_results": len(retained_relevant_ids)
+            - len(missing_relevant_ids),
+            "missing_explicit_relevant_results": len(missing_relevant_ids),
+            "invalid_explicit_relevant_result_ids": invalid_relevant_ids,
+            "complete": relevant_result_closure_complete,
         },
         "last_attempt": _attempt_data(view.last_attempt),
         "attempts": [_attempt_data(attempt) for attempt in attempts],
@@ -776,7 +820,10 @@ class ModelFocalPolicy:
         recorded_input = freeze_mapping(model_input)
         model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
         continuity_projection = model_input["continuity_projection"]
-        if not continuity_projection["complete"]:
+        if (
+            not continuity_projection["complete"]
+            or not model_input["decision_history"]["projection"]["complete"]
+        ):
             if isinstance(self._client, RecordedDecisionClient):
                 try:
                     self._client.choose(model_input)
