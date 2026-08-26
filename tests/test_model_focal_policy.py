@@ -7,6 +7,7 @@ from observer.terminal import render_terminal
 from policies.model_focal_policy import (
     DECISION_HISTORY_PROJECTION_KIND,
     MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
+    MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
     MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
@@ -593,7 +594,14 @@ class ModelFocalPolicyTests(unittest.TestCase):
             projected["projection"],
             {
                 "kind": DECISION_HISTORY_PROJECTION_KIND,
-                "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_recent_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+                "maximum_latest_attempts_by_action_kind": (
+                    MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                ),
+                "maximum_attempts": (
+                    MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                    + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                ),
                 "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
                 "maximum_latest_results_by_action_kind": (
                     MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
@@ -629,6 +637,64 @@ class ModelFocalPolicyTests(unittest.TestCase):
             projected["results"][-1]["action_id"],
             f"action-{lifetime_count - 1:04d}",
         )
+
+    def test_decision_history_projection_preserves_latest_attempt_per_action_kind(
+        self,
+    ):
+        view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        recent_count = MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3
+        attempts = (
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="earliest workplace work attempt",
+                decision_reason="an earlier obligation",
+            ),
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="latest workplace work attempt",
+                decision_reason="the current obligation remains relevant",
+            ),
+            *(
+                ActionAttempt(
+                    actor_id=FOCAL_AGENT_ID,
+                    kind="wait",
+                    parameters={},
+                    explanation=f"later wait attempt {index:02d}",
+                    decision_reason="recent cadence",
+                )
+                for index in range(recent_count)
+            ),
+        )
+
+        history = model_input_from_view(
+            replace(view, action_history=attempts, last_attempt=attempts[-1])
+        )["decision_history"]
+
+        self.assertEqual(
+            [attempt["explanation"] for attempt in history["attempts"]],
+            [
+                "latest workplace work attempt",
+                *(
+                    f"later wait attempt {index:02d}"
+                    for index in range(3, recent_count)
+                ),
+            ],
+        )
+        self.assertNotIn(
+            "earliest workplace work attempt",
+            [attempt["explanation"] for attempt in history["attempts"]],
+        )
+        self.assertEqual(history["projection"]["omitted_attempts"], 4)
+        self.assertLessEqual(
+            len(history["attempts"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
+        )
+        print("latest action-attempt continuity verification passed")
 
     def test_decision_history_projection_preserves_latest_result_per_action_kind(
         self,

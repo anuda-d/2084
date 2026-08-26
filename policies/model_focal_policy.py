@@ -24,6 +24,7 @@ from simulation.events import freeze_mapping, to_plain_data
 
 
 MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
+MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
 MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
 DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_latest_action_kind_v1"
 MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
@@ -231,17 +232,32 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
 
 
 def _decision_history_data(view: AgentView) -> dict[str, object]:
-    """Project recent history plus bounded latest outcomes by action kind.
+    """Project recent history plus bounded latest attempts and outcomes by kind.
 
-    The recent window gives the model short-term cadence.  A successful or
-    rejected outcome from an older distinct action kind can still explain a
-    current choice, however, so retain that kind's latest result as an
-    explicit bounded continuity rule.  Only supported action kinds qualify;
-    this cannot grow with arbitrary lifetime result data.
+    The recent window gives the model short-term cadence. An older attempted
+    action or its successful or rejected outcome can still explain a current
+    choice, however, so retain the latest entry for each supported action kind
+    as an explicit bounded continuity rule. Only supported action kinds
+    qualify; this cannot grow with arbitrary lifetime history data.
     """
-    attempts = view.action_history[-MAX_RETAINED_DECISION_HISTORY_ENTRIES:]
-    latest_result_index_by_kind: dict[str, int] = {}
     supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
+    latest_attempt_index_by_kind: dict[str, int] = {}
+    for index, attempt in enumerate(view.action_history):
+        if attempt.kind in supported_kinds:
+            latest_attempt_index_by_kind[attempt.kind] = index
+    included_attempt_indexes = set(
+        range(
+            max(0, len(view.action_history) - MAX_RETAINED_DECISION_HISTORY_ENTRIES),
+            len(view.action_history),
+        )
+    )
+    included_attempt_indexes.update(latest_attempt_index_by_kind.values())
+    attempts = tuple(
+        attempt
+        for index, attempt in enumerate(view.action_history)
+        if index in included_attempt_indexes
+    )
+    latest_result_index_by_kind: dict[str, int] = {}
     for index, result in enumerate(view.action_results):
         if result.action_kind in supported_kinds:
             latest_result_index_by_kind[result.action_kind] = index
@@ -260,7 +276,14 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
     return {
         "projection": {
             "kind": DECISION_HISTORY_PROJECTION_KIND,
-            "maximum_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_recent_attempts": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
+            "maximum_latest_attempts_by_action_kind": (
+                MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+            ),
+            "maximum_attempts": (
+                MAX_RETAINED_DECISION_HISTORY_ENTRIES
+                + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+            ),
             "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
             "maximum_latest_results_by_action_kind": (
                 MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
