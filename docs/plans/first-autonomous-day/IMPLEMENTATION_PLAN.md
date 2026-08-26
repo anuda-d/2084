@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
+Status: active; AD-1 through AD-6, AD-8, AD-9, and AD-11 are met. AD-7, AD-10, and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -10,8 +10,8 @@ implementation sequence.
 
 - Incomplete run: none
 - Last completed run: AD-7 source-closed relevant continuity projection (2026-08-25)
-- Verified implementation runs since alignment: 4
-- Alignment due: yes
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -26,7 +26,7 @@ implementation sequence.
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. Older behaviorally relevant action/result selection remains unproven. |
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
-| AD-10 Recorded full-day reproduction | met | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered input, exhaustion, and tampered records fail explicitly and preserve incomplete terminal evidence. This proves recorded reproduction of the exercised full-day paths, not deterministic live sampling. |
+| AD-10 Recorded full-day reproduction | open | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered restricted input and exhaustion fail explicitly, but an internally consistent alteration of selected-record action text is currently accepted and changes objective history. The stated tampering boundary is therefore unproven. |
 | AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
@@ -92,6 +92,39 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-25 — Sixth whole-goal alignment
+
+- A fresh independent Sol-high read-only review and the main alignment review
+  compared every AD-1 through AD-12 criterion with the current successor
+  implementation, focused tests, and retained boundaries. The goal remains
+  owner-approved, coherent, and within its stated scope; no privacy leak,
+  hidden-knowledge grant, or mechanism that warrants removal was found.
+- AD-1 through AD-6, AD-8, AD-9, and AD-11 remain met narrowly. AD-7 remains
+  open because the source-closed 64-entry delivered-evidence projection does
+  not retain older behaviorally relevant action or result evidence beyond its
+  recent-16 window. AD-12 remains open because no owner-authorized full-day
+  live `qwen3:4b-instruct` run has occurred.
+- The review reopens AD-10. Replay rejects altered restricted input and
+  exhausted records, but it accepts a self-consistent altered selected record
+  and reproduces a changed objective history. Until an integrity boundary is
+  implemented or the owner explicitly narrows the criterion, the previous
+  claim that tampered records fail explicitly is too broad.
+- A valid action selected at minute 1,440 can schedule completion beyond the
+  day boundary, making the run fail explicitly rather than falsely report
+  completion. This preserves the current failure-reporting boundary but is a
+  live-day completion risk that remains within the already-open AD-12 work;
+  no implementation task is selected by this alignment record.
+- Offline validation passed 193 current and 63 historical tests. The default
+  autonomous-day command reached the exact Day 1 00:00 boundary, and
+  `git diff --check` passed. Its unconfigured default model path remains
+  evidence for the offline composition, not for a model-backed live day.
+- `docs/main/ARCHITECTURE.md` still describes the earlier narrow successor
+  state as lacking focal-policy, restricted-view, understanding, and full-day
+  proof integration. That overview materially lags current verified behavior;
+  record the drift without treating documentation repair as this state-only
+  alignment work unit. The alignment counter resets to zero; no future work is
+  selected or recorded.
 
 ### 2026-08-25 — Fifth whole-goal alignment
 
