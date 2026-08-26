@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
+import hashlib
+import hmac
+import json
 from typing import Protocol
 
 from policies.mara_decision_request import (
@@ -49,6 +52,41 @@ class _RecordedSafeFailure(RuntimeError):
         self.failure_type = failure_type
 
 
+@dataclass(frozen=True)
+class RecordedDecisionArchive:
+    """Private, integrity-sealed evidence for one recorded decision replay.
+
+    The caller retains the verification key separately from this archive. That
+    lets replay reject a changed record before it can become an attempted
+    action, without placing key material or the seal in objective history.
+    This detects modification only while the key remains trusted; it is not a
+    provenance claim about a party that controls that key.
+    """
+
+    records: tuple[PolicyDecisionRecord, ...]
+    integrity_digest: str
+
+    @classmethod
+    def seal(
+        cls,
+        records: tuple[PolicyDecisionRecord, ...],
+        *,
+        integrity_key: bytes,
+    ) -> RecordedDecisionArchive:
+        """Create detached replay evidence authenticated by a caller-held key."""
+        frozen_records = tuple(records)
+        return cls(
+            records=frozen_records,
+            integrity_digest=_recorded_archive_digest(frozen_records, integrity_key),
+        )
+
+    def verify(self, *, integrity_key: bytes) -> None:
+        """Fail closed when private replay evidence no longer matches its seal."""
+        expected_digest = _recorded_archive_digest(self.records, integrity_key)
+        if not hmac.compare_digest(self.integrity_digest, expected_digest):
+            raise RecordedDecisionError("recorded decision archive integrity mismatch")
+
+
 class _InvalidStructuredAttemptError(StructuredChoiceError):
     """A response cannot describe one supported attempted action."""
 
@@ -58,6 +96,32 @@ class ModelDecisionClient(Protocol):
 
     def choose(self, model_input: Mapping[str, object]) -> object:
         ...
+
+
+def _recorded_archive_digest(
+    records: tuple[PolicyDecisionRecord, ...], integrity_key: bytes
+) -> str:
+    if not isinstance(integrity_key, bytes) or not integrity_key:
+        raise RecordedDecisionError(
+            "recorded decision archive requires a non-empty verification key"
+        )
+    serialized_records = "[" + ",".join(
+        _canonical_record_data(record) for record in records
+    ) + "]"
+    return hmac.new(
+        integrity_key,
+        serialized_records.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _canonical_record_data(record: PolicyDecisionRecord) -> str:
+    return json.dumps(
+        record.to_data(),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
 
 
 class RecordedDecisionClient:
@@ -106,6 +170,17 @@ class RecordedDecisionClient:
         cls, records: tuple[PolicyDecisionRecord, ...]
     ) -> RecordedDecisionClient:
         return cls(tuple(record.to_data() for record in records))
+
+    @classmethod
+    def from_archive(
+        cls,
+        archive: RecordedDecisionArchive,
+        *,
+        integrity_key: bytes,
+    ) -> RecordedDecisionClient:
+        """Construct replay only after its caller-held integrity seal verifies."""
+        archive.verify(integrity_key=integrity_key)
+        return cls.from_records(archive.records)
 
     @property
     def consumed_count(self) -> int:

@@ -6,6 +6,7 @@ from policies.mara_decision_request import DecisionAuthorshipIdentity
 from policies.model_focal_policy import (
     ModelDecisionClient,
     ModelFocalPolicy,
+    RecordedDecisionArchive,
     RecordedDecisionClient,
 )
 from policies.ollama_client import OllamaDecisionClient
@@ -66,13 +67,18 @@ class MaraHarness:
         )
 
     @classmethod
-    def from_records(
+    def from_recorded_archive(
         cls,
-        records: tuple[PolicyDecisionRecord, ...],
+        archive: RecordedDecisionArchive,
+        *,
+        integrity_key: bytes,
     ) -> MaraHarness:
-        """Reproduce recorded Mara decisions through the same public boundary."""
+        """Replay sealed private evidence after checking its caller-held key."""
         return cls.from_client(
-            RecordedDecisionClient.from_records(records),
+            RecordedDecisionClient.from_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
             configuration_id=RECORDED_MARA_CONFIGURATION_ID,
         )
 

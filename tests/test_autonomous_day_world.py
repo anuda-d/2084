@@ -15,6 +15,7 @@ from scenarios.autonomous_day import (
     render_autonomous_day,
 )
 from policies.model_focal_policy import (
+    RecordedDecisionArchive,
     RecordedDecisionError,
     model_input_from_view,
 )
@@ -1157,10 +1158,18 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         source_summary = source.run()
         source_record_count = len(source.private_decision_records)
+        integrity_key = b"autonomous-day-replay-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
 
         replay = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(source.private_decision_records),
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
         )
         replay_summary = replay.run()
 
@@ -1206,10 +1215,18 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         source_summary = source.run()
         source_call_count = len(source_client.inputs)
+        integrity_key = b"autonomous-day-replay-failure-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
 
         replay = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(source.private_decision_records),
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
         )
         replay_summary = replay.run()
 
@@ -1268,6 +1285,66 @@ class AutonomousDayWorldTests(unittest.TestCase):
             },
         )
 
+    def test_sealed_recording_rejects_a_self_consistent_selected_action_edit(self):
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                _SequenceClient(
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "rest after the scheduled wake",
+                        "decision_reason": "the morning is quiet",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after completing rest",
+                        "decision_reason": "no immediate action is needed",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after the accessible bulletin",
+                        "decision_reason": "the bulletin changes no immediate action",
+                    },
+                ),
+                configuration_id="deterministic-autonomous-day-integrity-source",
+            ),
+        )
+        source.run()
+        integrity_key = b"autonomous-day-recording-edit-detection-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        selected_index = next(
+            index
+            for index, record in enumerate(archive.records)
+            if record.status == "selected"
+        )
+        selected_record = archive.records[selected_index]
+        altered_response = dict(selected_record.structured_response)
+        altered_response["explanation"] = "a changed but schema-valid explanation"
+        altered_attempt = dict(selected_record.attempted_action)
+        altered_attempt["explanation"] = altered_response["explanation"]
+        altered_records = list(archive.records)
+        altered_records[selected_index] = replace(
+            selected_record,
+            structured_response=altered_response,
+            attempted_action=altered_attempt,
+        )
+        altered_archive = replace(archive, records=tuple(altered_records))
+
+        with self.assertRaisesRegex(
+            RecordedDecisionError,
+            "archive integrity mismatch",
+        ):
+            MaraHarness.from_recorded_archive(
+                altered_archive,
+                integrity_key=integrity_key,
+            )
+
     def test_recorded_autonomous_day_failure_is_explicit_for_altered_or_exhausted_evidence(
         self,
     ):
@@ -1306,9 +1383,16 @@ class AutonomousDayWorldTests(unittest.TestCase):
             replace(source.private_decision_records[0], model_input=altered_input),
             *source.private_decision_records[1:],
         )
+        altered_integrity_key = b"autonomous-day-input-mismatch-integrity-v1"
         altered = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(altered_records),
+            mara_harness=MaraHarness.from_recorded_archive(
+                RecordedDecisionArchive.seal(
+                    altered_records,
+                    integrity_key=altered_integrity_key,
+                ),
+                integrity_key=altered_integrity_key,
+            ),
         )
         with self.assertRaisesRegex(RecordedDecisionError, "input mismatch"):
             altered.run()
@@ -1400,10 +1484,15 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("before the day boundary", end_failure_output)
 
+        exhausted_integrity_key = b"autonomous-day-exhausted-integrity-v1"
         exhausted = build_autonomous_day(
             seed=42,
-            mara_harness=MaraHarness.from_records(
-                source.private_decision_records[:1]
+            mara_harness=MaraHarness.from_recorded_archive(
+                RecordedDecisionArchive.seal(
+                    source.private_decision_records[:1],
+                    integrity_key=exhausted_integrity_key,
+                ),
+                integrity_key=exhausted_integrity_key,
             ),
         )
         with self.assertRaisesRegex(RecordedDecisionError, "exhausted"):

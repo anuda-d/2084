@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6, AD-8, AD-9, and AD-11 are met. AD-7, AD-10, and AD-12 are open.
+Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 source-closed relevant continuity projection (2026-08-25)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-10 sealed recorded replay integrity (2026-08-25)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -26,7 +26,7 @@ implementation sequence.
 | AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and attempts/results use a recent window of 16 each. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. Older behaviorally relevant action/result selection remains unproven. |
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
-| AD-10 Recorded full-day reproduction | open | Recorded choices from complete deterministic-harness days, including one timeout and retry, reproduce equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. Altered restricted input and exhaustion fail explicitly, but an internally consistent alteration of selected-record action text is currently accepted and changes objective history. The stated tampering boundary is therefore unproven. |
+| AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
 | AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Configured harness runs also expose numeric growth, status, and provider-failure aggregates without private records. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
@@ -92,6 +92,29 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-25 — AD-10 sealed recorded replay integrity
+
+- Recorded full-day replay now uses `RecordedDecisionArchive`, which computes
+  an HMAC over the canonical private decision-record collection. Its
+  verification key remains caller-held and stays outside objective history,
+  normal presentation, and inspector output. The public Mara replay facade
+  verifies the archive before it constructs a replay client.
+- Complete deterministic source/replay coverage still proves equal day
+  summaries, objective history, observations, results, restricted inputs, and
+  retained private evidence without another source-client call, including the
+  timeout-and-retry route. A separate full-day regression changes both the
+  selected structured response and matching attempted action, then proves the
+  original seal rejects that self-consistent alteration before a replay world
+  exists.
+- Three Solo gates were reverified with 3 met, 0 unmet, and 0 abandoned: the
+  focused autonomous-day suite, the complete offline repository check, and
+  whitespace validation. A fresh independent Sol-high review found no
+  blockers.
+- Scope limit: this is integrity while the caller retains a trusted key; it is
+  not a portable persistence format, durable key-management system, or proof
+  of provenance against someone who controls the key. It does not prove
+  live-model determinism.
 
 ### 2026-08-25 — Sixth whole-goal alignment
 

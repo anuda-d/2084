@@ -440,12 +440,14 @@ runs produce identical ordered history. `MaraHarness` is the public composition
 facade for model-backed Mara: it accepts only an `AgentView`, delegates one
 choice through the existing collaborators, and returns one `ActionAttempt`.
 It is not a simulation runtime or persistent mind. Separately,
-`MaraHarness.from_records(...)` can consume detached private decision records
-and reproduce equal ordered world history through the same policy, parser, and
-resolver without another model call. This is programmatic full-run
-reproduction, not a portable persistence format, checkpoint system,
-user-facing replay command, or claim that equal live configuration produces
-equal samples.
+`MaraHarness.from_recorded_archive(...)` accepts private decision records
+sealed with a caller-held verification key and reproduces equal ordered world
+history through the same policy, parser, and resolver without another model
+call. A changed archive fails before replay can apply it, provided that key
+remains trusted. This is programmatic full-run reproduction, not a portable
+persistence format, checkpoint system, user-facing replay command, proof of
+record provenance against a party that controls the key, or a claim that equal
+live configuration produces equal samples.
 
 ## Implemented First Slice
 

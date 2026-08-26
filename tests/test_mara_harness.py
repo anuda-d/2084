@@ -6,6 +6,7 @@ from policies.mara_harness import (
     MaraHarness,
 )
 from policies.model_focal_policy import ModelUnavailableError
+from policies.model_focal_policy import RecordedDecisionArchive
 from scenarios.first_day import FOCAL_AGENT_ID, build_first_day
 from simulation.agents import DecisionRecordSource
 
@@ -132,7 +133,14 @@ class MaraHarnessTests(unittest.TestCase):
         source_attempt = source.choose(view)
         source_record = source.take_decision_record()
 
-        replay = MaraHarness.from_records((source_record,))
+        integrity_key = b"mara-harness-recorded-replay-integrity-v1"
+        replay = MaraHarness.from_recorded_archive(
+            RecordedDecisionArchive.seal(
+                (source_record,),
+                integrity_key=integrity_key,
+            ),
+            integrity_key=integrity_key,
+        )
         replay_attempt = replay.choose(view)
 
         self.assertEqual(replay_attempt, source_attempt)
