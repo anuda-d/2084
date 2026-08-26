@@ -77,8 +77,9 @@ class AutonomousDay:
     _private_decision_record_byte_measurements: list[int]
     _understanding_transitions: list[dict[str, object]]
     _dispatch_history_checkpoints: dict[
-        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+        int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ]
+    _committed_objective_dispatches: dict[tuple[str, str], dict[str, object]]
     _mara_harness_configured: bool
 
     @property
@@ -178,8 +179,9 @@ def build_autonomous_day(
     transit_bulletin_observations: dict[str, Observation] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
-        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+        int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ] = {}
+    committed_objective_dispatches: dict[tuple[str, str], dict[str, object]] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -205,6 +207,45 @@ def build_autonomous_day(
                 for actor in world.agents.values()
                 for result in actor.action_results
             ),
+            len(understanding_transitions),
+        )
+
+    def record_committed_objective_dispatch(
+        sequence: int,
+        work: ScheduledWork,
+    ) -> None:
+        """Link newly created objective evidence to its successful dispatch."""
+        event_ids, observation_ids, action_ids, transition_count = (
+            dispatch_history_checkpoints[sequence]
+        )
+        dispatch = {
+            "sequence": sequence,
+            "phase": work.phase.name.lower(),
+        }
+        new_artifacts = [
+            *(
+                ("event", event.event_id)
+                for event in event_log.events
+                if event.event_id not in event_ids
+            ),
+            *(
+                ("observation", observation.observation_id)
+                for observation in event_log.observations
+                if observation.observation_id not in observation_ids
+            ),
+            *(
+                ("action_result", result.action_id)
+                for actor in world.agents.values()
+                for result in actor.action_results
+                if result.action_id not in action_ids
+            ),
+            *(
+                ("understanding_transition", str(transition["trace_id"]))
+                for transition in understanding_transitions[transition_count:]
+            ),
+        ]
+        committed_objective_dispatches.update(
+            {artifact: dispatch for artifact in new_artifacts}
         )
 
     def mara_view() -> AgentView:
@@ -910,6 +951,7 @@ def build_autonomous_day(
             current.total_minutes,
         ),
         on_dispatch_started=checkpoint_objective_history,
+        on_dispatch_committed=record_committed_objective_dispatch,
     )
     runtime.schedule(
         ScheduledWork(
@@ -947,6 +989,7 @@ def build_autonomous_day(
         ),
         _understanding_transitions=understanding_transitions,
         _dispatch_history_checkpoints=dispatch_history_checkpoints,
+        _committed_objective_dispatches=committed_objective_dispatches,
         _mara_harness_configured=mara_harness is not None,
     )
 
@@ -1051,6 +1094,15 @@ def autonomous_day_inspector_data(
 ) -> dict[str, object]:
     """Return deterministic omniscient evidence for the successor day."""
 
+    def committed_dispatch(
+        artifact_kind: str,
+        artifact_id: str,
+    ) -> dict[str, object] | None:
+        dispatch = day._committed_objective_dispatches.get(
+            (artifact_kind, artifact_id)
+        )
+        return None if dispatch is None else dict(dispatch)
+
     events = [
         {
             "event_id": event.event_id,
@@ -1060,6 +1112,7 @@ def autonomous_day_inspector_data(
             "action_id": event.action_id,
             "caused_by": list(event.caused_by),
             "details": to_plain_data(event.details),
+            "dispatch": committed_dispatch("event", event.event_id),
         }
         for event in day.events
     ]
@@ -1071,6 +1124,10 @@ def autonomous_day_inspector_data(
             "source": observation.source,
             "delivery_tick": observation.delivery_tick,
             "details": to_plain_data(observation.details),
+            "dispatch": committed_dispatch(
+                "observation",
+                observation.observation_id,
+            ),
         }
         for observation in day.observations
     ]
@@ -1087,6 +1144,7 @@ def autonomous_day_inspector_data(
             "status": result.status,
             "resolved_tick": result.resolved_tick,
             "reason": result.reason,
+            "dispatch": committed_dispatch("action_result", result.action_id),
         }
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
@@ -1102,7 +1160,7 @@ def autonomous_day_inspector_data(
                 failed_dispatch.sequence
             )
             if checkpoint is not None:
-                event_ids, observation_ids, action_ids = checkpoint
+                event_ids, observation_ids, action_ids, _ = checkpoint
                 uncommitted_objective_tail = {
                     "events": [
                         event for event in events if event["event_id"] not in event_ids
@@ -1203,7 +1261,16 @@ def autonomous_day_inspector_data(
             "events": events,
             "observations": observations,
             "action_results": action_results,
-            "understanding_transitions": to_plain_data(day.understanding_transitions),
+            "understanding_transitions": [
+                {
+                    **to_plain_data(transition),
+                    "dispatch": committed_dispatch(
+                        "understanding_transition",
+                        str(transition["trace_id"]),
+                    ),
+                }
+                for transition in day.understanding_transitions
+            ],
             "uncommitted_objective_tail": uncommitted_objective_tail,
         },
     }

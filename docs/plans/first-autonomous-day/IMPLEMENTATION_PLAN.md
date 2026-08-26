@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-11 explicit normal-output causal tie ordering (2026-08-26)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-11 committed inspector-dispatch linkage (2026-08-26)
+- Verified implementation runs since alignment: 3
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Its `provider_failure_count` counts only failed private records whose restricted decision client was reached; continuity-projection failures remain explicit decision failures but do not inflate this aggregate. Full criterion-level watchability evidence remains incomplete. |
+| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Each committed event, observation, action result, and understanding transition now also links to the exact successful runtime dispatch sequence and causal phase that produced it; uncommitted failure-tail artifacts remain explicitly unlinked. Its `provider_failure_count` counts only failed private records whose restricted decision client was reached; continuity-projection failures remain explicit decision failures but do not inflate this aggregate. Full criterion-level watchability evidence remains incomplete. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,31 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 committed inspector-dispatch linkage
+
+- The accelerated-day runtime now invokes an optional observer only after it
+  records successful work and any consumed-decision evidence. If that observer
+  itself fails, the runtime stops with the work counted as committed and no
+  false failed-dispatch marker.
+- The successor uses that boundary to attach only a runtime dispatch sequence
+  and named causal phase to each committed event, observation, action result,
+  and understanding transition. The inspector leaves artifacts from the exact
+  objective tail of a failed dispatch unlinked, preserving their distinct
+  uncommitted status and not exposing private work identity or exception text.
+- Focused validation passed 27 autonomous-day world tests and 9 runtime tests.
+  The complete offline repository check and `git diff --check` passed. The Solo
+  gates were reverified after the review fix with 3 met, 0 unmet, and 0
+  abandoned.
+- A fresh Sol-high reviewer initially found that the observer was called before
+  the runtime committed the dispatch. The callback moved after commitment, a
+  failure-boundary regression was added, and the reviewer rechecked the final
+  change with no remaining findings. The reviewer also verified each seed-42
+  inspector artifact links to an existing runtime dispatch with the same phase.
+- Scope limit: AD-11 remains open. This makes committed causal provenance
+  explicit for the inspector; it does not complete all normal watchability or
+  inspection evidence, the open AD-7 continuity gap, or the owner-required
+  live-day run.
 
 ### 2026-08-26 — AD-11 explicit normal-output causal tie ordering
 

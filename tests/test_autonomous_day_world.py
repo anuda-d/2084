@@ -266,6 +266,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "action_id": None,
                     "caused_by": [],
                     "details": {"source": "committed"},
+                    "dispatch": {
+                        "sequence": 1,
+                        "phase": "scheduled_world",
+                    },
                 },
                 {
                     "event_id": "event-0002",
@@ -275,6 +279,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "action_id": None,
                     "caused_by": [],
                     "details": {"source": "test"},
+                    "dispatch": None,
                 }
             ],
         )
@@ -375,6 +380,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "trace_id": f"trace-{observation['observation_id']}",
                     "claim_id": f"claim-{observation['observation_id']}",
                     "claim_created": True,
+                    "dispatch": {
+                        "sequence": 8,
+                        "phase": "understanding_update",
+                    },
                 }
             ],
         )
@@ -389,6 +398,32 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("model_input", json.dumps(inspector))
         self.assertNotIn("private_decision_records", json.dumps(inspector))
+
+    def test_inspector_links_committed_objective_history_to_runtime_dispatches(self):
+        day = build_autonomous_day(seed=42)
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+
+        self.assertEqual(
+            [event["dispatch"] for event in inspector["history"]["events"]],
+            [
+                {"sequence": 1, "phase": "scheduled_world"},
+                {"sequence": 2, "phase": "scheduled_world"},
+                {"sequence": 3, "phase": "action_completion"},
+            ],
+        )
+        self.assertEqual(
+            inspector["history"]["observations"][0]["dispatch"],
+            {"sequence": 4, "phase": "observation_delivery"},
+        )
+        self.assertEqual(
+            inspector["history"]["action_results"][0]["dispatch"],
+            {"sequence": 3, "phase": "action_completion"},
+        )
+        self.assertEqual(
+            inspector["history"]["understanding_transitions"][0]["dispatch"],
+            {"sequence": 5, "phase": "understanding_update"},
+        )
 
     def test_harness_choice_becomes_private_evidence_and_resolved_wait(self):
         client = _SequenceClient(
@@ -1032,6 +1067,23 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIn(household_update, normal_output)
         self.assertIn(bulletin_update, normal_output)
         self.assertLess(normal_output.index(household_update), normal_output.index(bulletin_update))
+
+        inspector = autonomous_day_inspector_data(day, summary)
+        household_result = next(
+            result
+            for result in inspector["history"]["action_results"]
+            if result["action_kind"] == "household"
+        )
+        bulletin = inspector["history"]["observations"][0]
+        self.assertEqual(household_result["resolved_tick"], bulletin["delivery_tick"])
+        self.assertEqual(
+            household_result["dispatch"]["phase"], "action_completion"
+        )
+        self.assertEqual(bulletin["dispatch"]["phase"], "observation_delivery")
+        self.assertLess(
+            household_result["dispatch"]["sequence"],
+            bulletin["dispatch"]["sequence"],
+        )
 
     def test_focal_update_sorting_uses_causal_phase_not_input_position(self):
         simultaneous_updates = [
