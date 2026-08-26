@@ -1117,6 +1117,129 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [result["action_id"] for result in following_history["results"]],
         )
 
+    def test_completed_household_marks_its_result_relevant_to_the_following_decision(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete the household obligation at home",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the household activity",
+                "decision_reason": "the household obligation is fulfilled",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no new obligation is available",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-household-result-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        household_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "household"
+        )
+        following_input = client.inputs[1]
+        following_history = following_input["decision_history"]
+
+        self.assertEqual(following_input["state"]["obligations"], ["workplace shift"])
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
+            (household_result.action_id,),
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_results"],
+            1,
+        )
+        self.assertEqual(
+            following_history["projection"]["included_explicit_relevant_results"],
+            1,
+        )
+        self.assertIn(
+            household_result.action_id,
+            [result["action_id"] for result in following_history["results"]],
+        )
+
+    def test_repeated_household_after_fulfillment_does_not_add_a_relevance_marker(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete the household obligation at home",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "continue household activity after it is fulfilled",
+                "decision_reason": "household activity remains physically available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the additional household activity",
+                "decision_reason": "no further obligation changed",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no new obligation is available",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-repeated-household-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        household_results = [
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "household"
+        ]
+        following_history = client.inputs[2]["decision_history"]
+
+        self.assertEqual(len(household_results), 2)
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
+            (household_results[0].action_id,),
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_results"],
+            1,
+        )
+        self.assertEqual(
+            following_history["projection"]["included_explicit_relevant_results"],
+            1,
+        )
+        self.assertIn(
+            household_results[0].action_id,
+            [result["action_id"] for result in following_history["results"]],
+        )
+
     def test_home_household_activity_completes_after_model_selection(self):
         client = _SequenceClient(
             {

@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 workplace result relevance (2026-08-26)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-7 household result relevance (2026-08-26)
+- Verified implementation runs since alignment: 3
 - Alignment due: no
 
 ## Goal Progress
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | met | Model-selected choices give Mara world-owned opportunities for a 60-minute rest, travel, 120-minute workplace work, and 60-minute household activity. Each is an attempted action resolved by the world, with no required dramatic route or scripted focal substitution. This establishes the goal's basic ordinary rhythm, not a general needs or employment system. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | met | The objective transit change grants Mara no knowledge itself. Only the authored home bulletin delivers its source-linked consequence; that delivery creates canonical understanding before an optional restricted decision view. Inaccessible locations produce no delivery, understanding, callback, or model input. This proves one concrete access path, not general inference or conflict handling. |
-| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and decision history retains the recent 16 attempts/results plus the latest attempt of each finite supported action kind and the latest completed and rejected result of each kind. It can also retain up to eight world-owned, explicitly marked action-result IDs even when an older same-kind result falls outside those windows; unresolved, malformed, or over-cap markers safely fail before a provider call. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. The ordinary-day composition now removes Mara's fulfilled workplace-shift obligation and retains exactly that first completed work result as explicit continuity evidence; later voluntary work leaves the marker closure unchanged. Older action attempts and other semantic relevance lifecycles remain outside this result-only mechanism, so full relevance preservation remains unproven. |
+| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and decision history retains the recent 16 attempts/results plus the latest attempt of each finite supported action kind and the latest completed and rejected result of each kind. It can also retain up to eight world-owned, explicitly marked action-result IDs even when an older same-kind result falls outside those windows; unresolved, malformed, or over-cap markers safely fail before a provider call. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. The ordinary-day composition now removes Mara's fulfilled workplace-shift and household-time obligations and retains each exact first fulfillment result as explicit continuity evidence; later voluntary work or household activity leaves the marker closure unchanged. Older action attempts and other semantic relevance lifecycles remain outside this result-only mechanism, so full relevance preservation remains unproven. |
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
@@ -92,6 +92,27 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-7 household result relevance
+
+- The successor now treats the first completed authored household-time action
+  as a canonical consequence: it removes the fulfilled `household time`
+  obligation and appends that exact world-created household-result ID to Mara's
+  bounded relevance closure before the resulting decision is eligible. A later
+  physically valid household action does not append a marker because it changes
+  no obligation.
+- Focused successor-world coverage proves the obligation update, exact result
+  identity, next restricted-input inclusion, and the repeated-household guard.
+  Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned: focused
+  coverage, the default autonomous-day boundary, the complete offline
+  repository check, and whitespace validation all passed.
+- A fresh independent Sol-high read-only review found no blocker in canonical
+  state, bounded growth, hidden knowledge, model authorship, or the repeated
+  marker guard.
+- Scope limit: AD-7 remains open. This adds one concrete world-owned result
+  relevance lifecycle; it does not establish a general semantic relevance or
+  clearing policy, preserve every older behaviorally relevant action attempt,
+  or authorize the required live day.
 
 ### 2026-08-26 — AD-7 workplace result relevance
 
