@@ -705,6 +705,17 @@ def build_autonomous_day(
             outcome=completed,
             status="completed",
         )
+        mara = world.agents[MARA_ID]
+        if "workplace shift" in mara.obligations:
+            mara.obligations = tuple(
+                obligation
+                for obligation in mara.obligations
+                if obligation != "workplace shift"
+            )
+            mara.continuity_relevant_action_result_ids = (
+                *mara.continuity_relevant_action_result_ids,
+                result.action_id,
+            )
         resolve_private_decision_record(result)
         context.request_decision(
             actor_id=MARA_ID,
