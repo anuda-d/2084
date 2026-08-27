@@ -63,6 +63,7 @@ _MARA_TRAVEL_DURATION_MINUTES = 30
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
+_AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
 
 
 @dataclass(frozen=True)
@@ -1551,11 +1552,56 @@ def render_autonomous_day_inspector(
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+def _cli_mara_harness(
+    *,
+    policy_name: str,
+    ollama_base_url: str | None,
+    ollama_model: str | None,
+    mara_harness_factory: Callable[..., MaraHarness],
+) -> MaraHarness | None:
+    """Construct only the explicitly selected exact-model live harness."""
+
+    if policy_name == "offline":
+        return None
+    if policy_name != "ollama":
+        raise ValueError("unsupported focal policy")
+    if ollama_base_url is None or not ollama_base_url.strip():
+        raise ValueError("Ollama base URL is required")
+    if ollama_model is None or not ollama_model.strip():
+        raise ValueError("Ollama model is required")
+    if ollama_model.strip() != _AD12_OLLAMA_MODEL:
+        raise ValueError(
+            f"Ollama model must be {_AD12_OLLAMA_MODEL} for this integration"
+        )
+    return mara_harness_factory(
+        base_url=ollama_base_url,
+        model=ollama_model.strip(),
+    )
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    mara_harness_factory: Callable[..., MaraHarness] = MaraHarness.from_ollama,
+) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the narrow offline 2084 autonomous-day successor"
+        description="Run the narrow 2084 autonomous-day successor"
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--focal-policy",
+        choices=("offline", "ollama"),
+        default="offline",
+        help="choose the offline default or the explicit live Ollama policy",
+    )
+    parser.add_argument(
+        "--ollama-base-url",
+        help="private Ollama origin, required only with --focal-policy ollama",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        help="Ollama model name, required only with --focal-policy ollama",
+    )
     parser.add_argument(
         "--inspect",
         action="store_true",
@@ -1563,7 +1609,33 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    day = build_autonomous_day(seed=args.seed)
+    if args.focal_policy == "ollama" and (
+        args.ollama_base_url is None
+        or not args.ollama_base_url.strip()
+        or args.ollama_model is None
+        or not args.ollama_model.strip()
+    ):
+        parser.error(
+            "--ollama-base-url and --ollama-model are required with "
+            "--focal-policy ollama"
+        )
+    if args.focal_policy == "offline" and (
+        args.ollama_base_url is not None or args.ollama_model is not None
+    ):
+        parser.error(
+            "--ollama-base-url and --ollama-model require --focal-policy ollama"
+        )
+    try:
+        mara_harness = _cli_mara_harness(
+            policy_name=args.focal_policy,
+            ollama_base_url=args.ollama_base_url,
+            ollama_model=args.ollama_model,
+            mara_harness_factory=mara_harness_factory,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+
+    day = build_autonomous_day(seed=args.seed, mara_harness=mara_harness)
     try:
         summary = day.run()
     except Exception:

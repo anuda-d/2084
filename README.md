@@ -131,6 +131,32 @@ attributed explanation and shown normally. Live choices may vary even with
 temperature zero; recorded-decision playback is for reproducing world behavior,
 not claiming deterministic model sampling.
 
+### Run the accelerated autonomous day
+
+The successor composition advances from `Day 0 00:00` to exactly
+`Day 1 00:00`. Its default remains offline and makes no model request:
+
+```bash
+python3 -m scenarios.autonomous_day --seed 42
+```
+
+Its live path is separately explicit and uses the same externally configured,
+private-IP Ollama boundary:
+
+```bash
+python3 -m scenarios.autonomous_day \
+  --seed 42 \
+  --focal-policy ollama \
+  --ollama-base-url http://192.168.1.50:11434 \
+  --ollama-model qwen3:4b-instruct
+```
+
+Replace the example address at runtime. The repository does not retain the
+owner endpoint. Add `--inspect` for the sanitized omniscient causal record;
+normal output remains focal-safe. A zero exit status means the exact day
+boundary was reached, including when individual model decisions took the
+documented safe-failure path. A terminal runtime failure returns nonzero.
+
 Run the complete test suite with:
 
 ```bash

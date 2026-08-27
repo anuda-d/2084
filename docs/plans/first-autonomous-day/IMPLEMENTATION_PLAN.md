@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 explicit action continuity lifecycle (2026-08-26)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-12 explicit autonomous-day Ollama CLI (2026-08-27)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -92,6 +92,26 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-27 - AD-12 explicit autonomous-day Ollama CLI
+
+- The successor command now keeps its no-model offline default while exposing
+  one explicit live selection that requires an external private origin and the
+  exact `qwen3:4b-instruct` model. It constructs the existing `MaraHarness` and
+  changes no runtime scheduling, world validation, resolution, knowledge, or
+  presentation authority.
+- Missing paired configuration, live arguments in offline mode, a wrong model,
+  and an invalid origin fail as controlled command errors before provider use.
+  A fake client through the public entry point completes the full day within
+  the model-call and growth ceilings; normal and inspector output retain no
+  endpoint or configuration identity.
+- Solo gates were verified with 4 met, 0 unmet, and 0 abandoned. Ten focused
+  CLI tests, 219 current tests, 63 historical tests, and whitespace validation
+  passed. A fresh independent Sol-high read-only review found no blocker.
+- Scope limit: AD-12 remains open. This proves the live command composition
+  offline; it does not claim that the owner-authorized live full day occurred
+  or that a zero exit status alone distinguishes selected decisions from safe
+  provider failures.
 
 ### 2026-08-26 — AD-7 explicit action continuity completion
 
