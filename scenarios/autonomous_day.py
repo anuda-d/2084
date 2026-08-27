@@ -315,7 +315,8 @@ def build_autonomous_day(
             return
         if mara_harness is None:
             raise RuntimeError("Mara decision was requested without a callback")
-        attempt = mara_harness.choose(mara_view())
+        view = mara_view()
+        attempt = mara_harness.choose(view)
         decision_record = mara_harness.take_decision_record()
         if decision_record is None:
             raise RuntimeError("Mara harness produced no private decision record")
@@ -334,6 +335,14 @@ def build_autonomous_day(
                 actor_id=MARA_ID,
                 failure_id=decision_record.decision_id,
             )
+            return
+        consumed_result_ids = set(view.continuity_relevant_action_result_ids)
+        mara = world.agents[MARA_ID]
+        mara.continuity_relevant_action_result_ids = tuple(
+            action_id
+            for action_id in mara.continuity_relevant_action_result_ids
+            if action_id not in consumed_result_ids
+        )
 
     def replace_latest_private_decision_record(
         record: PolicyDecisionRecord,

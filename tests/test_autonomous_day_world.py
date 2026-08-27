@@ -1079,7 +1079,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
-            (work_result.action_id,),
+            (),
         )
         self.assertEqual(
             following_history["projection"]["explicit_relevant_results"],
@@ -1092,6 +1092,59 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIn(
             work_result.action_id,
             [result["action_id"] for result in following_history["results"]],
+        )
+
+    def test_failed_model_choice_keeps_fulfillment_result_relevant_for_retry(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the morning shift",
+                "decision_reason": "the workplace obligation is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the available workplace shift",
+                "decision_reason": "arriving at the workplace makes work possible",
+            },
+            TimeoutError("provider unavailable after the fulfillment result"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the retry",
+                "decision_reason": "the fulfilled shift needs no immediate action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-work-result-retry-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        work_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "work"
+        )
+        for model_input in (client.inputs[2], client.inputs[3]):
+            projection = model_input["decision_history"]["projection"]
+            self.assertEqual(projection["explicit_relevant_results"], 1)
+            self.assertEqual(projection["included_explicit_relevant_results"], 1)
+            self.assertIn(
+                work_result.action_id,
+                [
+                    result["action_id"]
+                    for result in model_input["decision_history"]["results"]
+                ],
+            )
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
+            (),
         )
 
     def test_repeated_work_after_fulfillment_does_not_add_a_relevance_marker(self):
@@ -1136,20 +1189,25 @@ class AutonomousDayWorldTests(unittest.TestCase):
             for result in day.world.agents[MARA_ID].action_results
             if result.action_kind == "work"
         ]
+        consumed_history = client.inputs[2]["decision_history"]
         following_history = client.inputs[3]["decision_history"]
 
         self.assertEqual(len(work_results), 2)
         self.assertEqual(
             day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
-            (work_results[0].action_id,),
+            (),
         )
         self.assertEqual(
-            following_history["projection"]["explicit_relevant_results"],
+            consumed_history["projection"]["explicit_relevant_results"],
             1,
         )
         self.assertIn(
             work_results[0].action_id,
-            [result["action_id"] for result in following_history["results"]],
+            [result["action_id"] for result in consumed_history["results"]],
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_results"],
+            0,
         )
 
     def test_completed_household_marks_its_result_relevant_to_the_following_decision(
@@ -1196,7 +1254,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(following_input["state"]["obligations"], ["workplace shift"])
         self.assertEqual(
             day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
-            (household_result.action_id,),
+            (),
         )
         self.assertEqual(
             following_history["projection"]["explicit_relevant_results"],
@@ -1255,24 +1313,29 @@ class AutonomousDayWorldTests(unittest.TestCase):
             for result in day.world.agents[MARA_ID].action_results
             if result.action_kind == "household"
         ]
+        consumed_history = client.inputs[1]["decision_history"]
         following_history = client.inputs[2]["decision_history"]
 
         self.assertEqual(len(household_results), 2)
         self.assertEqual(
             day.world.agents[MARA_ID].continuity_relevant_action_result_ids,
-            (household_results[0].action_id,),
+            (),
         )
         self.assertEqual(
-            following_history["projection"]["explicit_relevant_results"],
+            consumed_history["projection"]["explicit_relevant_results"],
             1,
         )
         self.assertEqual(
-            following_history["projection"]["included_explicit_relevant_results"],
+            consumed_history["projection"]["included_explicit_relevant_results"],
             1,
         )
         self.assertIn(
             household_results[0].action_id,
-            [result["action_id"] for result in following_history["results"]],
+            [result["action_id"] for result in consumed_history["results"]],
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_results"],
+            0,
         )
 
     def test_home_household_activity_completes_after_model_selection(self):
