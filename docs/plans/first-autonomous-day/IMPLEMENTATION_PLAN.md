@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-12 explicit autonomous-day Ollama CLI (2026-08-27)
-- Verified implementation runs since alignment: 1
+- Last completed run: AD-12 single-run live audit bundle (2026-08-27)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -58,7 +58,7 @@ ledger because they do not implement a work unit.
 
 ## Current Run
 
-None. The last selected work unit is complete.
+None.
 
 ## Completion Rules
 
@@ -92,6 +92,30 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-27 - AD-12 single-run live audit bundle
+
+- The owner-authorized command can now reserve one new private directory before
+  provider use and write a focal-safe transcript, sanitized inspector,
+  canonical private decisions, measured verdict, artifact hashes, and a
+  provider-free replay comparison from exactly one live execution.
+- The live preflight pins the exact `qwen3:4b-instruct` tag, digest, family,
+  parameter size, and quantization through `/api/tags`. The manifest records
+  equal pre-run and post-run source revision, status, and tracked-diff evidence,
+  and it rejects injected clients and recorded replays as live provenance.
+- The writer keeps the reserved directory descriptor open, binds every private
+  exclusive write to its device and inode, and fails path replacement. The
+  verifier rejects linked files, extra or missing files, unsafe permissions,
+  malformed or recursive JSON, invalid provenance and verdict schemas, and
+  artifact size or hash mismatches without following symlinks.
+- Solo gates were verified with 4 met, 0 unmet, and 0 abandoned. Twenty-two
+  focused tests, 231 current tests, 63 historical tests, and whitespace
+  validation passed. A fresh independent Sol-high review found no remaining
+  blocker after adversarial filesystem, provenance, source-change, model,
+  replay, and negative-seed cases were resolved.
+- Scope limit: AD-12 remains open. This work makes the one live run auditable;
+  it does not claim the live run has occurred or that a locally stored bundle
+  alone is an external authenticity proof.
 
 ### 2026-08-27 - AD-12 explicit autonomous-day Ollama CLI
 

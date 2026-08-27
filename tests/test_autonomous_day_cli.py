@@ -1,12 +1,20 @@
 import io
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 
 from policies.mara_harness import MaraHarness
+from policies.ollama_client import OllamaDecisionClient, OllamaHttpResponse
 from scenarios.autonomous_day import main
+from scenarios.autonomous_day_audit import (
+    AD12_OLLAMA_MODEL_DIGEST,
+    verify_autonomous_day_live_audit,
+)
 
 
 class _FakeOllamaClient:
@@ -39,9 +47,60 @@ def _fake_mara_harness_factory(*, base_url, model):
     )
 
 
+class _FakeOllamaTransport:
+    instances = []
+
+    def __init__(self):
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def post_json(self, *, url, headers, payload, timeout_seconds):
+        self.calls.append(payload)
+        content = {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "remain where the world can advance safely",
+            "decision_reason": "no immediate movement is necessary",
+        }
+        return OllamaHttpResponse(
+            status=200,
+            body=json.dumps(
+                {
+                    "model": payload["model"],
+                    "done": True,
+                    "message": {
+                        "role": "assistant",
+                        "content": json.dumps(content),
+                    },
+                }
+            ).encode("utf-8"),
+        )
+
+
+def _fake_attested_ollama_harness_factory(*, base_url, model):
+    client = OllamaDecisionClient(
+        base_url=base_url,
+        model=model,
+        transport=_FakeOllamaTransport(),
+    )
+    return MaraHarness.from_ollama_client(client)
+
+
+def _fake_ollama_identity_factory(*, base_url, model):
+    return {
+        "source": "ollama_api_tags",
+        "model": model,
+        "digest": AD12_OLLAMA_MODEL_DIGEST,
+        "family": "qwen3",
+        "parameter_size": "4.0B",
+        "quantization_level": "Q4_K_M",
+    }
+
+
 class AutonomousDayCliTests(unittest.TestCase):
     def setUp(self):
         _FakeOllamaClient.instances.clear()
+        _FakeOllamaTransport.instances.clear()
 
     def test_module_command_runs_exact_day_with_focal_safe_output(self):
         result = subprocess.run(
@@ -298,6 +357,67 @@ class AutonomousDayCliTests(unittest.TestCase):
         )
         self.assertNotIn("127.0.0.1", document)
         self.assertNotIn("fake-autonomous-day-ollama-configuration", document)
+
+    def test_live_selection_writes_one_verified_bundle_without_a_second_client(self):
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as parent:
+            audit_path = Path(parent) / "one-live-run"
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "--seed",
+                        "42",
+                        "--audit-dir",
+                        str(audit_path),
+                        "--focal-policy",
+                        "ollama",
+                        "--ollama-base-url",
+                        "http://127.0.0.1:11434",
+                        "--ollama-model",
+                        "qwen3:4b-instruct",
+                    ],
+                    mara_harness_factory=_fake_attested_ollama_harness_factory,
+                    ollama_identity_factory=_fake_ollama_identity_factory,
+                )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(len(_FakeOllamaTransport.instances), 1)
+            transport = _FakeOllamaTransport.instances[0]
+            verdict = json.loads((audit_path / "verdict.json").read_text())
+            self.assertEqual(
+                len(transport.calls),
+                verdict["measurements"]["provider_call_attempt_count"],
+            )
+            self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
+            self.assertNotIn("127.0.0.1", output.getvalue())
+
+    def test_dangling_audit_symlink_is_rejected_before_provider_call(self):
+        with tempfile.TemporaryDirectory() as parent:
+            audit_path = Path(parent) / "dangling"
+            os.symlink(Path(parent) / "missing-target", audit_path)
+            error = io.StringIO()
+            with redirect_stderr(error), self.assertRaises(SystemExit) as raised:
+                main(
+                    [
+                        "--seed",
+                        "42",
+                        "--audit-dir",
+                        str(audit_path),
+                        "--focal-policy",
+                        "ollama",
+                        "--ollama-base-url",
+                        "http://127.0.0.1:11434",
+                        "--ollama-model",
+                        "qwen3:4b-instruct",
+                    ],
+                    mara_harness_factory=_fake_attested_ollama_harness_factory,
+                    ollama_identity_factory=_fake_ollama_identity_factory,
+                )
+
+            self.assertEqual(raised.exception.code, 2)
+            self.assertEqual(len(_FakeOllamaTransport.instances), 1)
+            self.assertEqual(_FakeOllamaTransport.instances[0].calls, [])
+            self.assertIn("already exists", error.getvalue())
 
 
 if __name__ == "__main__":

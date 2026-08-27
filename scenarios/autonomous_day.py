@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal
@@ -63,7 +64,7 @@ _MARA_TRAVEL_DURATION_MINUTES = 30
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
-_AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
+AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,7 @@ class AutonomousDay:
     _committed_objective_dispatches: dict[tuple[str, str], dict[str, object]]
     _committed_model_decision_dispatches: dict[str, dict[str, object]]
     _mara_harness_configured: bool
+    _mara_provider_kind: str | None
 
     @property
     def events(self) -> tuple[Event, ...]:
@@ -171,6 +173,10 @@ class AutonomousDay:
     @property
     def mara_harness_configured(self) -> bool:
         return self._mara_harness_configured
+
+    @property
+    def mara_provider_kind(self) -> str | None:
+        return self._mara_provider_kind
 
     @property
     def understanding_transitions(self) -> tuple[dict[str, object], ...]:
@@ -1160,6 +1166,9 @@ def build_autonomous_day(
             committed_model_decision_dispatches
         ),
         _mara_harness_configured=mara_harness is not None,
+        _mara_provider_kind=(
+            None if mara_harness is None else mara_harness.provider_kind
+        ),
     )
 
 
@@ -1569,9 +1578,9 @@ def _cli_mara_harness(
         raise ValueError("Ollama base URL is required")
     if ollama_model is None or not ollama_model.strip():
         raise ValueError("Ollama model is required")
-    if ollama_model.strip() != _AD12_OLLAMA_MODEL:
+    if ollama_model.strip() != AD12_OLLAMA_MODEL:
         raise ValueError(
-            f"Ollama model must be {_AD12_OLLAMA_MODEL} for this integration"
+            f"Ollama model must be {AD12_OLLAMA_MODEL} for this integration"
         )
     return mara_harness_factory(
         base_url=ollama_base_url,
@@ -1583,6 +1592,7 @@ def main(
     argv: list[str] | None = None,
     *,
     mara_harness_factory: Callable[..., MaraHarness] = MaraHarness.from_ollama,
+    ollama_identity_factory: Callable[..., Mapping[str, object]] | None = None,
 ) -> int:
     parser = argparse.ArgumentParser(
         description="Run the narrow 2084 autonomous-day successor"
@@ -1607,6 +1617,10 @@ def main(
         action="store_true",
         help="show explicitly omniscient successor-day evidence",
     )
+    parser.add_argument(
+        "--audit-dir",
+        help="write one new private live-run audit bundle to this directory",
+    )
     args = parser.parse_args(argv)
 
     if args.focal_policy == "ollama" and (
@@ -1625,6 +1639,8 @@ def main(
         parser.error(
             "--ollama-base-url and --ollama-model require --focal-policy ollama"
         )
+    if args.audit_dir is not None and args.focal_policy != "ollama":
+        parser.error("--audit-dir requires --focal-policy ollama")
     try:
         mara_harness = _cli_mara_harness(
             policy_name=args.focal_policy,
@@ -1634,6 +1650,31 @@ def main(
         )
     except ValueError as error:
         parser.error(str(error))
+
+    audit_reservation = None
+    audit_source_before = None
+    audit_model_identity = None
+    if args.audit_dir is not None:
+        from scenarios.autonomous_day_audit import (
+            capture_live_audit_source_state,
+            fetch_ollama_model_identity,
+            reserve_live_audit_directory,
+        )
+
+        try:
+            audit_reservation = reserve_live_audit_directory(args.audit_dir)
+            audit_source_before = capture_live_audit_source_state()
+            identity_factory = (
+                fetch_ollama_model_identity
+                if ollama_identity_factory is None
+                else ollama_identity_factory
+            )
+            audit_model_identity = identity_factory(
+                base_url=args.ollama_base_url,
+                model=args.ollama_model,
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            parser.error(str(error))
 
     day = build_autonomous_day(seed=args.seed, mara_harness=mara_harness)
     try:
@@ -1648,7 +1689,29 @@ def main(
         else render_autonomous_day(day, summary)
     )
     print(output, end="")
-    return 0 if summary.reached_end_boundary else 1
+    audit_passed = True
+    if args.audit_dir is not None:
+        from scenarios.autonomous_day_audit import write_autonomous_day_live_audit
+
+        try:
+            audit = write_autonomous_day_live_audit(
+                day=day,
+                summary=summary,
+                directory=args.audit_dir,
+                ollama_base_url=args.ollama_base_url,
+                ollama_model=args.ollama_model,
+                source_before=audit_source_before,
+                model_identity=audit_model_identity,
+                reservation=audit_reservation,
+            )
+            audit_passed = audit.passed
+        except (OSError, RuntimeError, ValueError) as error:
+            print(
+                f"Live audit bundle failed: {type(error).__name__}",
+                file=sys.stderr,
+            )
+            audit_passed = False
+    return 0 if summary.reached_end_boundary and audit_passed else 1
 
 
 if __name__ == "__main__":

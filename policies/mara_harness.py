@@ -24,10 +24,11 @@ class MaraHarness:
     It owns no world, scheduling, validation, consequence, or character state.
     """
 
-    __slots__ = ("_policy",)
+    __slots__ = ("_policy", "_provider_kind")
 
-    def __init__(self, policy: ModelFocalPolicy) -> None:
+    def __init__(self, policy: ModelFocalPolicy, *, provider_kind: str) -> None:
         self._policy = policy
+        self._provider_kind = provider_kind
 
     @classmethod
     def from_ollama(
@@ -43,10 +44,21 @@ class MaraHarness:
             model=model,
             timeout_seconds=timeout_seconds,
         )
-        return cls.from_client(
+        return cls.from_ollama_client(client)
+
+    @classmethod
+    def from_ollama_client(
+        cls,
+        client: OllamaDecisionClient,
+    ) -> MaraHarness:
+        """Construct from the concrete adapter while retaining its provenance."""
+        if not isinstance(client, OllamaDecisionClient):
+            raise TypeError("client must be OllamaDecisionClient")
+        return cls._from_model_client(
             client,
             configuration_id=client.configuration_id,
             authorship_identity=client.authorship_identity,
+            provider_kind="ollama",
         )
 
     @classmethod
@@ -58,12 +70,29 @@ class MaraHarness:
         authorship_identity: DecisionAuthorshipIdentity | None = None,
     ) -> MaraHarness:
         """Construct Mara around one injected restricted decision client."""
+        return cls._from_model_client(
+            client,
+            configuration_id=configuration_id,
+            authorship_identity=authorship_identity,
+            provider_kind="injected",
+        )
+
+    @classmethod
+    def _from_model_client(
+        cls,
+        client: ModelDecisionClient,
+        *,
+        configuration_id: str,
+        authorship_identity: DecisionAuthorshipIdentity | None,
+        provider_kind: str,
+    ) -> MaraHarness:
         return cls(
             ModelFocalPolicy(
                 client,
                 configuration_id=configuration_id,
                 authorship_identity=authorship_identity,
-            )
+            ),
+            provider_kind=provider_kind,
         )
 
     @classmethod
@@ -74,13 +103,20 @@ class MaraHarness:
         integrity_key: bytes,
     ) -> MaraHarness:
         """Replay sealed private evidence after checking its caller-held key."""
-        return cls.from_client(
+        return cls._from_model_client(
             RecordedDecisionClient.from_archive(
                 archive,
                 integrity_key=integrity_key,
             ),
             configuration_id=RECORDED_MARA_CONFIGURATION_ID,
+            authorship_identity=None,
+            provider_kind="recorded",
         )
+
+    @property
+    def provider_kind(self) -> str:
+        """Identify the concrete provider boundary without exposing config."""
+        return self._provider_kind
 
     def choose(self, view: AgentView) -> ActionAttempt:
         """Return one attempt without validating, resolving, or applying it."""
