@@ -9,7 +9,7 @@ from policies.model_focal_policy import (
     MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES,
     MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES,
     MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-    MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS,
+    MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS,
     MAX_RESTRICTED_CONTINUITY_ENTRIES,
     ModelFocalPolicy,
     RESTRICTED_CONTINUITY_PROJECTION_KIND,
@@ -24,6 +24,7 @@ from policies.mara_decision_request import restricted_decision_input_size_bytes
 from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_first_day
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.agents import (
+    ActionContinuityRequirement,
     DiaryEntryKnowledge,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
     PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
@@ -181,7 +182,7 @@ class StructuredModelChoiceTests(unittest.TestCase):
                 },
             )
 
-    def test_structured_choice_cannot_author_result_continuity_markers(self):
+    def test_structured_choice_cannot_author_action_continuity_requirements(self):
         view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
 
         with self.assertRaises(StructuredChoiceError):
@@ -192,7 +193,9 @@ class StructuredModelChoiceTests(unittest.TestCase):
                     "parameters": {},
                     "explanation": "wait without changing canonical relevance",
                     "decision_reason": "the world owns result relevance",
-                    "continuity_relevant_action_result_ids": ["action-0001"],
+                    "continuity_requirements": [
+                        {"action_id": "action-0001"}
+                    ],
                 },
             )
 
@@ -617,6 +620,7 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "maximum_attempts": (
                     MAX_RETAINED_DECISION_HISTORY_ENTRIES
                     + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                    + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
                 ),
                 "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
                 "maximum_latest_results_by_action_kind_and_status": (
@@ -625,19 +629,19 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "maximum_results": (
                     MAX_RETAINED_DECISION_HISTORY_ENTRIES
                     + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
-                    + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+                    + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
                 ),
-                "maximum_explicit_relevant_results": (
-                    MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+                "maximum_explicit_relevant_actions": (
+                    MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
                 ),
                 "total_attempts": lifetime_count,
                 "total_results": lifetime_count,
                 "omitted_attempts": 3,
                 "omitted_results": 3,
-                "explicit_relevant_results": 0,
-                "included_explicit_relevant_results": 0,
-                "missing_explicit_relevant_results": 0,
-                "invalid_explicit_relevant_result_ids": 0,
+                "explicit_relevant_actions": 0,
+                "included_explicit_relevant_actions": 0,
+                "missing_explicit_relevant_action_sources": 0,
+                "invalid_explicit_relevant_action_requirements": 0,
                 "complete": True,
             },
         )
@@ -814,10 +818,43 @@ class ModelFocalPolicyTests(unittest.TestCase):
         )
         print("latest action-result continuity verification passed")
 
-    def test_decision_history_projection_preserves_explicitly_relevant_old_result(
+    def test_decision_history_projection_preserves_explicitly_relevant_old_action(
         self,
     ):
         view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
+        attempts = (
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="fulfill the earlier workplace obligation",
+                decision_reason="the obligation was still active",
+            ),
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="an older unmarked work attempt",
+                decision_reason="ordinary history",
+            ),
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation="the latest work attempt",
+                decision_reason="latest by kind",
+            ),
+            *(
+                ActionAttempt(
+                    actor_id=FOCAL_AGENT_ID,
+                    kind="wait",
+                    parameters={},
+                    explanation=f"later wait attempt {index:02d}",
+                    decision_reason="recent cadence",
+                )
+                for index in range(MAX_RETAINED_DECISION_HISTORY_ENTRIES + 3)
+            ),
+        )
         later_wait_results = tuple(
             ActionResult(
                 action_id=f"action-wait-{index:04d}",
@@ -868,31 +905,106 @@ class ModelFocalPolicyTests(unittest.TestCase):
         history = model_input_from_view(
             replace(
                 view,
+                obligations=tuple(
+                    obligation
+                    for obligation in view.obligations
+                    if obligation != "workplace shift"
+                ),
+                last_attempt=attempts[-1],
+                action_history=attempts,
                 action_results=results,
-                continuity_relevant_action_result_ids=(
-                    "action-work-explicitly-relevant",
+                continuity_requirements=(
+                    ActionContinuityRequirement(
+                        requirement_id="continuity-work-obligation",
+                        action_id="action-work-explicitly-relevant",
+                        attempt_event_id=(
+                            "event-attempt-work-explicitly-relevant"
+                        ),
+                        action_history_index=0,
+                        attempt=attempts[0],
+                        result=results[0],
+                        reason="fulfilled_obligation",
+                        state_field="obligations",
+                        state_value="workplace shift",
+                        lifecycle="through_selected_decision",
+                    ),
                 ),
             )
         )["decision_history"]
 
+        retained_attempts = [
+            attempt["explanation"] for attempt in history["attempts"]
+        ]
         retained_ids = [result["action_id"] for result in history["results"]]
+        self.assertIn("fulfill the earlier workplace obligation", retained_attempts)
+        self.assertIn("the latest work attempt", retained_attempts)
+        self.assertNotIn("an older unmarked work attempt", retained_attempts)
         self.assertIn("action-work-explicitly-relevant", retained_ids)
         self.assertIn("action-work-latest", retained_ids)
         self.assertNotIn("action-work-unmarked", retained_ids)
-        self.assertEqual(history["projection"]["explicit_relevant_results"], 1)
         self.assertEqual(
-            history["projection"]["included_explicit_relevant_results"], 1
+            history["projection"]["explicit_relevant_actions"], 1
+        )
+        self.assertEqual(
+            history["projection"]["included_explicit_relevant_actions"], 1
+        )
+        self.assertEqual(
+            history["continuity_requirements"],
+            [
+                {
+                    "requirement_id": "continuity-work-obligation",
+                    "reason": "fulfilled_obligation",
+                    "lifecycle": "through_selected_decision",
+                    "canonical_state": {
+                        "field": "obligations",
+                        "removed_value": "workplace shift",
+                    },
+                    "attempt": {
+                        "action_id": "action-work-explicitly-relevant",
+                        "attempt_event_id": (
+                            "event-attempt-work-explicitly-relevant"
+                        ),
+                        "actor_id": FOCAL_AGENT_ID,
+                        "kind": "work",
+                        "parameters": {},
+                        "explanation": "fulfill the earlier workplace obligation",
+                        "decision_reason": "the obligation was still active",
+                    },
+                    "result": {
+                        "action_id": "action-work-explicitly-relevant",
+                        "attempt_event_id": (
+                            "event-attempt-work-explicitly-relevant"
+                        ),
+                        "outcome_event_id": (
+                            "event-outcome-work-explicitly-relevant"
+                        ),
+                        "actor_id": FOCAL_AGENT_ID,
+                        "action_kind": "work",
+                        "status": "completed",
+                        "resolved_tick": 1,
+                        "reason": (
+                            "completed work remains relevant to a current obligation"
+                        ),
+                    },
+                }
+            ],
         )
         self.assertTrue(history["projection"]["complete"])
+        self.assertLessEqual(
+            len(history["attempts"]),
+            MAX_RETAINED_DECISION_HISTORY_ENTRIES
+            + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+            + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS,
+        )
         self.assertLessEqual(
             len(history["results"]),
             MAX_RETAINED_DECISION_HISTORY_ENTRIES
             + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
-            + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS,
+            + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS,
         )
-        print("explicit relevant action-result continuity verification passed")
+        print("explicit relevant action continuity verification passed")
 
-    def test_explicit_relevant_action_result_marker_fails_closed_when_unresolvable(
+    def test_explicit_relevant_action_requirement_fails_closed_when_unresolvable(
         self,
     ):
         view = build_first_day(seed=42).agent_view(FOCAL_AGENT_ID)
@@ -904,45 +1016,263 @@ class ModelFocalPolicyTests(unittest.TestCase):
                 "decision_reason": "the provider should not be called",
             }
         )
-        unknown_marker_view = replace(
+        unknown_requirement_view = replace(
             view,
-            continuity_relevant_action_result_ids=("action-that-does-not-exist",),
+            continuity_requirements=(
+                ActionContinuityRequirement(
+                    requirement_id="continuity-missing-action",
+                    action_id="action-that-does-not-exist",
+                    attempt_event_id="event-that-does-not-exist",
+                    action_history_index=0,
+                    attempt=ActionAttempt(
+                        actor_id=FOCAL_AGENT_ID,
+                        kind="work",
+                        parameters={},
+                        explanation="missing source attempt",
+                    ),
+                    result=ActionResult(
+                        action_id="action-that-does-not-exist",
+                        attempt_event_id="event-that-does-not-exist",
+                        outcome_event_id="event-result-that-does-not-exist",
+                        actor_id=FOCAL_AGENT_ID,
+                        action_kind="work",
+                        status="completed",
+                        resolved_tick=1,
+                    ),
+                    reason="fulfilled_obligation",
+                    state_field="obligations",
+                    state_value="workplace shift",
+                    lifecycle="through_selected_decision",
+                ),
+            ),
         )
 
-        attempt = model_policy(client).choose(unknown_marker_view)
-        projection = model_input_from_view(unknown_marker_view)["decision_history"][
-            "projection"
-        ]
+        attempt = model_policy(client).choose(unknown_requirement_view)
+        projection = model_input_from_view(unknown_requirement_view)[
+            "decision_history"
+        ]["projection"]
 
         self.assertEqual(client.inputs, [])
         self.assertEqual(attempt.kind, "wait")
         self.assertFalse(projection["complete"])
-        self.assertEqual(projection["missing_explicit_relevant_results"], 1)
+        self.assertEqual(
+            projection["missing_explicit_relevant_action_sources"], 1
+        )
 
-        over_cap_marker_view = replace(
+        contradictory_attempt = ActionAttempt(
+            actor_id=FOCAL_AGENT_ID,
+            kind="work",
+            parameters={},
+            explanation="a requirement cannot contradict current state",
+            decision_reason="positive invalid-state control",
+        )
+        contradictory_result = ActionResult(
+            action_id="action-contradictory-requirement",
+            attempt_event_id="event-contradictory-requirement-attempt",
+            outcome_event_id="event-contradictory-requirement-result",
+            actor_id=FOCAL_AGENT_ID,
+            action_kind="work",
+            status="completed",
+            resolved_tick=1,
+        )
+        active_obligation = view.obligations[0]
+        contradictory_requirement_view = replace(
             view,
-            action_results=tuple(
-                ActionResult(
+            last_attempt=contradictory_attempt,
+            action_history=(contradictory_attempt,),
+            action_results=(contradictory_result,),
+            continuity_requirements=(
+                ActionContinuityRequirement(
+                    requirement_id="continuity-contradictory-requirement",
+                    action_id=contradictory_result.action_id,
+                    attempt_event_id=contradictory_result.attempt_event_id,
+                    action_history_index=0,
+                    attempt=contradictory_attempt,
+                    result=contradictory_result,
+                    reason="fulfilled_obligation",
+                    state_field="obligations",
+                    state_value=active_obligation,
+                    lifecycle="through_selected_decision",
+                ),
+            ),
+        )
+        contradictory_policy = model_policy(client)
+        contradictory_policy.choose(contradictory_requirement_view)
+        contradictory_projection = model_input_from_view(
+            contradictory_requirement_view
+        )["decision_history"]["projection"]
+
+        self.assertEqual(client.inputs, [])
+        self.assertFalse(contradictory_projection["complete"])
+        self.assertEqual(
+            contradictory_projection[
+                "invalid_explicit_relevant_action_requirements"
+            ],
+            1,
+        )
+
+        stored_attempt = ActionAttempt(
+            actor_id=FOCAL_AGENT_ID,
+            kind="work",
+            parameters={},
+            explanation="the exact fulfilled-obligation attempt",
+            decision_reason="exact-source validation control",
+        )
+        substituted_attempt = replace(
+            stored_attempt,
+            explanation="a different same-kind attempt at the claimed row",
+        )
+        completed_result = ActionResult(
+            action_id="action-exact-source",
+            attempt_event_id="event-exact-source-attempt",
+            outcome_event_id="event-exact-source-result",
+            actor_id=FOCAL_AGENT_ID,
+            action_kind="work",
+            status="completed",
+            resolved_tick=1,
+        )
+
+        def exact_source_requirement() -> ActionContinuityRequirement:
+            return ActionContinuityRequirement(
+                requirement_id="continuity-exact-source",
+                action_id=completed_result.action_id,
+                attempt_event_id=completed_result.attempt_event_id,
+                action_history_index=0,
+                attempt=stored_attempt,
+                result=completed_result,
+                reason="fulfilled_obligation",
+                state_field="obligations",
+                state_value="workplace shift",
+                lifecycle="through_selected_decision",
+            )
+
+        duplicate_action_id = replace(
+            completed_result,
+            attempt_event_id="event-duplicate-action-attempt",
+            outcome_event_id="event-duplicate-action-result",
+        )
+        duplicate_attempt_event = replace(
+            completed_result,
+            action_id="action-duplicate-attempt-event",
+            outcome_event_id="event-duplicate-attempt-result",
+        )
+        duplicate_outcome_event = replace(
+            completed_result,
+            action_id="action-duplicate-outcome-event",
+            attempt_event_id="event-duplicate-outcome-attempt",
+        )
+        rejected_result = replace(completed_result, status="rejected")
+        substituted_result = replace(
+            completed_result,
+            outcome_event_id="event-forged-completed-result",
+            resolved_tick=999,
+            reason="forged completed result at the correct action identity",
+        )
+        invalid_source_cases = {
+            "substituted same-kind attempt": (
+                (substituted_attempt,),
+                (completed_result,),
+            ),
+            "rejected result": ((stored_attempt,), (rejected_result,)),
+            "substituted completed result": (
+                (stored_attempt,),
+                (substituted_result,),
+            ),
+            "duplicate action id": (
+                (stored_attempt,),
+                (completed_result, duplicate_action_id),
+            ),
+            "duplicate attempt event id": (
+                (stored_attempt,),
+                (completed_result, duplicate_attempt_event),
+            ),
+            "duplicate outcome event id": (
+                (stored_attempt,),
+                (completed_result, duplicate_outcome_event),
+            ),
+        }
+        for label, (history_attempts, history_results) in invalid_source_cases.items():
+            with self.subTest(invalid_explicit_source=label):
+                invalid_source_view = replace(
+                    view,
+                    obligations=tuple(
+                        obligation
+                        for obligation in view.obligations
+                        if obligation != "workplace shift"
+                    ),
+                    last_attempt=history_attempts[-1],
+                    action_history=history_attempts,
+                    action_results=history_results,
+                    continuity_requirements=(exact_source_requirement(),),
+                )
+                safe_attempt = model_policy(client).choose(invalid_source_view)
+                invalid_projection = model_input_from_view(invalid_source_view)[
+                    "decision_history"
+                ]["projection"]
+
+                self.assertEqual(client.inputs, [])
+                self.assertEqual(safe_attempt.kind, "wait")
+                self.assertFalse(invalid_projection["complete"])
+                self.assertEqual(
+                    invalid_projection[
+                        "invalid_explicit_relevant_action_requirements"
+                    ],
+                    1,
+                )
+
+        relevant_attempts = tuple(
+            ActionAttempt(
+                actor_id=FOCAL_AGENT_ID,
+                kind="work",
+                parameters={},
+                explanation=f"relevant work {index:04d}",
+                decision_reason="over-cap continuity control",
+            )
+            for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS + 1)
+        )
+        relevant_results = tuple(
+            ActionResult(
+                action_id=f"action-relevant-{index:04d}",
+                attempt_event_id=f"event-attempt-relevant-{index:04d}",
+                outcome_event_id=f"event-outcome-relevant-{index:04d}",
+                actor_id=FOCAL_AGENT_ID,
+                action_kind="work",
+                status="completed",
+                resolved_tick=index + 1,
+                reason="an explicitly relevant result",
+            )
+            for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS + 1)
+        )
+        over_cap_requirement_view = replace(
+            view,
+            obligations=tuple(
+                obligation
+                for obligation in view.obligations
+                if obligation != "workplace shift"
+            ),
+            last_attempt=relevant_attempts[-1],
+            action_history=relevant_attempts,
+            action_results=relevant_results,
+            continuity_requirements=tuple(
+                ActionContinuityRequirement(
+                    requirement_id=f"continuity-relevant-{index:04d}",
                     action_id=f"action-relevant-{index:04d}",
                     attempt_event_id=f"event-attempt-relevant-{index:04d}",
-                    outcome_event_id=f"event-outcome-relevant-{index:04d}",
-                    actor_id=FOCAL_AGENT_ID,
-                    action_kind="wait",
-                    status="completed",
-                    resolved_tick=index + 1,
-                    reason="an explicitly relevant result",
+                    action_history_index=index,
+                    attempt=relevant_attempts[index],
+                    result=relevant_results[index],
+                    reason="fulfilled_obligation",
+                    state_field="obligations",
+                    state_value="workplace shift",
+                    lifecycle="through_selected_decision",
                 )
-                for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1)
-            ),
-            continuity_relevant_action_result_ids=tuple(
-                f"action-relevant-{index:04d}"
-                for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1)
+                for index in range(MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS + 1)
             ),
         )
         policy = model_policy(client)
-        over_cap_attempt = policy.choose(over_cap_marker_view)
+        over_cap_attempt = policy.choose(over_cap_requirement_view)
         record = policy.take_decision_record()
-        over_cap_projection = model_input_from_view(over_cap_marker_view)[
+        over_cap_projection = model_input_from_view(over_cap_requirement_view)[
             "decision_history"
         ]["projection"]
 
@@ -950,13 +1280,19 @@ class ModelFocalPolicyTests(unittest.TestCase):
         self.assertEqual(over_cap_attempt.kind, "wait")
         self.assertFalse(over_cap_projection["complete"])
         self.assertEqual(
-            over_cap_projection["explicit_relevant_results"],
-            MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS + 1,
+            over_cap_projection["explicit_relevant_actions"],
+            MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS + 1,
+        )
+        self.assertEqual(
+            over_cap_projection[
+                "invalid_explicit_relevant_action_requirements"
+            ],
+            0,
         )
         self.assertIsNotNone(record)
         self.assertEqual(record.failure_kind, "continuity_projection_incomplete")
         self.assertFalse(record.provider_call_attempted)
-        print("explicit relevant action-result marker failure verification passed")
+        print("explicit relevant action requirement failure verification passed")
 
     def test_decision_history_collection_size_stops_growing_after_its_window(self):
         simulation = build_first_day(seed=42)

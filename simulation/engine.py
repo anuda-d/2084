@@ -349,9 +349,7 @@ class Simulation:
                 agent.location == self.rules.allocation_location
             ),
             valid_actions=tuple(sorted(ACTION_KINDS)),
-            continuity_relevant_action_result_ids=(
-                agent.continuity_relevant_action_result_ids
-            ),
+            continuity_requirements=agent.continuity_requirements,
         )
 
     def agent_view(self, agent_id: str) -> AgentView:

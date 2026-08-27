@@ -19,7 +19,11 @@ from simulation.actions import (
     action_parameter_contract_data,
     action_parameter_shape_error,
 )
-from simulation.agents import AgentView, PolicyDecisionRecord
+from simulation.agents import (
+    ActionContinuityRequirement,
+    AgentView,
+    PolicyDecisionRecord,
+)
 from simulation.events import freeze_mapping, to_plain_data
 
 
@@ -29,8 +33,8 @@ _ACTION_RESULT_CONTINUITY_STATUSES = frozenset(("completed", "rejected"))
 MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = (
     len(ACTION_PARAMETER_CONTRACTS) * len(_ACTION_RESULT_CONTINUITY_STATUSES)
 )
-MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS = 8
-DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_explicit_relevant_action_result_ids_v3"
+MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS = 8
+DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_explicit_action_requirements_v4"
 MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
 RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
@@ -252,11 +256,12 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
     action can still explain a current choice. For outcomes, the latest
     completed and latest rejected result of one supported action kind can each
     matter, so retain one of each as an explicit bounded continuity rule. A
-    world-owned result-id marker can additionally identify a particular older
-    result as relevant to current canonical state. The marker closure is capped
-    and must resolve to actor-safe results; otherwise the policy refuses to
-    send a partial history to a provider. No structured model response can
-    author or change these markers.
+    world-owned requirement can additionally identify the exact older attempt
+    and result that still explain current canonical state, together with the
+    reason and lifecycle. The requirement closure is capped and must resolve
+    entirely inside actor-safe history; otherwise the policy refuses to send a
+    partial history to a provider. No structured model response can author or
+    change these requirements.
     """
     supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
     latest_attempt_index_by_kind: dict[str, int] = {}
@@ -270,11 +275,6 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
         )
     )
     included_attempt_indexes.update(latest_attempt_index_by_kind.values())
-    attempts = tuple(
-        attempt
-        for index, attempt in enumerate(view.action_history)
-        if index in included_attempt_indexes
-    )
     latest_result_index_by_kind_and_status: dict[tuple[str, str], int] = {}
     for index, result in enumerate(view.action_results):
         if (
@@ -291,40 +291,96 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
         )
     )
     included_result_indexes.update(latest_result_index_by_kind_and_status.values())
-    result_index_by_action_id = {
-        result.action_id: index for index, result in enumerate(view.action_results)
-    }
-    requested_relevant_ids: list[str] = []
-    invalid_relevant_ids = 0
-    for action_id in view.continuity_relevant_action_result_ids:
-        if not isinstance(action_id, str) or not action_id:
-            invalid_relevant_ids += 1
+    result_indexes_by_action_id: dict[str, list[int]] = {}
+    result_indexes_by_attempt_event_id: dict[str, list[int]] = {}
+    result_indexes_by_outcome_event_id: dict[str, list[int]] = {}
+    for index, result in enumerate(view.action_results):
+        result_indexes_by_action_id.setdefault(result.action_id, []).append(index)
+        result_indexes_by_attempt_event_id.setdefault(
+            result.attempt_event_id, []
+        ).append(index)
+        result_indexes_by_outcome_event_id.setdefault(
+            result.outcome_event_id, []
+        ).append(index)
+    requirements = tuple(view.continuity_requirements)
+    retained_requirements = requirements[:MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS]
+    seen_requirement_ids: set[str] = set()
+    seen_action_ids: set[str] = set()
+    invalid_requirements = 0
+    missing_requirement_sources = 0
+    included_requirements: list[
+        tuple[ActionContinuityRequirement, ActionAttempt, ActionResult]
+    ] = []
+    for requirement in retained_requirements:
+        if not isinstance(requirement, ActionContinuityRequirement):
+            invalid_requirements += 1
             continue
-        if action_id not in requested_relevant_ids:
-            requested_relevant_ids.append(action_id)
-    retained_relevant_ids = tuple(
-        requested_relevant_ids[:MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS]
-    )
-    missing_relevant_ids = tuple(
-        action_id
-        for action_id in retained_relevant_ids
-        if action_id not in result_index_by_action_id
-    )
-    included_result_indexes.update(
-        result_index_by_action_id[action_id]
-        for action_id in retained_relevant_ids
-        if action_id in result_index_by_action_id
+        if (
+            requirement.requirement_id in seen_requirement_ids
+            or requirement.action_id in seen_action_ids
+        ):
+            invalid_requirements += 1
+            continue
+        seen_requirement_ids.add(requirement.requirement_id)
+        seen_action_ids.add(requirement.action_id)
+        matching_result_indexes = result_indexes_by_action_id.get(
+            requirement.action_id, []
+        )
+        matching_attempt_event_indexes = result_indexes_by_attempt_event_id.get(
+            requirement.attempt_event_id, []
+        )
+        attempt_index = requirement.action_history_index
+        if (
+            not matching_result_indexes
+            or attempt_index >= len(view.action_history)
+        ):
+            missing_requirement_sources += 1
+            continue
+        if (
+            len(matching_result_indexes) != 1
+            or len(matching_attempt_event_indexes) != 1
+            or matching_result_indexes != matching_attempt_event_indexes
+        ):
+            invalid_requirements += 1
+            continue
+        result_index = matching_result_indexes[0]
+        attempt = view.action_history[attempt_index]
+        result = view.action_results[result_index]
+        if (
+            attempt.actor_id != view.agent_id
+            or attempt != requirement.attempt
+            or result.actor_id != view.agent_id
+            or result != requirement.result
+            or result.action_id != requirement.action_id
+            or result.attempt_event_id != requirement.attempt_event_id
+            or result.action_kind != attempt.kind
+            or result.status != "completed"
+            or len(
+                result_indexes_by_outcome_event_id.get(result.outcome_event_id, [])
+            )
+            != 1
+            or requirement.state_value in view.obligations
+        ):
+            invalid_requirements += 1
+            continue
+        included_attempt_indexes.add(attempt_index)
+        included_result_indexes.add(result_index)
+        included_requirements.append((requirement, attempt, result))
+    attempts = tuple(
+        attempt
+        for index, attempt in enumerate(view.action_history)
+        if index in included_attempt_indexes
     )
     results = tuple(
         result
         for index, result in enumerate(view.action_results)
         if index in included_result_indexes
     )
-    relevant_result_closure_complete = (
-        invalid_relevant_ids == 0
-        and len(requested_relevant_ids)
-        <= MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
-        and not missing_relevant_ids
+    requirement_closure_complete = (
+        invalid_requirements == 0
+        and len(requirements) <= MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
+        and missing_requirement_sources == 0
+        and len(included_requirements) == len(requirements)
     )
     return {
         "projection": {
@@ -336,6 +392,7 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
             "maximum_attempts": (
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES
                 + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
             ),
             "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
             "maximum_latest_results_by_action_kind_and_status": (
@@ -344,21 +401,24 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
             "maximum_results": (
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES
                 + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
-                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
             ),
-            "maximum_explicit_relevant_results": (
-                MAX_RETAINED_EXPLICIT_RELEVANT_ACTION_RESULTS
+            "maximum_explicit_relevant_actions": (
+                MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
             ),
             "total_attempts": len(view.action_history),
             "total_results": len(view.action_results),
             "omitted_attempts": len(view.action_history) - len(attempts),
             "omitted_results": len(view.action_results) - len(results),
-            "explicit_relevant_results": len(requested_relevant_ids),
-            "included_explicit_relevant_results": len(retained_relevant_ids)
-            - len(missing_relevant_ids),
-            "missing_explicit_relevant_results": len(missing_relevant_ids),
-            "invalid_explicit_relevant_result_ids": invalid_relevant_ids,
-            "complete": relevant_result_closure_complete,
+            "explicit_relevant_actions": len(requirements),
+            "included_explicit_relevant_actions": len(included_requirements),
+            "missing_explicit_relevant_action_sources": (
+                missing_requirement_sources
+            ),
+            "invalid_explicit_relevant_action_requirements": (
+                invalid_requirements
+            ),
+            "complete": requirement_closure_complete,
         },
         "last_attempt": _attempt_data(view.last_attempt),
         "attempts": [_attempt_data(attempt) for attempt in attempts],
@@ -374,6 +434,33 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
                 "reason": result.reason,
             }
             for result in results
+        ],
+        "continuity_requirements": [
+            {
+                "requirement_id": requirement.requirement_id,
+                "reason": requirement.reason,
+                "lifecycle": requirement.lifecycle,
+                "canonical_state": {
+                    "field": requirement.state_field,
+                    "removed_value": requirement.state_value,
+                },
+                "attempt": {
+                    "action_id": requirement.action_id,
+                    "attempt_event_id": requirement.attempt_event_id,
+                    **(_attempt_data(attempt) or {}),
+                },
+                "result": {
+                    "action_id": result.action_id,
+                    "attempt_event_id": result.attempt_event_id,
+                    "outcome_event_id": result.outcome_event_id,
+                    "actor_id": result.actor_id,
+                    "action_kind": result.action_kind,
+                    "status": result.status,
+                    "resolved_tick": result.resolved_tick,
+                    "reason": result.reason,
+                },
+            }
+            for requirement, attempt, result in included_requirements
         ],
     }
 

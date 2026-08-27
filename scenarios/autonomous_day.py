@@ -6,10 +6,12 @@ import argparse
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Literal
 
 from policies.mara_harness import MaraHarness
 from simulation.actions import ActionAttempt, ActionResult, PendingAction
 from simulation.agents import (
+    ActionContinuityRequirement,
     AgentState,
     AgentView,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
@@ -61,6 +63,62 @@ _MARA_TRAVEL_DURATION_MINUTES = 30
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
+
+
+@dataclass(frozen=True)
+class MaraActionContinuityRule:
+    """Scenario-owned classification for one action's lasting context."""
+
+    retention: Literal[
+        "canonical_current_state",
+        "recent_result_only",
+        "fulfilled_obligation_requirement",
+    ]
+    obligation: str | None = None
+
+    def __post_init__(self) -> None:
+        requires_obligation = self.retention == "fulfilled_obligation_requirement"
+        if requires_obligation != (self.obligation is not None):
+            raise ValueError(
+                "only fulfilled-obligation continuity rules name an obligation"
+            )
+
+
+AUTONOMOUS_DAY_MARA_RESOLVER_KINDS = frozenset(
+    ("travel", "work", "household", "wait")
+)
+
+
+# The classification must cover the resolver's independently declared finite
+# vocabulary. A regression test keeps the sets equal as either side evolves.
+AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES = {
+    "travel": MaraActionContinuityRule("canonical_current_state"),
+    "work": MaraActionContinuityRule(
+        "fulfilled_obligation_requirement",
+        obligation="workplace shift",
+    ),
+    "household": MaraActionContinuityRule(
+        "fulfilled_obligation_requirement",
+        obligation="household time",
+    ),
+    "wait": MaraActionContinuityRule("recent_result_only"),
+}
+
+
+def autonomous_day_mara_valid_actions(location: str) -> tuple[str, ...]:
+    """Return locally available actions from the classified resolver vocabulary."""
+
+    candidates = (
+        ("travel", "work", "wait")
+        if location == "workplace"
+        else ("household", "travel", "wait")
+    )
+    return tuple(
+        kind
+        for kind in candidates
+        if kind in AUTONOMOUS_DAY_MARA_RESOLVER_KINDS
+    )
+
 
 MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
@@ -293,15 +351,9 @@ def build_autonomous_day(
             ),
             work_action_available=mara.location == "workplace",
             allocation_action_available=False,
-            valid_actions=(
-                ("travel", "work", "wait")
-                if mara.location == "workplace"
-                else ("household", "travel", "wait")
-            ),
+            valid_actions=autonomous_day_mara_valid_actions(mara.location),
             household_action_available=mara.location == "home",
-            continuity_relevant_action_result_ids=(
-                mara.continuity_relevant_action_result_ids
-            ),
+            continuity_requirements=mara.continuity_requirements,
         )
 
     def dispatch_mara_decision(
@@ -336,12 +388,16 @@ def build_autonomous_day(
                 failure_id=decision_record.decision_id,
             )
             return
-        consumed_result_ids = set(view.continuity_relevant_action_result_ids)
+        consumed_requirement_ids = {
+            requirement.requirement_id
+            for requirement in view.continuity_requirements
+        }
         mara = world.agents[MARA_ID]
-        mara.continuity_relevant_action_result_ids = tuple(
-            action_id
-            for action_id in mara.continuity_relevant_action_result_ids
-            if action_id not in consumed_result_ids
+        mara.continuity_requirements = tuple(
+            requirement
+            for requirement in mara.continuity_requirements
+            if requirement.requirement_id not in consumed_requirement_ids
+            or requirement.state_value in mara.obligations
         )
 
     def replace_latest_private_decision_record(
@@ -410,6 +466,53 @@ def build_autonomous_day(
         world.agents[MARA_ID].action_results.append(result)
         return result
 
+    def register_fulfilled_obligation_requirement(
+        *,
+        mara: AgentState,
+        pending: PendingAction,
+        result: ActionResult,
+        obligation: str,
+    ) -> None:
+        rule = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES.get(
+            pending.attempt.kind
+        )
+        if (
+            rule is None
+            or rule.retention != "fulfilled_obligation_requirement"
+            or rule.obligation != obligation
+            or result.status != "completed"
+            or result.action_kind != pending.attempt.kind
+            or result.action_id != pending.action_id
+            or result.attempt_event_id != pending.attempt_event_id
+        ):
+            raise RuntimeError(
+                "action does not match its fulfilled-obligation continuity rule"
+            )
+        if not mara.action_history or mara.action_history[-1] != pending.attempt:
+            raise RuntimeError(
+                "fulfilled obligation action is not the latest Mara attempt"
+            )
+        if any(
+            requirement.action_id == result.action_id
+            for requirement in mara.continuity_requirements
+        ):
+            raise RuntimeError("action already has a continuity requirement")
+        mara.continuity_requirements = (
+            *mara.continuity_requirements,
+            ActionContinuityRequirement(
+                requirement_id=f"continuity-{result.action_id}",
+                action_id=result.action_id,
+                attempt_event_id=result.attempt_event_id,
+                action_history_index=len(mara.action_history) - 1,
+                attempt=pending.attempt,
+                result=result,
+                reason="fulfilled_obligation",
+                state_field="obligations",
+                state_value=obligation,
+                lifecycle="through_selected_decision",
+            ),
+        )
+
     def reject_mara_attempt(
         attempt: ActionAttempt,
         attempted: Event,
@@ -457,17 +560,26 @@ def build_autonomous_day(
         mara = world.agents[MARA_ID]
         mara.last_attempt = attempt
         mara.action_history.append(attempt)
+        continuity_rule = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES.get(
+            attempt.kind
+        )
+        resolver_supports_kind = attempt.kind in AUTONOMOUS_DAY_MARA_RESOLVER_KINDS
         travel_destination = attempt.parameters.get("destination")
         accepted = (
-            attempt.kind == "wait"
-            or (attempt.kind == "household" and mara.location == "home")
-            or (
-                attempt.kind == "work" and mara.location == "workplace"
-            )
-            or (
-                attempt.kind == "travel"
-                and isinstance(travel_destination, str)
-                and travel_destination in world.travel_graph.get(mara.location, ())
+            resolver_supports_kind
+            and continuity_rule is not None
+            and (
+                attempt.kind == "wait"
+                or (attempt.kind == "household" and mara.location == "home")
+                or (
+                    attempt.kind == "work" and mara.location == "workplace"
+                )
+                or (
+                    attempt.kind == "travel"
+                    and isinstance(travel_destination, str)
+                    and travel_destination
+                    in world.travel_graph.get(mara.location, ())
+                )
             )
         )
         replace_latest_private_decision_record(
@@ -577,7 +689,11 @@ def build_autonomous_day(
                 )
             )
             return
-        if attempt.kind != "travel":
+        if (
+            not resolver_supports_kind
+            or continuity_rule is None
+            or attempt.kind != "travel"
+        ):
             reject_mara_attempt(
                 attempt,
                 attempted,
@@ -721,9 +837,11 @@ def build_autonomous_day(
                 for obligation in mara.obligations
                 if obligation != "workplace shift"
             )
-            mara.continuity_relevant_action_result_ids = (
-                *mara.continuity_relevant_action_result_ids,
-                result.action_id,
+            register_fulfilled_obligation_requirement(
+                mara=mara,
+                pending=pending,
+                result=result,
+                obligation="workplace shift",
             )
         resolve_private_decision_record(result)
         context.request_decision(
@@ -771,9 +889,11 @@ def build_autonomous_day(
                 for obligation in mara.obligations
                 if obligation != "household time"
             )
-            mara.continuity_relevant_action_result_ids = (
-                *mara.continuity_relevant_action_result_ids,
-                result.action_id,
+            register_fulfilled_obligation_requirement(
+                mara=mara,
+                pending=pending,
+                result=result,
+                obligation="household time",
             )
         resolve_private_decision_record(result)
         context.request_decision(
@@ -1342,6 +1462,8 @@ def model_context_count_measurements(
     decision_history = {
         "attempts_included": 0,
         "results_included": 0,
+        "continuity_requirements_included": 0,
+        "active_continuity_requirements": 0,
         "total_attempts": 0,
         "total_results": 0,
         "omitted_attempts": 0,
@@ -1370,9 +1492,20 @@ def model_context_count_measurements(
                     value = projection.get(field)
                     if isinstance(value, int) and not isinstance(value, bool):
                         decision_history[field] = max(decision_history[field], value)
+                active_requirements = projection.get(
+                    "explicit_relevant_actions"
+                )
+                if isinstance(active_requirements, int) and not isinstance(
+                    active_requirements, bool
+                ):
+                    decision_history["active_continuity_requirements"] = max(
+                        decision_history["active_continuity_requirements"],
+                        active_requirements,
+                    )
             for field, input_field in (
                 ("attempts_included", "attempts"),
                 ("results_included", "results"),
+                ("continuity_requirements_included", "continuity_requirements"),
             ):
                 entries = history.get(input_field)
                 if isinstance(entries, tuple):

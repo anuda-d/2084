@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
+Status: active; AD-1 through AD-11 are met. AD-12 is open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 bounded obligation-result relevance lifecycle (2026-08-26)
-- Verified implementation runs since alignment: 2
+- Last completed run: AD-7 explicit action continuity lifecycle (2026-08-26)
+- Verified implementation runs since alignment: 0
 - Alignment due: no
 
 ## Goal Progress
@@ -23,7 +23,7 @@ implementation sequence.
 | AD-4 Ordinary focal rhythm | met | Model-selected choices give Mara world-owned opportunities for a 60-minute rest, travel, 120-minute workplace work, and 60-minute household activity. Each is an attempted action resolved by the world, with no required dramatic route or scripted focal substitution. This establishes the goal's basic ordinary rhythm, not a general needs or employment system. |
 | AD-5 Independently living world | met | Ilan independently starts and completes one authored two-hour workplace action, and the transit authority independently changes objective service state while Mara is inactive. Both are scheduled without focal interaction and retain append-only evidence. This proves authored schedule independence, not supporting policy choice, broad autonomy, or a society simulation. |
 | AD-6 Knowledge and consequence | met | The objective transit change grants Mara no knowledge itself. Only the authored home bulletin delivers its source-linked consequence; that delivery creates canonical understanding before an optional restricted decision view. Inaccessible locations produce no delivery, understanding, callback, or model input. This proves one concrete access path, not general inference or conflict handling. |
-| AD-7 Bounded model continuity | open | The Ollama boundary enforces 48 KiB input, private records enforce 8 MiB retention, and decision history retains the recent 16 attempts/results plus the latest attempt of each finite supported action kind and the latest completed and rejected result of each kind. It can also retain up to eight world-owned, explicitly marked action-result IDs even when an older same-kind result falls outside those windows; unresolved, malformed, or over-cap markers safely fail before a provider call. The successor runtime enforces exactly 128 dedicated decision-handler invocations for every marked model-bounded actor: call 128 is valid and call 129 is terminal before invocation. An injected successor `MaraHarness` now receives only the composition's restricted `AgentView`; its private records are retained, linked to the resulting action attempt and outcome, and excluded from objective history and normal output. Delivered observations that source retained beliefs, traces, stances, or accessible diary entries survive a bounded context window; any oversized required closure or unlinked retained diary entry safely fails before a provider call. The ordinary-day composition removes Mara's fulfilled workplace-shift and household-time obligations and retains each exact first fulfillment result in every failed request and retry through the first selected decision, then clears that temporary marker because the changed obligation state remains canonical; later voluntary work or household activity creates no marker. Older action attempts and other semantic relevance lifecycles remain outside this result-only mechanism, so full relevance preservation remains unproven. |
+| AD-7 Bounded model continuity | met | The Ollama request remains capped at 48 KiB, retained private records at 8 MiB, and marked actor decision handling at exactly 128 invocations. Recent 16-entry history is supplemented by the latest attempt and latest completed/rejected result per finite kind. The autonomous-day world can additionally retain up to eight typed requirements that freeze one exact actor-safe attempt/result pair, its source identities, the canonical consequence it explains, and its selected-decision clearing lifecycle. Missing, substituted, mismatched, duplicate, or over-cap sources fail before a provider call. A scenario-owned classification table covers exactly the four accepted successor kinds: travel is explained by canonical location/reachability, wait/rest has no persistent consequence, rejection changes no canonical state, and the first work or household completion retains its fulfilled-obligation pair through failures until a selected decision receives it; voluntary repeats add nothing. Two equal complete days retain equal bounded inputs and finish with no unresolved requirements. Source-linked belief, trace, stance, diary, and observation closure remains bounded and fail-closed without hidden-world or model-authored relevance. |
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
@@ -92,6 +92,33 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-7 explicit action continuity completion
+
+- World-owned continuity requirements replace the earlier raw result-ID
+  markers. Each bounded row freezes the exact actor-safe attempt and result,
+  source identities, explained canonical obligation transition, and
+  `through_selected_decision` lifecycle. The generic model projection verifies
+  the whole pair and refuses a provider call for a missing, substituted,
+  rejected, mismatched, duplicate, or over-cap source.
+- The autonomous-day composition owns the meanings rather than the generic
+  policy. Its independently declared four-kind resolver vocabulary has an
+  exhaustive classification: travel persists through current location and
+  reachability, wait/rest has no lasting consequence, and only the first work
+  or household fulfillment creates a temporary exact-pair requirement. A
+  failure retains that row for retry; a selected decision clears only the rows
+  in the view it received while the obligation remains fulfilled.
+- Focused tests force the exact pair outside ordinary windows, exercise forged
+  same-kind attempts, forged completed results, rejected and duplicate source
+  identities, a valid nine-row over-cap boundary, both obligation lifecycles,
+  voluntary repeats, and classification-set equality. Two equal deterministic
+  complete days retain equal bounded evidence and end with no unresolved row.
+  The complete offline check passes 213 current and 63 historical tests, and
+  whitespace validation is clean.
+- Two independent Sol-high reviews found no remaining blocker after exact
+  attempt/result snapshots, registration identity checks, and the
+  scenario-owned exhaustive classification were added. This closes AD-7 only;
+  AD-12 remains open for the separately owner-authorized live Ollama day.
 
 ### 2026-08-26 — AD-7 bounded obligation-result relevance lifecycle
 
