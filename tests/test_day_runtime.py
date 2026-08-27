@@ -250,6 +250,80 @@ class AcceleratedDayRuntimeTests(unittest.TestCase):
             runtime.run()
         self.assertEqual(runtime.summary().to_data(), before_retry)
 
+    def test_dispatch_commit_observer_runs_only_after_successful_handlers(self):
+        committed: list[tuple[int, str, str]] = []
+
+        def record_commit(sequence, work):
+            committed.append((sequence, work.item_id, work.phase.name.lower()))
+
+        successful = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={"success": lambda work, context: None},
+            on_dispatch_committed=record_commit,
+        )
+        successful.schedule(
+            ScheduledWork(
+                "successful-work",
+                successful.start.plus_minutes(10),
+                TemporalPhase.SCHEDULED_WORLD,
+                "success",
+            )
+        )
+
+        successful.run()
+
+        self.assertEqual(committed, [(1, "successful-work", "scheduled_world")])
+
+        def fail(work, context):
+            raise ValueError()
+
+        failed = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={"failure": fail},
+            on_dispatch_committed=record_commit,
+        )
+        failed.schedule(
+            ScheduledWork(
+                "failed-work",
+                failed.start.plus_minutes(10),
+                TemporalPhase.SCHEDULED_WORLD,
+                "failure",
+            )
+        )
+
+        with self.assertRaises(ValueError):
+            failed.run()
+
+        self.assertEqual(committed, [(1, "successful-work", "scheduled_world")])
+
+        def fail_after_commit(sequence, work):
+            raise RuntimeError("observer failure")
+
+        observer_failed = AcceleratedDayRuntime(
+            start=self._start(),
+            handlers={"success": lambda work, context: None},
+            on_dispatch_committed=fail_after_commit,
+        )
+        observer_failed.schedule(
+            ScheduledWork(
+                "committed-before-observer-failure",
+                observer_failed.start.plus_minutes(10),
+                TemporalPhase.SCHEDULED_WORLD,
+                "success",
+            )
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "observer failure"):
+            observer_failed.run()
+
+        observer_failure = observer_failed.runtime_failure
+        self.assertEqual(observer_failure.committed_work_count, 1)
+        self.assertIsNone(observer_failure.failed_dispatch)
+        self.assertEqual(
+            [work.item_id for work in observer_failed.summary().executed_work],
+            ["committed-before-observer-failure"],
+        )
+
     def test_failed_dispatch_sequence_follows_committed_same_minute_work(self):
         def fail(work, context):
             raise ValueError()

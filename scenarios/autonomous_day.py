@@ -6,10 +6,12 @@ import argparse
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Literal
 
 from policies.mara_harness import MaraHarness
 from simulation.actions import ActionAttempt, ActionResult, PendingAction
 from simulation.agents import (
+    ActionContinuityRequirement,
     AgentState,
     AgentView,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
@@ -62,6 +64,62 @@ _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
 
+
+@dataclass(frozen=True)
+class MaraActionContinuityRule:
+    """Scenario-owned classification for one action's lasting context."""
+
+    retention: Literal[
+        "canonical_current_state",
+        "recent_result_only",
+        "fulfilled_obligation_requirement",
+    ]
+    obligation: str | None = None
+
+    def __post_init__(self) -> None:
+        requires_obligation = self.retention == "fulfilled_obligation_requirement"
+        if requires_obligation != (self.obligation is not None):
+            raise ValueError(
+                "only fulfilled-obligation continuity rules name an obligation"
+            )
+
+
+AUTONOMOUS_DAY_MARA_RESOLVER_KINDS = frozenset(
+    ("travel", "work", "household", "wait")
+)
+
+
+# The classification must cover the resolver's independently declared finite
+# vocabulary. A regression test keeps the sets equal as either side evolves.
+AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES = {
+    "travel": MaraActionContinuityRule("canonical_current_state"),
+    "work": MaraActionContinuityRule(
+        "fulfilled_obligation_requirement",
+        obligation="workplace shift",
+    ),
+    "household": MaraActionContinuityRule(
+        "fulfilled_obligation_requirement",
+        obligation="household time",
+    ),
+    "wait": MaraActionContinuityRule("recent_result_only"),
+}
+
+
+def autonomous_day_mara_valid_actions(location: str) -> tuple[str, ...]:
+    """Return locally available actions from the classified resolver vocabulary."""
+
+    candidates = (
+        ("travel", "work", "wait")
+        if location == "workplace"
+        else ("household", "travel", "wait")
+    )
+    return tuple(
+        kind
+        for kind in candidates
+        if kind in AUTONOMOUS_DAY_MARA_RESOLVER_KINDS
+    )
+
+
 MaraDecisionCallback = Callable[[EligibleDecision, AgentView], None]
 
 
@@ -77,8 +135,10 @@ class AutonomousDay:
     _private_decision_record_byte_measurements: list[int]
     _understanding_transitions: list[dict[str, object]]
     _dispatch_history_checkpoints: dict[
-        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+        int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ]
+    _committed_objective_dispatches: dict[tuple[str, str], dict[str, object]]
+    _committed_model_decision_dispatches: dict[str, dict[str, object]]
     _mara_harness_configured: bool
 
     @property
@@ -178,8 +238,11 @@ def build_autonomous_day(
     transit_bulletin_observations: dict[str, Observation] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
-        int, tuple[frozenset[str], frozenset[str], frozenset[str]]
+        int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
     ] = {}
+    committed_objective_dispatches: dict[tuple[str, str], dict[str, object]] = {}
+    committed_model_decision_dispatches: dict[str, dict[str, object]] = {}
+    decision_record_ids_by_scheduled_work_id: dict[str, str] = {}
     private_decision_records: list[PolicyDecisionRecord] = []
     private_decision_record_byte_measurements = [
         private_decision_records_size_bytes(())
@@ -205,7 +268,51 @@ def build_autonomous_day(
                 for actor in world.agents.values()
                 for result in actor.action_results
             ),
+            len(understanding_transitions),
         )
+
+    def record_committed_objective_dispatch(
+        sequence: int,
+        work: ScheduledWork,
+    ) -> None:
+        """Link newly created objective evidence to its successful dispatch."""
+        event_ids, observation_ids, action_ids, transition_count = (
+            dispatch_history_checkpoints[sequence]
+        )
+        dispatch = {
+            "sequence": sequence,
+            "phase": work.phase.name.lower(),
+        }
+        new_artifacts = [
+            *(
+                ("event", event.event_id)
+                for event in event_log.events
+                if event.event_id not in event_ids
+            ),
+            *(
+                ("observation", observation.observation_id)
+                for observation in event_log.observations
+                if observation.observation_id not in observation_ids
+            ),
+            *(
+                ("action_result", result.action_id)
+                for actor in world.agents.values()
+                for result in actor.action_results
+                if result.action_id not in action_ids
+            ),
+            *(
+                ("understanding_transition", str(transition["trace_id"]))
+                for transition in understanding_transitions[transition_count:]
+            ),
+        ]
+        committed_objective_dispatches.update(
+            {artifact: dispatch for artifact in new_artifacts}
+        )
+        decision_record_id = decision_record_ids_by_scheduled_work_id.get(
+            work.item_id
+        )
+        if decision_record_id is not None:
+            committed_model_decision_dispatches[decision_record_id] = dispatch
 
     def mara_view() -> AgentView:
         """Construct the same agent-safe shape used at Mara's decision seam."""
@@ -244,12 +351,9 @@ def build_autonomous_day(
             ),
             work_action_available=mara.location == "workplace",
             allocation_action_available=False,
-            valid_actions=(
-                ("travel", "work", "wait")
-                if mara.location == "workplace"
-                else ("household", "travel", "wait")
-            ),
+            valid_actions=autonomous_day_mara_valid_actions(mara.location),
             household_action_available=mara.location == "home",
+            continuity_requirements=mara.continuity_requirements,
         )
 
     def dispatch_mara_decision(
@@ -263,7 +367,8 @@ def build_autonomous_day(
             return
         if mara_harness is None:
             raise RuntimeError("Mara decision was requested without a callback")
-        attempt = mara_harness.choose(mara_view())
+        view = mara_view()
+        attempt = mara_harness.choose(view)
         decision_record = mara_harness.take_decision_record()
         if decision_record is None:
             raise RuntimeError("Mara harness produced no private decision record")
@@ -272,6 +377,9 @@ def build_autonomous_day(
             reserved_bytes=mara_decision_record_resolution_reserve(attempt),
         )
         private_decision_records.append(decision_record)
+        decision_record_ids_by_scheduled_work_id[decision.scheduled_work_id] = (
+            decision_record.decision_id
+        )
         measure_private_decision_record_footprint()
         resolve_mara_attempt(attempt, context, decision_record, decision)
         if decision_record.status == "failed":
@@ -279,6 +387,18 @@ def build_autonomous_day(
                 actor_id=MARA_ID,
                 failure_id=decision_record.decision_id,
             )
+            return
+        consumed_requirement_ids = {
+            requirement.requirement_id
+            for requirement in view.continuity_requirements
+        }
+        mara = world.agents[MARA_ID]
+        mara.continuity_requirements = tuple(
+            requirement
+            for requirement in mara.continuity_requirements
+            if requirement.requirement_id not in consumed_requirement_ids
+            or requirement.state_value in mara.obligations
+        )
 
     def replace_latest_private_decision_record(
         record: PolicyDecisionRecord,
@@ -346,6 +466,53 @@ def build_autonomous_day(
         world.agents[MARA_ID].action_results.append(result)
         return result
 
+    def register_fulfilled_obligation_requirement(
+        *,
+        mara: AgentState,
+        pending: PendingAction,
+        result: ActionResult,
+        obligation: str,
+    ) -> None:
+        rule = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES.get(
+            pending.attempt.kind
+        )
+        if (
+            rule is None
+            or rule.retention != "fulfilled_obligation_requirement"
+            or rule.obligation != obligation
+            or result.status != "completed"
+            or result.action_kind != pending.attempt.kind
+            or result.action_id != pending.action_id
+            or result.attempt_event_id != pending.attempt_event_id
+        ):
+            raise RuntimeError(
+                "action does not match its fulfilled-obligation continuity rule"
+            )
+        if not mara.action_history or mara.action_history[-1] != pending.attempt:
+            raise RuntimeError(
+                "fulfilled obligation action is not the latest Mara attempt"
+            )
+        if any(
+            requirement.action_id == result.action_id
+            for requirement in mara.continuity_requirements
+        ):
+            raise RuntimeError("action already has a continuity requirement")
+        mara.continuity_requirements = (
+            *mara.continuity_requirements,
+            ActionContinuityRequirement(
+                requirement_id=f"continuity-{result.action_id}",
+                action_id=result.action_id,
+                attempt_event_id=result.attempt_event_id,
+                action_history_index=len(mara.action_history) - 1,
+                attempt=pending.attempt,
+                result=result,
+                reason="fulfilled_obligation",
+                state_field="obligations",
+                state_value=obligation,
+                lifecycle="through_selected_decision",
+            ),
+        )
+
     def reject_mara_attempt(
         attempt: ActionAttempt,
         attempted: Event,
@@ -393,17 +560,26 @@ def build_autonomous_day(
         mara = world.agents[MARA_ID]
         mara.last_attempt = attempt
         mara.action_history.append(attempt)
+        continuity_rule = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES.get(
+            attempt.kind
+        )
+        resolver_supports_kind = attempt.kind in AUTONOMOUS_DAY_MARA_RESOLVER_KINDS
         travel_destination = attempt.parameters.get("destination")
         accepted = (
-            attempt.kind == "wait"
-            or (attempt.kind == "household" and mara.location == "home")
-            or (
-                attempt.kind == "work" and mara.location == "workplace"
-            )
-            or (
-                attempt.kind == "travel"
-                and isinstance(travel_destination, str)
-                and travel_destination in world.travel_graph.get(mara.location, ())
+            resolver_supports_kind
+            and continuity_rule is not None
+            and (
+                attempt.kind == "wait"
+                or (attempt.kind == "household" and mara.location == "home")
+                or (
+                    attempt.kind == "work" and mara.location == "workplace"
+                )
+                or (
+                    attempt.kind == "travel"
+                    and isinstance(travel_destination, str)
+                    and travel_destination
+                    in world.travel_graph.get(mara.location, ())
+                )
             )
         )
         replace_latest_private_decision_record(
@@ -513,7 +689,11 @@ def build_autonomous_day(
                 )
             )
             return
-        if attempt.kind != "travel":
+        if (
+            not resolver_supports_kind
+            or continuity_rule is None
+            or attempt.kind != "travel"
+        ):
             reject_mara_attempt(
                 attempt,
                 attempted,
@@ -650,6 +830,19 @@ def build_autonomous_day(
             outcome=completed,
             status="completed",
         )
+        mara = world.agents[MARA_ID]
+        if "workplace shift" in mara.obligations:
+            mara.obligations = tuple(
+                obligation
+                for obligation in mara.obligations
+                if obligation != "workplace shift"
+            )
+            register_fulfilled_obligation_requirement(
+                mara=mara,
+                pending=pending,
+                result=result,
+                obligation="workplace shift",
+            )
         resolve_private_decision_record(result)
         context.request_decision(
             actor_id=MARA_ID,
@@ -689,6 +882,19 @@ def build_autonomous_day(
             outcome=completed,
             status="completed",
         )
+        mara = world.agents[MARA_ID]
+        if "household time" in mara.obligations:
+            mara.obligations = tuple(
+                obligation
+                for obligation in mara.obligations
+                if obligation != "household time"
+            )
+            register_fulfilled_obligation_requirement(
+                mara=mara,
+                pending=pending,
+                result=result,
+                obligation="household time",
+            )
         resolve_private_decision_record(result)
         context.request_decision(
             actor_id=MARA_ID,
@@ -910,6 +1116,7 @@ def build_autonomous_day(
             current.total_minutes,
         ),
         on_dispatch_started=checkpoint_objective_history,
+        on_dispatch_committed=record_committed_objective_dispatch,
     )
     runtime.schedule(
         ScheduledWork(
@@ -947,8 +1154,21 @@ def build_autonomous_day(
         ),
         _understanding_transitions=understanding_transitions,
         _dispatch_history_checkpoints=dispatch_history_checkpoints,
+        _committed_objective_dispatches=committed_objective_dispatches,
+        _committed_model_decision_dispatches=(
+            committed_model_decision_dispatches
+        ),
         _mara_harness_configured=mara_harness is not None,
     )
+
+
+def _focal_update_sort_key(
+    update: tuple[SimulatedTime, int, int, str],
+) -> tuple[int, int, int]:
+    """Order visible ties by runtime phase, then committed source order."""
+
+    visible_time, causal_phase, causal_order, _ = update
+    return (visible_time.total_minutes, causal_phase, causal_order)
 
 
 def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
@@ -960,7 +1180,7 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         "",
         f"Start: {summary.start.label} | Mara at Home",
     ]
-    focal_updates: list[tuple[SimulatedTime, str]] = []
+    focal_updates: list[tuple[SimulatedTime, int, int, str]] = []
     completed_activity_labels = {
         "household_time_completed": "Mara completed household time.",
         "rest_completed": "Mara completed a rest period.",
@@ -968,6 +1188,13 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         "work_completed": "Mara completed workplace work.",
     }
     event_kinds_by_id = {event.event_id: event.kind for event in day.events}
+    event_order_by_id = {
+        event.event_id: index for index, event in enumerate(day.events)
+    }
+    observation_order_by_id = {
+        observation.observation_id: index
+        for index, observation in enumerate(day.observations)
+    }
     for result in day.world.agents[MARA_ID].action_results:
         activity_label = completed_activity_labels.get(
             event_kinds_by_id.get(result.outcome_event_id)
@@ -975,7 +1202,14 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         if result.status != "completed" or activity_label is None:
             continue
         completed_at = SimulatedTime(result.resolved_tick)
-        focal_updates.append((completed_at, f"{completed_at.label} | {activity_label}"))
+        focal_updates.append(
+            (
+                completed_at,
+                int(TemporalPhase.ACTION_COMPLETION),
+                event_order_by_id[result.outcome_event_id],
+                f"{completed_at.label} | {activity_label}",
+            )
+        )
     for observation in day.world.agents[MARA_ID].observations:
         if observation.details.get("evidence_kind") != "transit_service_status":
             continue
@@ -983,13 +1217,18 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         focal_updates.append(
             (
                 delivered_at,
+                int(TemporalPhase.OBSERVATION_DELIVERY),
+                observation_order_by_id[observation.observation_id],
                 f"{delivered_at.label} | Home transit bulletin: "
                 f"{observation.details['route']} service is "
                 f"{observation.details['current_status']}.",
             )
         )
     current_visible_time = summary.start
-    for delivered_at, update in sorted(focal_updates, key=lambda update: update[0]):
+    for delivered_at, _, _, update in sorted(
+        focal_updates,
+        key=_focal_update_sort_key,
+    ):
         if delivered_at > current_visible_time:
             lines.append(
                 f"{current_visible_time.label}–{delivered_at.label} "
@@ -1023,6 +1262,15 @@ def autonomous_day_inspector_data(
 ) -> dict[str, object]:
     """Return deterministic omniscient evidence for the successor day."""
 
+    def committed_dispatch(
+        artifact_kind: str,
+        artifact_id: str,
+    ) -> dict[str, object] | None:
+        dispatch = day._committed_objective_dispatches.get(
+            (artifact_kind, artifact_id)
+        )
+        return None if dispatch is None else dict(dispatch)
+
     events = [
         {
             "event_id": event.event_id,
@@ -1032,6 +1280,7 @@ def autonomous_day_inspector_data(
             "action_id": event.action_id,
             "caused_by": list(event.caused_by),
             "details": to_plain_data(event.details),
+            "dispatch": committed_dispatch("event", event.event_id),
         }
         for event in day.events
     ]
@@ -1043,9 +1292,16 @@ def autonomous_day_inspector_data(
             "source": observation.source,
             "delivery_tick": observation.delivery_tick,
             "details": to_plain_data(observation.details),
+            "dispatch": committed_dispatch(
+                "observation",
+                observation.observation_id,
+            ),
         }
         for observation in day.observations
     ]
+    event_order_by_id = {
+        event.event_id: index for index, event in enumerate(day.events)
+    }
     action_results = [
         {
             "action_id": result.action_id,
@@ -1056,10 +1312,14 @@ def autonomous_day_inspector_data(
             "status": result.status,
             "resolved_tick": result.resolved_tick,
             "reason": result.reason,
+            "dispatch": committed_dispatch("action_result", result.action_id),
         }
         for actor_id in sorted(day.world.agents)
         for result in day.world.agents[actor_id].action_results
     ]
+    action_results.sort(
+        key=lambda result: event_order_by_id[result["outcome_event_id"]]
+    )
     uncommitted_objective_tail = None
     if summary.runtime_failure is not None:
         failed_dispatch = summary.runtime_failure.failed_dispatch
@@ -1068,7 +1328,7 @@ def autonomous_day_inspector_data(
                 failed_dispatch.sequence
             )
             if checkpoint is not None:
-                event_ids, observation_ids, action_ids = checkpoint
+                event_ids, observation_ids, action_ids, _ = checkpoint
                 uncommitted_objective_tail = {
                     "events": [
                         event for event in events if event["event_id"] not in event_ids
@@ -1108,6 +1368,30 @@ def autonomous_day_inspector_data(
                 day.private_decision_records
             ),
         }
+    decision_status_sequence = None
+    if day.mara_harness_configured:
+        decision_status_sequence = [
+            {
+                "tick": record.tick,
+                "status": record.status,
+                "failure_kind": record.failure_kind,
+                "provider_call_attempted": record.provider_call_attempted,
+                "validation_status": record.validation_status,
+                "resolution_status": record.resolution_status,
+                "resolved_tick": record.resolved_tick,
+                "dispatch": (
+                    None
+                    if (
+                        dispatch := day._committed_model_decision_dispatches.get(
+                            record.decision_id
+                        )
+                    )
+                    is None
+                    else dict(dispatch)
+                ),
+            }
+            for record in day.private_decision_records
+        ]
     return {
         "runtime": summary.to_data(),
         "counts": {
@@ -1118,6 +1402,7 @@ def autonomous_day_inspector_data(
         "model_path": {
             "configured": day.mara_harness_configured,
             "exercised": bool(day.private_decision_records),
+            "decision_status_sequence": decision_status_sequence,
             "decision_status_counts": (
                 {
                     status: sum(
@@ -1133,7 +1418,7 @@ def autonomous_day_inspector_data(
             ),
             "provider_failure_count": (
                 sum(
-                    record.status == "failed"
+                    record.status == "failed" and record.provider_call_attempted
                     for record in day.private_decision_records
                 )
                 if day.mara_harness_configured
@@ -1154,7 +1439,16 @@ def autonomous_day_inspector_data(
             "events": events,
             "observations": observations,
             "action_results": action_results,
-            "understanding_transitions": to_plain_data(day.understanding_transitions),
+            "understanding_transitions": [
+                {
+                    **to_plain_data(transition),
+                    "dispatch": committed_dispatch(
+                        "understanding_transition",
+                        str(transition["trace_id"]),
+                    ),
+                }
+                for transition in day.understanding_transitions
+            ],
             "uncommitted_objective_tail": uncommitted_objective_tail,
         },
     }
@@ -1168,6 +1462,8 @@ def model_context_count_measurements(
     decision_history = {
         "attempts_included": 0,
         "results_included": 0,
+        "continuity_requirements_included": 0,
+        "active_continuity_requirements": 0,
         "total_attempts": 0,
         "total_results": 0,
         "omitted_attempts": 0,
@@ -1196,9 +1492,20 @@ def model_context_count_measurements(
                     value = projection.get(field)
                     if isinstance(value, int) and not isinstance(value, bool):
                         decision_history[field] = max(decision_history[field], value)
+                active_requirements = projection.get(
+                    "explicit_relevant_actions"
+                )
+                if isinstance(active_requirements, int) and not isinstance(
+                    active_requirements, bool
+                ):
+                    decision_history["active_continuity_requirements"] = max(
+                        decision_history["active_continuity_requirements"],
+                        active_requirements,
+                    )
             for field, input_field in (
                 ("attempts_included", "attempts"),
                 ("results_included", "results"),
+                ("continuity_requirements_included", "continuity_requirements"),
             ):
                 entries = history.get(input_field)
                 if isinstance(entries, tuple):

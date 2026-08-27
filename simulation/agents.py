@@ -38,6 +38,65 @@ class DiaryEntryKnowledge:
     completed_tick: int
 
 
+@dataclass(frozen=True)
+class ActionContinuityRequirement:
+    """World-owned reference to one older action that still explains state.
+
+    The requirement points into the actor's append-only action history and
+    actor-safe result collection. Policies can inspect the resolved projection
+    but cannot author or clear the canonical requirement.
+    """
+
+    requirement_id: str
+    action_id: str
+    attempt_event_id: str
+    action_history_index: int
+    attempt: ActionAttempt
+    result: ActionResult
+    reason: Literal["fulfilled_obligation"]
+    state_field: Literal["obligations"]
+    state_value: str
+    lifecycle: Literal["through_selected_decision"]
+
+    def __post_init__(self) -> None:
+        for label, value in (
+            ("requirement_id", self.requirement_id),
+            ("action_id", self.action_id),
+            ("attempt_event_id", self.attempt_event_id),
+            ("state_value", self.state_value),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"continuity requirement {label} must be non-empty")
+        if (
+            not isinstance(self.action_history_index, int)
+            or isinstance(self.action_history_index, bool)
+            or self.action_history_index < 0
+        ):
+            raise ValueError(
+                "continuity requirement action_history_index must be non-negative"
+            )
+        if not isinstance(self.attempt, ActionAttempt):
+            raise ValueError("continuity requirement attempt must be actor-safe")
+        if not isinstance(self.result, ActionResult):
+            raise ValueError("continuity requirement result must be actor-safe")
+        if (
+            self.result.action_id != self.action_id
+            or self.result.attempt_event_id != self.attempt_event_id
+            or self.result.actor_id != self.attempt.actor_id
+            or self.result.action_kind != self.attempt.kind
+            or self.result.status != "completed"
+        ):
+            raise ValueError(
+                "continuity requirement snapshots must identify one completed action"
+            )
+        if self.reason != "fulfilled_obligation":
+            raise ValueError("unsupported continuity requirement reason")
+        if self.state_field != "obligations":
+            raise ValueError("unsupported continuity requirement state field")
+        if self.lifecycle != "through_selected_decision":
+            raise ValueError("unsupported continuity requirement lifecycle")
+
+
 @dataclass
 class AgentState:
     agent_id: str
@@ -52,6 +111,7 @@ class AgentState:
     last_attempt: ActionAttempt | None = None
     action_history: list[ActionAttempt] = field(default_factory=list)
     action_results: list[ActionResult] = field(default_factory=list)
+    continuity_requirements: tuple[ActionContinuityRequirement, ...] = ()
     observations: list[Observation] = field(default_factory=list)
     beliefs: list[Belief] = field(default_factory=list)
     memory_traces: tuple[MemoryTrace, ...] = ()
@@ -91,6 +151,7 @@ class AgentView:
     allocation_action_available: bool
     valid_actions: tuple[str, ...]
     household_action_available: bool = False
+    continuity_requirements: tuple[ActionContinuityRequirement, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +172,7 @@ class PolicyDecisionRecord:
     authorship_identity: Mapping[str, Any] | None = None
     failure_kind: str | None = None
     failure_type: str | None = None
+    provider_call_attempted: bool = False
     attempt_event_id: str | None = None
     action_id: str | None = None
     validation_status: Literal["accepted", "rejected"] | None = None
@@ -189,6 +251,7 @@ class PolicyDecisionRecord:
             "attempted_action": to_plain_data(self.attempted_action),
             "failure_kind": self.failure_kind,
             "failure_type": self.failure_type,
+            "provider_call_attempted": self.provider_call_attempted,
             "attempted_action_kind": self.attempted_action_kind,
             "attempt_event_id": self.attempt_event_id,
             "action_id": self.action_id,

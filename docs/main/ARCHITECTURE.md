@@ -13,12 +13,10 @@ goal is active. Its full 24-hour successor composition now combines explicit
 simulated time, restricted model decisions, ordinary focal opportunities,
 independent supporting and institutional activity, bounded private evidence,
 offline reproduction, and focal-safe observation. The remaining goal limits
-are intentionally narrow: the continuity projection has not yet proved that
-every older behaviorally relevant attempted action or result is selected, and
-the exact live day still requires an explicit owner-authorized live Ollama
-run. The separate thin-harness/fat-skills documents describe a possible
-generalization of the completed Mara boundary, not an implemented general
-agent runtime.
+are intentionally narrow: the exact live day still requires an explicit
+owner-authorized live Ollama run. The separate thin-harness/fat-skills
+documents describe a possible generalization of the completed Mara boundary,
+not an implemented general agent runtime.
 
 ## Implemented Simulation Loop
 
@@ -359,9 +357,31 @@ projection is complete and every retained belief, trace, claim, and contextual
 stance still has its source closure in the request. If it is not, Mara records
 an explicit safe failure before any provider call rather than silently asking a
 model to act on a partial continuity view. Canonical agent evidence remains
-unchanged. This conservative boundary does not yet prove an older
-behaviorally relevant fact can always be represented within a continuing
-full-day path. The successor executor separately enforces 128
+unchanged.
+
+The autonomous-day composition owns one finite classification table covering
+every kind its Mara resolver accepts. Travel is represented after its immediate
+result by canonical location and reachable destinations; wait and scheduled
+rest create no persistent state; work and household can fulfill one named
+obligation. The resolver vocabulary and this table are independently declared
+and tested for set equality, so a new action kind cannot silently bypass a
+continuity classification. These scenario meanings do not leak into the
+generic model policy.
+
+For a persistent consequence not fully explained by the recent window, the
+world adds a bounded continuity requirement. Each requirement freezes the
+exact actor-safe attempt and result, their source identities and history row, a
+finite reason, the canonical state field and value it explains, and its
+clearing lifecycle. Completing the first workplace work or household time
+removes that obligation and retains the exact pair through every safe failure
+until one selected decision receives it while the obligation remains
+fulfilled. The model cannot author or clear the requirement. Missing,
+substituted, mismatched, duplicate, or more than eight active requirements make
+the projection incomplete before any provider call. Later voluntary repeats
+create no requirement; rejection changes no canonical state and remains
+available through bounded recent and latest-by-kind history. The omniscient
+growth evidence reports peak active and included requirement counts without
+exposing their private material. The successor executor separately enforces 128
 decision-handler invocations for a marked model-bounded actor. Its default
 offline composition does not configure Mara's model policy, while an injected
 `MaraHarness` can exercise the same restricted boundary in tests and replay.

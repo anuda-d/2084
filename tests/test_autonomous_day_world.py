@@ -6,9 +6,14 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from policies.mara_harness import MaraHarness
+from policies.ollama_client import OllamaDecisionClient
 from scenarios.autonomous_day import (
+    AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES,
+    AUTONOMOUS_DAY_MARA_RESOLVER_KINDS,
     ILAN_ID,
     MARA_ID,
+    _focal_update_sort_key,
+    autonomous_day_mara_valid_actions,
     autonomous_day_inspector_data,
     build_autonomous_day,
     main,
@@ -20,7 +25,11 @@ from policies.model_focal_policy import (
     model_input_from_view,
 )
 from policies.mara_decision_request import MAX_RESTRICTED_DECISION_INPUT_BYTES
-from simulation.agents import MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES
+from simulation.actions import ActionAttempt, ActionResult
+from simulation.agents import (
+    ActionContinuityRequirement,
+    MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
+)
 from simulation.decision_eligibility import DecisionTrigger, DecisionTriggerKind
 from simulation.scheduling import ScheduledWork, TemporalPhase
 from simulation.time import SimulatedTime
@@ -40,6 +49,236 @@ class _SequenceClient:
 
 
 class AutonomousDayWorldTests(unittest.TestCase):
+    def test_action_continuity_table_covers_the_resolver_vocabulary(self):
+        rules = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES
+
+        self.assertEqual(set(rules), set(AUTONOMOUS_DAY_MARA_RESOLVER_KINDS))
+        self.assertEqual(
+            set(autonomous_day_mara_valid_actions("home"))
+            | set(autonomous_day_mara_valid_actions("workplace")),
+            set(AUTONOMOUS_DAY_MARA_RESOLVER_KINDS),
+        )
+        self.assertEqual(rules["travel"].retention, "canonical_current_state")
+        self.assertEqual(rules["wait"].retention, "recent_result_only")
+        self.assertEqual(
+            {
+                kind: rule.obligation
+                for kind, rule in rules.items()
+                if rule.retention == "fulfilled_obligation_requirement"
+            },
+            {
+                "work": "workplace shift",
+                "household": "household time",
+            },
+        )
+
+    def test_inspector_reports_sanitized_model_decision_status_sequence(self):
+        client = _SequenceClient(
+            TimeoutError("private provider detail"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after retry",
+                "decision_reason": "the morning remains quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no immediate action is needed",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-decision-status-sequence-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+        model_path = inspector["model_path"]
+
+        self.assertEqual(
+            model_path["decision_status_sequence"],
+            [
+                {
+                    "tick": 420,
+                    "status": "failed",
+                    "failure_kind": "timeout",
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 420,
+                    "dispatch": {"sequence": 1, "phase": "decision"},
+                },
+                {
+                    "tick": 450,
+                    "status": "selected",
+                    "failure_kind": None,
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 450,
+                    "dispatch": {"sequence": 2, "phase": "decision"},
+                },
+                {
+                    "tick": 660,
+                    "status": "selected",
+                    "failure_kind": None,
+                    "provider_call_attempted": True,
+                    "validation_status": "accepted",
+                    "resolution_status": "completed",
+                    "resolved_tick": 660,
+                    "dispatch": {"sequence": 8, "phase": "decision"},
+                },
+            ],
+        )
+        self.assertTrue(
+            all(
+                set(entry) == {
+                    "tick",
+                    "status",
+                    "failure_kind",
+                    "provider_call_attempted",
+                    "validation_status",
+                    "resolution_status",
+                    "resolved_tick",
+                    "dispatch",
+                }
+                for entry in model_path["decision_status_sequence"]
+            )
+        )
+        runtime_decisions = [
+            work
+            for work in inspector["runtime"]["executed_work"]
+            if work["kind"] == "decision_eligibility"
+        ]
+        self.assertEqual(
+            [entry["dispatch"] for entry in model_path["decision_status_sequence"]],
+            [
+                {"sequence": work["sequence"], "phase": work["phase"]}
+                for work in runtime_decisions
+            ],
+        )
+        serialized_status_sequence = json.dumps(
+            model_path["decision_status_sequence"]
+        )
+        self.assertNotIn("private provider detail", serialized_status_sequence)
+        self.assertNotIn("pause after retry", serialized_status_sequence)
+
+        failed_dispatch_day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                _SequenceClient(
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause before the forced failure",
+                        "decision_reason": "the morning is quiet",
+                    }
+                ),
+                configuration_id="inspector-uncommitted-decision-test",
+            ),
+        )
+        original_handler = failed_dispatch_day.runtime._decision_handler
+        self.assertIsNotNone(original_handler)
+
+        def fail_after_private_decision(decision, context):
+            original_handler(decision, context)
+            raise RuntimeError("private decision dispatch failure")
+
+        failed_dispatch_day.runtime._decision_handler = fail_after_private_decision
+        with self.assertRaisesRegex(RuntimeError, "private decision dispatch failure"):
+            failed_dispatch_day.run()
+        failed_sequence = autonomous_day_inspector_data(
+            failed_dispatch_day,
+            failed_dispatch_day.runtime.summary(),
+        )["model_path"]["decision_status_sequence"]
+        self.assertEqual(len(failed_sequence), 1)
+        self.assertIsNone(failed_sequence[0]["dispatch"])
+        self.assertNotIn("private decision dispatch failure", json.dumps(failed_sequence))
+
+        def incomplete_projection(view):
+            model_input = model_input_from_view(view)
+            continuity_projection = dict(model_input["continuity_projection"])
+            continuity_projection["complete"] = False
+            return {
+                **model_input,
+                "continuity_projection": continuity_projection,
+            }
+
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            pre_client_day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    _SequenceClient(),
+                    configuration_id="inspector-pre-client-status-sequence-test",
+                ),
+            )
+            pre_client_sequence = autonomous_day_inspector_data(
+                pre_client_day,
+                pre_client_day.run(),
+            )["model_path"]["decision_status_sequence"]
+
+        self.assertTrue(pre_client_sequence)
+        self.assertTrue(
+            all(
+                entry["status"] == "failed"
+                and entry["failure_kind"] == "continuity_projection_incomplete"
+                and not entry["provider_call_attempted"]
+                for entry in pre_client_sequence
+            )
+        )
+
+    def test_inspector_action_results_follow_objective_event_order(self):
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause before the scheduled shift",
+                "decision_reason": "the morning is quiet",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after resting",
+                "decision_reason": "the completed rest needs no response",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the second wait",
+                "decision_reason": "there is no immediate change",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="inspector-objective-result-order-test",
+            ),
+        )
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+        results = inspector["history"]["action_results"]
+        event_order = {
+            event["event_id"]: index
+            for index, event in enumerate(inspector["history"]["events"])
+        }
+
+        self.assertEqual(
+            [result["actor_id"] for result in results],
+            [MARA_ID, MARA_ID, ILAN_ID, MARA_ID],
+        )
+        self.assertEqual(
+            [event_order[result["outcome_event_id"]] for result in results],
+            sorted(event_order[result["outcome_event_id"]] for result in results),
+        )
+
     def test_inspector_places_objective_tail_from_failed_dispatch(self):
         day = build_autonomous_day(seed=42)
 
@@ -106,6 +345,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "action_id": None,
                     "caused_by": [],
                     "details": {"source": "committed"},
+                    "dispatch": {
+                        "sequence": 1,
+                        "phase": "scheduled_world",
+                    },
                 },
                 {
                     "event_id": "event-0002",
@@ -115,6 +358,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "action_id": None,
                     "caused_by": [],
                     "details": {"source": "test"},
+                    "dispatch": None,
                 }
             ],
         )
@@ -215,6 +459,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "trace_id": f"trace-{observation['observation_id']}",
                     "claim_id": f"claim-{observation['observation_id']}",
                     "claim_created": True,
+                    "dispatch": {
+                        "sequence": 8,
+                        "phase": "understanding_update",
+                    },
                 }
             ],
         )
@@ -229,6 +477,32 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertNotIn("model_input", json.dumps(inspector))
         self.assertNotIn("private_decision_records", json.dumps(inspector))
+
+    def test_inspector_links_committed_objective_history_to_runtime_dispatches(self):
+        day = build_autonomous_day(seed=42)
+
+        inspector = autonomous_day_inspector_data(day, day.run())
+
+        self.assertEqual(
+            [event["dispatch"] for event in inspector["history"]["events"]],
+            [
+                {"sequence": 1, "phase": "scheduled_world"},
+                {"sequence": 2, "phase": "scheduled_world"},
+                {"sequence": 3, "phase": "action_completion"},
+            ],
+        )
+        self.assertEqual(
+            inspector["history"]["observations"][0]["dispatch"],
+            {"sequence": 4, "phase": "observation_delivery"},
+        )
+        self.assertEqual(
+            inspector["history"]["action_results"][0]["dispatch"],
+            {"sequence": 3, "phase": "action_completion"},
+        )
+        self.assertEqual(
+            inspector["history"]["understanding_transitions"][0]["dispatch"],
+            {"sequence": 5, "phase": "understanding_update"},
+        )
 
     def test_harness_choice_becomes_private_evidence_and_resolved_wait(self):
         client = _SequenceClient(
@@ -348,6 +622,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "decision_history": {
                         "attempts_included": 2,
                         "results_included": 2,
+                        "continuity_requirements_included": 0,
+                        "active_continuity_requirements": 0,
                         "total_attempts": 2,
                         "total_results": 2,
                         "omitted_attempts": 0,
@@ -505,6 +781,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {"failed": 1, "selected": 2},
         )
         self.assertEqual(
+            autonomous_day_inspector_data(day, summary)["model_path"][
+                "provider_failure_count"
+            ],
+            1,
+        )
+        self.assertEqual(
             dispatched[1].triggers,
             (
                 DecisionTrigger(
@@ -516,6 +798,121 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
             {MARA_ID: 3},
+        )
+
+    def test_inspector_provider_failure_count_excludes_pre_client_failures(self):
+        def incomplete_projection(view):
+            model_input = model_input_from_view(view)
+            continuity_projection = dict(model_input["continuity_projection"])
+            continuity_projection["complete"] = False
+            model_input["continuity_projection"] = continuity_projection
+            return model_input
+
+        client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "this response must not be used",
+                "decision_reason": "continuity failure precedes this client",
+            }
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deterministic-autonomous-day-pre-client-failure",
+            ),
+        )
+
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(client.inputs, [])
+        self.assertTrue(day.private_decision_records)
+        self.assertTrue(
+            all(
+                record.status == "failed"
+                and not record.provider_call_attempted
+                and record.failure_kind == "continuity_projection_incomplete"
+                for record in day.private_decision_records
+            )
+        )
+        model_path = autonomous_day_inspector_data(day, summary)["model_path"]
+        self.assertGreater(model_path["decision_status_counts"]["failed"], 0)
+        self.assertEqual(model_path["provider_failure_count"], 0)
+
+        integrity_key = b"autonomous-day-pre-client-failure"
+        archive = RecordedDecisionArchive.seal(
+            day.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+        )
+        with patch(
+            "policies.model_focal_policy.model_input_from_view",
+            side_effect=incomplete_projection,
+        ):
+            replay_summary = replay.run()
+
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(
+            [
+                record.provider_call_attempted
+                for record in replay.private_decision_records
+            ],
+            [
+                record.provider_call_attempted
+                for record in day.private_decision_records
+            ],
+        )
+        self.assertEqual(
+            autonomous_day_inspector_data(replay, replay_summary)["model_path"][
+                "provider_failure_count"
+            ],
+            0,
+        )
+
+    def test_inspector_provider_failure_count_excludes_oversized_ollama_input(self):
+        class _TransportMustNotBeCalled:
+            def post_json(self, **_call):
+                raise AssertionError("oversized input must not reach transport")
+
+        client = OllamaDecisionClient(
+            base_url="http://10.255.255.1:11434",
+            model="qwen3:4b-instruct",
+            transport=_TransportMustNotBeCalled(),
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id=client.configuration_id,
+                authorship_identity=client.authorship_identity,
+            ),
+        )
+        day.world.agents[MARA_ID].aim = "x" * MAX_RESTRICTED_DECISION_INPUT_BYTES
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        model_path = autonomous_day_inspector_data(day, summary)["model_path"]
+        self.assertGreater(model_path["decision_status_counts"]["failed"], 0)
+        self.assertEqual(model_path["provider_failure_count"], 0)
+        self.assertTrue(
+            all(
+                record.failure_kind == "restricted_input_too_large"
+                and not record.provider_call_attempted
+                for record in day.private_decision_records
+            )
         )
 
     def test_completed_travel_dispatches_action_result_decision(self):
@@ -667,6 +1064,344 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ),
         )
 
+    def test_completed_work_requirement_carries_exact_action_then_clears(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the morning shift",
+                "decision_reason": "the workplace obligation is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the available workplace shift",
+                "decision_reason": "arriving at the workplace makes work possible",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the completed shift",
+                "decision_reason": "the fulfilled shift needs no immediate action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-work-result-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        work_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "work"
+        )
+        following_input = client.inputs[2]
+        following_history = following_input["decision_history"]
+
+        self.assertEqual(
+            following_input["state"]["obligations"],
+            ["household time"],
+        )
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_requirements,
+            (),
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_actions"],
+            1,
+        )
+        self.assertEqual(
+            following_history["projection"]["included_explicit_relevant_actions"],
+            1,
+        )
+        self.assertIn(
+            work_result.action_id,
+            [result["action_id"] for result in following_history["results"]],
+        )
+        requirement = following_history["continuity_requirements"][0]
+        self.assertEqual(requirement["reason"], "fulfilled_obligation")
+        self.assertEqual(
+            requirement["lifecycle"], "through_selected_decision"
+        )
+        self.assertEqual(requirement["attempt"]["action_id"], work_result.action_id)
+        self.assertEqual(requirement["attempt"]["kind"], "work")
+        self.assertEqual(requirement["result"]["action_id"], work_result.action_id)
+        self.assertEqual(
+            requirement["canonical_state"],
+            {"field": "obligations", "removed_value": "workplace shift"},
+        )
+
+    def test_completed_work_requirement_survives_failure_retry_then_clears(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the morning shift",
+                "decision_reason": "the workplace obligation is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the available workplace shift",
+                "decision_reason": "arriving at the workplace makes work possible",
+            },
+            TimeoutError("provider unavailable after the fulfillment result"),
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the retry",
+                "decision_reason": "the fulfilled shift needs no immediate action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-work-result-retry-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        work_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "work"
+        )
+        for model_input in (client.inputs[2], client.inputs[3]):
+            history = model_input["decision_history"]
+            projection = history["projection"]
+            self.assertEqual(projection["explicit_relevant_actions"], 1)
+            self.assertEqual(projection["included_explicit_relevant_actions"], 1)
+            self.assertIn(
+                work_result.action_id,
+                [
+                    result["action_id"]
+                    for result in history["results"]
+                ],
+            )
+            self.assertEqual(
+                history["continuity_requirements"][0]["attempt"]["action_id"],
+                work_result.action_id,
+            )
+            self.assertEqual(
+                history["continuity_requirements"][0]["result"]["action_id"],
+                work_result.action_id,
+            )
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_requirements,
+            (),
+        )
+
+    def test_repeated_work_after_fulfillment_does_not_add_a_relevance_requirement(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "leave home for the morning shift",
+                "decision_reason": "the workplace obligation is reachable",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the available workplace shift",
+                "decision_reason": "arriving at the workplace makes work possible",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "continue working after the shift",
+                "decision_reason": "work remains physically available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the additional work",
+                "decision_reason": "no further obligation changed",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-repeated-work-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        work_results = [
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "work"
+        ]
+        consumed_history = client.inputs[2]["decision_history"]
+        following_history = client.inputs[3]["decision_history"]
+
+        self.assertEqual(len(work_results), 2)
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_requirements,
+            (),
+        )
+        self.assertEqual(
+            consumed_history["projection"]["explicit_relevant_actions"],
+            1,
+        )
+        self.assertIn(
+            work_results[0].action_id,
+            [result["action_id"] for result in consumed_history["results"]],
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_actions"],
+            0,
+        )
+
+    def test_completed_household_requirement_carries_exact_action_then_clears(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete the household obligation at home",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the household activity",
+                "decision_reason": "the household obligation is fulfilled",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no new obligation is available",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-household-result-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        household_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "household"
+        )
+        following_input = client.inputs[1]
+        following_history = following_input["decision_history"]
+
+        self.assertEqual(following_input["state"]["obligations"], ["workplace shift"])
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_requirements,
+            (),
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_actions"],
+            1,
+        )
+        self.assertEqual(
+            following_history["projection"]["included_explicit_relevant_actions"],
+            1,
+        )
+        self.assertIn(
+            household_result.action_id,
+            [result["action_id"] for result in following_history["results"]],
+        )
+        requirement = following_history["continuity_requirements"][0]
+        self.assertEqual(requirement["attempt"]["action_id"], household_result.action_id)
+        self.assertEqual(requirement["attempt"]["kind"], "household")
+        self.assertEqual(
+            requirement["result"]["action_id"], household_result.action_id
+        )
+        self.assertEqual(
+            requirement["canonical_state"],
+            {"field": "obligations", "removed_value": "household time"},
+        )
+
+    def test_repeated_household_after_fulfillment_does_not_add_a_relevance_requirement(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete the household obligation at home",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "continue household activity after it is fulfilled",
+                "decision_reason": "household activity remains physically available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the additional household activity",
+                "decision_reason": "no further obligation changed",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "no new obligation is available",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="autonomous-day-repeated-household-relevance-test",
+            ),
+        )
+
+        day.run()
+
+        household_results = [
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "household"
+        ]
+        consumed_history = client.inputs[1]["decision_history"]
+        following_history = client.inputs[2]["decision_history"]
+
+        self.assertEqual(len(household_results), 2)
+        self.assertEqual(
+            day.world.agents[MARA_ID].continuity_requirements,
+            (),
+        )
+        self.assertEqual(
+            consumed_history["projection"]["explicit_relevant_actions"],
+            1,
+        )
+        self.assertEqual(
+            consumed_history["projection"]["included_explicit_relevant_actions"],
+            1,
+        )
+        self.assertIn(
+            household_results[0].action_id,
+            [result["action_id"] for result in consumed_history["results"]],
+        )
+        self.assertEqual(
+            following_history["projection"]["explicit_relevant_actions"],
+            0,
+        )
+        print("focused AD-7 continuity verification passed")
+
     def test_home_household_activity_completes_after_model_selection(self):
         client = _SequenceClient(
             {
@@ -786,7 +1521,47 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIn(bulletin_update, normal_output)
         self.assertLess(normal_output.index(household_update), normal_output.index(bulletin_update))
 
-    def test_equal_deterministic_harness_runs_reproduce_complete_day_evidence(
+        inspector = autonomous_day_inspector_data(day, summary)
+        household_result = next(
+            result
+            for result in inspector["history"]["action_results"]
+            if result["action_kind"] == "household"
+        )
+        bulletin = inspector["history"]["observations"][0]
+        self.assertEqual(household_result["resolved_tick"], bulletin["delivery_tick"])
+        self.assertEqual(
+            household_result["dispatch"]["phase"], "action_completion"
+        )
+        self.assertEqual(bulletin["dispatch"]["phase"], "observation_delivery")
+        self.assertLess(
+            household_result["dispatch"]["sequence"],
+            bulletin["dispatch"]["sequence"],
+        )
+
+    def test_focal_update_sorting_uses_causal_phase_not_input_position(self):
+        simultaneous_updates = [
+            (
+                SimulatedTime(660),
+                int(TemporalPhase.OBSERVATION_DELIVERY),
+                0,
+                "delivery",
+            ),
+            (
+                SimulatedTime(660),
+                int(TemporalPhase.ACTION_COMPLETION),
+                99,
+                "completion",
+            ),
+        ]
+
+        ordered_labels = [
+            update[-1]
+            for update in sorted(simultaneous_updates, key=_focal_update_sort_key)
+        ]
+
+        self.assertEqual(ordered_labels, ["completion", "delivery"])
+
+    def test_two_equal_seed_model_days_match_complete_evidence_and_growth_limits(
         self,
     ):
         responses = (
@@ -845,6 +1620,36 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertTrue(second_summary.reached_end_boundary)
         self.assertEqual(len(first_client.inputs), 5)
         self.assertEqual(second_client.inputs, first_client.inputs)
+        requirement_counts = [
+            model_input["decision_history"]["projection"][
+                "explicit_relevant_actions"
+            ]
+            for model_input in first_client.inputs
+        ]
+        self.assertEqual(requirement_counts, [0, 0, 1, 0, 1])
+        self.assertTrue(
+            all(
+                model_input["decision_history"]["projection"]["complete"]
+                for model_input in first_client.inputs
+            )
+        )
+        self.assertEqual(first.world.agents[MARA_ID].continuity_requirements, ())
+        self.assertEqual(second.world.agents[MARA_ID].continuity_requirements, ())
+        growth = autonomous_day_inspector_data(first, first_summary)["model_path"][
+            "growth"
+        ]
+        self.assertEqual(
+            growth["peak_context_counts"]["decision_history"][
+                "active_continuity_requirements"
+            ],
+            1,
+        )
+        self.assertEqual(
+            growth["peak_context_counts"]["decision_history"][
+                "continuity_requirements_included"
+            ],
+            1,
+        )
         self.assertEqual(second_summary.to_data(), first_summary.to_data())
         self.assertEqual(second.events, first.events)
         self.assertEqual(second.observations, first.observations)
@@ -874,6 +1679,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             first.peak_retained_private_decision_records_bytes,
             MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
         )
+        print("deterministic full-day model growth verification passed")
 
     def test_scheduled_wake_dispatches_one_restricted_mara_decision(self):
         dispatched = []
@@ -912,6 +1718,54 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+        )
+
+    def test_successor_mara_view_copies_world_owned_continuity_requirements(self):
+        dispatched = []
+        day = build_autonomous_day(
+            seed=42,
+            on_mara_decision=lambda decision, view: dispatched.append(
+                (decision, view)
+            ),
+        )
+        prior_attempt = ActionAttempt(
+            actor_id=MARA_ID,
+            kind="work",
+            parameters={},
+            explanation="complete a prior shift",
+        )
+        prior_result = ActionResult(
+            action_id="action-mara-prior-work",
+            attempt_event_id="event-mara-prior-work-attempt",
+            outcome_event_id="event-mara-prior-work-result",
+            actor_id=MARA_ID,
+            action_kind="work",
+            status="completed",
+            resolved_tick=1,
+        )
+        mara = day.world.agents[MARA_ID]
+        mara.action_history.append(prior_attempt)
+        mara.action_results.append(prior_result)
+        mara.continuity_requirements = (
+            ActionContinuityRequirement(
+                requirement_id="continuity-action-mara-prior-work",
+                action_id=prior_result.action_id,
+                attempt_event_id=prior_result.attempt_event_id,
+                action_history_index=0,
+                attempt=prior_attempt,
+                result=prior_result,
+                reason="fulfilled_obligation",
+                state_field="obligations",
+                state_value="workplace shift",
+                lifecycle="through_selected_decision",
+            ),
+        )
+
+        day.run()
+
+        self.assertEqual(
+            dispatched[0][1].continuity_requirements,
+            mara.continuity_requirements,
         )
 
     def test_accessible_bulletin_dispatches_one_restricted_mara_decision(self):

@@ -20,6 +20,7 @@ DayWorkHandler = Callable[[ScheduledWork, "DayWorkContext"], None]
 DayDecisionHandler = Callable[[EligibleDecision, "DayWorkContext"], None]
 DayTimeObserver = Callable[[SimulatedTime], None]
 DayDispatchObserver = Callable[[int, ScheduledWork], None]
+DayDispatchCommitObserver = Callable[[int, ScheduledWork], None]
 MAX_MODEL_DECISION_CALLS_PER_DAY = 128
 
 
@@ -257,6 +258,7 @@ class AcceleratedDayRuntime:
         model_backed_actor_ids: tuple[str, ...] = (),
         on_time_advanced: DayTimeObserver | None = None,
         on_dispatch_started: DayDispatchObserver | None = None,
+        on_dispatch_committed: DayDispatchCommitObserver | None = None,
     ) -> None:
         if not isinstance(start, SimulatedTime):
             raise TypeError("start must be SimulatedTime")
@@ -279,6 +281,8 @@ class AcceleratedDayRuntime:
             raise TypeError("on_time_advanced must be callable")
         if on_dispatch_started is not None and not callable(on_dispatch_started):
             raise TypeError("on_dispatch_started must be callable")
+        if on_dispatch_committed is not None and not callable(on_dispatch_committed):
+            raise TypeError("on_dispatch_committed must be callable")
         if not isinstance(model_backed_actor_ids, tuple):
             raise TypeError("model_backed_actor_ids must be a tuple")
         if any(
@@ -298,6 +302,7 @@ class AcceleratedDayRuntime:
         self._decision_handler = decision_handler
         self._on_time_advanced = on_time_advanced
         self._on_dispatch_started = on_dispatch_started
+        self._on_dispatch_committed = on_dispatch_committed
         self._model_backed_actor_ids = frozenset(model_backed_actor_ids)
         self._decision_counts_by_actor: dict[str, int] = {}
         self._executed_work: list[ExecutedWorkEvidence] = []
@@ -548,6 +553,18 @@ class AcceleratedDayRuntime:
                             triggers=active_decision.triggers,
                         )
                     )
+                if self._on_dispatch_committed is not None:
+                    try:
+                        self._on_dispatch_committed(
+                            len(self._executed_work),
+                            work,
+                        )
+                    except Exception as error:
+                        self._record_failure(
+                            error,
+                            released_uncommitted_count=len(batch) - index - 1,
+                        )
+                        raise
 
     def _record_failure(
         self,

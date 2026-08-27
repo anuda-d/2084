@@ -19,14 +19,22 @@ from simulation.actions import (
     action_parameter_contract_data,
     action_parameter_shape_error,
 )
-from simulation.agents import AgentView, PolicyDecisionRecord
+from simulation.agents import (
+    ActionContinuityRequirement,
+    AgentView,
+    PolicyDecisionRecord,
+)
 from simulation.events import freeze_mapping, to_plain_data
 
 
 MAX_RETAINED_DECISION_HISTORY_ENTRIES = 16
 MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
-MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = len(ACTION_PARAMETER_CONTRACTS)
-DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_latest_action_kind_v1"
+_ACTION_RESULT_CONTINUITY_STATUSES = frozenset(("completed", "rejected"))
+MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES = (
+    len(ACTION_PARAMETER_CONTRACTS) * len(_ACTION_RESULT_CONTINUITY_STATUSES)
+)
+MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS = 8
+DECISION_HISTORY_PROJECTION_KIND = "recent_window_with_explicit_action_requirements_v4"
 MAX_RESTRICTED_CONTINUITY_ENTRIES = 64
 RESTRICTED_CONTINUITY_PROJECTION_KIND = "complete_source_linked_window_v0"
 
@@ -50,9 +58,16 @@ class RecordedDecisionError(RuntimeError):
 class _RecordedSafeFailure(RuntimeError):
     """A replayed record preserves one prior explicit model failure."""
 
-    def __init__(self, *, failure_kind: str, failure_type: str) -> None:
+    def __init__(
+        self,
+        *,
+        failure_kind: str,
+        failure_type: str,
+        provider_call_attempted: bool,
+    ) -> None:
         self.failure_kind = failure_kind
         self.failure_type = failure_type
+        self.provider_call_attempted = provider_call_attempted
 
 
 @dataclass(frozen=True)
@@ -213,6 +228,9 @@ class RecordedDecisionClient:
             raise _RecordedSafeFailure(
                 failure_kind=failure_kind,
                 failure_type=failure_type,
+                provider_call_attempted=bool(
+                    record.get("provider_call_attempted", False)
+                ),
             )
         response = _recorded_choice(record)
         self._index += 1
@@ -232,13 +250,18 @@ def _attempt_data(attempt: ActionAttempt | None) -> dict[str, object] | None:
 
 
 def _decision_history_data(view: AgentView) -> dict[str, object]:
-    """Project recent history plus bounded latest attempts and outcomes by kind.
+    """Project recent history plus bounded canonical continuity entries.
 
     The recent window gives the model short-term cadence. An older attempted
-    action or its successful or rejected outcome can still explain a current
-    choice, however, so retain the latest entry for each supported action kind
-    as an explicit bounded continuity rule. Only supported action kinds
-    qualify; this cannot grow with arbitrary lifetime history data.
+    action can still explain a current choice. For outcomes, the latest
+    completed and latest rejected result of one supported action kind can each
+    matter, so retain one of each as an explicit bounded continuity rule. A
+    world-owned requirement can additionally identify the exact older attempt
+    and result that still explain current canonical state, together with the
+    reason and lifecycle. The requirement closure is capped and must resolve
+    entirely inside actor-safe history; otherwise the policy refuses to send a
+    partial history to a provider. No structured model response can author or
+    change these requirements.
     """
     supported_kinds = set(ACTION_PARAMETER_CONTRACTS)
     latest_attempt_index_by_kind: dict[str, int] = {}
@@ -252,26 +275,112 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
         )
     )
     included_attempt_indexes.update(latest_attempt_index_by_kind.values())
-    attempts = tuple(
-        attempt
-        for index, attempt in enumerate(view.action_history)
-        if index in included_attempt_indexes
-    )
-    latest_result_index_by_kind: dict[str, int] = {}
+    latest_result_index_by_kind_and_status: dict[tuple[str, str], int] = {}
     for index, result in enumerate(view.action_results):
-        if result.action_kind in supported_kinds:
-            latest_result_index_by_kind[result.action_kind] = index
+        if (
+            result.action_kind in supported_kinds
+            and result.status in _ACTION_RESULT_CONTINUITY_STATUSES
+        ):
+            latest_result_index_by_kind_and_status[
+                (result.action_kind, result.status)
+            ] = index
     included_result_indexes = set(
         range(
             max(0, len(view.action_results) - MAX_RETAINED_DECISION_HISTORY_ENTRIES),
             len(view.action_results),
         )
     )
-    included_result_indexes.update(latest_result_index_by_kind.values())
+    included_result_indexes.update(latest_result_index_by_kind_and_status.values())
+    result_indexes_by_action_id: dict[str, list[int]] = {}
+    result_indexes_by_attempt_event_id: dict[str, list[int]] = {}
+    result_indexes_by_outcome_event_id: dict[str, list[int]] = {}
+    for index, result in enumerate(view.action_results):
+        result_indexes_by_action_id.setdefault(result.action_id, []).append(index)
+        result_indexes_by_attempt_event_id.setdefault(
+            result.attempt_event_id, []
+        ).append(index)
+        result_indexes_by_outcome_event_id.setdefault(
+            result.outcome_event_id, []
+        ).append(index)
+    requirements = tuple(view.continuity_requirements)
+    retained_requirements = requirements[:MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS]
+    seen_requirement_ids: set[str] = set()
+    seen_action_ids: set[str] = set()
+    invalid_requirements = 0
+    missing_requirement_sources = 0
+    included_requirements: list[
+        tuple[ActionContinuityRequirement, ActionAttempt, ActionResult]
+    ] = []
+    for requirement in retained_requirements:
+        if not isinstance(requirement, ActionContinuityRequirement):
+            invalid_requirements += 1
+            continue
+        if (
+            requirement.requirement_id in seen_requirement_ids
+            or requirement.action_id in seen_action_ids
+        ):
+            invalid_requirements += 1
+            continue
+        seen_requirement_ids.add(requirement.requirement_id)
+        seen_action_ids.add(requirement.action_id)
+        matching_result_indexes = result_indexes_by_action_id.get(
+            requirement.action_id, []
+        )
+        matching_attempt_event_indexes = result_indexes_by_attempt_event_id.get(
+            requirement.attempt_event_id, []
+        )
+        attempt_index = requirement.action_history_index
+        if (
+            not matching_result_indexes
+            or attempt_index >= len(view.action_history)
+        ):
+            missing_requirement_sources += 1
+            continue
+        if (
+            len(matching_result_indexes) != 1
+            or len(matching_attempt_event_indexes) != 1
+            or matching_result_indexes != matching_attempt_event_indexes
+        ):
+            invalid_requirements += 1
+            continue
+        result_index = matching_result_indexes[0]
+        attempt = view.action_history[attempt_index]
+        result = view.action_results[result_index]
+        if (
+            attempt.actor_id != view.agent_id
+            or attempt != requirement.attempt
+            or result.actor_id != view.agent_id
+            or result != requirement.result
+            or result.action_id != requirement.action_id
+            or result.attempt_event_id != requirement.attempt_event_id
+            or result.action_kind != attempt.kind
+            or result.status != "completed"
+            or len(
+                result_indexes_by_outcome_event_id.get(result.outcome_event_id, [])
+            )
+            != 1
+            or requirement.state_value in view.obligations
+        ):
+            invalid_requirements += 1
+            continue
+        included_attempt_indexes.add(attempt_index)
+        included_result_indexes.add(result_index)
+        included_requirements.append((requirement, attempt, result))
+    attempts = tuple(
+        attempt
+        for index, attempt in enumerate(view.action_history)
+        if index in included_attempt_indexes
+    )
     results = tuple(
         result
         for index, result in enumerate(view.action_results)
         if index in included_result_indexes
+    )
+    requirement_closure_complete = (
+        invalid_requirements == 0
+        and len(requirements) <= MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
+        and missing_requirement_sources == 0
+        and len(included_requirements) == len(requirements)
     )
     return {
         "projection": {
@@ -283,19 +392,33 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
             "maximum_attempts": (
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES
                 + MAX_RETAINED_ACTION_ATTEMPT_KIND_SUMMARIES
+                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
             ),
             "maximum_recent_results": MAX_RETAINED_DECISION_HISTORY_ENTRIES,
-            "maximum_latest_results_by_action_kind": (
+            "maximum_latest_results_by_action_kind_and_status": (
                 MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
             ),
             "maximum_results": (
                 MAX_RETAINED_DECISION_HISTORY_ENTRIES
                 + MAX_RETAINED_ACTION_RESULT_KIND_SUMMARIES
+                + MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
+            ),
+            "maximum_explicit_relevant_actions": (
+                MAX_RETAINED_EXPLICIT_RELEVANT_ACTIONS
             ),
             "total_attempts": len(view.action_history),
             "total_results": len(view.action_results),
             "omitted_attempts": len(view.action_history) - len(attempts),
             "omitted_results": len(view.action_results) - len(results),
+            "explicit_relevant_actions": len(requirements),
+            "included_explicit_relevant_actions": len(included_requirements),
+            "missing_explicit_relevant_action_sources": (
+                missing_requirement_sources
+            ),
+            "invalid_explicit_relevant_action_requirements": (
+                invalid_requirements
+            ),
+            "complete": requirement_closure_complete,
         },
         "last_attempt": _attempt_data(view.last_attempt),
         "attempts": [_attempt_data(attempt) for attempt in attempts],
@@ -311,6 +434,33 @@ def _decision_history_data(view: AgentView) -> dict[str, object]:
                 "reason": result.reason,
             }
             for result in results
+        ],
+        "continuity_requirements": [
+            {
+                "requirement_id": requirement.requirement_id,
+                "reason": requirement.reason,
+                "lifecycle": requirement.lifecycle,
+                "canonical_state": {
+                    "field": requirement.state_field,
+                    "removed_value": requirement.state_value,
+                },
+                "attempt": {
+                    "action_id": requirement.action_id,
+                    "attempt_event_id": requirement.attempt_event_id,
+                    **(_attempt_data(attempt) or {}),
+                },
+                "result": {
+                    "action_id": result.action_id,
+                    "attempt_event_id": result.attempt_event_id,
+                    "outcome_event_id": result.outcome_event_id,
+                    "actor_id": result.actor_id,
+                    "action_kind": result.action_kind,
+                    "status": result.status,
+                    "resolved_tick": result.resolved_tick,
+                    "reason": result.reason,
+                },
+            }
+            for requirement, attempt, result in included_requirements
         ],
     }
 
@@ -757,7 +907,10 @@ class ModelFocalPolicy:
         recorded_input = freeze_mapping(model_input)
         model_input_bytes = restricted_decision_input_size_bytes(recorded_input)
         continuity_projection = model_input["continuity_projection"]
-        if not continuity_projection["complete"]:
+        if (
+            not continuity_projection["complete"]
+            or not model_input["decision_history"]["projection"]["complete"]
+        ):
             if isinstance(self._client, RecordedDecisionClient):
                 try:
                     self._client.choose(model_input)
@@ -780,6 +933,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "continuity_projection_incomplete",
                 "RestrictedContinuityProjectionError",
+                provider_call_attempted=False,
             )
         try:
             response = self._client.choose(model_input)
@@ -790,6 +944,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 error.failure_kind,
                 error.failure_type,
+                provider_call_attempted=error.provider_call_attempted,
             )
         except RestrictedInputTooLargeError as error:
             return self._safe_failure(
@@ -798,6 +953,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "restricted_input_too_large",
                 type(error).__name__,
+                provider_call_attempted=False,
             )
         except TimeoutError as error:
             return self._safe_failure(
@@ -806,6 +962,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "timeout",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         except ModelUnavailableError as error:
             return self._safe_failure(
@@ -814,6 +971,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "unavailable_model",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         try:
             attempt = structured_choice_to_attempt(view, response)
@@ -824,6 +982,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "invalid_attempt",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         except StructuredChoiceError as error:
             return self._safe_failure(
@@ -832,6 +991,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "malformed_response",
                 type(error).__name__,
+                provider_call_attempted=True,
             )
         self._decision_record = PolicyDecisionRecord(
             decision_id=f"model-decision-{view.agent_id}-{view.tick:04d}",
@@ -846,6 +1006,7 @@ class ModelFocalPolicy:
             attempted_action=_attempt_data(attempt) or {},
             attempted_action_kind=attempt.kind,
             authorship_identity=self._authorship_identity,
+            provider_call_attempted=True,
         )
         return attempt
 
@@ -856,6 +1017,8 @@ class ModelFocalPolicy:
         model_input_bytes: int,
         failure_kind: str,
         failure_type: str,
+        *,
+        provider_call_attempted: bool,
     ) -> ActionAttempt:
         attempt = ActionAttempt(
             actor_id=view.agent_id,
@@ -878,6 +1041,7 @@ class ModelFocalPolicy:
             authorship_identity=self._authorship_identity,
             failure_kind=failure_kind,
             failure_type=failure_type,
+            provider_call_attempted=provider_call_attempted,
             attempted_action_kind=attempt.kind,
         )
         return attempt

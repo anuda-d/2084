@@ -153,6 +153,7 @@ class OllamaDecisionClientTests(unittest.TestCase):
         self.assertEqual(record.status, "failed")
         self.assertEqual(record.failure_kind, "restricted_input_too_large")
         self.assertEqual(record.failure_type, "RestrictedInputTooLargeError")
+        self.assertFalse(record.provider_call_attempted)
         self.assertGreater(
             record.model_input_bytes,
             MAX_RESTRICTED_DECISION_INPUT_BYTES,
