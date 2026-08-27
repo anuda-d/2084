@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-6 and AD-8 through AD-10 are met. AD-7, AD-11, and AD-12 are open.
+Status: active; AD-1 through AD-6 and AD-8 through AD-11 are met. AD-7 and AD-12 are open.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,8 +9,8 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: Tenth whole-goal alignment (2026-08-26)
-- Verified implementation runs since alignment: 0
+- Last completed run: AD-11 pre-transport provider-call provenance (2026-08-26)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -27,7 +27,7 @@ implementation sequence.
 | AD-8 Failure behavior | met | The exact harness boundary handles timeout, unavailable, malformed, and invalid-choice failures as explicit safe waits without scripted focal fallback. The successor limits each actor to one authority-bound, 30-minute retry chain and rejects stale or forged requests. Sanitized terminal runtime evidence stops execution and the command returns nonzero with focal-safe incomplete status, including at the exact end time. This is terminal failure evidence, not rollback; legacy per-tick policy cadence remains outside the successor proof. |
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
-| AD-11 Watchability and inspection | open | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Each committed event, observation, action result, and understanding transition links to the exact successful runtime dispatch sequence and causal phase that produced it; uncommitted failure-tail artifacts remain explicitly unlinked. Its ordered sanitized model-decision status sequence remains privacy-safe, but `provider_failure_count` still includes a `restricted_input_too_large` rejection that the Ollama adapter raises before transport because the policy marks it as provider-called. The aggregate therefore does not yet preserve the provider-call boundary required by this criterion. |
+| AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Each committed event, observation, action result, and understanding transition links to the exact successful runtime dispatch sequence and causal phase that produced it; uncommitted failure-tail artifacts remain explicitly unlinked. Its ordered sanitized model-decision status sequence is privacy-safe, and `provider_failure_count` excludes a `restricted_input_too_large` rejection that the Ollama adapter raises before transport, preserving the provider-call boundary required by this criterion. |
 | AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
 
 ## Per-Run Selection
@@ -92,6 +92,26 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-26 — AD-11 pre-transport provider-call provenance
+
+- `ModelFocalPolicy` now records `RestrictedInputTooLargeError` as a safe
+  pre-transport failure (`provider_call_attempted: false`). The Ollama adapter
+  rejects the restricted decision input before its transport's `post_json`, so
+  the retained status now names the actual boundary rather than treating a
+  local adapter rejection as provider work.
+- Focused policy coverage verifies the retained false flag. A full configured
+  autonomous day uses a transport sentinel that fails if touched; it reaches
+  the exact end boundary, retains sanitized oversized-input failures, and its
+  inspector reports zero provider failures. Existing recorded replay coverage
+  preserves the false marker without a transport call.
+- Solo gates were reverified with 4 met, 0 unmet, and 0 abandoned: the focused
+  policy and successor tests, the complete offline repository check, and
+  whitespace validation. A fresh independent Sol-high review found no
+  blocker; the small follow-up test hardening was reverified and received a
+  second fresh Sol-high closure review with no blocker.
+- AD-11 is met. This corrects model-path provenance; it does not close AD-7's
+  semantic relevance gap or authorize the owner-required live day for AD-12.
 
 ### 2026-08-26 — Tenth whole-goal alignment
 

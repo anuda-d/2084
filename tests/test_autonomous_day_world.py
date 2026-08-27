@@ -6,6 +6,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from policies.mara_harness import MaraHarness
+from policies.ollama_client import OllamaDecisionClient
 from scenarios.autonomous_day import (
     ILAN_ID,
     MARA_ID,
@@ -846,6 +847,40 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "provider_failure_count"
             ],
             0,
+        )
+
+    def test_inspector_provider_failure_count_excludes_oversized_ollama_input(self):
+        class _TransportMustNotBeCalled:
+            def post_json(self, **_call):
+                raise AssertionError("oversized input must not reach transport")
+
+        client = OllamaDecisionClient(
+            base_url="http://10.255.255.1:11434",
+            model="qwen3:4b-instruct",
+            transport=_TransportMustNotBeCalled(),
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id=client.configuration_id,
+                authorship_identity=client.authorship_identity,
+            ),
+        )
+        day.world.agents[MARA_ID].aim = "x" * MAX_RESTRICTED_DECISION_INPUT_BYTES
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        model_path = autonomous_day_inspector_data(day, summary)["model_path"]
+        self.assertGreater(model_path["decision_status_counts"]["failed"], 0)
+        self.assertEqual(model_path["provider_failure_count"], 0)
+        self.assertTrue(
+            all(
+                record.failure_kind == "restricted_input_too_large"
+                and not record.provider_call_attempted
+                for record in day.private_decision_records
+            )
         )
 
     def test_completed_travel_dispatches_action_result_decision(self):

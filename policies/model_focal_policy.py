@@ -866,7 +866,7 @@ class ModelFocalPolicy:
                 model_input_bytes,
                 "restricted_input_too_large",
                 type(error).__name__,
-                provider_call_attempted=True,
+                provider_call_attempted=False,
             )
         except TimeoutError as error:
             return self._safe_failure(
