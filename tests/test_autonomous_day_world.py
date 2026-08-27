@@ -1402,6 +1402,44 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         print("focused AD-7 continuity verification passed")
 
+    def test_model_action_completing_at_day_end_does_not_dispatch_again(self):
+        class _RepeatingHouseholdClient:
+            def __init__(self):
+                self.inputs = []
+
+            def choose(self, model_input):
+                self.inputs.append(model_input)
+                return {
+                    "kind": "household",
+                    "parameters": {},
+                    "explanation": "continue ordinary household activity",
+                    "decision_reason": "household activity remains available",
+                }
+
+        client = _RepeatingHouseholdClient()
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="exact-boundary-action-completion-test",
+            ),
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertIsNone(summary.runtime_failure)
+        self.assertEqual(day.world.tick, 1440)
+        self.assertEqual(
+            day.world.agents[MARA_ID].action_results[-1].resolved_tick,
+            1440,
+        )
+        self.assertNotIn(1440, [model_input["tick"] for model_input in client.inputs])
+        self.assertNotIn(
+            1440,
+            [record.tick for record in day.private_decision_records],
+        )
+
     def test_home_household_activity_completes_after_model_selection(self):
         client = _SequenceClient(
             {

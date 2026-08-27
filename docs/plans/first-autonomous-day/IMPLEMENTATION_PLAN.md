@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-12 single-run live audit bundle (2026-08-27)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: AD-12 exact-boundary completion regression (2026-08-27)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -28,7 +28,7 @@ implementation sequence.
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
 | AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Each committed event, observation, action result, and understanding transition links to the exact successful runtime dispatch sequence and causal phase that produced it; uncommitted failure-tail artifacts remain explicitly unlinked. Its ordered sanitized model-decision status sequence is privacy-safe, and `provider_failure_count` excludes a `restricted_input_too_large` rejection that the Ollama adapter raises before transport, preserving the provider-call boundary required by this criterion. |
-| AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
+| AD-12 Integration and live day | open | Existing regressions pass and one owner-authorized exact-model live attempt produced 19 selected decisions with zero provider failures, but an unnecessary decision dispatched at the closed minute-1,440 boundary after the final action completion and made the audited verdict fail. The retained failed bundle is anchored below; no successful owner-authorized live day exists yet. |
 
 ## Per-Run Selection
 
@@ -92,6 +92,49 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-27 - AD-12 exact-boundary completion regression
+
+- Decision eligibility now uses the half-open `[start, end)` interval. A cause
+  delivered at minute 1,440 creates no new decision, and a safe-failure retry
+  landing at or beyond that instant is omitted. The general agenda still
+  commits authored scheduled work and action completions exactly at the end.
+- A deterministic model-backed reproduction repeated selected 60-minute
+  household actions through the final boundary. Before the fix it reproduced
+  the live `ValueError` twice in 0.1 seconds; after the fix the final result
+  commits at minute 1,440, the runtime completes, and no boundary model request
+  or private decision record exists.
+- A provider-free local replay of the first 18 retained live choices reached
+  the corrected exact boundary with equal objective state, executed work, and
+  committed event, observation, result, and understanding histories. The
+  failed audit bundle remains unchanged and retains its unnecessary nineteenth
+  boundary decision as historical evidence.
+- Solo gates were verified with 5 met, 0 unmet, and 0 abandoned. Eighty-one
+  focused tests, 232 current tests, 63 historical tests, and whitespace
+  validation passed. A fresh independent Sol-high review found no blocker in
+  code, API typing, tests, architecture, or the failed-live evidence record.
+- Scope limit: AD-12 remains open. The one authorized live attempt failed and
+  has not been retried; another provider-backed execution requires explicit
+  owner authorization.
+
+### 2026-08-27 - AD-12 first owner-authorized live audit attempt
+
+- One exact `qwen3:4b-instruct` execution used the validated Ollama adapter and
+  retained an immutable private audit bundle outside the repository. Its
+  manifest SHA-256 is
+  `08f2001b38640fc396822d52bd869ffbab3f74b737bee33c3978ede31acbbc86`.
+- The source remained unchanged during execution. Exact model identity,
+  adapter provenance, public-view privacy, both growth ceilings, and decision
+  count checks passed. All 19 provider calls returned selected decisions and
+  `provider_failure_count` was zero.
+- The final action completion committed at minute 1,440, then its result
+  incorrectly created one more decision at the closed boundary. That decision
+  selected an action whose consequence would exceed the day, producing a
+  sanitized terminal `ValueError`, one uncommitted objective tail, incomplete
+  causal dispatch evidence, and a failed recorded-replay comparison.
+- The audit verifier reports a structurally intact bundle with `passed: false`.
+  AD-12 remains open, and this attempt must not be relabeled as a completed live
+  day or silently retried.
 
 ### 2026-08-27 - AD-12 single-run live audit bundle
 

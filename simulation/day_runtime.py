@@ -37,7 +37,7 @@ class DayWorkContext:
         current: SimulatedTime,
         end: SimulatedTime,
         schedule: Callable[[ScheduledWork], ScheduledWork],
-        request_decision: Callable[..., ScheduledWork],
+        request_decision: Callable[..., ScheduledWork | None],
         request_safe_failure_retry: Callable[..., ScheduledWork | None] | None,
     ) -> None:
         self._current = current
@@ -63,7 +63,7 @@ class DayWorkContext:
         actor_id: str,
         due_time: SimulatedTime,
         trigger: DecisionTrigger,
-    ) -> ScheduledWork:
+    ) -> ScheduledWork | None:
         return self._request_decision(
             actor_id=actor_id,
             due_time=due_time,
@@ -356,7 +356,7 @@ class AcceleratedDayRuntime:
         actor_id: str,
         due_time: SimulatedTime,
         trigger: DecisionTrigger,
-    ) -> ScheduledWork:
+    ) -> ScheduledWork | None:
         if self._runtime_failure is not None:
             raise RuntimeError("accelerated day stopped after a runtime failure")
         if trigger.kind is DecisionTriggerKind.SAFE_FAILURE_RETRY:

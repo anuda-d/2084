@@ -13,8 +13,10 @@ goal is active. Its full 24-hour successor composition now combines explicit
 simulated time, restricted model decisions, ordinary focal opportunities,
 independent supporting and institutional activity, bounded private evidence,
 offline reproduction, and focal-safe observation. The remaining goal limits
-are intentionally narrow: the exact live day still requires an explicit
-owner-authorized live Ollama run. The separate thin-harness/fat-skills
+are intentionally narrow: the exact live day still requires a successful
+explicit owner-authorized live Ollama run. The first authorized attempt exposed
+an end-boundary decision bug and remains retained as failed audit evidence. The
+separate thin-harness/fat-skills
 documents describe a possible generalization of the completed Mara boundary,
 not an implemented general agent runtime.
 
@@ -55,10 +57,12 @@ The successor `DecisionEligibility` seam places only five documented causes
 into the agenda's decision phase: initial activation, a terminal action result,
 a delivered observation, an explicit scheduled wake, or a safe-failure retry.
 Causes for one actor at one minute coalesce into one eligibility record. Time
-passage alone creates no record. The safe-failure cadence is one retry 30
-simulated minutes later, with no retry if that instant would cross the day
-boundary. The successor consumes these records only at its dedicated Mara
-decision handler; the legacy tick loop does not use this seam.
+passage alone creates no record. Decision eligibility uses the half-open
+`[start, end)` day interval because no new attempted action can begin at the
+closed end boundary. The safe-failure cadence is one retry 30 simulated minutes
+later, with no retry if that instant would land at or beyond the day boundary.
+The successor consumes these records only at its dedicated Mara decision
+handler; the legacy tick loop does not use this seam.
 
 An `AcceleratedDayRuntime` now provides the first isolated executor for these
 temporal seams. A composition registers handlers by authored work kind, and the
@@ -68,13 +72,15 @@ advance time, release work, close registration, or re-enter the runtime through
 that interface. A composition may bind a time-advance observer; the autonomous
 day uses it only to synchronize `WorldState.tick` before due handlers execute
 and again at the final boundary. The runtime retains exact
-committed-work order and compact quiet spans, processes work due exactly at the
-end boundary, then closes the agenda against further registration. An
-unexpected handler or dispatch exception creates sanitized terminal evidence
-and freezes subsequent execution and registration to prevent false completion
-or retry mutation. It does not roll back handler side effects: append-only
-objective evidence from a handler that fails after mutation may remain outside
-the committed-work trace and requires direct history inspection.
+committed-work order and compact quiet spans, processes non-decision work due
+exactly at the end boundary, then closes the agenda against further
+registration. Decision eligibility remains end-exclusive even though the
+general agenda permits a final action completion or scheduled-world item at
+that instant. An unexpected handler or dispatch exception creates sanitized
+terminal evidence and freezes subsequent execution and registration to prevent
+false completion or retry mutation. It does not roll back handler side effects:
+append-only objective evidence from a handler that fails after mutation may
+remain outside the committed-work trace and requires direct history inspection.
 
 The runtime now owns the explicit decision-eligibility registry. A composition
 can request one of the five documented causes, and the runtime consumes the
