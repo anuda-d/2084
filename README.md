@@ -240,9 +240,9 @@ stance system.
 The repository also contains a proposed thin-harness/fat-skills direction for
 later model-backed expansion. The current code implements only the narrow Mara
 decision boundary; it does not contain a general skill resolver, tool-using
-agent runtime, or self-modifying skill system. The active 24-hour goal preserves
-that narrow model boundary while adding one full-day composition; it does not
-authorize the proposed general runtime.
+agent runtime, or self-modifying skill system.
+The completed 24-hour goal preserves that narrow model boundary while adding
+one full-day composition; it does not authorize the proposed general runtime.
 
 ## Known limits
 

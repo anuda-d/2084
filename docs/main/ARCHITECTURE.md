@@ -6,25 +6,25 @@ This document describes the conceptual boundaries for 2084 and how the current
 first living slice implements them. The implementation is a working feasibility
 slice, not a settled production specification.
 
-The bounded Official Record, Agent Understanding, and Model-Backed Focal
-Character goals are complete. The owner-approved
+The bounded Official Record, Agent Understanding, Model-Backed Focal Character,
+and First Autonomous 24-Hour Living Day goals are complete. The completed
 [First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
-goal is active. Its full 24-hour successor composition now combines explicit
+goal's full 24-hour successor composition combines explicit
 simulated time, restricted model decisions, ordinary focal opportunities,
 independent supporting and institutional activity, bounded private evidence,
-offline reproduction, and focal-safe observation. The remaining goal limits
-are intentionally narrow: the exact live day still requires a successful
-explicit owner-authorized live Ollama run. The first authorized attempt exposed
-an end-boundary decision bug and remains retained as failed audit evidence. The
-separate thin-harness/fat-skills
+offline reproduction, and focal-safe observation. One corrected, explicitly
+owner-authorized exact-model live day reached the full boundary within every
+approved authority, privacy, cadence, failure, growth, source, and replay
+limit. The first authorized attempt exposed an end-boundary decision bug and
+remains retained as failed audit evidence. The separate thin-harness/fat-skills
 documents describe a possible generalization of the completed Mara boundary,
 not an implemented general agent runtime.
 
 ## Implemented Simulation Loop
 
-### Simulated-time primitive for the 24-hour successor
+### Simulated-time primitive for the completed 24-hour goal
 
-The active full-day work defines authoritative time as a non-negative integer
+The completed full-day work defines authoritative time as a non-negative integer
 count of whole simulated minutes. That integer is the sole ordering value;
 readable `Day N HH:MM` text is a projection and wall-clock time has no role.
 One `SimulatedDayClock` owns an explicit start, current time, and end at exactly
@@ -350,7 +350,7 @@ chain-of-thought stay out of objective history and normal presentation. Mara's
 concise `decision_reason` is intentionally retained as an attributed action
 explanation and rendered in the normal `Reason:` line.
 
-The active 24-hour goal has added four long-run guardrails to this boundary.
+The completed 24-hour goal added four long-run guardrails to this boundary.
 The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter
 refuses inputs above 48 KiB before transport. Prior attempts and results use a
 16-entry recent window with explicit total and omitted counts. The complete

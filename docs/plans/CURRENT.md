@@ -1,22 +1,21 @@
 # Current Development Index
 
-Status: First Autonomous 24-Hour Living Day is the active owner-approved goal
-as of 2026-08-23.
+Status: no active owner-approved goal as of 2026-08-27. First Autonomous
+24-Hour Living Day is complete.
 
 ## Active Work
 
-- Active goal:
-  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
-- Shared implementation state:
-  [Implementation Plan](first-autonomous-day/IMPLEMENTATION_PLAN.md)
+- Active goal: none
 - Most recently completed goal:
-  [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
+  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
 - Most recent completion evidence:
-  [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Earlier completed goal: [Agent Understanding](agent-understanding/GOAL.md)
+  [Implementation Plan](first-autonomous-day/IMPLEMENTATION_PLAN.md)
+- Earlier completed goal:
+  [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Earlier completion evidence:
-  [Agent Understanding Implementation State](agent-understanding/IMPLEMENTATION_PLAN.md)
-- Active work: goal approved; no implementation work unit selected
+  [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
+- Active work: none; stop after reading this index until the owner approves a
+  new goal
 
 ## Required Read Order
 
