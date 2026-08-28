@@ -9,9 +9,9 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-12 exact-boundary completion regression (2026-08-27)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: First Autonomous Day whole-goal alignment (2026-08-27)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -92,6 +92,27 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-27 - First Autonomous Day whole-goal alignment
+
+- A fresh independent Sol-high reviewer compared every AD-1 through AD-12
+  criterion with the current implementation, tests, architecture, three AD-12
+  commits, the immutable failed audit, and a provider-free replay of its first
+  18 retained choices.
+- AD-1 through AD-11 remain met. The exact-boundary repair preserves scheduled
+  and action-completion work at minute 1,440 while preventing any new decision
+  at that closed endpoint. The retained live choices now replay to completion
+  with equal objective state, executed work, and committed histories.
+- Fresh validation passed 232 current tests and 63 historical tests. Offline
+  normal and inspector commands reached minute 1,440, whitespace validation
+  passed, and the worktree was clean at `ca0fcb9`.
+- AD-12 remains open only for one new explicitly owner-authorized successful
+  audited `qwen3:4b-instruct` day from the corrected source. Before accepting
+  that run, verify the manifest records `source.clean: true` both before and
+  after in addition to its enforced source-equality check.
+- No implementation blocker or removal candidate remains. Keep the failed
+  bundle as historical evidence; do not add retry automation, another
+  scheduler, or another provider abstraction.
 
 ### 2026-08-27 - AD-12 exact-boundary completion regression
 
