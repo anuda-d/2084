@@ -8,7 +8,7 @@ implementation sequence.
 
 ## Run State
 
-- Incomplete run: none
+- Incomplete run: AD-12 owner-authorized corrected live retry
 - Last completed run: First Autonomous Day whole-goal alignment (2026-08-27)
 - Verified implementation runs since alignment: 0
 - Alignment due: no
@@ -58,7 +58,20 @@ ledger because they do not implement a work unit.
 
 ## Current Run
 
-None.
+### AD-12 owner-authorized corrected live retry
+
+- Criterion: AD-12 Integration and live day.
+- Authorization: the owner explicitly authorized one corrected live retry after
+  reviewing the retained failed attempt and the exact-boundary repair.
+- Intended behavior: execute the committed audited CLI exactly once against the
+  same validated private Ollama model, using a new non-existing private audit
+  directory and a clean source checkout. Accept the result only if every audit
+  check, provider-free replay, full offline regression, and fresh whole-goal
+  review passes.
+- Focused evidence: the immutable bundle at
+  `/private/tmp/2084-ad12-live-corrected-20260827-01a04560` must pass its
+  provider-free verifier. Its manifest must record clean and unchanged source;
+  only sanitized aggregate evidence may enter tracked state or reports.
 
 ## Completion Rules
 
