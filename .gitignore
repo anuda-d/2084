@@ -1,5 +1,14 @@
 .DS_Store
 __pycache__/
 *.py[cod]
-GATES.md
-.unlazy/
+
+# Disposable harness artifacts
+/.unlazy/
+/.playwright-cli/
+/output/
+/drafts/
+/handoff/
+/handoffs/
+/*HANDOFF*.md
+/*handoff*.md
+/GATES.md
