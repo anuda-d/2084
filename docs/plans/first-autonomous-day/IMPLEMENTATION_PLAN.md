@@ -1,6 +1,6 @@
 # First Autonomous 24-Hour Living Day Implementation State
 
-Status: active; AD-1 through AD-11 are met. AD-12 is open.
+Status: complete; AD-1 through AD-12 are met and independently reviewed.
 
 This is verified shared state for the owner-approved
 [goal](GOAL.md). It records completed evidence only; it is not a task backlog or
@@ -9,7 +9,7 @@ implementation sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: AD-7 explicit action continuity lifecycle (2026-08-26)
+- Last completed run: final whole-goal review after AD-12 (2026-08-27)
 - Verified implementation runs since alignment: 0
 - Alignment due: no
 
@@ -28,7 +28,7 @@ implementation sequence.
 | AD-9 Offline full-day proof | met | Two equal-seed, equal-configuration deterministic-harness runs reach minute 1,440 and retain equal ordered events, observations, action results, private decision records, summaries, and inspector final-state evidence. The paired proof measures five focal calls, every restricted input, and the peak retained private-record footprint against the approved ceilings. This proves offline deterministic reproduction of one scripted choice sequence, not live-model determinism or the other goal criteria. |
 | AD-10 Recorded full-day reproduction | met | Complete deterministic-harness days, including one timeout and retry, replay equal summaries, ordered objective history, results, inspector state, and restricted inputs through minute 1,440 without a source-client call. A private HMAC-sealed archive binds every retained record to a caller-held verification key; a self-consistent selected-record edit fails before replay can apply it. This detects modification while that key remains trusted; it is not a provenance claim against a party that controls the key or a claim of live-model determinism. |
 | AD-11 Watchability and inspection | met | The successor command presents readable start/end time, compact quiet intervals, Mara's accessible bulletin, and world-confirmed completed activity with fixed focal-safe labels. The inspector reconstructs committed runtime work, objective history/state, observations, action results in append-only objective event order across actors, source-linked understanding transitions, ordered consumed decision-trigger provenance, and the exact objective tail of an uncommitted failed dispatch through a pre-dispatch checkpoint plus safe temporal ordering metadata. Each committed event, observation, action result, and understanding transition links to the exact successful runtime dispatch sequence and causal phase that produced it; uncommitted failure-tail artifacts remain explicitly unlinked. Its ordered sanitized model-decision status sequence is privacy-safe, and `provider_failure_count` excludes a `restricted_input_too_large` rejection that the Ollama adapter raises before transport, preserving the provider-call boundary required by this criterion. |
-| AD-12 Integration and live day | open | Existing regressions pass and the bounded live adapter worked previously, but no owner-authorized full-day live run exists. |
+| AD-12 Integration and live day | met | From clean source `8c33f213b1ea58e51e6c326a8e22ba67dc664802`, one explicitly owner-authorized corrected live run through the concrete Ollama adapter and exact pinned `qwen3:4b-instruct` weights reached minute 1,440 with no runtime failure. All 18 provider calls returned selected decisions, no call occurred at the closed boundary, and provider failures remained zero. Peak restricted input was 17,492 bytes of 49,152 and peak private evidence was 181,753 bytes of 8,388,608. Every measured authority, causal-link, privacy, cadence, source, growth, and replay check passed; the immutable bundle manifest is anchored below. Existing offline regressions still pass. |
 
 ## Per-Run Selection
 
@@ -58,7 +58,7 @@ ledger because they do not implement a work unit.
 
 ## Current Run
 
-None. The last selected work unit is complete.
+None.
 
 ## Completion Rules
 
@@ -92,6 +92,147 @@ simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task. Reset the
 implementation-run counter after recording the reviewed state.
+
+### 2026-08-27 - AD-12 corrected live day and final whole-goal review
+
+- The owner explicitly authorized one corrected retry after reviewing the
+  retained failed attempt and the exact-boundary repair. The audited command
+  ran once from clean revision
+  `8c33f213b1ea58e51e6c326a8e22ba67dc664802` and reached exact simulated minute
+  1,440 with no runtime failure or boundary decision.
+- `/api/tags` and the manifest identify `qwen3:4b-instruct`, digest
+  `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`,
+  family `qwen3`, parameter size `4.0B`, and quantization `Q4_K_M`. The concrete
+  provider adapter is `ollama`.
+- All 18 calls were provider-attempted selected decisions and none failed. Peak
+  restricted input was 17,492 bytes against 49,152; peak retained private
+  evidence was 181,753 bytes against 8,388,608. The final inspector records 41
+  committed work items, no uncommitted objective tail, complete causal links,
+  focal-safe normal and inspector views, and no terminal failure.
+- Every audit verdict check passed, including clean unchanged source before and
+  after, exact model identity, provider provenance, decision cadence and count,
+  both growth ceilings, privacy, committed dispatch links, and provider-free
+  recorded replay equality. The independent verifier returned `passed: true`
+  with no errors.
+- The immutable successful bundle remains private outside the repository. Its
+  manifest SHA-256 is
+  `828541e3075ee776589ad7d6cab20e98ffb4e43a332d1c6de4ae1a0523ad2ee3`.
+  The earlier failed bundle remains separately anchored as historical evidence.
+- The complete offline check passed 232 current tests and 63 historical tests,
+  and whitespace validation passed. A fresh independent Sol-high whole-goal
+  review found AD-1 through AD-12 satisfied with no blocker or reopened
+  criterion.
+- Solo gates were verified with 5 met, 0 unmet, and 0 abandoned. This closes
+  AD-12 and the First Autonomous 24-Hour Living Day goal without claiming live
+  sampling is deterministic or expanding the approved scope.
+
+### 2026-08-27 - First Autonomous Day whole-goal alignment
+
+- A fresh independent Sol-high reviewer compared every AD-1 through AD-12
+  criterion with the current implementation, tests, architecture, three AD-12
+  commits, the immutable failed audit, and a provider-free replay of its first
+  18 retained choices.
+- AD-1 through AD-11 remain met. The exact-boundary repair preserves scheduled
+  and action-completion work at minute 1,440 while preventing any new decision
+  at that closed endpoint. The retained live choices now replay to completion
+  with equal objective state, executed work, and committed histories.
+- Fresh validation passed 232 current tests and 63 historical tests. Offline
+  normal and inspector commands reached minute 1,440, whitespace validation
+  passed, and the worktree was clean at `ca0fcb9`.
+- AD-12 remains open only for one new explicitly owner-authorized successful
+  audited `qwen3:4b-instruct` day from the corrected source. Before accepting
+  that run, verify the manifest records `source.clean: true` both before and
+  after in addition to its enforced source-equality check.
+- No implementation blocker or removal candidate remains. Keep the failed
+  bundle as historical evidence; do not add retry automation, another
+  scheduler, or another provider abstraction.
+
+### 2026-08-27 - AD-12 exact-boundary completion regression
+
+- Decision eligibility now uses the half-open `[start, end)` interval. A cause
+  delivered at minute 1,440 creates no new decision, and a safe-failure retry
+  landing at or beyond that instant is omitted. The general agenda still
+  commits authored scheduled work and action completions exactly at the end.
+- A deterministic model-backed reproduction repeated selected 60-minute
+  household actions through the final boundary. Before the fix it reproduced
+  the live `ValueError` twice in 0.1 seconds; after the fix the final result
+  commits at minute 1,440, the runtime completes, and no boundary model request
+  or private decision record exists.
+- A provider-free local replay of the first 18 retained live choices reached
+  the corrected exact boundary with equal objective state, executed work, and
+  committed event, observation, result, and understanding histories. The
+  failed audit bundle remains unchanged and retains its unnecessary nineteenth
+  boundary decision as historical evidence.
+- Solo gates were verified with 5 met, 0 unmet, and 0 abandoned. Eighty-one
+  focused tests, 232 current tests, 63 historical tests, and whitespace
+  validation passed. A fresh independent Sol-high review found no blocker in
+  code, API typing, tests, architecture, or the failed-live evidence record.
+- Scope limit: AD-12 remains open. The one authorized live attempt failed and
+  has not been retried; another provider-backed execution requires explicit
+  owner authorization.
+
+### 2026-08-27 - AD-12 first owner-authorized live audit attempt
+
+- One exact `qwen3:4b-instruct` execution used the validated Ollama adapter and
+  retained an immutable private audit bundle outside the repository. Its
+  manifest SHA-256 is
+  `08f2001b38640fc396822d52bd869ffbab3f74b737bee33c3978ede31acbbc86`.
+- The source remained unchanged during execution. Exact model identity,
+  adapter provenance, public-view privacy, both growth ceilings, and decision
+  count checks passed. All 19 provider calls returned selected decisions and
+  `provider_failure_count` was zero.
+- The final action completion committed at minute 1,440, then its result
+  incorrectly created one more decision at the closed boundary. That decision
+  selected an action whose consequence would exceed the day, producing a
+  sanitized terminal `ValueError`, one uncommitted objective tail, incomplete
+  causal dispatch evidence, and a failed recorded-replay comparison.
+- The audit verifier reports a structurally intact bundle with `passed: false`.
+  AD-12 remains open, and this attempt must not be relabeled as a completed live
+  day or silently retried.
+
+### 2026-08-27 - AD-12 single-run live audit bundle
+
+- The owner-authorized command can now reserve one new private directory before
+  provider use and write a focal-safe transcript, sanitized inspector,
+  canonical private decisions, measured verdict, artifact hashes, and a
+  provider-free replay comparison from exactly one live execution.
+- The live preflight pins the exact `qwen3:4b-instruct` tag, digest, family,
+  parameter size, and quantization through `/api/tags`. The manifest records
+  equal pre-run and post-run source revision, status, and tracked-diff evidence,
+  and it rejects injected clients and recorded replays as live provenance.
+- The writer keeps the reserved directory descriptor open, binds every private
+  exclusive write to its device and inode, and fails path replacement. The
+  verifier rejects linked files, extra or missing files, unsafe permissions,
+  malformed or recursive JSON, invalid provenance and verdict schemas, and
+  artifact size or hash mismatches without following symlinks.
+- Solo gates were verified with 4 met, 0 unmet, and 0 abandoned. Twenty-two
+  focused tests, 231 current tests, 63 historical tests, and whitespace
+  validation passed. A fresh independent Sol-high review found no remaining
+  blocker after adversarial filesystem, provenance, source-change, model,
+  replay, and negative-seed cases were resolved.
+- Scope limit: AD-12 remains open. This work makes the one live run auditable;
+  it does not claim the live run has occurred or that a locally stored bundle
+  alone is an external authenticity proof.
+
+### 2026-08-27 - AD-12 explicit autonomous-day Ollama CLI
+
+- The successor command now keeps its no-model offline default while exposing
+  one explicit live selection that requires an external private origin and the
+  exact `qwen3:4b-instruct` model. It constructs the existing `MaraHarness` and
+  changes no runtime scheduling, world validation, resolution, knowledge, or
+  presentation authority.
+- Missing paired configuration, live arguments in offline mode, a wrong model,
+  and an invalid origin fail as controlled command errors before provider use.
+  A fake client through the public entry point completes the full day within
+  the model-call and growth ceilings; normal and inspector output retain no
+  endpoint or configuration identity.
+- Solo gates were verified with 4 met, 0 unmet, and 0 abandoned. Ten focused
+  CLI tests, 219 current tests, 63 historical tests, and whitespace validation
+  passed. A fresh independent Sol-high read-only review found no blocker.
+- Scope limit: AD-12 remains open. This proves the live command composition
+  offline; it does not claim that the owner-authorized live full day occurred
+  or that a zero exit status alone distinguishes selected decisions from safe
+  provider failures.
 
 ### 2026-08-26 — AD-7 explicit action continuity completion
 

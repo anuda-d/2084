@@ -131,6 +131,67 @@ attributed explanation and shown normally. Live choices may vary even with
 temperature zero; recorded-decision playback is for reproducing world behavior,
 not claiming deterministic model sampling.
 
+### Run the accelerated autonomous day
+
+The successor composition advances from `Day 0 00:00` to exactly
+`Day 1 00:00`. Its default remains offline and makes no model request:
+
+```bash
+python3 -m scenarios.autonomous_day --seed 42
+```
+
+Its live path is separately explicit and uses the same externally configured,
+private-IP Ollama boundary:
+
+```bash
+python3 -m scenarios.autonomous_day \
+  --seed 42 \
+  --focal-policy ollama \
+  --ollama-base-url http://192.168.1.50:11434 \
+  --ollama-model qwen3:4b-instruct
+```
+
+Replace the example address at runtime. The repository does not retain the
+owner endpoint. Add `--inspect` for the sanitized omniscient causal record;
+normal output remains focal-safe. A zero exit status means the exact day
+boundary was reached, including when individual model decisions took the
+documented safe-failure path. A terminal runtime failure returns nonzero.
+
+For an owner-authorized completion run, add a path that does not yet exist:
+
+```bash
+python3 -m scenarios.autonomous_day \
+  --seed 42 \
+  --focal-policy ollama \
+  --ollama-base-url http://192.168.1.50:11434 \
+  --ollama-model qwen3:4b-instruct \
+  --audit-dir /private/tmp/2084-ad12-live
+```
+
+The audit directory is atomically reserved with owner-only permissions before
+the first provider call and is never overwritten. One provider-backed run
+writes the focal-safe transcript, the sanitized inspector, canonical private
+decision records, a measured verdict, and a manifest of artifact hashes. The
+manifest identifies the concrete Ollama adapter and records the source HEAD,
+working-tree status, and complete tracked-diff hash before and after the run
+rather than claiming a changed or dirty checkout is identical to HEAD. Before
+the live run, the CLI queries `/api/tags` and requires the pinned digest, family,
+parameter size, and quantization for `qwen3:4b-instruct`. Injected clients and
+recorded replays cannot attest as the live Ollama source. The same recorded
+choices are replayed offline before the verdict passes; this does not make a
+second provider call.
+
+The audit fails if the provider never produces a selected decision, any growth
+ceiling or causal link fails, the exact day boundary is missed, or private
+configuration appears in either observer view. The verifier also fails closed
+for missing, malformed, recursively invalid, linked, permission-changed, or
+hash-mismatched artifacts.
+Recheck an unchanged bundle with:
+
+```bash
+python3 -m scenarios.autonomous_day_audit /private/tmp/2084-ad12-live
+```
+
 Run the complete test suite with:
 
 ```bash
@@ -179,9 +240,9 @@ stance system.
 The repository also contains a proposed thin-harness/fat-skills direction for
 later model-backed expansion. The current code implements only the narrow Mara
 decision boundary; it does not contain a general skill resolver, tool-using
-agent runtime, or self-modifying skill system. The active 24-hour goal preserves
-that narrow model boundary while adding one full-day composition; it does not
-authorize the proposed general runtime.
+agent runtime, or self-modifying skill system.
+The completed 24-hour goal preserves that narrow model boundary while adding
+one full-day composition; it does not authorize the proposed general runtime.
 
 ## Known limits
 

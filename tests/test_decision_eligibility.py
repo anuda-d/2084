@@ -102,19 +102,21 @@ class DecisionEligibilityTests(unittest.TestCase):
         )
         self.assertEqual(agenda.clock.current, failed_at.plus_minutes(30))
 
-    def test_safe_failure_beyond_day_has_no_retry_or_pending_identity(self):
+    def test_safe_failure_at_or_beyond_day_has_no_retry_or_pending_identity(self):
         agenda, eligibility = self._components()
         exact_boundary_failure = SimulatedTime(
             agenda.clock.end.total_minutes - SAFE_FAILURE_RETRY_MINUTES
         )
         agenda.clock.advance_to(exact_boundary_failure)
-        exact_retry = eligibility.request_safe_failure_retry(
-            actor_id="mara-vale",
-            failed_at=exact_boundary_failure,
-            failure_id="decision-failure-boundary",
+        self.assertIsNone(
+            eligibility.request_safe_failure_retry(
+                actor_id="mara-vale",
+                failed_at=exact_boundary_failure,
+                failure_id="decision-failure-boundary",
+            )
         )
-        self.assertIsNotNone(exact_retry)
-        self.assertEqual(exact_retry.due_time, agenda.clock.end)
+        self.assertEqual(eligibility.pending_count, 0)
+        self.assertEqual(agenda.pending, ())
 
         agenda, eligibility = self._components()
         failed_at = SimulatedTime(

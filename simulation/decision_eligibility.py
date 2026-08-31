@@ -68,13 +68,15 @@ class DecisionEligibility:
         actor_id: str,
         due_time: SimulatedTime,
         trigger: DecisionTrigger,
-    ) -> ScheduledWork:
+    ) -> ScheduledWork | None:
         if not isinstance(actor_id, str) or not actor_id.strip():
             raise ValueError("actor_id must be a non-empty string")
         if not isinstance(due_time, SimulatedTime):
             raise TypeError("due_time must be SimulatedTime")
         if not isinstance(trigger, DecisionTrigger):
             raise TypeError("trigger must be DecisionTrigger")
+        if due_time == self._agenda.clock.end:
+            return None
 
         actor_time = (actor_id, due_time.total_minutes)
         work = self._work_by_actor_time.get(actor_time)
@@ -115,7 +117,7 @@ class DecisionEligibility:
         if pending_retry is not None:
             return pending_retry
         retry_at = failed_at.plus_minutes(SAFE_FAILURE_RETRY_MINUTES)
-        if retry_at > self._agenda.clock.end:
+        if retry_at >= self._agenda.clock.end:
             return None
         retry = self.request(
             actor_id=actor_id,
@@ -125,6 +127,8 @@ class DecisionEligibility:
                 source_id=failure_id,
             ),
         )
+        if retry is None:
+            return None
         self._retry_work_by_actor[actor_id] = retry
         return retry
 
