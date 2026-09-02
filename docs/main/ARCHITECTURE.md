@@ -40,7 +40,7 @@ Causes for one actor at one minute coalesce into one eligibility record.
 Time passage alone creates no record.
 Decision eligibility uses the half-open `[start, end)` day interval because no new attempted action can begin at the closed end boundary.
 The safe-failure cadence is one retry 30 simulated minutes later, with no retry if that instant would land at or beyond the day boundary.
-The successor consumes these records only at its dedicated Mara decision handler; the legacy tick loop does not use this seam.
+The successor consumes these records only at its dedicated composition decision handler; the legacy tick loop does not use this seam.
 
 An `AcceleratedDayRuntime` now provides the first isolated executor for these temporal seams.
 A composition registers handlers by authored work kind, and the runtime dispatches due batches through the agenda's causal phases.

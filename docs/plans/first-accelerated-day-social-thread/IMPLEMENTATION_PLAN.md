@@ -10,9 +10,9 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-2 invalid statement evidence rejection (2026-09-01)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: whole-goal alignment after three verified runs (2026-09-01)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 - Automation state: running in owner-started Continuous Goal mode
 
 ## Goal Progress
@@ -124,6 +124,23 @@ Resolve blocking findings and record removal or simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task.
 Reset the implementation-run counter after recording the reviewed state.
+
+### 2026-09-01 - Alignment after three verified implementation runs
+
+- Conclusion: ST-1 and ST-2 are honestly met; ST-3 through ST-10 remain open; the goal is not complete; no owner decision is required.
+- ST-3 has partial evidence for world-supplied addressability, independent co-location revalidation, and a valid statement carrying recipient and source evidence, but no testimony observation exists.
+- ST-4 has partial negative-path evidence because rejected and completed pre-testimony statements produce no Mara observation or understanding; a committed testimony success path is still required for the full differential.
+- ST-5 and ST-6 retain the existing bounded Mara model path and world-owned ordinary action resolution, but neither is causally downstream of testimony yet.
+- ST-7 has policy-level missing-addressability evidence and world-level invalid-source stopping evidence, but not the required separate world counterfactuals for withheld source delivery and physical eligibility.
+- ST-8 retains the exact provider-free day and compact focal-safe rendering infrastructure, but the normal output does not yet present an encountered statement, testimony, response, and consequence.
+- ST-9 retains source observations, consumed supporting decisions, objective attempts and results, committed dispatch order, final state, and recorded Mara replay foundations, but the complete social chain is absent.
+- ST-10 has strong current-slice evidence from all 301 offline tests, exact minute 1,440 completion, privacy checks, deterministic evidence, and clean diff validation, but whole-goal integration remains open.
+- Bounded-contract finding: the scenario currently applies the shared generic `speak` shape, which admits optional `private_belief_id`, `pressure`, and `pressure_reason` fields outside this finite statement contract, while objective attempt evidence omits those accepted fields; the `wait` branch also resolves before parameter-shape validation.
+- The bounded-contract finding does not bypass ST-2 evidence citation authority, but it must be resolved before exact reconstruction can satisfy ST-9.
+- Simplification finding: keep the mechanism scenario-local and do not extract general observation-delivery, claim, conversation, relationship, or supporting-understanding systems.
+- Simplification candidate: `TransitStatementView.tick`, `location`, and `action_results` are not used by the current deterministic policy and should remain only if later concrete behavior requires them; `triggers` remains justified by the explicit-trigger boundary.
+- Documentation correction: the architecture now describes the runtime's composition decision handler rather than the obsolete Mara-only handler.
+- Independent review: fresh Sol-high read-only whole-goal alignment found no critical or high-severity issue and no owner blocker.
 
 ## Goal Activation
 
