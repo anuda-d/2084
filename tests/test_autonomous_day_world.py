@@ -48,6 +48,14 @@ class _SequenceClient:
         return response
 
 
+class _IlanAttemptPolicy:
+    def __init__(self, choose):
+        self._choose = choose
+
+    def choose(self, view):
+        return self._choose(view)
+
+
 class AutonomousDayWorldTests(unittest.TestCase):
     def test_action_continuity_table_covers_the_resolver_vocabulary(self):
         rules = AUTONOMOUS_DAY_MARA_ACTION_CONTINUITY_RULES
@@ -2159,6 +2167,121 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ilan_observation.event_id,
         ):
             self.assertNotIn(hidden, normal_output)
+
+    def test_invalid_ilan_statement_evidence_is_rejected_without_delivery(self):
+        def statement_attempt(view, variant):
+            transit = next(
+                observation
+                for observation in reversed(view.observations)
+                if observation.details.get("evidence_kind")
+                == "transit_service_status"
+            )
+            cited_id = transit.observation_id
+            asserted_value = transit.details["asserted_value"]
+            if variant == "missing":
+                evidence_ids = ()
+            elif variant == "forged":
+                evidence_ids = ("observation-forged",)
+            elif variant == "mismatched":
+                evidence_ids = (cited_id,)
+                asserted_value = 0
+            elif variant == "boolean_assertion":
+                evidence_ids = (cited_id,)
+                asserted_value = True
+            elif variant == "float_assertion":
+                evidence_ids = (cited_id,)
+                asserted_value = 1.0
+            elif variant == "substituted":
+                evidence_ids = (view.observations[0].observation_id,)
+            else:
+                raise AssertionError(f"unknown test variant: {variant}")
+            return ActionAttempt(
+                actor_id=ILAN_ID,
+                kind="speak",
+                parameters={
+                    "proposition": transit.details["proposition"],
+                    "asserted_value": asserted_value,
+                    "evidence_observation_ids": evidence_ids,
+                },
+                explanation="attempt the configured transit statement",
+            )
+
+        for variant in (
+            "missing",
+            "forged",
+            "mismatched",
+            "boolean_assertion",
+            "float_assertion",
+            "substituted",
+        ):
+            with self.subTest(variant=variant):
+                client = _SequenceClient(
+                    {
+                        "kind": "travel",
+                        "parameters": {"destination": "workplace"},
+                        "explanation": "travel to the workplace",
+                        "decision_reason": "the shift is due",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "wait at the workplace",
+                        "decision_reason": "arrival needs no further action",
+                    },
+                )
+                day = build_autonomous_day(
+                    seed=42,
+                    mara_harness=MaraHarness.from_client(
+                        client,
+                        configuration_id=f"invalid-ilan-evidence-{variant}",
+                    ),
+                    ilan_transit_policy=_IlanAttemptPolicy(
+                        lambda view, selected=variant: statement_attempt(
+                            view,
+                            selected,
+                        )
+                    ),
+                )
+                if variant == "substituted":
+                    unrelated = day._event_log.record(
+                        tick=0,
+                        kind="unrelated_workplace_notice",
+                        actor_id="workplace-ledger-office",
+                    )
+                    substituted = day._event_log.deliver(
+                        agent_id=ILAN_ID,
+                        event_id=unrelated.event_id,
+                        source="workplace transit service terminal",
+                        delivery_tick=0,
+                        details={
+                            "evidence_kind": "transit_service_status",
+                            "route": "workplace-home",
+                            "current_status": "reduced",
+                            "proposition": (
+                                "workplace-home tram service is reduced"
+                            ),
+                            "asserted_value": 1,
+                        },
+                    )
+                    day.world.agents[ILAN_ID].observations.append(substituted)
+
+                day.run()
+
+                statement_result = next(
+                    result
+                    for result in day.world.agents[ILAN_ID].action_results
+                    if result.action_kind == "speak"
+                )
+                self.assertEqual(statement_result.status, "rejected")
+                self.assertEqual(
+                    statement_result.reason,
+                    "statement lacks owned evidence or physical access",
+                )
+                self.assertFalse(
+                    any(event.kind == "statement_completed" for event in day.events)
+                )
+                self.assertEqual(day.world.agents[MARA_ID].observations, [])
+                self.assertEqual(day.understanding_transitions, ())
 
     def test_world_time_is_authoritative_during_successor_dispatch(self):
         day = build_autonomous_day(seed=42)

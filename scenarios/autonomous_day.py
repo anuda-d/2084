@@ -10,8 +10,17 @@ from dataclasses import dataclass
 from typing import Literal
 
 from policies.mara_harness import MaraHarness
-from policies.supporting_policy import TransitStatementPolicy, TransitStatementView
-from simulation.actions import ActionAttempt, ActionResult, PendingAction
+from policies.supporting_policy import (
+    TransitStatementDecisionPolicy,
+    TransitStatementPolicy,
+    TransitStatementView,
+)
+from simulation.actions import (
+    ActionAttempt,
+    ActionResult,
+    PendingAction,
+    action_parameter_shape_error,
+)
 from simulation.agents import (
     ActionContinuityRequirement,
     AgentState,
@@ -197,6 +206,7 @@ def build_autonomous_day(
     seed: int = 42,
     on_mara_decision: MaraDecisionCallback | None = None,
     mara_harness: MaraHarness | None = None,
+    ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
 ) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
@@ -208,6 +218,10 @@ def build_autonomous_day(
         raise TypeError("mara_harness must be MaraHarness")
     if on_mara_decision is not None and mara_harness is not None:
         raise ValueError("choose either on_mara_decision or mara_harness")
+    if ilan_transit_policy is not None and not callable(
+        getattr(ilan_transit_policy, "choose", None)
+    ):
+        raise TypeError("ilan_transit_policy must provide choose(view)")
 
     world = WorldState(
         tick=0,
@@ -368,7 +382,11 @@ def build_autonomous_day(
             continuity_requirements=mara.continuity_requirements,
         )
 
-    ilan_transit_policy = TransitStatementPolicy(recipient_id=MARA_ID)
+    selected_ilan_transit_policy = (
+        TransitStatementPolicy(recipient_id=MARA_ID)
+        if ilan_transit_policy is None
+        else ilan_transit_policy
+    )
 
     def ilan_transit_view(decision: EligibleDecision) -> TransitStatementView:
         ilan = world.agents[ILAN_ID]
@@ -394,8 +412,10 @@ def build_autonomous_day(
         context: DayWorkContext,
     ) -> None:
         if decision.actor_id == ILAN_ID:
-            attempt = ilan_transit_policy.choose(ilan_transit_view(decision))
-            resolve_ilan_transit_attempt(attempt, context)
+            attempt = selected_ilan_transit_policy.choose(
+                ilan_transit_view(decision)
+            )
+            resolve_ilan_transit_attempt(attempt, decision, context)
             return
         if decision.actor_id != MARA_ID:
             raise RuntimeError("autonomous day has no decision policy for actor")
@@ -944,6 +964,7 @@ def build_autonomous_day(
 
     def resolve_ilan_transit_attempt(
         attempt: ActionAttempt,
+        decision: EligibleDecision,
         context: DayWorkContext,
     ) -> None:
         if attempt.actor_id != ILAN_ID:
@@ -1010,15 +1031,37 @@ def build_autonomous_day(
             if isinstance(evidence_ids, tuple) and len(evidence_ids) == 1
             else None
         )
+        source_event = transit_change_events.get(
+            "ilan-workplace-transit-observation-delivery"
+        )
+        evidence_triggered_decision = (
+            evidence is not None
+            and len(decision.triggers) == 1
+            and decision.triggers[0].kind
+            is DecisionTriggerKind.OBSERVATION_DELIVERED
+            and decision.triggers[0].source_id == evidence.observation_id
+        )
         mara = world.agents[MARA_ID]
         valid = (
             attempt.kind == "speak"
+            and action_parameter_shape_error("speak", attempt.parameters) is None
             and evidence is not None
+            and evidence_triggered_decision
             and evidence.agent_id == ILAN_ID
+            and evidence.source == "workplace transit service terminal"
+            and source_event is not None
+            and evidence.event_id == source_event.event_id
+            and source_event.kind == "transit_service_changed"
+            and source_event.actor_id == TRANSIT_AUTHORITY_ID
             and evidence.details.get("evidence_kind")
             == "transit_service_status"
             and evidence.details.get("route") == "workplace-home"
             and evidence.details.get("current_status") in {"normal", "reduced"}
+            and evidence.details.get("current_status")
+            == source_event.details.get("current_status")
+            and evidence.details.get("proposition")
+            == "workplace-home tram service is reduced"
+            and evidence.details.get("asserted_value") == 1
             and attempt.parameters.get("proposition")
             == evidence.details.get("proposition")
             and attempt.parameters.get("asserted_value")

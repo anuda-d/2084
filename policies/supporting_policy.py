@@ -1,6 +1,7 @@
 """Small schedule/reactive policies for supporting characters."""
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from simulation.actions import ActionAttempt, ActionResult
 from simulation.agents import AgentView
@@ -20,6 +21,11 @@ class TransitStatementView:
     triggers: tuple[DecisionTrigger, ...]
     addressable_actor_ids: tuple[str, ...]
     valid_actions: tuple[str, ...]
+
+
+class TransitStatementDecisionPolicy(Protocol):
+    def choose(self, view: TransitStatementView) -> ActionAttempt:
+        ...
 
 
 @dataclass(frozen=True)

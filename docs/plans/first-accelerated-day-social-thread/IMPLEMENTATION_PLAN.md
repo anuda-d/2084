@@ -10,9 +10,9 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-1 restricted deterministic Ilan choice (2026-09-01)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: ST-2 invalid statement evidence rejection (2026-09-01)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 - Automation state: running in owner-started Continuous Goal mode
 
 ## Goal Progress
@@ -20,7 +20,7 @@ sequence.
 | Criterion | Status | Required evidence |
 | --- | --- | --- |
 | ST-1 Supporting choice | met | Ilan makes one deterministic restricted-view choice at the delivered-observation trigger without focal-private or hidden institutional input. |
-| ST-2 Evidence authority | open | The statement cites Ilan-owned delivered transit evidence, and invalid source variants fail without delivery. |
+| ST-2 Evidence authority | met | The statement cites the exact triggering Ilan-owned transit observation, and invalid source variants reject without delivery. |
 | ST-3 Physical delivery | open | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
 | ST-4 Knowledge boundary | open | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
 | ST-5 Focal response | open | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
@@ -33,6 +33,18 @@ sequence.
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-01 - ST-2 invalid statement evidence rejection
+
+- Status: verified; ST-2 is met.
+- The statement resolver now requires strict `speak` parameter shapes plus the exact observation that triggered Ilan's decision, Ilan ownership, the authored channel, the transit authority's event identity and kind, the finite route and status, proposition, and assertion.
+- The verified valid citation still completes under world-confirmed physical access.
+- Missing citation, forged identity, mismatched assertion, boolean assertion, float assertion, and an Ilan-owned substituted observation with a mimicked payload and channel all produce rejected action results.
+- Every rejected path produces no completed statement, Mara observation, focal understanding, or testimony-derived decision.
+- A narrow deterministic policy-injection seam provides invalid attempts only for boundary tests; the default supporting policy remains unchanged.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_invalid_ilan_statement_evidence_is_rejected_without_delivery tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_observation_triggers_restricted_deterministic_choice`.
+- Regression evidence: `./scripts/check.sh` passes all 301 offline tests.
+- Independent review: fresh Sol-high read-only review reproduced a Python boolean/numeric equality bypass, then confirmed the strict shape-contract fix and reported no remaining actionable or blocking findings.
 
 ### 2026-09-01 - ST-1 restricted deterministic Ilan choice
 
@@ -84,7 +96,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest verified work unit completed ST-1 without selecting a later task.
+The latest verified work unit completed ST-2 without selecting a later task.
 
 ## Completion Rules
 
