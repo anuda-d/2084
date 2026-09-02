@@ -23,6 +23,7 @@ settle open product questions, or extend implementation scope.
 The repository is the durable state between work units. Chat context, provider
 history, scheduled triggers, and speculative plans are not sources of product
 authority.
+Shared implementation state records verified product progress, not app Goal, task, lock, automation, relay, handoff, or chat state.
 
 ## Run Modes
 
@@ -34,9 +35,15 @@ The repository goal defines product authority; the app Goal provides durable exe
 
 When the owner explicitly asks to start the continuous implementation loop, first call `get_goal` before repository work.
 If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective, boundaries, validation expectations, and verifiable stop condition, then call `get_goal` again.
+The `create_goal` objective must state that the same task continues automatically across turns until the verifiable whole-goal stop condition.
+It must not direct continuation to a new agent, task, chat, or handoff.
+It must not release the repository lock between work units.
 Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
 Perform this verification before task listing or lock acquisition.
 If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+Treat an objective that requests transfer after a work unit as a different objective, even when its product scope is unchanged.
+For that objective conflict, ask the owner to `clear` the conflicting Goal and start once with the corrected same-task objective; resuming cannot repair its text.
+Do not convert that mismatch into repository handoff state.
 Never claim Continuous Goal mode from commentary, repository state, or an earlier turn alone.
 Continuous Goal does not use `create_thread`; that tool belongs only to scheduled relay.
 

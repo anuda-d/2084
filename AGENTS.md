@@ -74,9 +74,15 @@ For now, favor one autonomous focal life, a small living world, understandable a
 - Continuous Goal mode requires a real app-level Goal; an owner-approved repository goal or a commentary claim does not activate it.
   When the owner explicitly asks to start the continuous implementation loop, call `get_goal` before repository work.
   If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective and its verifiable stop condition, then call `get_goal` again.
+  The `create_goal` objective must state that the same task continues automatically across turns until the verifiable whole-goal stop condition.
+  It must not direct continuation to a new agent, task, chat, or handoff.
+  It must not release the repository lock between work units.
   Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
   Perform this verification before task listing or lock acquisition.
   If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+  Treat an objective that requests transfer after a work unit as a different objective, even when its product scope is unchanged.
+  For that objective conflict, ask the owner to `clear` the conflicting Goal and start once with the corrected same-task objective; resuming cannot repair its text.
+  Do not convert that mismatch into repository handoff state.
   On every automatically continued Goal turn, call `get_goal` before asserting lock ownership.
   Never claim Continuous Goal mode from prose, repository state, or an earlier turn alone.
   Continuous Goal does not use `create_thread`; that tool belongs only to scheduled relay.
@@ -136,6 +142,8 @@ For now, favor one autonomous focal life, a small living world, understandable a
   gate. No-overlap exits and read-only alignment runs do not create gates.
 - The active goal, not the trigger or task, defines authorized product and
   implementation scope.
+- Shared implementation state records verified product progress only.
+  Never write app Goal, task, lock, automation, relay, handoff, or chat state into it.
 - The main agent owns gap selection, implementation, integration, validation,
   progress recording, commits, and the final report. It may partition genuinely
   independent implementation work between subagents with exclusive ownership,

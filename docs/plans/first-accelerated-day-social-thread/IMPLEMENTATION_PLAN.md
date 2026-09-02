@@ -13,7 +13,6 @@ sequence.
 - Last completed run: whole-goal alignment after three verified runs (2026-09-02)
 - Verified implementation runs since alignment: 0
 - Alignment due: no
-- Automation state: handoff prepared for owner-directed continuation in a new chat
 
 ## Goal Progress
 
