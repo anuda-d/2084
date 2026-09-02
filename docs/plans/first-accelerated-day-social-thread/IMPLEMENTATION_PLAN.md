@@ -10,8 +10,8 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-2 source observation delivery to Ilan (2026-09-01)
-- Verified implementation runs since alignment: 1
+- Last completed run: ST-1 restricted deterministic Ilan choice (2026-09-01)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 - Automation state: running in owner-started Continuous Goal mode
 
@@ -19,7 +19,7 @@ sequence.
 
 | Criterion | Status | Required evidence |
 | --- | --- | --- |
-| ST-1 Supporting choice | open | Ilan makes one deterministic restricted-view choice at an explicit trigger without focal-private or hidden institutional input. |
+| ST-1 Supporting choice | met | Ilan makes one deterministic restricted-view choice at the delivered-observation trigger without focal-private or hidden institutional input. |
 | ST-2 Evidence authority | open | The statement cites Ilan-owned delivered transit evidence, and invalid source variants fail without delivery. |
 | ST-3 Physical delivery | open | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
 | ST-4 Knowledge boundary | open | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
@@ -34,6 +34,18 @@ This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
 
+### 2026-09-01 - ST-1 restricted deterministic Ilan choice
+
+- Status: verified; ST-1 is met.
+- Ilan's committed transit observation requests one explicit same-minute decision, and the runtime records it as a non-model supporting decision.
+- The immutable `TransitStatementView` contains only Ilan's identity, location, delivered observations, actor-safe results, current triggers, valid actions, and world-supplied addressable actor identifiers.
+- The deterministic policy cites Ilan's delivered observation in a `speak` attempt when Mara is addressable and selects an ordinary `wait` otherwise.
+- The world independently records, validates, and resolves the selected attempt; this run creates no testimony, Mara observation, focal understanding, or testimony-derived decision.
+- Focal-safe rendering of a verified successful statement exposes neither Ilan, statement details, nor cited source identifiers before testimony exists.
+- Focused evidence: `python3 -m unittest tests.test_supporting_policy tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_observation_triggers_restricted_deterministic_choice`.
+- Regression evidence: `./scripts/check.sh` passes all 300 offline tests.
+- Independent review: fresh Sol-high read-only review reported no remaining actionable or blocking findings after the successful-branch privacy assertion was added.
+
 ### 2026-09-01 - ST-2 source observation delivery to Ilan
 
 - Status: verified foundation; ST-2 remains open.
@@ -43,7 +55,7 @@ This table does not prescribe criterion order or future work units.
 - Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_transit_change_delivers_source_linked_evidence_only_to_ilan`.
 - Regression evidence: `python3 -m unittest tests.test_autonomous_day_world tests.test_autonomous_day_cli` and `./scripts/check.sh`.
 - Independent review: fresh Sol-high read-only review reported no actionable or blocking findings.
-- Remaining ST-2 boundary: Ilan's statement citation and rejection of missing, forged, mismatched, or substituted evidence are not implemented.
+- Remaining ST-2 boundary: rejection of missing, forged, mismatched, or substituted evidence is not yet verified comprehensively.
 
 ## Per-Run Selection
 
@@ -72,7 +84,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The first verified work unit established Ilan's source observation boundary without selecting a later task.
+The latest verified work unit completed ST-1 without selecting a later task.
 
 ## Completion Rules
 

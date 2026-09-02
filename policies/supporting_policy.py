@@ -1,7 +1,72 @@
 """Small schedule/reactive policies for supporting characters."""
 
-from simulation.actions import ActionAttempt
+from dataclasses import dataclass
+
+from simulation.actions import ActionAttempt, ActionResult
 from simulation.agents import AgentView
+from simulation.decision_eligibility import DecisionTrigger
+from simulation.events import Observation
+
+
+@dataclass(frozen=True)
+class TransitStatementView:
+    """Finite actor-safe input for one supporting transit statement choice."""
+
+    tick: int
+    agent_id: str
+    location: str
+    observations: tuple[Observation, ...]
+    action_results: tuple[ActionResult, ...]
+    triggers: tuple[DecisionTrigger, ...]
+    addressable_actor_ids: tuple[str, ...]
+    valid_actions: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TransitStatementPolicy:
+    """Choose one source-citing statement or an ordinary alternative."""
+
+    recipient_id: str
+    route: str = "workplace-home"
+
+    def choose(self, view: TransitStatementView) -> ActionAttempt:
+        evidence = next(
+            (
+                observation
+                for observation in reversed(view.observations)
+                if observation.agent_id == view.agent_id
+                and observation.details.get("evidence_kind")
+                == "transit_service_status"
+                and observation.details.get("route") == self.route
+                and observation.details.get("current_status")
+                in {"normal", "reduced"}
+            ),
+            None,
+        )
+        if (
+            evidence is not None
+            and self.recipient_id in view.addressable_actor_ids
+            and "speak" in view.valid_actions
+        ):
+            return ActionAttempt(
+                actor_id=view.agent_id,
+                kind="speak",
+                parameters={
+                    "proposition": evidence.details["proposition"],
+                    "asserted_value": evidence.details["asserted_value"],
+                    "evidence_observation_ids": (evidence.observation_id,),
+                },
+                explanation="tell Mara about the delivered workplace transit notice",
+                decision_reason="Mara is present and the notice is available to cite",
+            )
+        if "wait" not in view.valid_actions:
+            raise RuntimeError("transit statement view offers no ordinary alternative")
+        return ActionAttempt(
+            actor_id=view.agent_id,
+            kind="wait",
+            explanation="continue the ledger shift without addressing Mara",
+            decision_reason="no evidence-bound statement is physically available",
+        )
 
 
 class CoworkerPolicy:

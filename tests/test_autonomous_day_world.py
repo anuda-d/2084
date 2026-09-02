@@ -130,7 +130,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "validation_status": "accepted",
                     "resolution_status": "completed",
                     "resolved_tick": 660,
-                    "dispatch": {"sequence": 9, "phase": "decision"},
+                    "dispatch": {"sequence": 10, "phase": "decision"},
                 },
             ],
         )
@@ -153,6 +153,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             work
             for work in inspector["runtime"]["executed_work"]
             if work["kind"] == "decision_eligibility"
+            and work["item_id"].endswith(f":{MARA_ID}")
         ]
         self.assertEqual(
             [entry["dispatch"] for entry in model_path["decision_status_sequence"]],
@@ -272,7 +273,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
 
         self.assertEqual(
             [result["actor_id"] for result in results],
-            [MARA_ID, MARA_ID, ILAN_ID, MARA_ID],
+            [MARA_ID, MARA_ID, ILAN_ID, ILAN_ID, MARA_ID],
         )
         self.assertEqual(
             [event_order[result["outcome_event_id"]] for result in results],
@@ -435,6 +436,17 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     ],
                 },
                 {
+                    "actor_id": ILAN_ID,
+                    "due_time": SimulatedTime(510).to_data(),
+                    "scheduled_work_id": "decision:510:ilan-reed",
+                    "triggers": [
+                        {
+                            "kind": "observation_delivered",
+                            "source_id": "observation-0001",
+                        }
+                    ],
+                },
+                {
                     "actor_id": MARA_ID,
                     "due_time": SimulatedTime(660).to_data(),
                     "scheduled_work_id": "decision:660:mara-vale",
@@ -464,7 +476,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     "claim_id": f"claim-{observation['observation_id']}",
                     "claim_created": True,
                     "dispatch": {
-                        "sequence": 9,
+                        "sequence": 10,
                         "phase": "understanding_update",
                     },
                 }
@@ -492,7 +504,9 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [
                 {"sequence": 1, "phase": "scheduled_world"},
                 {"sequence": 2, "phase": "scheduled_world"},
-                {"sequence": 4, "phase": "action_completion"},
+                {"sequence": 4, "phase": "decision"},
+                {"sequence": 4, "phase": "decision"},
+                {"sequence": 5, "phase": "action_completion"},
             ],
         )
         self.assertEqual(
@@ -501,15 +515,19 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             inspector["history"]["observations"][1]["dispatch"],
-            {"sequence": 5, "phase": "observation_delivery"},
+            {"sequence": 6, "phase": "observation_delivery"},
         )
         self.assertEqual(
             inspector["history"]["action_results"][0]["dispatch"],
-            {"sequence": 4, "phase": "action_completion"},
+            {"sequence": 4, "phase": "decision"},
+        )
+        self.assertEqual(
+            inspector["history"]["action_results"][1]["dispatch"],
+            {"sequence": 5, "phase": "action_completion"},
         )
         self.assertEqual(
             inspector["history"]["understanding_transitions"][0]["dispatch"],
-            {"sequence": 6, "phase": "understanding_update"},
+            {"sequence": 7, "phase": "understanding_update"},
         )
 
     def test_harness_choice_becomes_private_evidence_and_resolved_wait(self):
@@ -690,7 +708,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIsNotNone(original_handler)
 
         def capture_decision(decision, context):
-            dispatched.append(decision)
+            if decision.actor_id == MARA_ID:
+                dispatched.append(decision)
             original_handler(decision, context)
 
         day.runtime._decision_handler = capture_decision
@@ -756,7 +775,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIsNotNone(original_handler)
 
         def capture_decision(decision, context):
-            dispatched.append(decision)
+            if decision.actor_id == MARA_ID:
+                dispatched.append(decision)
             original_handler(decision, context)
 
         day.runtime._decision_handler = capture_decision
@@ -805,7 +825,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {MARA_ID: 3},
+            {ILAN_ID: 1, MARA_ID: 3},
         )
 
     def test_inspector_provider_failure_count_excludes_pre_client_failures(self):
@@ -950,7 +970,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIsNotNone(original_handler)
 
         def capture_decision(decision, context):
-            dispatched.append(decision)
+            if decision.actor_id == MARA_ID:
+                dispatched.append(decision)
             original_handler(decision, context)
 
         day.runtime._decision_handler = capture_decision
@@ -998,7 +1019,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 2},
         )
 
     def test_workplace_work_completes_after_model_selected_travel(self):
@@ -1034,7 +1056,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIsNotNone(original_handler)
 
         def capture_decision(decision, context):
-            dispatched.append(decision)
+            if decision.actor_id == MARA_ID:
+                dispatched.append(decision)
             original_handler(decision, context)
 
         day.runtime._decision_handler = capture_decision
@@ -1481,7 +1504,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertIsNotNone(original_handler)
 
         def capture_decision(decision, context):
-            dispatched.append(decision)
+            if decision.actor_id == MARA_ID:
+                dispatched.append(decision)
             original_handler(decision, context)
 
         day.runtime._decision_handler = capture_decision
@@ -1767,7 +1791,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ["decision_eligibility"],
         )
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 2},
         )
 
     def test_successor_mara_view_copies_world_owned_continuity_requirements(self):
@@ -1864,7 +1889,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 2}
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 2},
         )
 
     def test_home_transit_bulletin_updates_source_linked_understanding_before_decision(
@@ -1937,7 +1963,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [],
         )
         self.assertEqual(
-            summary.to_data()["decision_counts_by_actor"], {MARA_ID: 1}
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 1},
         )
 
     def test_background_consequence_reaches_mara_only_through_home_bulletin(self):
@@ -1954,19 +1981,33 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [
                 (480, "action_attempted", ILAN_ID),
                 (510, "transit_service_changed", "district-transit-authority"),
+                (510, "action_attempted", ILAN_ID),
+                (510, "wait_completed", ILAN_ID),
                 (600, "work_completed", ILAN_ID),
             ],
         )
-        attempted, transit_change, completed = day.events
-        self.assertEqual(completed.caused_by, (attempted.event_id,))
-        self.assertEqual(completed.action_id, attempted.action_id)
+        work_attempted, transit_change, social_attempted, waited, completed = day.events
+        self.assertEqual(completed.caused_by, (work_attempted.event_id,))
+        self.assertEqual(completed.action_id, work_attempted.action_id)
+        self.assertEqual(waited.caused_by, (social_attempted.event_id,))
+        self.assertEqual(waited.action_id, social_attempted.action_id)
         self.assertEqual(transit_change.details["prior_status"], "normal")
         self.assertEqual(transit_change.details["current_status"], "reduced")
         self.assertEqual(day.world.institution.records["tram_service"], "reduced")
 
         ilan = day.world.agents[ILAN_ID]
-        self.assertEqual([attempt.kind for attempt in ilan.action_history], ["work"])
-        self.assertEqual([result.status for result in ilan.action_results], ["completed"])
+        self.assertEqual(
+            [attempt.kind for attempt in ilan.action_history],
+            ["work", "wait"],
+        )
+        self.assertEqual(
+            [result.action_kind for result in ilan.action_results],
+            ["wait", "work"],
+        )
+        self.assertEqual(
+            [result.status for result in ilan.action_results],
+            ["completed", "completed"],
+        )
         self.assertEqual(day.pending_action_count, 0)
 
         mara = day.world.agents[MARA_ID]
@@ -1988,7 +2029,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(bulletin.source, "home transit bulletin receiver")
         self.assertEqual(bulletin.details["evidence_kind"], "transit_service_status")
         self.assertEqual(bulletin.details["current_status"], "reduced")
-        self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0})
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 0},
+        )
 
     def test_transit_change_delivers_source_linked_evidence_only_to_ilan(self):
         day = build_autonomous_day(seed=42)
@@ -2029,6 +2073,93 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {"sequence": 3, "phase": "observation_delivery"},
         )
 
+    def test_ilan_observation_triggers_restricted_deterministic_choice(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the shift is due",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at the workplace",
+                "decision_reason": "arrival needs no further action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="ilan-restricted-choice-test",
+            ),
+        )
+
+        summary = day.run()
+
+        ilan_observation = day.world.agents[ILAN_ID].observations[0]
+        ilan_decisions = [
+            decision
+            for decision in summary.consumed_decisions
+            if decision.actor_id == ILAN_ID
+        ]
+        self.assertEqual(len(ilan_decisions), 1)
+        self.assertEqual(ilan_decisions[0].due_time, SimulatedTime(510))
+        self.assertEqual(
+            ilan_decisions[0].triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=ilan_observation.observation_id,
+                ),
+            ),
+        )
+        attempted = next(
+            event
+            for event in day.events
+            if event.actor_id == ILAN_ID
+            and event.kind == "action_attempted"
+            and event.details["action_kind"] == "speak"
+        )
+        completed = next(
+            event
+            for event in day.events
+            if event.actor_id == ILAN_ID and event.kind == "statement_completed"
+        )
+        self.assertEqual(completed.action_id, attempted.action_id)
+        self.assertEqual(completed.caused_by, (attempted.event_id,))
+        self.assertEqual(completed.details["recipient_id"], MARA_ID)
+        self.assertEqual(
+            completed.details["evidence_observation_id"],
+            ilan_observation.observation_id,
+        )
+        self.assertEqual(
+            completed.details["source_event_id"],
+            ilan_observation.event_id,
+        )
+        statement_result = next(
+            result
+            for result in day.world.agents[ILAN_ID].action_results
+            if result.action_kind == "speak"
+        )
+        self.assertEqual(statement_result.status, "completed")
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 2},
+        )
+        self.assertEqual(day.world.agents[MARA_ID].observations, [])
+        self.assertEqual(day.understanding_transitions, ())
+        normal_output = render_autonomous_day(day, summary)
+        for hidden in (
+            "Ilan",
+            "statement_completed",
+            "workplace-home tram service is reduced",
+            ilan_observation.observation_id,
+            ilan_observation.event_id,
+        ):
+            self.assertNotIn(hidden, normal_output)
+
     def test_world_time_is_authoritative_during_successor_dispatch(self):
         day = build_autonomous_day(seed=42)
         observed: list[tuple[str, int, int]] = []
@@ -2056,6 +2187,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 ("event", 480, 480),
                 ("event", 510, 510),
                 ("observation", 510, 510),
+                ("event", 510, 510),
+                ("event", 510, 510),
                 ("event", 600, 600),
                 ("observation", 660, 660),
             ],
@@ -2070,7 +2203,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
 
         self.assertTrue(summary.reached_end_boundary)
         self.assertEqual(day.world.tick, 1440)
-        self.assertEqual(len(day.events), 3)
+        self.assertEqual(len(day.events), 5)
         self.assertEqual(day.world.institution.records["tram_service"], "reduced")
         self.assertEqual(
             [
@@ -2081,7 +2214,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [],
         )
         self.assertEqual(day.world.agents[MARA_ID].observations, [])
-        self.assertEqual(summary.to_data()["decision_counts_by_actor"], {MARA_ID: 0})
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 0},
+        )
 
     def test_equal_seed_builds_equal_ordered_world_evidence(self):
         first = build_autonomous_day(seed=7)

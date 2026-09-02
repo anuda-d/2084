@@ -1,7 +1,7 @@
 # Current Development Index
 
 Status: First Accelerated-Day Social Thread is active and owner-approved as of
-2026-09-01. Implementation has not started.
+2026-09-01. Implementation is in progress.
 
 ## Active Work
 
@@ -17,8 +17,8 @@ Status: First Accelerated-Day Social Thread is active and owner-approved as of
   [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Earlier completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Active work: none selected; the owner approved the goal but did not start the
-  implementation automation
+- Active work: Continuous Goal mode selects one run-scoped work unit at a time
+  from the active goal and verified implementation state
 
 ## Required Read Order
 

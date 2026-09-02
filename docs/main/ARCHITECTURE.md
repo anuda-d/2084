@@ -66,6 +66,8 @@ Between those events, the district transit authority changes objective tram-serv
 These events append to the shared `EventLog` independently of Mara.
 The service change itself grants her no knowledge.
 A same-minute observation-phase delivery links the service-change evidence to Ilan only while he is at the authored workplace terminal.
+That committed delivery requests one non-model decision from an immutable transit-statement view containing only Ilan's actor-safe state, delivered evidence, current trigger, valid actions, and world-supplied addressability.
+The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt without creating testimony in this boundary.
 A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
 
 When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.

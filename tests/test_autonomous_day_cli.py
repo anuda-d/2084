@@ -170,8 +170,8 @@ class AutonomousDayCliTests(unittest.TestCase):
         )
         data = json.loads(result.stdout[result.stdout.index("{"):])
         self.assertEqual(data["counts"], {
-            "action_results": 1,
-            "events": 3,
+            "action_results": 2,
+            "events": 5,
             "observations": 2,
         })
         self.assertEqual(data["model_path"], {
@@ -185,10 +185,19 @@ class AutonomousDayCliTests(unittest.TestCase):
         self.assertEqual(data["objective_state"]["tick"], 1440)
         self.assertEqual(
             [item["kind"] for item in data["history"]["events"]],
-            ["action_attempted", "transit_service_changed", "work_completed"],
+            [
+                "action_attempted",
+                "transit_service_changed",
+                "action_attempted",
+                "wait_completed",
+                "work_completed",
+            ],
         )
-        attempted, transit, completed = data["history"]["events"]
-        self.assertEqual(completed["caused_by"], [attempted["event_id"]])
+        work_attempted, transit, social_attempted, waited, completed = data[
+            "history"
+        ]["events"]
+        self.assertEqual(completed["caused_by"], [work_attempted["event_id"]])
+        self.assertEqual(waited["caused_by"], [social_attempted["event_id"]])
         self.assertTrue(
             all(
                 observation["event_id"] == transit["event_id"]
@@ -196,16 +205,21 @@ class AutonomousDayCliTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            data["history"]["action_results"][0]["outcome_event_id"],
+            data["history"]["action_results"][1]["outcome_event_id"],
             completed["event_id"],
         )
-        self.assertEqual(data["runtime"]["executed_work_count"], 6)
+        self.assertEqual(
+            data["history"]["action_results"][0]["outcome_event_id"],
+            waited["event_id"],
+        )
+        self.assertEqual(data["runtime"]["executed_work_count"], 7)
         self.assertEqual(
             [item["kind"] for item in data["runtime"]["executed_work"]],
             [
                 "autonomous_day_supporting_work_start",
                 "autonomous_day_institutional_service_change",
                 "autonomous_day_ilan_transit_observation_delivery",
+                "decision_eligibility",
                 "autonomous_day_supporting_work_completion",
                 "autonomous_day_transit_bulletin_delivery",
                 "autonomous_day_mara_transit_understanding_update",

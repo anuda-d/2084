@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from policies.mara_harness import MaraHarness
+from policies.supporting_policy import TransitStatementPolicy, TransitStatementView
 from simulation.actions import ActionAttempt, ActionResult, PendingAction
 from simulation.agents import (
     ActionContinuityRequirement,
@@ -367,12 +368,37 @@ def build_autonomous_day(
             continuity_requirements=mara.continuity_requirements,
         )
 
-    def dispatch_mara_decision(
+    ilan_transit_policy = TransitStatementPolicy(recipient_id=MARA_ID)
+
+    def ilan_transit_view(decision: EligibleDecision) -> TransitStatementView:
+        ilan = world.agents[ILAN_ID]
+        mara = world.agents[MARA_ID]
+        addressable_actor_ids = (
+            (MARA_ID,)
+            if ilan.location == mara.location == "workplace"
+            else ()
+        )
+        return TransitStatementView(
+            tick=world.tick,
+            agent_id=ilan.agent_id,
+            location=ilan.location,
+            observations=tuple(ilan.observations),
+            action_results=tuple(ilan.action_results),
+            triggers=decision.triggers,
+            addressable_actor_ids=addressable_actor_ids,
+            valid_actions=("speak", "wait"),
+        )
+
+    def dispatch_actor_decision(
         decision: EligibleDecision,
         context: DayWorkContext,
     ) -> None:
+        if decision.actor_id == ILAN_ID:
+            attempt = ilan_transit_policy.choose(ilan_transit_view(decision))
+            resolve_ilan_transit_attempt(attempt, context)
+            return
         if decision.actor_id != MARA_ID:
-            raise RuntimeError("autonomous day has no decision callback for actor")
+            raise RuntimeError("autonomous day has no decision policy for actor")
         if on_mara_decision is not None:
             on_mara_decision(decision, mara_view())
             return
@@ -916,6 +942,138 @@ def build_autonomous_day(
             ),
         )
 
+    def resolve_ilan_transit_attempt(
+        attempt: ActionAttempt,
+        context: DayWorkContext,
+    ) -> None:
+        if attempt.actor_id != ILAN_ID:
+            raise ValueError("Ilan policy attempted an action for another actor")
+        ilan = world.agents[ILAN_ID]
+        action_id = "autonomous-day-ilan-social-action-0001"
+        details: dict[str, object] = {
+            "action_kind": attempt.kind,
+            "decision_explanation": attempt.explanation,
+        }
+        if attempt.kind == "speak":
+            details.update(
+                {
+                    "recipient_id": MARA_ID,
+                    "proposition": attempt.parameters.get("proposition"),
+                    "asserted_value": attempt.parameters.get("asserted_value"),
+                    "evidence_observation_ids": attempt.parameters.get(
+                        "evidence_observation_ids"
+                    ),
+                }
+            )
+        attempted = event_log.record(
+            tick=context.current.total_minutes,
+            kind="action_attempted",
+            actor_id=ILAN_ID,
+            action_id=action_id,
+            details=details,
+        )
+        ilan.last_attempt = attempt
+        ilan.action_history.append(attempt)
+
+        if attempt.kind == "wait":
+            completed = event_log.record(
+                tick=context.current.total_minutes,
+                kind="wait_completed",
+                actor_id=ILAN_ID,
+                action_id=action_id,
+                caused_by=(attempted.event_id,),
+                details={"location": ilan.location},
+            )
+            ilan.action_results.append(
+                ActionResult(
+                    action_id=action_id,
+                    attempt_event_id=attempted.event_id,
+                    outcome_event_id=completed.event_id,
+                    actor_id=ILAN_ID,
+                    action_kind=attempt.kind,
+                    status="completed",
+                    resolved_tick=context.current.total_minutes,
+                )
+            )
+            return
+
+        evidence_ids = attempt.parameters.get("evidence_observation_ids")
+        evidence = (
+            next(
+                (
+                    observation
+                    for observation in ilan.observations
+                    if observation.observation_id == evidence_ids[0]
+                ),
+                None,
+            )
+            if isinstance(evidence_ids, tuple) and len(evidence_ids) == 1
+            else None
+        )
+        mara = world.agents[MARA_ID]
+        valid = (
+            attempt.kind == "speak"
+            and evidence is not None
+            and evidence.agent_id == ILAN_ID
+            and evidence.details.get("evidence_kind")
+            == "transit_service_status"
+            and evidence.details.get("route") == "workplace-home"
+            and evidence.details.get("current_status") in {"normal", "reduced"}
+            and attempt.parameters.get("proposition")
+            == evidence.details.get("proposition")
+            and attempt.parameters.get("asserted_value")
+            == evidence.details.get("asserted_value")
+            and ilan.location == mara.location == "workplace"
+        )
+        if not valid:
+            rejected = event_log.record(
+                tick=context.current.total_minutes,
+                kind="action_rejected",
+                actor_id=ILAN_ID,
+                action_id=action_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": "statement lacks owned evidence or physical access"},
+            )
+            ilan.action_results.append(
+                ActionResult(
+                    action_id=action_id,
+                    attempt_event_id=attempted.event_id,
+                    outcome_event_id=rejected.event_id,
+                    actor_id=ILAN_ID,
+                    action_kind=attempt.kind,
+                    status="rejected",
+                    resolved_tick=context.current.total_minutes,
+                    reason="statement lacks owned evidence or physical access",
+                )
+            )
+            return
+
+        completed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="statement_completed",
+            actor_id=ILAN_ID,
+            action_id=action_id,
+            caused_by=(attempted.event_id,),
+            details={
+                "recipient_id": MARA_ID,
+                "proposition": attempt.parameters["proposition"],
+                "asserted_value": attempt.parameters["asserted_value"],
+                "evidence_observation_id": evidence.observation_id,
+                "source_event_id": evidence.event_id,
+            },
+        )
+        ilan.action_results.append(
+            ActionResult(
+                action_id=action_id,
+                attempt_event_id=attempted.event_id,
+                outcome_event_id=completed.event_id,
+                actor_id=ILAN_ID,
+                action_kind=attempt.kind,
+                status="completed",
+                resolved_tick=context.current.total_minutes,
+            )
+        )
+
     def start_supporting_work(
         work: ScheduledWork,
         context: DayWorkContext,
@@ -1055,6 +1213,14 @@ def build_autonomous_day(
             },
         )
         ilan.observations.append(observation)
+        context.request_decision(
+            actor_id=ilan.agent_id,
+            due_time=context.current,
+            trigger=DecisionTrigger(
+                kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                source_id=observation.observation_id,
+            ),
+        )
 
     def deliver_transit_bulletin(
         work: ScheduledWork,
@@ -1153,11 +1319,7 @@ def build_autonomous_day(
             _MARA_WORK_COMPLETION: complete_mara_work,
             _MARA_HOUSEHOLD_COMPLETION: complete_mara_household,
         },
-        decision_handler=(
-            dispatch_mara_decision
-            if on_mara_decision is not None or mara_harness is not None
-            else None
-        ),
+        decision_handler=dispatch_actor_decision,
         model_backed_actor_ids=(MARA_ID,),
         on_time_advanced=lambda current: setattr(
             world,
