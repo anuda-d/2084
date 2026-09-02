@@ -2275,13 +2275,127 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 self.assertEqual(statement_result.status, "rejected")
                 self.assertEqual(
                     statement_result.reason,
-                    "statement lacks owned evidence or physical access",
+                    (
+                        "invalid Ilan social action parameters"
+                        if variant
+                        in {"missing", "boolean_assertion", "float_assertion"}
+                        else "statement lacks owned evidence or physical access"
+                    ),
                 )
                 self.assertFalse(
                     any(event.kind == "statement_completed" for event in day.events)
                 )
                 self.assertEqual(day.world.agents[MARA_ID].observations, [])
                 self.assertEqual(day.understanding_transitions, ())
+
+    def test_ilan_social_action_contract_rejects_out_of_scope_parameters(self):
+        def injected_attempt(view, variant):
+            if variant in {"valid_wait", "parameterized_wait"}:
+                return ActionAttempt(
+                    actor_id=ILAN_ID,
+                    kind="wait",
+                    parameters=(
+                        {} if variant == "valid_wait" else {"unexpected": 1}
+                    ),
+                    explanation="attempt the configured wait",
+                )
+            evidence = view.observations[-1]
+            parameters = {
+                "proposition": evidence.details["proposition"],
+                "asserted_value": evidence.details["asserted_value"],
+                "evidence_observation_ids": (evidence.observation_id,),
+            }
+            if variant == "private_belief":
+                parameters["private_belief_id"] = "forged-supporting-belief"
+            elif variant == "pressure":
+                parameters.update(
+                    {
+                        "pressure": 0.5,
+                        "pressure_reason": "out-of-scope test pressure",
+                    }
+                )
+            elif variant == "pressure_reason":
+                parameters["pressure_reason"] = "out-of-scope test pressure"
+            else:
+                raise AssertionError(f"unknown test variant: {variant}")
+            return ActionAttempt(
+                actor_id=ILAN_ID,
+                kind="speak",
+                parameters=parameters,
+                explanation="attempt generic speak semantics",
+            )
+
+        for variant in (
+            "private_belief",
+            "pressure",
+            "pressure_reason",
+            "parameterized_wait",
+            "valid_wait",
+        ):
+            with self.subTest(variant=variant):
+                client = _SequenceClient(
+                    {
+                        "kind": "travel",
+                        "parameters": {"destination": "workplace"},
+                        "explanation": "travel to the workplace",
+                        "decision_reason": "the shift is due",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "wait at the workplace",
+                        "decision_reason": "arrival needs no further action",
+                    },
+                )
+                day = build_autonomous_day(
+                    seed=42,
+                    mara_harness=MaraHarness.from_client(
+                        client,
+                        configuration_id=f"ilan-action-contract-{variant}",
+                    ),
+                    ilan_transit_policy=_IlanAttemptPolicy(
+                        lambda view, selected=variant: injected_attempt(
+                            view,
+                            selected,
+                        )
+                    ),
+                )
+
+                day.run()
+
+                action_kind = (
+                    "wait"
+                    if variant in {"parameterized_wait", "valid_wait"}
+                    else "speak"
+                )
+                social_result = next(
+                    result
+                    for result in day.world.agents[ILAN_ID].action_results
+                    if result.action_kind == action_kind
+                )
+                self.assertEqual(
+                    social_result.status,
+                    "completed" if variant == "valid_wait" else "rejected",
+                )
+                self.assertEqual(
+                    social_result.reason,
+                    None
+                    if variant == "valid_wait"
+                    else "invalid Ilan social action parameters",
+                )
+                self.assertFalse(
+                    any(event.kind == "statement_completed" for event in day.events)
+                )
+                social_wait_completed = [
+                    event
+                    for event in day.events
+                    if event.kind == "wait_completed"
+                    and event.actor_id == ILAN_ID
+                ]
+                self.assertEqual(
+                    len(social_wait_completed),
+                    1 if variant == "valid_wait" else 0,
+                )
 
     def test_world_time_is_authoritative_during_successor_dispatch(self):
         day = build_autonomous_day(seed=42)

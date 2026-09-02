@@ -996,7 +996,32 @@ def build_autonomous_day(
         ilan.last_attempt = attempt
         ilan.action_history.append(attempt)
 
+        def reject_attempt(reason: str) -> None:
+            rejected = event_log.record(
+                tick=context.current.total_minutes,
+                kind="action_rejected",
+                actor_id=ILAN_ID,
+                action_id=action_id,
+                caused_by=(attempted.event_id,),
+                details={"reason": reason},
+            )
+            ilan.action_results.append(
+                ActionResult(
+                    action_id=action_id,
+                    attempt_event_id=attempted.event_id,
+                    outcome_event_id=rejected.event_id,
+                    actor_id=ILAN_ID,
+                    action_kind=attempt.kind,
+                    status="rejected",
+                    resolved_tick=context.current.total_minutes,
+                    reason=reason,
+                )
+            )
+
         if attempt.kind == "wait":
+            if attempt.parameters:
+                reject_attempt("invalid Ilan social action parameters")
+                return
             completed = event_log.record(
                 tick=context.current.total_minutes,
                 kind="wait_completed",
@@ -1016,6 +1041,17 @@ def build_autonomous_day(
                     resolved_tick=context.current.total_minutes,
                 )
             )
+            return
+
+        if attempt.kind != "speak":
+            reject_attempt("unsupported Ilan social action kind")
+            return
+        if set(attempt.parameters) != {
+            "proposition",
+            "asserted_value",
+            "evidence_observation_ids",
+        } or action_parameter_shape_error("speak", attempt.parameters) is not None:
+            reject_attempt("invalid Ilan social action parameters")
             return
 
         evidence_ids = attempt.parameters.get("evidence_observation_ids")
@@ -1043,9 +1079,7 @@ def build_autonomous_day(
         )
         mara = world.agents[MARA_ID]
         valid = (
-            attempt.kind == "speak"
-            and action_parameter_shape_error("speak", attempt.parameters) is None
-            and evidence is not None
+            evidence is not None
             and evidence_triggered_decision
             and evidence.agent_id == ILAN_ID
             and evidence.source == "workplace transit service terminal"
@@ -1069,25 +1103,8 @@ def build_autonomous_day(
             and ilan.location == mara.location == "workplace"
         )
         if not valid:
-            rejected = event_log.record(
-                tick=context.current.total_minutes,
-                kind="action_rejected",
-                actor_id=ILAN_ID,
-                action_id=action_id,
-                caused_by=(attempted.event_id,),
-                details={"reason": "statement lacks owned evidence or physical access"},
-            )
-            ilan.action_results.append(
-                ActionResult(
-                    action_id=action_id,
-                    attempt_event_id=attempted.event_id,
-                    outcome_event_id=rejected.event_id,
-                    actor_id=ILAN_ID,
-                    action_kind=attempt.kind,
-                    status="rejected",
-                    resolved_tick=context.current.total_minutes,
-                    reason="statement lacks owned evidence or physical access",
-                )
+            reject_attempt(
+                "statement lacks owned evidence or physical access"
             )
             return
 

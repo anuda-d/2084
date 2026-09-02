@@ -10,8 +10,8 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: whole-goal alignment after three verified runs (2026-09-01)
-- Verified implementation runs since alignment: 0
+- Last completed run: ST-9 finite Ilan action contract (2026-09-02)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 - Automation state: running in owner-started Continuous Goal mode
 
@@ -33,6 +33,17 @@ sequence.
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-9 finite Ilan action contract
+
+- Status: verified boundary; ST-9 remains open.
+- The scenario-local resolver now accepts exactly proposition, assertion, and evidence observation IDs for Ilan's `speak` attempt and accepts only empty parameters for his `wait` alternative.
+- Generic private-belief, pressure, pressure-reason, and parameterized-wait fields reject before evidence or physical validation while the existing finite statement and empty wait paths still complete.
+- Parameter-contract, unsupported-kind, and evidence-or-access failures retain distinct truthful reasons in append-only rejection evidence and actor-safe results.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_observation_triggers_restricted_deterministic_choice tests.test_autonomous_day_world.AutonomousDayWorldTests.test_invalid_ilan_statement_evidence_is_rejected_without_delivery tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_social_action_contract_rejects_out_of_scope_parameters`.
+- Regression evidence: `./scripts/check.sh` passes all 305 offline tests.
+- Independent review: fresh Sol-high read-only review found one misleading rejection-reason defect, then confirmed the fix and reported no remaining actionable findings.
+- Remaining ST-9 boundary: the complete social chain, inspector reconstruction, and recorded playback are not yet implemented.
 
 ### 2026-09-01 - ST-2 invalid statement evidence rejection
 
@@ -96,7 +107,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest verified work unit completed ST-2 without selecting a later task.
+The latest verified work unit narrowed the finite Ilan action contract without selecting a later task.
 
 ## Completion Rules
 
