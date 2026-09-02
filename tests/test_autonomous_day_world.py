@@ -2122,6 +2122,104 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {"sequence": 3, "phase": "observation_delivery"},
         )
 
+    def test_withheld_ilan_source_observation_stops_social_chain(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the shift is due",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at the workplace",
+                "decision_reason": "arrival needs no further action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="withheld-ilan-source-observation-test",
+            ),
+        )
+        delivery_kind = "autonomous_day_ilan_transit_observation_delivery"
+        original_delivery = day.runtime._handlers[delivery_kind]
+
+        def withhold_source_observation(work, context):
+            ilan = day.world.agents[ILAN_ID]
+            original_location = ilan.location
+            try:
+                ilan.location = "home"
+                original_delivery(work, context)
+            finally:
+                ilan.location = original_location
+
+        day.runtime._handlers[delivery_kind] = withhold_source_observation
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(day.world.tick, 1440)
+        self.assertTrue(
+            any(event.kind == "transit_service_changed" for event in day.events)
+        )
+        source_delivery = next(
+            work for work in summary.executed_work if work.kind == delivery_kind
+        )
+        self.assertEqual(source_delivery.due_time, SimulatedTime(510))
+        self.assertEqual(source_delivery.phase, "observation_delivery")
+        ilan = day.world.agents[ILAN_ID]
+        self.assertEqual(ilan.observations, [])
+        self.assertFalse(
+            any(observation.agent_id == ILAN_ID for observation in day.observations)
+        )
+        inspector = autonomous_day_inspector_data(day, summary)
+        self.assertFalse(
+            any(
+                observation["agent_id"] == ILAN_ID
+                for observation in inspector["history"]["observations"]
+            )
+        )
+        self.assertEqual(
+            [attempt.kind for attempt in ilan.action_history],
+            ["work"],
+        )
+        self.assertEqual(
+            [result.action_kind for result in ilan.action_results],
+            ["work"],
+        )
+        self.assertFalse(
+            any(
+                decision.actor_id == ILAN_ID
+                for decision in summary.consumed_decisions
+            )
+        )
+        self.assertFalse(
+            any(event.kind == "statement_completed" for event in day.events)
+        )
+        self.assertFalse(
+            any(
+                observation.details.get("evidence_kind") == "social_testimony"
+                for observation in day.world.agents[MARA_ID].observations
+            )
+        )
+        self.assertEqual(day.understanding_transitions, ())
+        self.assertEqual(day.world.agents[MARA_ID].memory_traces, ())
+        self.assertEqual(day.world.agents[MARA_ID].interpreted_claims, ())
+        self.assertFalse(
+            any(
+                work.kind == "autonomous_day_ilan_testimony_delivery"
+                for work in summary.executed_work
+            )
+        )
+        self.assertEqual(len(client.inputs), 2)
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"].get(ILAN_ID, 0),
+            0,
+        )
+
     def test_ilan_observation_triggers_restricted_deterministic_choice(self):
         client = _SequenceClient(
             {

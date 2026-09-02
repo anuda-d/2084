@@ -10,8 +10,8 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: whole-goal alignment after three verified runs (2026-09-02)
-- Verified implementation runs since alignment: 0
+- Last completed run: ST-7 withheld Ilan source-observation counterfactual (2026-09-02)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
 
 ## Goal Progress
@@ -24,7 +24,7 @@ sequence.
 | ST-4 Knowledge boundary | met | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
 | ST-5 Focal response | met | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
 | ST-6 World consequence | met | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
-| ST-7 Counterfactual evidence | open | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
+| ST-7 Counterfactual evidence | met | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
 | ST-8 Provider-free watchability | open | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
 | ST-9 Inspection and reproduction | open | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
 | ST-10 Integration | open | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
@@ -32,6 +32,16 @@ sequence.
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-7 withheld Ilan source observation
+
+- Status: verified; ST-7 is met.
+- The deterministic counterfactual executes the scheduled minute-510 source-delivery boundary while temporarily making the workplace terminal inaccessible to Ilan, then restores his workplace location before later phases.
+- The objective transit change still commits, but no Ilan observation enters his restricted state, the append-only observation history, or inspector history; no Ilan social decision, statement, testimony dispatch, Mara testimony understanding, or testimony-triggered model request follows.
+- The run still reaches the exact 1,440-minute boundary, and the existing separate statement-time and delivery-time physical-access counterfactuals retain their distinct stopping evidence.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_withheld_ilan_source_observation_stops_social_chain tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_statement_without_physical_access_delivers_no_testimony tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_testimony_delivery_rechecks_physical_access`.
+- Regression evidence: `./scripts/check.sh` passes the complete offline repository suite.
+- Independent review: fresh Sol-high read-only review found missing dispatch and append-only observation-history assertions, then confirmed both fixes and reported no remaining actionable or blocking findings.
 
 ### 2026-09-02 - ST-4/ST-5 testimony decision integration
 
@@ -129,7 +139,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest whole-goal alignment completed without selecting a later task.
+The latest completed run verified the ST-7 withheld-source counterfactual without selecting later work.
 
 ## Completion Rules
 
