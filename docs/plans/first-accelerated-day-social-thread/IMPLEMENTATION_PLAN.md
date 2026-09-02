@@ -10,9 +10,9 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-3 world-owned testimony delivery (2026-09-02)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: ST-4/ST-5 testimony decision integration (2026-09-02)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 - Automation state: running in owner-started Continuous Goal mode
 
 ## Goal Progress
@@ -22,8 +22,8 @@ sequence.
 | ST-1 Supporting choice | met | Ilan makes one deterministic restricted-view choice at the delivered-observation trigger without focal-private or hidden institutional input. |
 | ST-2 Evidence authority | met | The statement cites the exact triggering Ilan-owned transit observation, and invalid source variants reject without delivery. |
 | ST-3 Physical delivery | met | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
-| ST-4 Knowledge boundary | open | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
-| ST-5 Focal response | open | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
+| ST-4 Knowledge boundary | met | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
+| ST-5 Focal response | met | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
 | ST-6 World consequence | open | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
 | ST-7 Counterfactual evidence | open | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
 | ST-8 Provider-free watchability | open | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
@@ -33,6 +33,18 @@ sequence.
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-4/ST-5 testimony decision integration
+
+- Status: verified; ST-4 and ST-5 are met.
+- Committed testimony schedules one source-linked understanding update and, when Mara is idle with a configured focal policy, one same-minute bounded decision after delivery and understanding commit.
+- The fresh restricted input contains Mara's delivered testimony, its trace, and interpreted claim without Ilan's source observation, transit source event, institutional records, or hidden world state.
+- Mara's deterministic-client response uses the existing `wait` action, which remains an attempt independently accepted and completed by the world.
+- Testimony received during pending work creates understanding without interrupting or replacing the action; the completed action's next decision receives the retained testimony and trace.
+- Invalid statement evidence and lost delivery-time access produce no testimony observation, canonical trace, interpreted claim, testimony-derived trigger, or third restricted model input.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_delivered_testimony_updates_understanding_before_bounded_mara_decision tests.test_autonomous_day_world.AutonomousDayWorldTests.test_testimony_preserves_pending_work_until_its_next_decision tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_testimony_delivery_rechecks_physical_access tests.test_autonomous_day_world.AutonomousDayWorldTests.test_invalid_ilan_statement_evidence_is_rejected_without_delivery`.
+- Regression evidence: `./scripts/check.sh` passes all 310 offline tests.
+- Independent review: fresh Sol-high read-only review found missing pending-action and canonical no-trace evidence, then confirmed both fixes and reported no remaining actionable findings.
 
 ### 2026-09-02 - ST-3 world-owned testimony delivery
 
@@ -118,7 +130,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest verified work unit completed ST-3 without selecting a later task.
+The latest verified work unit completed ST-4 and ST-5 without selecting a later task.
 
 ## Completion Rules
 

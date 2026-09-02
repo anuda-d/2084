@@ -70,7 +70,8 @@ That committed delivery requests one non-model decision from an immutable transi
 The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt.
 Statement validation requires the exact observation that triggered Ilan's decision, Ilan ownership, the authored workplace channel, the transit authority's source event, and strict structured action parameters before comparing the finite route, status, proposition, and assertion.
 A completed statement schedules one next-minute observation-delivery dispatch, which independently rechecks workplace co-location and only then appends a finite attributed testimony observation to Mara.
-This delivery boundary does not yet derive Mara understanding or request a focal decision.
+Committed testimony then schedules one source-linked understanding update and, when Mara is idle and a focal policy is configured, one bounded decision in the subsequent same-minute phases.
+The trace and decision opportunity do not imply belief, agreement, or authority for the model to resolve its selected ordinary action.
 A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
 
 When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.

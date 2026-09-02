@@ -61,6 +61,9 @@ _ILAN_TRANSIT_OBSERVATION_DELIVERY = (
     "autonomous_day_ilan_transit_observation_delivery"
 )
 _ILAN_TESTIMONY_DELIVERY = "autonomous_day_ilan_testimony_delivery"
+_MARA_TESTIMONY_UNDERSTANDING_UPDATE = (
+    "autonomous_day_mara_testimony_understanding_update"
+)
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRANSIT_UNDERSTANDING_UPDATE = "autonomous_day_mara_transit_understanding_update"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
@@ -263,6 +266,7 @@ def build_autonomous_day(
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
     ilan_statement_events: dict[str, Event] = {}
+    ilan_testimony_observations: dict[str, Observation] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
@@ -1175,6 +1179,65 @@ def build_autonomous_day(
             },
         )
         mara.observations.append(observation)
+        understanding_item_id = f"mara-understanding-{observation.observation_id}"
+        ilan_testimony_observations[understanding_item_id] = observation
+        context.schedule(
+            ScheduledWork(
+                item_id=understanding_item_id,
+                due_time=context.current,
+                phase=TemporalPhase.UNDERSTANDING_UPDATE,
+                kind=_MARA_TESTIMONY_UNDERSTANDING_UPDATE,
+            )
+        )
+        if (
+            MARA_ID not in pending_actions
+            and (on_mara_decision is not None or mara_harness is not None)
+        ):
+            context.request_decision(
+                actor_id=mara.agent_id,
+                due_time=context.current,
+                trigger=DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=observation.observation_id,
+                ),
+            )
+
+    def update_mara_testimony_understanding(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("testimony understanding released at the wrong time")
+        observation = ilan_testimony_observations[work.item_id]
+        mara = world.agents[MARA_ID]
+        derived = trace_from_delivered_observation(
+            observation,
+            trace_id=f"trace-{observation.observation_id}",
+            claim_id=f"claim-{observation.observation_id}",
+            existing_claims=mara.interpreted_claims,
+        )
+        if derived is None:
+            raise RuntimeError("testimony did not support understanding")
+        trace, new_claim = derived
+        mara.memory_traces += (trace,)
+        if new_claim is not None:
+            mara.interpreted_claims = link_official_version_conflicts(
+                mara.interpreted_claims,
+                mara.memory_traces[:-1],
+                new_claim,
+                trace,
+            )
+        understanding_transitions.append(
+            {
+                "agent_id": mara.agent_id,
+                "tick": context.current.total_minutes,
+                "source_observation_id": observation.observation_id,
+                "source_event_id": observation.event_id,
+                "trace_id": trace.trace_id,
+                "claim_id": trace.interpreted_claim_id,
+                "claim_created": new_claim is not None,
+            }
+        )
 
     def start_supporting_work(
         work: ScheduledWork,
@@ -1415,6 +1478,9 @@ def build_autonomous_day(
                 deliver_ilan_transit_observation
             ),
             _ILAN_TESTIMONY_DELIVERY: deliver_ilan_testimony,
+            _MARA_TESTIMONY_UNDERSTANDING_UPDATE: (
+                update_mara_testimony_understanding
+            ),
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
             _MARA_TRANSIT_UNDERSTANDING_UPDATE: update_mara_transit_understanding,
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,

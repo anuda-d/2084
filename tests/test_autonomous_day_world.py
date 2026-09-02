@@ -703,6 +703,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "explanation": "pause after arriving",
                 "decision_reason": "arrival creates a new decision opportunity",
             },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after hearing Ilan",
+                "decision_reason": "the testimony creates a fresh choice",
+            },
         )
         day = build_autonomous_day(
             seed=42,
@@ -965,6 +971,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "explanation": "pause after arriving at the workplace",
                 "decision_reason": "arrival creates a new decision opportunity",
             },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after hearing Ilan",
+                "decision_reason": "the testimony creates a fresh choice",
+            },
         )
         day = build_autonomous_day(
             seed=42,
@@ -987,7 +999,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
-        self.assertEqual(len(client.inputs), 2)
+        self.assertEqual(len(client.inputs), 3)
         self.assertEqual(client.inputs[1]["tick"], 450)
         self.assertEqual(client.inputs[1]["state"]["location"], "workplace")
         self.assertEqual(day.world.agents[MARA_ID].location, "workplace")
@@ -999,7 +1011,11 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ["social_testimony"],
         )
         self.assertEqual(
-            [event.kind for event in day.events if event.actor_id == MARA_ID],
+            [
+                event.kind
+                for event in day.events
+                if event.actor_id == MARA_ID and event.tick <= 450
+            ],
             [
                 "action_attempted",
                 "travel_completed",
@@ -1019,10 +1035,23 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(travel_completed.tick, 450)
         self.assertEqual(action_result_work.phase, "decision")
         self.assertEqual(
-            [result.action_kind for result in day.world.agents[MARA_ID].action_results],
+            [
+                result.action_kind
+                for result in day.world.agents[MARA_ID].action_results
+                if result.resolved_tick <= 450
+            ],
             ["travel", "wait"],
         )
-        self.assertEqual(len(dispatched), 2)
+        self.assertEqual(
+            len(
+                [
+                    decision
+                    for decision in dispatched
+                    if decision.due_time <= SimulatedTime(450)
+                ]
+            ),
+            2,
+        )
         self.assertEqual(
             dispatched[1].triggers,
             (
@@ -1034,7 +1063,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {ILAN_ID: 1, MARA_ID: 2},
+            {ILAN_ID: 1, MARA_ID: 3},
         )
 
     def test_workplace_work_completes_after_model_selected_travel(self):
@@ -1952,7 +1981,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(mara.memory_traces, view.memory_traces)
         self.assertEqual(mara.interpreted_claims, view.interpreted_claims)
 
-    def test_inaccessible_transit_change_does_not_dispatch_mara_decision(self):
+    def test_inaccessible_transit_bulletin_adds_no_decision_beyond_testimony(self):
         dispatched = []
         day = build_autonomous_day(
             seed=42,
@@ -1965,10 +1994,14 @@ class AutonomousDayWorldTests(unittest.TestCase):
         summary = day.run()
 
         self.assertTrue(summary.reached_end_boundary)
-        self.assertEqual(len(dispatched), 1)
+        self.assertEqual(len(dispatched), 2)
         self.assertEqual(
             dispatched[0][0].triggers[0].kind,
             DecisionTriggerKind.SCHEDULED_WAKE,
+        )
+        self.assertEqual(
+            dispatched[1][0].triggers[0].kind,
+            DecisionTriggerKind.OBSERVATION_DELIVERED,
         )
         self.assertEqual(
             [
@@ -1980,7 +2013,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {ILAN_ID: 1, MARA_ID: 1},
+            {ILAN_ID: 1, MARA_ID: 2},
         )
 
     def test_background_consequence_reaches_mara_only_through_home_bulletin(self):
@@ -2103,6 +2136,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "explanation": "wait at the workplace",
                 "decision_reason": "arrival needs no further action",
             },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after hearing Ilan",
+                "decision_reason": "the testimony creates a fresh choice",
+            },
         )
         day = build_autonomous_day(
             seed=42,
@@ -2162,14 +2201,14 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(statement_result.status, "completed")
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {ILAN_ID: 1, MARA_ID: 2},
+            {ILAN_ID: 1, MARA_ID: 3},
         )
         self.assertEqual(len(day.world.agents[MARA_ID].observations), 1)
         self.assertEqual(
             day.world.agents[MARA_ID].observations[0].details["evidence_kind"],
             "social_testimony",
         )
-        self.assertEqual(day.understanding_transitions, ())
+        self.assertEqual(len(day.understanding_transitions), 1)
         normal_output = render_autonomous_day(day, summary)
         for hidden in (
             "Ilan",
@@ -2193,6 +2232,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "parameters": {},
                 "explanation": "wait at the workplace",
                 "decision_reason": "arrival needs no further action",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after hearing Ilan",
+                "decision_reason": "the testimony creates a fresh choice",
             },
         )
         day = build_autonomous_day(
@@ -2226,10 +2271,10 @@ class AutonomousDayWorldTests(unittest.TestCase):
             },
         )
         self.assertEqual(statement.tick, 510)
-        self.assertEqual(day.understanding_transitions, ())
+        self.assertEqual(len(day.understanding_transitions), 1)
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
-            {ILAN_ID: 1, MARA_ID: 2},
+            {ILAN_ID: 1, MARA_ID: 3},
         )
 
         inspector = autonomous_day_inspector_data(day, summary)
@@ -2251,6 +2296,195 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(
             inspector_testimony["dispatch"]["sequence"],
             inspector_statement["dispatch"]["sequence"] + 1,
+        )
+
+    def test_delivered_testimony_updates_understanding_before_bounded_mara_decision(
+        self,
+    ):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the shift is due",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at the workplace",
+                "decision_reason": "arrival needs no further action",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after hearing Ilan",
+                "decision_reason": "the testimony creates a fresh choice",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="testimony-decision-integration-test",
+            ),
+        )
+
+        summary = day.run()
+
+        testimony = next(
+            observation
+            for observation in day.world.agents[MARA_ID].observations
+            if observation.details.get("evidence_kind") == "social_testimony"
+        )
+        testimony_decision = next(
+            decision
+            for decision in summary.consumed_decisions
+            if decision.actor_id == MARA_ID
+            and decision.due_time == SimulatedTime(511)
+        )
+        self.assertEqual(
+            testimony_decision.triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=testimony.observation_id,
+                ),
+            ),
+        )
+        self.assertEqual(
+            [
+                work.kind
+                for work in summary.executed_work
+                if work.due_time == SimulatedTime(511)
+            ],
+            [
+                "autonomous_day_ilan_testimony_delivery",
+                "autonomous_day_mara_testimony_understanding_update",
+                "decision_eligibility",
+            ],
+        )
+
+        self.assertEqual(len(client.inputs), 3)
+        model_input = client.inputs[2]
+        self.assertEqual(model_input["tick"], 511)
+        self.assertEqual(
+            [
+                observation["observation_id"]
+                for observation in model_input["delivered_observations"]
+            ],
+            [testimony.observation_id],
+        )
+        trace = model_input["understanding"]["memory_traces"][0]
+        self.assertEqual(trace["source_observation_id"], testimony.observation_id)
+        self.assertEqual(trace["source_event_id"], testimony.event_id)
+        self.assertEqual(trace["evidence_kind"], "social_testimony")
+        self.assertEqual(
+            model_input["understanding"]["interpreted_claims"][0][
+                "origin_trace_id"
+            ],
+            trace["trace_id"],
+        )
+        ilan_source_observation = day.world.agents[ILAN_ID].observations[0]
+        self.assertNotIn(
+            ilan_source_observation.observation_id,
+            json.dumps(model_input),
+        )
+        self.assertNotIn(ilan_source_observation.event_id, json.dumps(model_input))
+        self.assertNotIn("institution_records", model_input)
+
+        mara = day.world.agents[MARA_ID]
+        self.assertEqual(mara.action_history[-1].kind, "wait")
+        self.assertEqual(mara.action_results[-1].action_kind, "wait")
+        self.assertEqual(mara.action_results[-1].status, "completed")
+        outcome = next(
+            event
+            for event in day.events
+            if event.event_id == mara.action_results[-1].outcome_event_id
+        )
+        self.assertEqual(outcome.kind, "wait_completed")
+        self.assertEqual(outcome.tick, 511)
+
+    def test_testimony_preserves_pending_work_until_its_next_decision(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the shift is due",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "begin the workplace shift",
+                "decision_reason": "the work obligation remains",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after completing work",
+                "decision_reason": "the testimony is now part of the next choice",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="testimony-pending-work-test",
+            ),
+        )
+
+        summary = day.run()
+
+        testimony = next(
+            observation
+            for observation in day.world.agents[MARA_ID].observations
+            if observation.details.get("evidence_kind") == "social_testimony"
+        )
+        self.assertEqual(
+            [
+                work.kind
+                for work in summary.executed_work
+                if work.due_time == SimulatedTime(511)
+            ],
+            [
+                "autonomous_day_ilan_testimony_delivery",
+                "autonomous_day_mara_testimony_understanding_update",
+            ],
+        )
+        self.assertFalse(
+            any(
+                decision.actor_id == MARA_ID
+                and decision.due_time == SimulatedTime(511)
+                for decision in summary.consumed_decisions
+            )
+        )
+        work_result = next(
+            result
+            for result in day.world.agents[MARA_ID].action_results
+            if result.action_kind == "work"
+        )
+        self.assertEqual(work_result.status, "completed")
+        self.assertEqual(work_result.resolved_tick, 570)
+        self.assertEqual(
+            [attempt.kind for attempt in day.world.agents[MARA_ID].action_history],
+            ["travel", "work", "wait"],
+        )
+
+        self.assertEqual(len(client.inputs), 3)
+        post_work_input = client.inputs[2]
+        self.assertEqual(post_work_input["tick"], 570)
+        self.assertEqual(
+            [
+                observation["observation_id"]
+                for observation in post_work_input["delivered_observations"]
+            ],
+            [testimony.observation_id],
+        )
+        self.assertEqual(
+            post_work_input["understanding"]["memory_traces"][0][
+                "source_observation_id"
+            ],
+            testimony.observation_id,
         )
 
     def test_ilan_statement_without_physical_access_delivers_no_testimony(self):
@@ -2351,6 +2585,9 @@ class AutonomousDayWorldTests(unittest.TestCase):
             )
         )
         self.assertEqual(day.understanding_transitions, ())
+        self.assertEqual(day.world.agents[MARA_ID].memory_traces, ())
+        self.assertEqual(day.world.agents[MARA_ID].interpreted_claims, ())
+        self.assertEqual(len(client.inputs), 2)
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
             {ILAN_ID: 1, MARA_ID: 2},
@@ -2453,7 +2690,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                     )
                     day.world.agents[ILAN_ID].observations.append(substituted)
 
-                day.run()
+                summary = day.run()
 
                 statement_result = next(
                     result
@@ -2475,6 +2712,16 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 )
                 self.assertEqual(day.world.agents[MARA_ID].observations, [])
                 self.assertEqual(day.understanding_transitions, ())
+                self.assertEqual(day.world.agents[MARA_ID].memory_traces, ())
+                self.assertEqual(day.world.agents[MARA_ID].interpreted_claims, ())
+                self.assertEqual(len(client.inputs), 2)
+                self.assertFalse(
+                    any(
+                        decision.actor_id == MARA_ID
+                        and decision.due_time == SimulatedTime(511)
+                        for decision in summary.consumed_decisions
+                    )
+                )
 
     def test_ilan_social_action_contract_rejects_out_of_scope_parameters(self):
         def injected_attempt(view, variant):
