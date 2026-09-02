@@ -60,6 +60,7 @@ _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
 _ILAN_TRANSIT_OBSERVATION_DELIVERY = (
     "autonomous_day_ilan_transit_observation_delivery"
 )
+_ILAN_TESTIMONY_DELIVERY = "autonomous_day_ilan_testimony_delivery"
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRANSIT_UNDERSTANDING_UPDATE = "autonomous_day_mara_transit_understanding_update"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
@@ -261,6 +262,7 @@ def build_autonomous_day(
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
     transit_change_events: dict[str, Event] = {}
+    ilan_statement_events: dict[str, Event] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
@@ -1133,6 +1135,46 @@ def build_autonomous_day(
                 resolved_tick=context.current.total_minutes,
             )
         )
+        testimony_item_id = f"mara-testimony-delivery-{completed.event_id}"
+        ilan_statement_events[testimony_item_id] = completed
+        context.schedule(
+            ScheduledWork(
+                item_id=testimony_item_id,
+                due_time=context.current.plus_minutes(1),
+                phase=TemporalPhase.OBSERVATION_DELIVERY,
+                kind=_ILAN_TESTIMONY_DELIVERY,
+            )
+        )
+
+    def deliver_ilan_testimony(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("Ilan testimony released at the wrong time")
+        statement = ilan_statement_events[work.item_id]
+        if (
+            statement.kind != "statement_completed"
+            or statement.actor_id != ILAN_ID
+            or statement.details.get("recipient_id") != MARA_ID
+        ):
+            raise RuntimeError("Ilan testimony source statement is invalid")
+        ilan = world.agents[ILAN_ID]
+        mara = world.agents[MARA_ID]
+        if ilan.location != mara.location or ilan.location != "workplace":
+            return
+        observation = event_log.deliver(
+            agent_id=mara.agent_id,
+            event_id=statement.event_id,
+            source=f"{ilan.display_name} in person",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "social_testimony",
+                "proposition": statement.details["proposition"],
+                "asserted_value": statement.details["asserted_value"],
+            },
+        )
+        mara.observations.append(observation)
 
     def start_supporting_work(
         work: ScheduledWork,
@@ -1372,6 +1414,7 @@ def build_autonomous_day(
             _ILAN_TRANSIT_OBSERVATION_DELIVERY: (
                 deliver_ilan_transit_observation
             ),
+            _ILAN_TESTIMONY_DELIVERY: deliver_ilan_testimony,
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
             _MARA_TRANSIT_UNDERSTANDING_UPDATE: update_mara_transit_understanding,
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,

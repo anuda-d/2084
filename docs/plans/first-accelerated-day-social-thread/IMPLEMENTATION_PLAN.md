@@ -10,8 +10,8 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-9 finite Ilan action contract (2026-09-02)
-- Verified implementation runs since alignment: 1
+- Last completed run: ST-3 world-owned testimony delivery (2026-09-02)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 - Automation state: running in owner-started Continuous Goal mode
 
@@ -21,7 +21,7 @@ sequence.
 | --- | --- | --- |
 | ST-1 Supporting choice | met | Ilan makes one deterministic restricted-view choice at the delivered-observation trigger without focal-private or hidden institutional input. |
 | ST-2 Evidence authority | met | The statement cites the exact triggering Ilan-owned transit observation, and invalid source variants reject without delivery. |
-| ST-3 Physical delivery | open | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
+| ST-3 Physical delivery | met | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
 | ST-4 Knowledge boundary | open | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
 | ST-5 Focal response | open | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
 | ST-6 World consequence | open | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
@@ -33,6 +33,17 @@ sequence.
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-3 world-owned testimony delivery
+
+- Status: verified; ST-3 is met.
+- A world-validated statement schedules one distinct next-minute observation-delivery dispatch, which links the statement event to one finite attributed testimony observation owned by Mara.
+- Statement validation and delivery independently require Ilan and Mara to share the workplace, while invalid evidence, missing statement-time access, and lost delivery-time access all produce no testimony.
+- The testimony carries only its finite proposition and assertion under legitimate in-person attribution; the statement event retains the supporting evidence link for inspection.
+- This boundary does not yet create focal understanding or request another Mara decision.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_valid_ilan_statement_delivers_one_source_linked_testimony tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_statement_without_physical_access_delivers_no_testimony tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_testimony_delivery_rechecks_physical_access tests.test_autonomous_day_world.AutonomousDayWorldTests.test_invalid_ilan_statement_evidence_is_rejected_without_delivery`.
+- Regression evidence: `./scripts/check.sh` passes all 308 offline tests.
+- Independent review: fresh Sol-high read-only review found missing delivery-time counterfactual evidence and stale architecture text, then confirmed both fixes and reported no remaining actionable findings.
 
 ### 2026-09-02 - ST-9 finite Ilan action contract
 
@@ -107,7 +118,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest verified work unit narrowed the finite Ilan action contract without selecting a later task.
+The latest verified work unit completed ST-3 without selecting a later task.
 
 ## Completion Rules
 

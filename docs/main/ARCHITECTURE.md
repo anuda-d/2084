@@ -67,8 +67,10 @@ These events append to the shared `EventLog` independently of Mara.
 The service change itself grants her no knowledge.
 A same-minute observation-phase delivery links the service-change evidence to Ilan only while he is at the authored workplace terminal.
 That committed delivery requests one non-model decision from an immutable transit-statement view containing only Ilan's actor-safe state, delivered evidence, current trigger, valid actions, and world-supplied addressability.
-The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt without creating testimony in this boundary.
+The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt.
 Statement validation requires the exact observation that triggered Ilan's decision, Ilan ownership, the authored workplace channel, the transit authority's source event, and strict structured action parameters before comparing the finite route, status, proposition, and assertion.
+A completed statement schedules one next-minute observation-delivery dispatch, which independently rechecks workplace co-location and only then appends a finite attributed testimony observation to Mara.
+This delivery boundary does not yet derive Mara understanding or request a focal decision.
 A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
 
 When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.
