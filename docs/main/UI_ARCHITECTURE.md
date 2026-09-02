@@ -2,7 +2,8 @@
 
 Status: current interface direction; most described surfaces are not implemented.
 
-The interface should make an autonomous social simulation watchable through one focal character. It is not primarily a control panel, statistical dashboard, or conventional game HUD.
+The interface should make an autonomous social simulation watchable through one focal character.
+It is not primarily a control panel, statistical dashboard, or conventional game HUD.
 
 ## Observer Role
 
@@ -19,36 +20,33 @@ The default experience should allow the simulation to advance autonomously while
 
 Manual steering is an open possibility, not a requirement for the project to feel playable.
 
-### Current implemented surface
+### Current implemented surfaces
 
-The first living slice currently has a read-only terminal observer. Each tick
-shows the focal character's location, aim, selected or ongoing action, a concise
-decision explanation, newly delivered observations, action rejections, a simple
-held-versus-needed resource summary, and a small belief summary. It receives
-only focal snapshots and cannot inspect the objective world or event history.
-In explicit model mode, the same surface shows Mara's attributed concise
-decision reason and the consequence admitted by the simulation; it does not
-show the restricted request, model configuration, or private decision record.
+The first living slice has a read-only terminal observer.
+Each tick shows the focal character's location, aim, selected or ongoing action, concise decision explanation, newly delivered observations, action rejections, a held-versus-needed resource summary, and a small belief summary.
+It receives only focal snapshots and cannot inspect the objective world or event history.
+In explicit model mode, the same surface shows Mara's attributed concise decision reason and the consequence admitted by the simulation; it does not show the restricted request, model configuration, or private decision record.
 
-A separate command renders an explicitly labelled omniscient development
-inspector containing objective state, institutional and official records, all
-beliefs, source-linked history, and inspector-only linked model decision
-evidence when present. That evidence connects restricted input, authored and
-non-secret configuration identities, structured response, attempted action,
-validation, and outcome without retaining the endpoint, raw provider failure,
-or hidden provider reasoning. This separation is implemented and tested,
-although it is not yet a graphical interface boundary.
+The autonomous-day composition has a second focal-safe terminal surface based on readable simulated time rather than legacy ticks.
+It shows the start and exact end boundary, compact quiet intervals, delivered transit information, and any completed Mara travel, work, household, or rest activity admitted by the world.
+The offline default therefore remains intentionally quiet when no Mara policy is configured, while injected, recorded, or explicit Ollama decisions can create additional focal-visible activity through the same renderer.
 
-There is currently no graphical or spatial view, pause/resume control, playback
-speed, selectable people or objects, intervention, or durable history browser.
-The surfaces below remain design directions unless identified above as already
-implemented.
+Both scenarios can render a separately labelled omniscient inspector.
+The first-day inspector contains objective state, institutional and official records, all beliefs, source-linked history, and linked model-decision evidence when present.
+The autonomous-day inspector adds simulated-time execution, causal phase order, committed dispatch provenance, decision cadence, growth ceilings, continuity-requirement counts, and terminal-failure evidence.
+Private live-run audit bundles retain the focal transcript, sanitized inspector, canonical decision records, verdict, and artifact hashes outside the normal observer view.
+This separation is implemented and tested, although it is not yet a graphical interface boundary.
+
+There is currently no graphical or spatial view, pause/resume control, playback speed, selectable people or objects, intervention, or durable history browser.
+The surfaces below remain design directions unless identified above as already implemented.
 
 ## Main Perspective
 
-The focal character should remain easy to find and follow. A spatial view may eventually show their movement through a small district, but the first interface can be simpler if it still conveys place, time, and proximity.
+The focal character should remain easy to find and follow.
+A spatial view may eventually show their movement through a small district, but the first interface can be simpler if it still conveys place, time, and proximity.
 
-The normal perspective should reveal only what the focal character can directly observe, reasonably remember, or currently infer. It should not expose hidden NPC motives, unseen reports, institutional queues, or objective truth by accident.
+The normal perspective should reveal only what the focal character can directly observe, reasonably remember, or currently infer.
+It should not expose hidden NPC motives, unseen reports, institutional queues, or objective truth by accident.
 
 ## Possible Surfaces
 
@@ -58,7 +56,8 @@ Where is the focal character, who is nearby, what are they doing, and how is tim
 
 ### Current thread
 
-A concise narrative rail may show the current action, immediate aim, recent event, conversation, consequence, and next uncertainty. It should be grounded in simulation records rather than inventing connective story.
+A concise narrative rail may show the current action, immediate aim, recent event, conversation, consequence, and next uncertainty.
+It should be grounded in simulation records rather than inventing connective story.
 
 ### Character understanding
 
@@ -75,37 +74,37 @@ A readable decision artifact may summarize:
 
 This is a user-facing explanation, not raw hidden model reasoning.
 
-The terminal currently implements only the concise attributed decision reason
-and selected or ongoing action. Alternatives considered, expectations, and a
-dedicated understanding surface remain proposed.
+The first-day terminal implements the concise attributed decision reason and selected or ongoing action.
+The autonomous-day normal view emphasizes admitted completed activity and compact time spans instead of displaying private decision input.
+Alternatives considered, expectations, and a dedicated understanding surface remain proposed.
 
 ### People and relationships
 
-The observer may inspect what the focal character knows or believes about another person: past interactions, trust, suspicion, obligations, and unresolved questions. Unknown private state must remain unknown.
+The observer may inspect what the focal character knows or believes about another person: past interactions, trust, suspicion, obligations, and unresolved questions.
+Unknown private state must remain unknown.
 
 ### Official reality
 
-Broadcasts, notices, public records, rules, and institutional claims should appear as claims from identifiable sources. The interface must not silently present them as objective world truth.
+Broadcasts, notices, public records, rules, and institutional claims should appear as claims from identifiable sources.
+The interface must not silently present them as objective world truth.
 
-This surface should show the version of an official artifact that the focal
-character can currently access, not the complete Official Record or its hidden
-revision lineage. A changed central record does not automatically replace an
-earlier observation or a stale physical copy. The character must encounter the
-new version through an actual delivery or access path.
+This surface should show the version of an official artifact that the focal character can currently access, not the complete Official Record or its hidden revision lineage.
+A changed central record does not automatically replace an earlier observation or a stale physical copy.
+The character must encounter the new version through an actual delivery or access path.
 
 ### Private record
 
-The diary should initially appear as a physical object the focal character can read or write. Its view shows recorded entries, not a complete memory database or omniscient event log.
+The diary should initially appear as a physical object the focal character can read or write.
+Its view shows recorded entries, not a complete memory database or omniscient event log.
 
 Entries may expose earlier beliefs and contradictions, but the interface should make clear that they were written from the character's limited perspective.
 
 ### Development inspector
 
-A separate surface already exposes objective events, hidden state, Official
-Record operations and versions, delivered-observation history, Agent
-Understanding transitions, institutional state, and private decision traces.
-It exists for debugging, programmatic reproduction, and explaining surprising
-behavior. A durable replay browser and graphical inspector remain unimplemented.
+A separate surface already exposes objective events, hidden state, Official Record operations and versions, delivered-observation history, Agent Understanding transitions, and institutional state.
+The first-day inspector can include linked private decision traces, while the autonomous-day inspector exposes sanitized decision status, cadence, dispatch, and growth evidence without canonical private decision records or restricted model input.
+It exists for debugging, programmatic reproduction, audit verification, and explaining surprising behavior.
+A durable replay browser and graphical inspector remain unimplemented.
 
 This inspector must be visually and conceptually distinct from the normal main-character perspective.
 
@@ -125,7 +124,8 @@ The UI may later help compare these sources, but it should preserve their proven
 
 ## Autonomy and Intervention
 
-Autonomous playback should be the default design assumption. The simulation advances the focal character's plan and the wider world after visible events have had time to be understood.
+Autonomous playback should be the default design assumption.
+The simulation advances the focal character's plan and the wider world after visible events have had time to be understood.
 
 Useful observer controls may include:
 
@@ -136,13 +136,16 @@ Useful observer controls may include:
 - opening recent history or the diary;
 - temporarily enabling a bounded steering mode.
 
-Any intervention should enter the simulation as an explicit input. It should not silently replace the focal character's agency or grant them impossible knowledge.
+Any intervention should enter the simulation as an explicit input.
+It should not silently replace the focal character's agency or grant them impossible knowledge.
 
 ## Working Principle
 
-The interface should reveal the simulation without becoming a second source of truth. Important statements should remain connected to actual events, official artifacts, delivered observations, memory traces, contextual stances, or claims.
+The interface should reveal the simulation without becoming a second source of truth.
+Important statements should remain connected to actual events, official artifacts, delivered observations, memory traces, contextual stances, or claims.
 
-Visual polish is valuable when it strengthens embodied attention or makes causality clearer. It should not conceal an unclear simulation.
+Visual polish is valuable when it strengthens embodied attention or makes causality clearer.
+It should not conceal an unclear simulation.
 
 ## Open Questions
 
