@@ -18,7 +18,8 @@ Status: First Accelerated-Day Social Thread is active and owner-approved as of
 - Earlier completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
 - Active work: Continuous Goal mode selects one run-scoped work unit at a time
-  from the active goal and verified implementation state
+  from the active goal and verified implementation state, but the app-level
+  loop is active only after Goal activation is verified
 
 ## Required Read Order
 
@@ -49,6 +50,18 @@ unclear.
 
 ## Run Contract
 
+- Continuous Goal requires a real app-level Goal; the repository goal does not activate it.
+  When the owner explicitly asks to start the continuous implementation loop, call `get_goal` before repository work.
+  If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective and verifiable stop condition, then call `get_goal` again.
+  Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
+  Perform this verification before task listing or lock acquisition.
+  If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+  Never claim Continuous Goal mode from commentary, repository state, or an earlier turn alone.
+  Continuous Goal does not use `create_thread`; fresh successor threads belong only to scheduled relay.
+- On every automatically continued Goal turn, call `get_goal` before repository work, then assert durable lock ownership.
+  A normal Goal turn boundary is not terminal while that app-level Goal remains active.
+  If a continued turn observes any non-active status, perform no repository work except releasing a lock it owns, then stop at **GOAL MODE NOT ACTIVE**.
+  When the objective is genuinely complete, commit the verified completion state, release the lock, and call `update_goal` with `status: complete`.
 - Confirm the no-overlap gate before repository work.
 - Inspect returned task activity for visible other active or queued 2084 work,
   then claim durable local ownership before repository work with

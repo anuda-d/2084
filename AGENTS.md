@@ -71,6 +71,15 @@ For now, favor one autonomous focal life, a small living world, understandable a
   active. It selects and completes one small task from the active goal, commits
   it, then starts the next work unit from fresh repository state. It never
   creates a future task queue.
+- Continuous Goal mode requires a real app-level Goal; an owner-approved repository goal or a commentary claim does not activate it.
+  When the owner explicitly asks to start the continuous implementation loop, call `get_goal` before repository work.
+  If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective and its verifiable stop condition, then call `get_goal` again.
+  Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
+  Perform this verification before task listing or lock acquisition.
+  If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+  On every automatically continued Goal turn, call `get_goal` before asserting lock ownership.
+  Never claim Continuous Goal mode from prose, repository state, or an earlier turn alone.
+  Continuous Goal does not use `create_thread`; that tool belongs only to scheduled relay.
 - Every scheduled task and manual one-shot remains limited to one committed
   work unit. During an owner-authorized scheduled relay window, a successful
   scheduled task starts exactly one fresh successor task from the updated local
@@ -101,7 +110,13 @@ For now, favor one autonomous focal life, a small living world, understandable a
   explicit predecessor task ID embedded in a scheduled relay successor's
   prompt: that predecessor has already committed, stopped its subagents,
   entered handoff-only state, and will do no more repository work. Iterations
-  inside the same active Goal-mode task are not overlap.
+  inside the same verified app-level Goal task are not overlap. A normal Goal
+  turn boundary is not a terminal state while `get_goal` reports `status:
+  active`, so the same task retains the lock for the automatic continuation.
+  If a continued turn observes any non-active status, it performs no repository
+  work except releasing a lock it owns, then stops at **GOAL MODE NOT ACTIVE**.
+  When the objective is genuinely complete, commit the verified completion
+  state, release the lock, and call `update_goal` with `status: complete`.
 - A scheduled relay task may create its successor only after validation,
   independent review, progress recording, and commit are complete, and only
   before the configured local-time cutoff. It creates one fresh Codex task in

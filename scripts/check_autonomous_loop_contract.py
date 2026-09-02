@@ -9,6 +9,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
 AUTOMATION = CODEX_HOME / "automations/autonomous-2084-development-loop/automation.toml"
+GOAL_REQUIREMENTS = (
+    "app-level Goal",
+    "`create_goal`",
+    "`get_goal` again",
+    "`get_goal` reports `status: active`",
+    "before task listing or lock acquisition",
+    "Never claim Continuous Goal mode",
+    "Continuous Goal does not use `create_thread`",
+    "releasing a lock it owns",
+    "**GOAL MODE NOT ACTIVE**",
+    "`update_goal` with `status: complete`",
+)
+GOAL_REJECTIONS = (
+    "Continuous Goal may use `create_thread`",
+    "`status: paused` is sufficient",
+    "an unfinished Goal is sufficient",
+)
 
 
 def require_tokens(path: Path, tokens: tuple[str, ...]) -> list[str]:
@@ -21,10 +38,11 @@ def reject_tokens(path: Path, tokens: tuple[str, ...]) -> list[str]:
     return [f"{path}: retained obsolete {token!r}" for token in tokens if token in text]
 
 
-def main() -> int:
+def repository_contract_failures(root: Path = ROOT) -> list[str]:
     failures: list[str] = []
     repository_requirements = {
-        ROOT / "AGENTS.md": (
+        root / "AGENTS.md": GOAL_REQUIREMENTS
+        + (
             "autonomous_loop_lock.py acquire",
             "full task-list page is not itself terminal",
             "read_thread",
@@ -33,7 +51,8 @@ def main() -> int:
             "`completed`, `failed`, or `interrupted`",
             "assert-owner --task-id",
         ),
-        ROOT / "docs/main/DEVELOPMENT_LOOP.md": (
+        root / "docs/main/DEVELOPMENT_LOOP.md": GOAL_REQUIREMENTS
+        + (
             "autonomous_loop_lock.py acquire",
             "full task-list page is not itself terminal",
             "read_thread",
@@ -42,7 +61,8 @@ def main() -> int:
             "`completed`, `failed`, or `interrupted`",
             "assert-owner --task-id",
         ),
-        ROOT / "docs/plans/CURRENT.md": (
+        root / "docs/plans/CURRENT.md": GOAL_REQUIREMENTS
+        + (
             "autonomous_loop_lock.py acquire",
             "full task-list page is not itself terminal",
             "assert-owner --task-id",
@@ -50,7 +70,12 @@ def main() -> int:
     }
     for path, tokens in repository_requirements.items():
         failures.extend(require_tokens(path, tokens))
-        failures.extend(reject_tokens(path, ("fewer than 50",)))
+        failures.extend(reject_tokens(path, ("fewer than 50",) + GOAL_REJECTIONS))
+    return failures
+
+
+def main() -> int:
+    failures = repository_contract_failures()
 
     automation_tokens = (
         "autonomous_loop_lock.py acquire",

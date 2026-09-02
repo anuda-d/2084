@@ -28,10 +28,23 @@ authority.
 
 ### Continuous Goal
 
-Continuous Goal mode is primary while the owner has started an active goal. One
-Codex task remains active, completes one reviewed and committed work unit, then
-starts the next unit from updated repository state. It stops when the goal is
-complete, the owner pauses it, or a terminal condition is reached.
+Continuous Goal mode is primary while the owner has started an active goal.
+It is a real app-level Goal created through `create_goal`, not the repository's owner-approved product goal and not a mode an agent may activate by saying it is active.
+The repository goal defines product authority; the app Goal provides durable execution across turns.
+
+When the owner explicitly asks to start the continuous implementation loop, first call `get_goal` before repository work.
+If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective, boundaries, validation expectations, and verifiable stop condition, then call `get_goal` again.
+Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
+Perform this verification before task listing or lock acquisition.
+If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+Never claim Continuous Goal mode from commentary, repository state, or an earlier turn alone.
+Continuous Goal does not use `create_thread`; that tool belongs only to scheduled relay.
+
+One Codex task remains active, completes one reviewed and committed work unit, then starts the next unit from updated repository state.
+Every automatically continued turn calls `get_goal` before repository work and then asserts that the same task still owns the repository lock.
+A normal Goal turn boundary is not a terminal state while the app Goal status remains active, so the lock remains with that task for automatic continuation.
+If a continued turn observes any non-active Goal status, it performs no repository work except releasing a lock it owns, then stops at **GOAL MODE NOT ACTIVE**.
+When the objective is genuinely complete, the task commits the verified completion state, releases the lock, and calls `update_goal` with `status: complete`.
 
 ### Scheduled relay or manual one-shot
 
@@ -80,7 +93,9 @@ model boundary is separate from the development loop.
 
 ## No-Overlap Gate
 
-Before a newly triggered Goal, scheduled task, or manual run first touches the
+Before a newly triggered Goal first touches the repository, confirm its app-level Goal state through `get_goal` as required above.
+This Goal-state proof precedes task listing and lock acquisition.
+Before that verified Goal, a scheduled task, or a manual run first touches the
 repository, inspect active Codex work for 2084. Ignore only the task performing
 the check. A scheduled relay successor may also ignore the one exact
 predecessor task ID embedded in its creation prompt, because the relay protocol
@@ -166,6 +181,8 @@ Before implementation, confirm:
 
 - an active owner-approved goal exists, or the owner explicitly authorized the
   exact bounded maintenance task;
+- Continuous Goal runs have a verified unfinished app-level Goal established
+  through `get_goal` and, when activation was required, `create_goal`;
 - no other project task owns the checkout;
 - the working tree contains no unrelated unfinished change that overlaps the
   task;
@@ -321,6 +338,9 @@ after the commit.
 - **NO JUSTIFIED CHANGE** — no change would honestly advance the authorized
   outcome.
 - **BASELINE BLOCKED** — existing repository state prevents safe work.
+- **GOAL MODE NOT ACTIVE** - Continuous Goal activation is absent, paused,
+  blocked, otherwise non-active, mismatched, or unverifiable; do no repository
+  work except releasing a lock owned by the current task.
 
 For a completed unit, report the authorized outcome, observed result, changed
 files, validation, review findings, commit, forced or special cases, and any
