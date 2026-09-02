@@ -65,6 +65,7 @@ Its authored schedule lets Ilan independently attempt a two-hour workplace shift
 Between those events, the district transit authority changes objective tram-service state at minute 510.
 These events append to the shared `EventLog` independently of Mara.
 The service change itself grants her no knowledge.
+A same-minute observation-phase delivery links the service-change evidence to Ilan only while he is at the authored workplace terminal.
 A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
 
 When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.

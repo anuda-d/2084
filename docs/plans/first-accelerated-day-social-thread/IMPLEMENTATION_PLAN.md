@@ -1,6 +1,6 @@
 # First Accelerated-Day Social Thread Implementation State
 
-Status: active; implementation has not started.
+Status: active; implementation is in progress.
 
 This is shared state for the owner-approved
 [goal](GOAL.md).
@@ -10,10 +10,10 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: goal activation only (2026-09-01)
-- Verified implementation runs since alignment: 0
+- Last completed run: ST-2 source observation delivery to Ilan (2026-09-01)
+- Verified implementation runs since alignment: 1
 - Alignment due: no
-- Automation state: not started by owner request
+- Automation state: running in owner-started Continuous Goal mode
 
 ## Goal Progress
 
@@ -31,6 +31,19 @@ sequence.
 | ST-10 Integration | open | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
 
 This table does not prescribe criterion order or future work units.
+
+## Verified Implementation Runs
+
+### 2026-09-01 - ST-2 source observation delivery to Ilan
+
+- Status: verified foundation; ST-2 remains open.
+- The objective service change now schedules a same-minute observation-delivery dispatch for the authored workplace terminal.
+- The committed delivery gives Ilan one structured observation linked to the transit-change event, including the route, finite status, proposition, and source channel.
+- Mara does not receive Ilan's observation, and normal focal-safe output remains unchanged.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_transit_change_delivers_source_linked_evidence_only_to_ilan`.
+- Regression evidence: `python3 -m unittest tests.test_autonomous_day_world tests.test_autonomous_day_cli` and `./scripts/check.sh`.
+- Independent review: fresh Sol-high read-only review reported no actionable or blocking findings.
+- Remaining ST-2 boundary: Ilan's statement citation and rejection of missing, forged, mismatched, or substituted evidence are not implemented.
 
 ## Per-Run Selection
 
@@ -59,8 +72,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The owner approved the goal but explicitly did not start the implementation
-automation during goal activation.
+The first verified work unit established Ilan's source observation boundary without selecting a later task.
 
 ## Completion Rules
 

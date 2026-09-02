@@ -172,7 +172,7 @@ class AutonomousDayCliTests(unittest.TestCase):
         self.assertEqual(data["counts"], {
             "action_results": 1,
             "events": 3,
-            "observations": 1,
+            "observations": 2,
         })
         self.assertEqual(data["model_path"], {
             "configured": False,
@@ -189,20 +189,23 @@ class AutonomousDayCliTests(unittest.TestCase):
         )
         attempted, transit, completed = data["history"]["events"]
         self.assertEqual(completed["caused_by"], [attempted["event_id"]])
-        self.assertEqual(
-            data["history"]["observations"][0]["event_id"],
-            transit["event_id"],
+        self.assertTrue(
+            all(
+                observation["event_id"] == transit["event_id"]
+                for observation in data["history"]["observations"]
+            )
         )
         self.assertEqual(
             data["history"]["action_results"][0]["outcome_event_id"],
             completed["event_id"],
         )
-        self.assertEqual(data["runtime"]["executed_work_count"], 5)
+        self.assertEqual(data["runtime"]["executed_work_count"], 6)
         self.assertEqual(
             [item["kind"] for item in data["runtime"]["executed_work"]],
             [
                 "autonomous_day_supporting_work_start",
                 "autonomous_day_institutional_service_change",
+                "autonomous_day_ilan_transit_observation_delivery",
                 "autonomous_day_supporting_work_completion",
                 "autonomous_day_transit_bulletin_delivery",
                 "autonomous_day_mara_transit_understanding_update",

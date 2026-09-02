@@ -47,6 +47,9 @@ TRANSIT_AUTHORITY_ID = "district-transit-authority"
 _SUPPORTING_WORK_START = "autonomous_day_supporting_work_start"
 _SUPPORTING_WORK_COMPLETION = "autonomous_day_supporting_work_completion"
 _INSTITUTIONAL_SERVICE_CHANGE = "autonomous_day_institutional_service_change"
+_ILAN_TRANSIT_OBSERVATION_DELIVERY = (
+    "autonomous_day_ilan_transit_observation_delivery"
+)
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRANSIT_UNDERSTANDING_UPDATE = "autonomous_day_mara_transit_understanding_update"
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
@@ -58,6 +61,7 @@ _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
+_ILAN_TRANSIT_OBSERVATION_LOCATIONS = frozenset({"workplace"})
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
 _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
 _MARA_TRAVEL_DURATION_MINUTES = 30
@@ -1006,16 +1010,51 @@ def build_autonomous_day(
                 "current_status": "reduced",
             },
         )
-        delivery_item_id = "home-transit-bulletin-delivery"
-        transit_change_events[delivery_item_id] = changed
+        ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
+        transit_change_events[ilan_delivery_item_id] = changed
         context.schedule(
             ScheduledWork(
-                item_id=delivery_item_id,
+                item_id=ilan_delivery_item_id,
+                due_time=context.current,
+                phase=TemporalPhase.OBSERVATION_DELIVERY,
+                kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
+            )
+        )
+        mara_delivery_item_id = "home-transit-bulletin-delivery"
+        transit_change_events[mara_delivery_item_id] = changed
+        context.schedule(
+            ScheduledWork(
+                item_id=mara_delivery_item_id,
                 due_time=SimulatedTime(_TRANSIT_BULLETIN_MINUTE),
                 phase=TemporalPhase.OBSERVATION_DELIVERY,
                 kind=_TRANSIT_BULLETIN_DELIVERY,
             )
         )
+
+    def deliver_ilan_transit_observation(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("Ilan transit observation released at the wrong time")
+        ilan = world.agents[ILAN_ID]
+        if ilan.location not in _ILAN_TRANSIT_OBSERVATION_LOCATIONS:
+            return
+        source_event = transit_change_events[work.item_id]
+        observation = event_log.deliver(
+            agent_id=ilan.agent_id,
+            event_id=source_event.event_id,
+            source="workplace transit service terminal",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "transit_service_status",
+                "route": "workplace-home",
+                "current_status": source_event.details["current_status"],
+                "proposition": "workplace-home tram service is reduced",
+                "asserted_value": 1,
+            },
+        )
+        ilan.observations.append(observation)
 
     def deliver_transit_bulletin(
         work: ScheduledWork,
@@ -1104,6 +1143,9 @@ def build_autonomous_day(
             _SUPPORTING_WORK_START: start_supporting_work,
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
+            _ILAN_TRANSIT_OBSERVATION_DELIVERY: (
+                deliver_ilan_transit_observation
+            ),
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
             _MARA_TRANSIT_UNDERSTANDING_UPDATE: update_mara_transit_understanding,
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,
