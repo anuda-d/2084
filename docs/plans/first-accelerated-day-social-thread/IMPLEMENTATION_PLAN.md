@@ -10,10 +10,10 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-4/ST-5 testimony decision integration (2026-09-02)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
-- Automation state: running in owner-started Continuous Goal mode
+- Last completed run: whole-goal alignment after three verified runs (2026-09-02)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
+- Automation state: handoff prepared for owner-directed continuation in a new chat
 
 ## Goal Progress
 
@@ -24,7 +24,7 @@ sequence.
 | ST-3 Physical delivery | met | One valid statement creates one testimony observation for Mara only under the configured physical or access condition. |
 | ST-4 Knowledge boundary | met | Missing committed delivery produces no focal trace, interpretation, decision trigger, or restricted model input. |
 | ST-5 Focal response | met | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
-| ST-6 World consequence | open | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
+| ST-6 World consequence | met | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
 | ST-7 Counterfactual evidence | open | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
 | ST-8 Provider-free watchability | open | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
 | ST-9 Inspection and reproduction | open | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
@@ -86,8 +86,8 @@ This table does not prescribe criterion order or future work units.
 - Ilan's committed transit observation requests one explicit same-minute decision, and the runtime records it as a non-model supporting decision.
 - The immutable `TransitStatementView` contains only Ilan's identity, location, delivered observations, actor-safe results, current triggers, valid actions, and world-supplied addressable actor identifiers.
 - The deterministic policy cites Ilan's delivered observation in a `speak` attempt when Mara is addressable and selects an ordinary `wait` otherwise.
-- The world independently records, validates, and resolves the selected attempt; this run creates no testimony, Mara observation, focal understanding, or testimony-derived decision.
-- Focal-safe rendering of a verified successful statement exposes neither Ilan, statement details, nor cited source identifiers before testimony exists.
+- At the time of this run, the world independently recorded, validated, and resolved the selected attempt before testimony delivery was implemented.
+- The then-current pre-testimony renderer exposed neither Ilan, statement details, nor cited source identifiers; later delivery integration makes attributed focal-safe presentation an open ST-8 requirement.
 - Focused evidence: `python3 -m unittest tests.test_supporting_policy tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_observation_triggers_restricted_deterministic_choice`.
 - Regression evidence: `./scripts/check.sh` passes all 300 offline tests.
 - Independent review: fresh Sol-high read-only review reported no remaining actionable or blocking findings after the successful-branch privacy assertion was added.
@@ -130,7 +130,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest verified work unit completed ST-4 and ST-5 without selecting a later task.
+The latest whole-goal alignment completed without selecting a later task.
 
 ## Completion Rules
 
@@ -158,6 +158,20 @@ Resolve blocking findings and record removal or simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task.
 Reset the implementation-run counter after recording the reviewed state.
+
+### 2026-09-02 - Alignment after three verified implementation runs
+
+- Conclusion: ST-1 through ST-6 are honestly met; ST-7 through ST-10 remain open or provisional; the goal is not complete; no owner decision or authority expansion is required.
+- ST-6 is met without another consequence mechanism because the testimony-triggered `wait` remains a model-selected attempt that the existing world resolver independently accepts and records as a distinct `wait_completed` event and `ActionResult` at minute 511.
+- ST-7 has strong physical counterfactual evidence for missing statement-time and delivery-time access, but no committed test yet withholds Ilan's source observation before his supporting decision.
+- ST-8 remains open because the default provider-free run still shows only the home bulletin and the successful social path's normal renderer still omits Ilan's attributed statement, Mara's resulting ordinary action, and its consequence.
+- ST-9 has strong inspector and replay foundations: inspector data already retains the causal artifacts and dispatch order, and an independent read-only social-success replay probe reproduced equal summary, events, observations, objective state, inspector history, and model status sequence.
+- ST-9 remains open because no committed replay test or documented provider-free inspectable command exercises the complete social thread.
+- ST-10 remains provisionally strong from the fresh full check of all 310 offline tests, exact-day and growth checks, social phase-order evidence, privacy checks, and clean diff validation, but it cannot close before ST-7 through ST-9 are integrated and terminal validation is rerun.
+- Evidence correction: the original ST-1 run predated testimony delivery; its historical rendering claim no longer describes the current successful path and must not block the attributed focal-safe presentation required by ST-8.
+- Simplification finding: reuse the existing Mara resolver, inspector, and replay engine; keep the social mechanism scenario-local; do not add general dialogue, relationship, observation-delivery, claim, or supporting-understanding systems.
+- Simplification candidate: `TransitStatementView.tick`, `location`, and `action_results` remain unused by the deterministic policy and should remain only if later concrete behavior requires them.
+- Independent review: fresh Sol-high read-only whole-goal alignment found no authority, privacy, temporal-order, reproducibility, or owner blocker.
 
 ### 2026-09-01 - Alignment after three verified implementation runs
 
