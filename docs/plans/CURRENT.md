@@ -1,11 +1,14 @@
 # Current Development Index
 
-Status: no active owner-approved goal as of 2026-08-27. First Autonomous
-24-Hour Living Day is complete.
+Status: First Accelerated-Day Social Thread is active and owner-approved as of
+2026-09-01. Implementation has not started.
 
 ## Active Work
 
-- Active goal: none
+- Active goal:
+  [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
+- Shared implementation state:
+  [Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
 - Most recently completed goal:
   [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
 - Most recent completion evidence:
@@ -14,8 +17,8 @@ Status: no active owner-approved goal as of 2026-08-27. First Autonomous
   [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Earlier completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Active work: none; stop after reading this index until the owner approves a
-  new goal
+- Active work: none selected; the owner approved the goal but did not start the
+  implementation automation
 
 ## Required Read Order
 
@@ -26,8 +29,9 @@ Status: no active owner-approved goal as of 2026-08-27. First Autonomous
 5. relevant implementation and tests located with `rg` for task selection
 6. only the specification relevant to the selected task
 
-If this index reports no active goal, stop after reading it. Do not turn a
-completed goal, open question, or improvement idea into active work.
+If this index reports no active goal, stop after reading it.
+Do not turn a completed goal, open question, or improvement idea into active
+work.
 
 Do not preload completed-goal records, historical experiments, the broader
 architecture proposal, or unrelated specifications. Read a main architecture

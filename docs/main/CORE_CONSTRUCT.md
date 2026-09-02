@@ -4,15 +4,18 @@ Status: current product direction.
 
 This document is a living guide to what 2084 is becoming. It describes the current direction without pretending that the setting, systems, or final form are settled.
 
-The current repository proves three bounded foundations: append-only objective
+The current repository proves four bounded foundations: append-only objective
 history beside a mutable Official Record, source-linked Agent Understanding
-with one contextual contradiction and diary-resurfacing path, and an optional
-model-backed Mara whose choices become real attempted actions. All three goals
-are complete. The active owner-approved
-[First Autonomous 24-Hour Living Day](../plans/first-autonomous-day/GOAL.md)
-goal now asks whether those foundations can sustain one accelerated ordinary
-day with independent wider-world activity and bounded model continuity; that
-result is not implemented yet.
+with one contextual contradiction and diary-resurfacing path, an optional
+model-backed Mara whose choices become real attempted actions, and one complete
+accelerated 24-hour day with independent wider-world activity and bounded model
+continuity.
+All four goals are complete.
+The active owner-approved
+[First Accelerated-Day Social Thread](../plans/first-accelerated-day-social-thread/GOAL.md)
+goal asks whether the accelerated day can sustain one provider-free,
+reproducible, normally watchable social causal thread while preserving the
+implemented authority, knowledge, privacy, and time boundaries.
 
 ## Central Idea
 
