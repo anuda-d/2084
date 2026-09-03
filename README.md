@@ -9,7 +9,7 @@ Mara Vale acts from limited information while other people, institutions, and th
 The project takes thematic inspiration from George Orwell's *Nineteen Eighty-Four*, especially its treatment of lived experience, public behavior, and official accounts.
 It does not adapt Orwell's plot, characters, or setting.
 
-This is a feasibility prototype, not a finished game
+This is a feasibility prototype, not a finished game.
 
 ## Start here
 
@@ -32,22 +32,9 @@ python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect
 Normal output is intentionally incomplete.
 The inspector is intentionally omniscient and explicitly labelled as a development tool.
 
-## The boundary that matters
+## Boundaries
 
 The simulation keeps truth, knowledge, decisions, and presentation separate.
-
-```mermaid
-flowchart LR
-    W[World state] --> O[Delivered observations]
-    P[Official record versions] --> O
-    O --> U[Source-linked understanding]
-    U --> A[Attempted action]
-    A --> R[World validation and resolution]
-    R --> E[Append-only objective history]
-    E --> W
-    E --> F[Focal-safe transcript]
-    E --> I[Sanitized inspector]
-```
 
 | Layer | Guarantee |
 | --- | --- |
