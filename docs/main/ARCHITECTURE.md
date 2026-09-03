@@ -79,11 +79,13 @@ Mara chooses attempted travel, workplace work, household activity, or an allowed
 A scheduled-wake `wait` at home may be resolved as the world's 60-minute rest action; the model does not declare rest complete.
 The delivered bulletin updates source-linked understanding before any later restricted view.
 No choice receives objective history, another actor's private state, or authority to change time or resolve itself.
-The unconfigured default command is retained as an offline composition check; deterministic-harness and recorded-replay tests exercise the same model boundary without a live provider.
+The unconfigured default command is retained as a quiet offline composition check.
+An explicit scripted social comparison and recorded-replay tests exercise the same restricted Mara boundary without a live provider.
 
 The offline command `python3 -m scenarios.autonomous_day --seed 42` runs from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
 Its unconfigured normal output presents the boundary, compact quiet spans, and Mara's accessible bulletin.
 A configured-harness run additionally presents world-confirmed focal activity without identifiers, private decision records, or hidden supporting activity.
+The explicit `--focal-policy scripted` command labels its authored deterministic decision source and presents the delivered Ilan testimony, Mara's resulting ordinary attempt, and the world-resolved consequence without a provider call.
 `--inspect` is explicitly omniscient.
 The composition is still a deliberately small world rather than a general schedule, employment, or social simulation; it proves an ordinary-day opportunity set, not one required dramatic route or generally believable live behavior.
 
@@ -393,7 +395,7 @@ The policies choose from delivered information, but the resulting day should not
 The accelerated autonomous-day scenario contains:
 
 - one exact 1,440-minute runtime with explicit scheduled-world, action-completion, observation-delivery, understanding-update, and decision phases;
-- one focal character whose offline default has no configured decision policy and who can instead use an injected, recorded, or explicit Ollama-backed `MaraHarness`;
+- one focal character whose offline default has no configured decision policy and who can instead use the explicit scripted social comparison, an injected or recorded client, or the explicit Ollama-backed `MaraHarness`;
 - one deterministic supporting-character workplace shift and one independent transit-service change;
 - authored travel, workplace work, household activity, rest, and wait opportunities resolved by the world;
 - bounded decision-input, evidence-retention, invocation-count, retry-cadence, and exact-boundary failure controls;
@@ -402,7 +404,7 @@ The accelerated autonomous-day scenario contains:
 - one standalone verifier that checks the stored bundle's filesystem safety, schemas, hashes, provenance fields, and recorded verdict without replaying decisions again.
 
 This composition proves bounded full-day execution and causal continuity.
-It does not provide a general schedule model, a dynamic social world, or a default provider-free Mara policy.
+It does not provide a general schedule model, a dynamic social world, or a general provider-free Mara policy beyond the explicitly authored social comparison.
 
 ## Current Technical Limits
 

@@ -33,6 +33,7 @@ In both modes the simulation checks each attempt and alone decides what actually
 `autonomous_day` is a separate accelerated composition that advances from `Day 0 00:00` to exactly `Day 1 00:00`.
 It schedules independent supporting-character work, a transit-service change, observation delivery, bounded Mara decision opportunities, action completion, safe-failure retries, and exact end-of-day handling through explicit causal phases.
 The default command is provider-free and makes no Mara model request.
+An explicit provider-free scripted comparison sends only Mara's restricted state through the same decision harness, creates the authored opportunity for her to encounter Ilan's transit testimony, and labels its choices as scripted rather than emergent.
 An explicit Ollama mode uses the same restricted Mara decision boundary, and recorded decisions can reproduce the resulting world history without another provider call.
 
 The codebase preserves an important separation across its implemented scenarios and supporting modules:
@@ -120,6 +121,16 @@ Its default is offline and makes no model request:
 ```bash
 python3 -m scenarios.autonomous_day --seed 42
 ```
+
+To watch the complete authored social comparison without a provider call, run:
+
+```bash
+python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted
+```
+
+The transcript explicitly identifies the deterministic scripted decision source.
+It shows only what Mara encounters, her ordinary attempted actions, and consequences admitted by the world.
+It does not present the authored comparison as a live or emergent choice.
 
 Its live path is separately explicit and uses the same externally configured private-IP Ollama boundary:
 

@@ -146,6 +146,56 @@ class AutonomousDayCliTests(unittest.TestCase):
 
         self.assertEqual(outputs[0], outputs[1])
 
+    def test_scripted_social_comparison_is_provider_free_and_focal_safe(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "scenarios.autonomous_day",
+                "--seed",
+                "42",
+                "--focal-policy",
+                "scripted",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        expected_lines = [
+            "2084 " + chr(8212) + " AUTONOMOUS DAY",
+            "Normal observer: focal-character knowledge only",
+            "Decision source: deterministic scripted comparison "
+            "(authored, not live or emergent).",
+            "",
+            "Start: Day 0 00:00 | Mara at Home",
+            "Day 0 00:00–Day 0 07:00 | No focal updates.",
+            "Day 0 07:00 | Mara attempted to travel.",
+            "Day 0 07:00–Day 0 07:30 | No focal updates.",
+            "Day 0 07:30 | Mara arrived at Workplace.",
+            "Day 0 07:30 | Mara attempted to wait.",
+            "Day 0 07:30 | Mara finished waiting.",
+            "Day 0 07:30–Day 0 08:31 | No focal updates.",
+            "Day 0 08:31 | Ilan told Mara in person: "
+            '"Workplace-home tram service is reduced."',
+            "Day 0 08:31 | Mara attempted to travel.",
+            "Day 0 08:31–Day 0 09:01 | No focal updates.",
+            "Day 0 09:01 | Mara arrived at Home.",
+            "Day 0 09:01 | Mara attempted to wait.",
+            "Day 0 09:01 | Mara finished waiting.",
+            "Day 0 09:01–Day 0 11:00 | No focal updates.",
+            "Day 0 11:00 | Home transit bulletin: "
+            "workplace-home service is reduced.",
+            "Day 0 11:00 | Mara attempted to wait.",
+            "Day 0 11:00 | Mara finished waiting.",
+            "Day 0 11:00–Day 1 00:00 | No focal updates.",
+            "End: Day 1 00:00",
+            "Exact 24-hour boundary reached: yes",
+        ]
+        self.assertEqual(result.stdout.splitlines(), expected_lines)
+
     def test_inspector_is_explicit_and_reconstructs_successful_day(self):
         result = subprocess.run(
             [

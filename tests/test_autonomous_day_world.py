@@ -2308,10 +2308,13 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertEqual(len(day.understanding_transitions), 1)
         normal_output = render_autonomous_day(day, summary)
+        self.assertIn(
+            'Day 0 08:31 | Ilan told Mara in person: "'
+            'Workplace-home tram service is reduced."',
+            normal_output,
+        )
         for hidden in (
-            "Ilan",
             "statement_completed",
-            "workplace-home tram service is reduced",
             ilan_observation.observation_id,
             ilan_observation.event_id,
         ):

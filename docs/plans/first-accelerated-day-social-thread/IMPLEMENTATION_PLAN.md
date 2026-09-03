@@ -10,8 +10,8 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-7 withheld Ilan source-observation counterfactual (2026-09-02)
-- Verified implementation runs since alignment: 1
+- Last completed run: ST-8 provider-free scripted social presentation (2026-09-02)
+- Verified implementation runs since alignment: 2
 - Alignment due: no
 
 ## Goal Progress
@@ -25,13 +25,24 @@ sequence.
 | ST-5 Focal response | met | Delivered testimony reaches Mara's existing bounded decision path and can precede one existing ordinary attempted action. |
 | ST-6 World consequence | met | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
 | ST-7 Counterfactual evidence | met | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
-| ST-8 Provider-free watchability | open | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
+| ST-8 Provider-free watchability | met | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
 | ST-9 Inspection and reproduction | open | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
 | ST-10 Integration | open | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
 
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-8 provider-free scripted social presentation
+
+- Status: verified; ST-8 is met.
+- `python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted` runs the exact day without a provider and explicitly labels Mara's decision source as an authored deterministic comparison rather than a live or emergent choice.
+- The scripted client receives only Mara's restricted harness input, brings her to the workplace, and selects an ordinary return-home attempt only after the delivered social testimony is present and she remains physically eligible.
+- Normal output presents Ilan's attributed in-person statement, Mara's resulting travel attempt, the world's later arrival consequence, the home bulletin, and every compact quiet span without event, observation, configuration, institution, or source-terminal identifiers.
+- Attempt and immediate-result lines use their actual committed phase and event order, so equal-minute output retains the causal order instead of placing an instantaneous result before its attempt.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_cli.AutonomousDayCliTests.test_scripted_social_comparison_is_provider_free_and_focal_safe tests.test_autonomous_day_world.AutonomousDayWorldTests.test_ilan_observation_triggers_restricted_deterministic_choice` and the documented provider-free command above.
+- Regression evidence: `./scripts/check.sh` passes the complete offline repository suite.
+- Independent review: fresh Sol-high read-only review found that ordered fragments plus a denylist did not exclude unanticipated transcript lines, then confirmed the exact complete-line assertion and reported no remaining actionable or blocking findings.
 
 ### 2026-09-02 - ST-7 withheld Ilan source observation
 
@@ -139,7 +150,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest completed run verified the ST-7 withheld-source counterfactual without selecting later work.
+The latest completed run verified the ST-8 provider-free social presentation without selecting later work.
 
 ## Completion Rules
 

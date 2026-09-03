@@ -83,6 +83,7 @@ _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
 AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
+_SCRIPTED_SOCIAL_CONFIGURATION_ID = "scripted:autonomous-day-social-v0"
 
 
 @dataclass(frozen=True)
@@ -1554,23 +1555,36 @@ def _focal_update_sort_key(
     return (visible_time.total_minutes, causal_phase, causal_order)
 
 
-def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
+def render_autonomous_day(
+    day: AutonomousDay,
+    summary: DayRunSummary,
+    *,
+    policy_disclosure: str | None = None,
+) -> str:
     """Render only focal-safe evidence from the narrow successor day."""
 
     lines = [
         "2084 — AUTONOMOUS DAY",
         "Normal observer: focal-character knowledge only",
-        "",
-        f"Start: {summary.start.label} | Mara at Home",
     ]
+    if policy_disclosure is not None:
+        lines.append(policy_disclosure)
+    lines.extend(("", f"Start: {summary.start.label} | Mara at Home"))
     focal_updates: list[tuple[SimulatedTime, int, int, str]] = []
     completed_activity_labels = {
         "household_time_completed": "Mara completed household time.",
         "rest_completed": "Mara completed a rest period.",
-        "travel_completed": "Mara completed travel.",
         "work_completed": "Mara completed workplace work.",
+        "wait_completed": "Mara finished waiting.",
+    }
+    attempted_activity_labels = {
+        "household": "Mara attempted household activity.",
+        "travel": "Mara attempted to travel.",
+        "wait": "Mara attempted to wait.",
+        "work": "Mara attempted workplace work.",
     }
     event_kinds_by_id = {event.event_id: event.kind for event in day.events}
+    events_by_id = {event.event_id: event for event in day.events}
     event_order_by_id = {
         event.event_id: index for index, event in enumerate(day.events)
     }
@@ -1578,35 +1592,77 @@ def render_autonomous_day(day: AutonomousDay, summary: DayRunSummary) -> str:
         observation.observation_id: index
         for index, observation in enumerate(day.observations)
     }
-    for result in day.world.agents[MARA_ID].action_results:
-        activity_label = completed_activity_labels.get(
-            event_kinds_by_id.get(result.outcome_event_id)
+    for event in day.events:
+        if event.actor_id != MARA_ID or event.kind != "action_attempted":
+            continue
+        activity_label = attempted_activity_labels.get(
+            event.details.get("action_kind")
         )
+        if activity_label is None:
+            continue
+        attempted_at = SimulatedTime(event.tick)
+        focal_updates.append(
+            (
+                attempted_at,
+                int(TemporalPhase.DECISION),
+                event_order_by_id[event.event_id],
+                f"{attempted_at.label} | {activity_label}",
+            )
+        )
+    for result in day.world.agents[MARA_ID].action_results:
+        outcome = events_by_id[result.outcome_event_id]
+        outcome_kind = event_kinds_by_id.get(result.outcome_event_id)
+        if outcome_kind == "travel_completed":
+            destination = outcome.details.get("destination")
+            activity_label = (
+                f"Mara arrived at {destination.title()}."
+                if isinstance(destination, str) and destination
+                else "Mara completed travel."
+            )
+        else:
+            activity_label = completed_activity_labels.get(outcome_kind)
         if result.status != "completed" or activity_label is None:
             continue
         completed_at = SimulatedTime(result.resolved_tick)
+        committed_dispatch = day._committed_objective_dispatches.get(
+            ("action_result", result.action_id)
+        )
+        committed_phase = (
+            TemporalPhase[committed_dispatch["phase"].upper()]
+            if committed_dispatch is not None
+            else TemporalPhase.ACTION_COMPLETION
+        )
         focal_updates.append(
             (
                 completed_at,
-                int(TemporalPhase.ACTION_COMPLETION),
+                int(committed_phase),
                 event_order_by_id[result.outcome_event_id],
                 f"{completed_at.label} | {activity_label}",
             )
         )
     for observation in day.world.agents[MARA_ID].observations:
-        if observation.details.get("evidence_kind") != "transit_service_status":
-            continue
         delivered_at = SimulatedTime(observation.delivery_tick)
-        focal_updates.append(
-            (
-                delivered_at,
-                int(TemporalPhase.OBSERVATION_DELIVERY),
-                observation_order_by_id[observation.observation_id],
-                f"{delivered_at.label} | Home transit bulletin: "
-                f"{observation.details['route']} service is "
-                f"{observation.details['current_status']}.",
+        if observation.details.get("evidence_kind") == "transit_service_status":
+            focal_updates.append(
+                (
+                    delivered_at,
+                    int(TemporalPhase.OBSERVATION_DELIVERY),
+                    observation_order_by_id[observation.observation_id],
+                    f"{delivered_at.label} | Home transit bulletin: "
+                    f"{observation.details['route']} service is "
+                    f"{observation.details['current_status']}.",
+                )
             )
-        )
+        elif observation.details.get("evidence_kind") == "social_testimony":
+            focal_updates.append(
+                (
+                    delivered_at,
+                    int(TemporalPhase.OBSERVATION_DELIVERY),
+                    observation_order_by_id[observation.observation_id],
+                    f'{delivered_at.label} | Ilan told Mara in person: "'
+                    f'{observation.details["proposition"].capitalize()}."',
+                )
+            )
     current_visible_time = summary.start
     for delivered_at, _, _, update in sorted(
         focal_updates,
@@ -1934,6 +1990,43 @@ def render_autonomous_day_inspector(
     )
 
 
+class _ScriptedSocialDecisionClient:
+    """Transparent provider-free Mara choices for the social comparison."""
+
+    def choose(self, model_input: Mapping[str, object]) -> Mapping[str, object]:
+        tick = model_input.get("tick")
+        state = model_input.get("state")
+        location = state.get("location") if isinstance(state, Mapping) else None
+        observations = model_input.get("delivered_observations")
+        heard_social_testimony = isinstance(observations, list) and any(
+            isinstance(observation, Mapping)
+            and isinstance(observation.get("details"), Mapping)
+            and observation["details"].get("evidence_kind")
+            == "social_testimony"
+            for observation in observations
+        )
+        if tick == _MARA_SCHEDULED_WAKE_MINUTE and location == "home":
+            return {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace for the morning shift",
+                "decision_reason": "the workplace obligation is due",
+            }
+        if heard_social_testimony and location == "workplace":
+            return {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after hearing Ilan's transit warning",
+                "decision_reason": "the delivered testimony creates a new travel choice",
+            }
+        return {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "wait where the day can continue",
+            "decision_reason": "no other immediate action is needed",
+        }
+
+
 def _cli_mara_harness(
     *,
     policy_name: str,
@@ -1945,6 +2038,11 @@ def _cli_mara_harness(
 
     if policy_name == "offline":
         return None
+    if policy_name == "scripted":
+        return MaraHarness.from_client(
+            _ScriptedSocialDecisionClient(),
+            configuration_id=_SCRIPTED_SOCIAL_CONFIGURATION_ID,
+        )
     if policy_name != "ollama":
         raise ValueError("unsupported focal policy")
     if ollama_base_url is None or not ollama_base_url.strip():
@@ -1973,9 +2071,12 @@ def main(
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--focal-policy",
-        choices=("offline", "ollama"),
+        choices=("offline", "scripted", "ollama"),
         default="offline",
-        help="choose the offline default or the explicit live Ollama policy",
+        help=(
+            "choose the quiet offline default, the provider-free scripted "
+            "social comparison, or the explicit live Ollama policy"
+        ),
     )
     parser.add_argument(
         "--ollama-base-url",
@@ -2006,7 +2107,7 @@ def main(
             "--ollama-base-url and --ollama-model are required with "
             "--focal-policy ollama"
         )
-    if args.focal_policy == "offline" and (
+    if args.focal_policy != "ollama" and (
         args.ollama_base_url is not None or args.ollama_model is not None
     ):
         parser.error(
@@ -2056,10 +2157,17 @@ def main(
         summary = day.runtime.summary()
         if summary.runtime_failure is None:
             raise
-    output = (
-        render_autonomous_day_inspector(day, summary)
-        if args.inspect
-        else render_autonomous_day(day, summary)
+    output = render_autonomous_day_inspector(day, summary) if args.inspect else (
+        render_autonomous_day(
+            day,
+            summary,
+            policy_disclosure=(
+                "Decision source: deterministic scripted comparison "
+                "(authored, not live or emergent)."
+                if args.focal_policy == "scripted"
+                else None
+            ),
+        )
     )
     print(output, end="")
     audit_passed = True

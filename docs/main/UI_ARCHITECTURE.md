@@ -28,8 +28,9 @@ It receives only focal snapshots and cannot inspect the objective world or event
 In explicit model mode, the same surface shows Mara's attributed concise decision reason and the consequence admitted by the simulation; it does not show the restricted request, model configuration, or private decision record.
 
 The autonomous-day composition has a second focal-safe terminal surface based on readable simulated time rather than legacy ticks.
-It shows the start and exact end boundary, compact quiet intervals, delivered transit information, and any completed Mara travel, work, household, or rest activity admitted by the world.
-The offline default therefore remains intentionally quiet when no Mara policy is configured, while injected, recorded, or explicit Ollama decisions can create additional focal-visible activity through the same renderer.
+It shows the start and exact end boundary, compact quiet intervals, delivered transit information or testimony, and Mara's attempted actions and admitted travel, wait, work, household, or rest consequences.
+The offline default remains intentionally quiet when no Mara policy is configured.
+The explicit provider-free scripted social comparison labels its authored decision source, while injected, recorded, or explicit Ollama decisions can create other focal-visible activity through the same renderer.
 
 Both scenarios can render a separately labelled omniscient inspector.
 The first-day inspector contains objective state, institutional and official records, all beliefs, source-linked history, and linked model-decision evidence when present.
