@@ -2,7 +2,7 @@
 
 > Watch one autonomous agent as it navigates a world built on lies, contradiction, and power.
 
-**2084** is a terminal-based social simulation about the interval between what happened, what institutions say happened, what a person learns, and what she can safely express.
+**2084** is a terminal-based social simulation about the interval between what instituitions say happened, what actually happened, what a person learns, and what they can safely express.
 
 Mara Vale acts from limited information while other people, institutions, and the world continue without waiting for her.
 
