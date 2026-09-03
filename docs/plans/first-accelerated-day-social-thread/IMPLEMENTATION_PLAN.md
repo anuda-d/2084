@@ -1,6 +1,6 @@
 # First Accelerated-Day Social Thread Implementation State
 
-Status: active; implementation is in progress.
+Status: complete; all goal criteria were verified on 2026-09-02.
 
 This is shared state for the owner-approved
 [goal](GOAL.md).
@@ -10,9 +10,9 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-9 complete social inspector and recorded replay evidence (2026-09-02)
-- Verified implementation runs since alignment: 3
-- Alignment due: yes
+- Last completed run: whole-goal completion alignment (2026-09-02)
+- Verified implementation runs since alignment: 0
+- Alignment due: no
 
 ## Goal Progress
 
@@ -27,7 +27,7 @@ sequence.
 | ST-7 Counterfactual evidence | met | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
 | ST-8 Provider-free watchability | met | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
 | ST-9 Inspection and reproduction | met | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
-| ST-10 Integration | open | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
+| ST-10 Integration | met | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
 
 This table does not prescribe criterion order or future work units.
 
@@ -161,7 +161,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest completed run verified the ST-9 complete inspector and recorded replay evidence without selecting later work.
+The latest completion alignment verified the whole goal without selecting later work.
 
 ## Completion Rules
 
@@ -189,6 +189,19 @@ Resolve blocking findings and record removal or simplification recommendations.
 
 Alignment may close evidence gaps but must not select a future task.
 Reset the implementation-run counter after recording the reviewed state.
+
+### 2026-09-02 - Completion alignment after three verified implementation runs
+
+- Conclusion: ST-1 through ST-10 are honestly met, the goal is complete, and no owner decision or authority expansion is required.
+- The exact source-to-consequence chain is proven through Ilan's restricted source observation, deterministic choice, evidence-bound statement, world validation, physical testimony delivery, Mara's bounded decision, ordinary attempted action, and independently resolved consequence.
+- Separate deterministic counterfactuals withhold Ilan's source observation and physical eligibility and stop the chain at the documented boundaries without downstream leakage.
+- `python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted` presents the complete focal-safe thread and explicitly identifies the authored provider-free decision source.
+- Adding `--inspect` reconstructs the exact causal order, and committed recorded-replay evidence reproduces equal summary, events, observations, objective state, inspector history, and decision statuses without another source-client call.
+- Terminal integration evidence reaches exactly minute 1,440 without failure, uses six explicitly triggered Mara decisions and five Mara records, and stays within the 49,152-byte restricted-input and 8,388,608-byte private-record ceilings.
+- `./scripts/check.sh` passes 259 main tests and 63 experiment tests, including exact-boundary, cadence, growth, failure, privacy, completed-scenario, replay, and first-day-v3 regressions.
+- The implementation remains scenario-local and reuses the existing Mara resolver, inspector, and replay engine without introducing general dialogue, relationship, claim, delivery, or supporting-understanding systems.
+- Simplification candidate: `TransitStatementView.tick`, `location`, and `action_results` remain unused by the deterministic policy and should be removed only if future concrete work proves them unnecessary in its own bounded scope.
+- Independent review: fresh Sol-high read-only whole-goal review found no actionable finding, blocker, or unresolved completion criterion.
 
 ### 2026-09-02 - Alignment after three verified implementation runs
 

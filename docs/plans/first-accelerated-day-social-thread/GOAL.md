@@ -1,6 +1,6 @@
 # First Accelerated-Day Social Thread
 
-Status: active; owner-approved on 2026-09-01.
+Status: complete; owner-approved on 2026-09-01 and completed on 2026-09-02.
 
 This goal follows the completed
 [First Autonomous 24-Hour Living Day](../first-autonomous-day/GOAL.md).

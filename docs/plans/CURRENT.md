@@ -1,25 +1,26 @@
 # Current Development Index
 
-Status: First Accelerated-Day Social Thread is active and owner-approved as of
-2026-09-01. Implementation is in progress.
+Status: no active goal.
+First Accelerated-Day Social Thread completed on 2026-09-02.
 
 ## Active Work
 
-- Active goal:
-  [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
+- Active goal: none
 - Shared implementation state:
-  [Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
+  [Completed Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
 - Most recently completed goal:
-  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
+  [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
 - Most recent completion evidence:
+  [Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
+- Earlier completed goal:
+  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
+- Earlier completion evidence:
   [Implementation Plan](first-autonomous-day/IMPLEMENTATION_PLAN.md)
 - Earlier completed goal:
   [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Earlier completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Active work: Continuous Goal mode selects one run-scoped work unit at a time
-  from the active goal and verified implementation state, but the app-level
-  loop is active only after Goal activation is verified
+- Active work: none selected
 
 ## Required Read Order
 
