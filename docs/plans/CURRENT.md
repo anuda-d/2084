@@ -1,25 +1,26 @@
 # Current Development Index
 
-Status: First Accelerated-Day Social Thread is active and owner-approved as of
-2026-09-01. Implementation is in progress.
+Status: no active goal.
+First Accelerated-Day Social Thread completed on 2026-09-02.
 
 ## Active Work
 
-- Active goal:
-  [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
+- Active goal: none
 - Shared implementation state:
-  [Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
+  [Completed Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
 - Most recently completed goal:
-  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
+  [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
 - Most recent completion evidence:
+  [Implementation Plan](first-accelerated-day-social-thread/IMPLEMENTATION_PLAN.md)
+- Earlier completed goal:
+  [First Autonomous 24-Hour Living Day](first-autonomous-day/GOAL.md)
+- Earlier completion evidence:
   [Implementation Plan](first-autonomous-day/IMPLEMENTATION_PLAN.md)
 - Earlier completed goal:
   [Model-Backed Focal Character](model-backed-focal-character/GOAL.md)
 - Earlier completion evidence:
   [Implementation Plan](model-backed-focal-character/IMPLEMENTATION_PLAN.md)
-- Active work: Continuous Goal mode selects one run-scoped work unit at a time
-  from the active goal and verified implementation state, but the app-level
-  loop is active only after Goal activation is verified
+- Active work: none selected
 
 ## Required Read Order
 
@@ -53,9 +54,14 @@ unclear.
 - Continuous Goal requires a real app-level Goal; the repository goal does not activate it.
   When the owner explicitly asks to start the continuous implementation loop, call `get_goal` before repository work.
   If it reports no Goal or a completed Goal, call `create_goal` with the owner-approved objective and verifiable stop condition, then call `get_goal` again.
+  The `create_goal` objective must state that the same task continues automatically across turns until the verifiable whole-goal stop condition.
+  It must not direct continuation to a new agent, task, chat, or handoff.
+  It must not release the repository lock between work units.
   Continue only when `get_goal` reports `status: active` and the objective covers the requested work.
   Perform this verification before task listing or lock acquisition.
   If the Goal is paused, blocked, otherwise non-active, or has a different objective, stop at **GOAL MODE NOT ACTIVE** and ask the owner to resume, clear, or resolve it.
+  Treat an objective that requests transfer after a work unit as different even when its product scope is unchanged, and do not record that mismatch as repository handoff state.
+  For that objective conflict, ask the owner to `clear` the conflicting Goal and start once with the corrected same-task objective; resuming cannot repair its text.
   Never claim Continuous Goal mode from commentary, repository state, or an earlier turn alone.
   Continuous Goal does not use `create_thread`; fresh successor threads belong only to scheduled relay.
 - On every automatically continued Goal turn, call `get_goal` before repository work, then assert durable lock ownership.
@@ -83,6 +89,7 @@ unclear.
 - Use a fresh Sol-high read-only reviewer after implementation and during
   no-code alignment.
 - Update `IMPLEMENTATION_PLAN.md` with verified status and evidence only.
+  Never record app Goal, task, lock, automation, relay, handoff, or chat state there.
 - Commit one coherent work unit.
 - In continuous Goal mode, begin the next work unit only after the commit and
   from the updated repository state.
@@ -110,7 +117,7 @@ unclear.
 - Active project work exists, except for the exact handoff-only predecessor ID
   carried by a scheduled relay successor.
 - Baseline state is unsafe.
-- The task exceeds one fresh context window.
+- A scheduled or manual task exceeds one fresh context window.
 - Owner authority is required.
 - No justified task advances the active goal.
 - The goal is complete.

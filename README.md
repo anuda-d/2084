@@ -33,6 +33,7 @@ In both modes the simulation checks each attempt and alone decides what actually
 `autonomous_day` is a separate accelerated composition that advances from `Day 0 00:00` to exactly `Day 1 00:00`.
 It schedules independent supporting-character work, a transit-service change, observation delivery, bounded Mara decision opportunities, action completion, safe-failure retries, and exact end-of-day handling through explicit causal phases.
 The default command is provider-free and makes no Mara model request.
+An explicit provider-free scripted comparison sends only Mara's restricted state through the same decision harness, creates the authored opportunity for her to encounter Ilan's transit testimony, and labels its choices as scripted rather than emergent.
 An explicit Ollama mode uses the same restricted Mara decision boundary, and recorded decisions can reproduce the resulting world history without another provider call.
 
 The codebase preserves an important separation across its implemented scenarios and supporting modules:
@@ -121,6 +122,17 @@ Its default is offline and makes no model request:
 python3 -m scenarios.autonomous_day --seed 42
 ```
 
+To watch the complete authored social comparison without a provider call, run:
+
+```bash
+python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted
+```
+
+The transcript explicitly identifies the deterministic scripted decision source.
+It shows only what Mara encounters, her ordinary attempted actions, and consequences admitted by the world.
+It does not present the authored comparison as a live or emergent choice.
+Add `--inspect` to the same command to reconstruct the complete provider-free causal chain, including Ilan's source observation and bounded choice, statement validation, testimony delivery, Mara's decision, and the resulting world resolution.
+
 Its live path is separately explicit and uses the same externally configured private-IP Ollama boundary:
 
 ```bash
@@ -174,12 +186,13 @@ That command checks both the current engine and the older prototypes retained un
 
 ## Implemented foundations
 
-Beyond the initial First Living Slice, four bounded foundations are implemented and retained as regression evidence:
+Beyond the initial First Living Slice, five bounded foundations are implemented and retained as regression evidence:
 
 - **Official Record** provides a stable ration-schedule artifact, immutable versions, a current-version pointer, location-gated consultation, and an authorized same-period rewrite that never changes objective history or automatically delivers the new version.
 - **Agent Understanding** lets Mara retain two delivered official versions, link their conflict, use the revised version as a public working stance under pressure, and later resurface the earlier version through a physical diary strongly enough to prompt one ordinary public-schedule recheck.
 - **Model-Backed Focal Character** provides a versioned Mara profile and decision skill, a restricted decision envelope, a strict shared action contract, explicit safe failures, inspector-only linked decision evidence, recorded-decision reproduction, and the opt-in Ollama command above.
 - **First Autonomous 24-Hour Living Day** provides authoritative simulated minutes, explicit causal phases, bounded decision eligibility, independent wider-world activity, exact day completion, long-run growth limits, provider-free reproduction, and an auditable explicit Ollama path.
+- **First Accelerated-Day Social Thread** provides one restricted deterministic supporting choice, an evidence-bound statement, physically validated testimony delivery, a resulting bounded Mara decision opportunity, an ordinary world consequence, source-withholding and access counterfactuals, focal-safe provider-free presentation, exact inspection, and recorded reproduction.
 
 The deterministic first-day policy and the offline autonomous-day command remain the provider-free defaults.
 

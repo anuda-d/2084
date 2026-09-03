@@ -5,7 +5,7 @@ Status: current description of the implemented boundaries and known limits.
 This document describes the conceptual boundaries for 2084 and how the current first-day and accelerated autonomous-day scenarios implement them.
 The implementation is a working feasibility slice, not a settled production specification.
 
-The bounded Official Record, Agent Understanding, Model-Backed Focal Character, and First Autonomous 24-Hour Living Day foundations are complete.
+The bounded Official Record, Agent Understanding, Model-Backed Focal Character, First Autonomous 24-Hour Living Day, and First Accelerated-Day Social Thread foundations are complete.
 The full 24-hour composition combines explicit simulated time, restricted model decisions, ordinary focal opportunities, independent supporting and institutional activity, bounded private evidence, offline reproduction, and focal-safe observation.
 One corrected exact-model live day reached the full boundary within every authority, privacy, cadence, failure, growth, source, and replay limit.
 An earlier retained audit exposed the end-boundary decision bug that the corrected run no longer reproduces.
@@ -67,8 +67,11 @@ These events append to the shared `EventLog` independently of Mara.
 The service change itself grants her no knowledge.
 A same-minute observation-phase delivery links the service-change evidence to Ilan only while he is at the authored workplace terminal.
 That committed delivery requests one non-model decision from an immutable transit-statement view containing only Ilan's actor-safe state, delivered evidence, current trigger, valid actions, and world-supplied addressability.
-The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt without creating testimony in this boundary.
+The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt.
 Statement validation requires the exact observation that triggered Ilan's decision, Ilan ownership, the authored workplace channel, the transit authority's source event, and strict structured action parameters before comparing the finite route, status, proposition, and assertion.
+A completed statement schedules one next-minute observation-delivery dispatch, which independently rechecks workplace co-location and only then appends a finite attributed testimony observation to Mara.
+Committed testimony then schedules one source-linked understanding update and, when Mara is idle and a focal policy is configured, one bounded decision in the subsequent same-minute phases.
+The trace and decision opportunity do not imply belief, agreement, or authority for the model to resolve its selected ordinary action.
 A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
 
 When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.
@@ -76,11 +79,13 @@ Mara chooses attempted travel, workplace work, household activity, or an allowed
 A scheduled-wake `wait` at home may be resolved as the world's 60-minute rest action; the model does not declare rest complete.
 The delivered bulletin updates source-linked understanding before any later restricted view.
 No choice receives objective history, another actor's private state, or authority to change time or resolve itself.
-The unconfigured default command is retained as an offline composition check; deterministic-harness and recorded-replay tests exercise the same model boundary without a live provider.
+The unconfigured default command is retained as a quiet offline composition check.
+An explicit scripted social comparison and recorded-replay tests exercise the same restricted Mara boundary without a live provider.
 
 The offline command `python3 -m scenarios.autonomous_day --seed 42` runs from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
 Its unconfigured normal output presents the boundary, compact quiet spans, and Mara's accessible bulletin.
 A configured-harness run additionally presents world-confirmed focal activity without identifiers, private decision records, or hidden supporting activity.
+The explicit `--focal-policy scripted` command labels its authored deterministic decision source and presents the delivered Ilan testimony, Mara's resulting ordinary attempt, and the world-resolved consequence without a provider call.
 `--inspect` is explicitly omniscient.
 The composition is still a deliberately small world rather than a general schedule, employment, or social simulation; it proves an ordinary-day opportunity set, not one required dramatic route or generally believable live behavior.
 
@@ -390,7 +395,7 @@ The policies choose from delivered information, but the resulting day should not
 The accelerated autonomous-day scenario contains:
 
 - one exact 1,440-minute runtime with explicit scheduled-world, action-completion, observation-delivery, understanding-update, and decision phases;
-- one focal character whose offline default has no configured decision policy and who can instead use an injected, recorded, or explicit Ollama-backed `MaraHarness`;
+- one focal character whose offline default has no configured decision policy and who can instead use the explicit scripted social comparison, an injected or recorded client, or the explicit Ollama-backed `MaraHarness`;
 - one deterministic supporting-character workplace shift and one independent transit-service change;
 - authored travel, workplace work, household activity, rest, and wait opportunities resolved by the world;
 - bounded decision-input, evidence-retention, invocation-count, retry-cadence, and exact-boundary failure controls;
@@ -399,7 +404,7 @@ The accelerated autonomous-day scenario contains:
 - one standalone verifier that checks the stored bundle's filesystem safety, schemas, hashes, provenance fields, and recorded verdict without replaying decisions again.
 
 This composition proves bounded full-day execution and causal continuity.
-It does not provide a general schedule model, a dynamic social world, or a default provider-free Mara policy.
+It does not provide a general schedule model, a dynamic social world, or a general provider-free Mara policy beyond the explicitly authored social comparison.
 
 ## Current Technical Limits
 

@@ -71,6 +71,7 @@ def trace_from_delivered_observation(
     if evidence_kind not in {
         "direct_resource_claim",
         "official_record_version",
+        "social_testimony",
         "transit_service_status",
     }:
         return None
