@@ -5,9 +5,9 @@ Status: current product direction.
 This document is a living guide to what 2084 is becoming.
 It describes the current direction without pretending that the setting, systems, or final form are settled.
 
-The current repository proves four bounded foundations: append-only objective history beside a mutable Official Record, source-linked Agent Understanding with one contextual contradiction and diary-resurfacing path, an optional model-backed Mara whose choices become real attempted actions, and one complete accelerated 24-hour day with independent wider-world activity and bounded model continuity.
-All four foundations are implemented and retained as regression evidence.
-The next bounded product question is whether the accelerated day can sustain one provider-free, reproducible, normally watchable social causal thread while preserving the implemented authority, knowledge, privacy, and time boundaries.
+The current repository proves five bounded foundations: append-only objective history beside a mutable Official Record, source-linked Agent Understanding with one contextual contradiction and diary-resurfacing path, an optional model-backed Mara whose choices become real attempted actions, one complete accelerated 24-hour day with independent wider-world activity and bounded model continuity, and one provider-free social causal thread from a supporting character's restricted source evidence through a world-resolved focal consequence.
+All five foundations are implemented and retained as regression evidence.
+No next bounded product goal is currently selected.
 
 ## Central Idea
 

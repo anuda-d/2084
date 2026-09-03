@@ -5,7 +5,7 @@ Status: current description of the implemented boundaries and known limits.
 This document describes the conceptual boundaries for 2084 and how the current first-day and accelerated autonomous-day scenarios implement them.
 The implementation is a working feasibility slice, not a settled production specification.
 
-The bounded Official Record, Agent Understanding, Model-Backed Focal Character, and First Autonomous 24-Hour Living Day foundations are complete.
+The bounded Official Record, Agent Understanding, Model-Backed Focal Character, First Autonomous 24-Hour Living Day, and First Accelerated-Day Social Thread foundations are complete.
 The full 24-hour composition combines explicit simulated time, restricted model decisions, ordinary focal opportunities, independent supporting and institutional activity, bounded private evidence, offline reproduction, and focal-safe observation.
 One corrected exact-model live day reached the full boundary within every authority, privacy, cadence, failure, growth, source, and replay limit.
 An earlier retained audit exposed the end-boundary decision bug that the corrected run no longer reproduces.

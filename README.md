@@ -186,12 +186,13 @@ That command checks both the current engine and the older prototypes retained un
 
 ## Implemented foundations
 
-Beyond the initial First Living Slice, four bounded foundations are implemented and retained as regression evidence:
+Beyond the initial First Living Slice, five bounded foundations are implemented and retained as regression evidence:
 
 - **Official Record** provides a stable ration-schedule artifact, immutable versions, a current-version pointer, location-gated consultation, and an authorized same-period rewrite that never changes objective history or automatically delivers the new version.
 - **Agent Understanding** lets Mara retain two delivered official versions, link their conflict, use the revised version as a public working stance under pressure, and later resurface the earlier version through a physical diary strongly enough to prompt one ordinary public-schedule recheck.
 - **Model-Backed Focal Character** provides a versioned Mara profile and decision skill, a restricted decision envelope, a strict shared action contract, explicit safe failures, inspector-only linked decision evidence, recorded-decision reproduction, and the opt-in Ollama command above.
 - **First Autonomous 24-Hour Living Day** provides authoritative simulated minutes, explicit causal phases, bounded decision eligibility, independent wider-world activity, exact day completion, long-run growth limits, provider-free reproduction, and an auditable explicit Ollama path.
+- **First Accelerated-Day Social Thread** provides one restricted deterministic supporting choice, an evidence-bound statement, physically validated testimony delivery, a resulting bounded Mara decision opportunity, an ordinary world consequence, source-withholding and access counterfactuals, focal-safe provider-free presentation, exact inspection, and recorded reproduction.
 
 The deterministic first-day policy and the offline autonomous-day command remain the provider-free defaults.
 
