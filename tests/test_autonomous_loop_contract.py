@@ -1,65 +1,24 @@
-import re
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts.check_autonomous_loop_contract import (
+    COMMON_REQUIREMENTS,
+    CONTRACT_PATHS,
+    OBSOLETE_RULES,
     ROOT,
-    active_implementation_state_failures,
-    active_implementation_state_path,
+    current_state_failures,
     repository_contract_failures,
 )
 
 
 class AutonomousLoopContractTests(unittest.TestCase):
-    contract_paths = (
-        Path("AGENTS.md"),
-        Path("docs/main/DEVELOPMENT_LOOP.md"),
-        Path("docs/plans/CURRENT.md"),
-    )
-    required_goal_clauses = (
-        "app-level Goal",
-        "`create_goal`",
-        "`get_goal` again",
-        "`get_goal` reports `status: active`",
-        "before task listing or lock acquisition",
-        "Never claim Continuous Goal mode",
-        "Continuous Goal does not use `create_thread`",
-        "releasing a lock it owns",
-        "**GOAL MODE NOT ACTIVE**",
-        "`update_goal` with `status: complete`",
-        "same task continues automatically across turns",
-        "must not direct continuation to a new agent, task, chat, or handoff",
-        "must not release the repository lock between work units",
-        "`clear` the conflicting Goal",
-    )
-    continuous_section_end = {
-        Path("AGENTS.md"): "- Every scheduled task and manual one-shot",
-        Path("docs/main/DEVELOPMENT_LOOP.md"):
-            "### Scheduled relay or manual one-shot",
-        Path("docs/plans/CURRENT.md"):
-            "- Confirm the no-overlap gate before repository work.",
-    }
-    scheduled_section_start = {
-        Path("AGENTS.md"): "- A scheduled relay task may create its successor",
-        Path("docs/main/DEVELOPMENT_LOOP.md"):
-            "### Scheduled relay or manual one-shot",
-        Path("docs/plans/CURRENT.md"):
-            "- In the current scheduled relay window",
-    }
-
-    def active_state_relative_path(self):
-        path = active_implementation_state_path()
-        self.assertIsNotNone(path)
-        assert path is not None
-        return path.relative_to(ROOT)
-
     def fixture_root(self):
         tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(tempdir.cleanup)
         root = Path(tempdir.name)
-        paths = self.contract_paths + (self.active_state_relative_path(),)
-        for relative_path in paths:
+        copied_paths = CONTRACT_PATHS + (Path("scripts/autonomous_loop_lock.py"),)
+        for relative_path in copied_paths:
             target = root / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(
@@ -68,30 +27,98 @@ class AutonomousLoopContractTests(unittest.TestCase):
             )
         return root
 
-    def insert_continuous_rule(self, root, relative_path, rule):
-        path = root / relative_path
-        end_marker = self.continuous_section_end[relative_path]
-        text = path.read_text(encoding="utf-8")
-        self.assertIn(end_marker, text)
-        path.write_text(
-            text.replace(end_marker, f"{rule}\n{end_marker}", 1),
+    def active_state_fixture(self, owner_authorization="standing"):
+        root = self.fixture_root()
+        current_path = root / "docs/plans/CURRENT.md"
+        current_text = current_path.read_text(encoding="utf-8")
+        active_status = (
+            "Status: Sample Goal is active under standing scheduled authorization."
+            if owner_authorization == "standing"
+            else "Status: Sample Goal is active with owner authorization paused."
+        )
+        current_text = current_text.replace("Status: no active goal.", active_status, 1)
+        current_text = current_text.replace(
+            "- Active goal: none\n",
+            "- Goal: [Sample Goal](sample-goal/GOAL.md)\n"
+            "- Shared implementation state: "
+            "[Implementation Plan](sample-goal/IMPLEMENTATION_PLAN.md)\n",
+            1,
+        )
+        replacements = {
+            "- Active goal id: none": "- Active goal id: sample-goal",
+            "- Owner authorization: pending": (
+                f"- Owner authorization: {owner_authorization}"
+            ),
+            "- Authorization scope: none": "- Authorization scope: active goal",
+            "- Authorization source: none": "- Authorization source: owner",
+            "- Loop cadence: stopped": (
+                "- Loop cadence: scheduled autonomous relay"
+                if owner_authorization == "standing"
+                else "- Loop cadence: paused"
+            ),
+            "- Fresh-task relay: stopped": (
+                "- Fresh-task relay: active"
+                if owner_authorization == "standing"
+                else "- Fresh-task relay: paused"
+            ),
+            "- Standing implementation authority: none": (
+                "- Standing implementation authority: active"
+                if owner_authorization == "standing"
+                else "- Standing implementation authority: paused"
+            ),
+        }
+        replacements["- Run status: none"] = (
+            "- Run status: awaiting scheduled fresh task"
+            if owner_authorization == "standing"
+            else "- Run status: paused"
+        )
+        for old, new in replacements.items():
+            current_text = current_text.replace(old, new, 1)
+        current_path.write_text(current_text, encoding="utf-8")
+
+        goal_path = root / "docs/plans/sample-goal/GOAL.md"
+        goal_path.parent.mkdir(parents=True, exist_ok=True)
+        goal_path.write_text(
+            "# Sample Goal\n\nStatus: active; owner-approved goal.\n",
             encoding="utf-8",
         )
-        return path
+        state_path = goal_path.parent / "IMPLEMENTATION_PLAN.md"
+        state_path.write_text(
+            "# Implementation Plan\n\n"
+            "## Run State Snapshot\n\n"
+            + "\n".join(
+                line
+                for line in current_text.splitlines()
+                if line.startswith("- ")
+                and line.split(":", 1)[0][2:] in {
+                    "Active goal id",
+                    "Owner authorization",
+                    "Authorization scope",
+                    "Authorization source",
+                    "Loop cadence",
+                    "Current run",
+                    "Incomplete run",
+                    "Run status",
+                    "Pending owner decision",
+                    "Scheduled window",
+                    "Fresh-task relay",
+                    "Alignment due",
+                    "Standing implementation authority",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return root, current_path, goal_path
 
-    def test_continuous_mode_requires_a_real_app_goal(self):
+    def test_repository_uses_the_fresh_task_contract(self):
         failures = repository_contract_failures()
 
         self.assertEqual(failures, [], "\n".join(failures))
 
-    def test_current_active_state_contains_only_product_progress(self):
-        failures = active_implementation_state_failures()
-
-        self.assertEqual(failures, [], "\n".join(failures))
-
-    def test_each_goal_activation_clause_is_load_bearing(self):
-        for relative_path in self.contract_paths:
-            for token in self.required_goal_clauses:
+    def test_each_fresh_task_clause_is_load_bearing(self):
+        for relative_path in CONTRACT_PATHS:
+            for token in COMMON_REQUIREMENTS:
                 with self.subTest(path=relative_path, token=token):
                     root = self.fixture_root()
                     path = root / relative_path
@@ -106,202 +133,270 @@ class AutonomousLoopContractTests(unittest.TestCase):
                         failures,
                     )
 
-    def test_continuous_mode_rejects_transfer_paraphrases(self):
-        contradictions = (
-            "A new agent will continue in a new chat.",
-            "A fresh task takes over after every committed work unit.",
-            "Continue work in another chat after each checkpoint.",
-            "Handoff to a successor agent after this work unit.",
-            "Release the repository lock after every work unit.",
-        )
-        for relative_path in self.contract_paths:
-            for contradiction in contradictions:
-                with self.subTest(path=relative_path, contradiction=contradiction):
-                    root = self.fixture_root()
-                    path = self.insert_continuous_rule(
-                        root,
-                        relative_path,
-                        contradiction,
-                    )
-
-                    failures = repository_contract_failures(root)
-
-                    self.assertTrue(
-                        any(
-                            str(path) in failure and "transfer rule" in failure
-                            for failure in failures
-                        ),
-                        failures,
-                    )
-
-    def test_obsolete_goal_rules_are_rejected(self):
-        contradictions = (
-            "Continuous Goal may use `create_thread`",
-            "`status: paused` is sufficient",
-            "an unfinished Goal is sufficient",
-            "fewer than 50",
-        )
-        for relative_path in self.contract_paths:
-            for contradiction in contradictions:
-                with self.subTest(path=relative_path, contradiction=contradiction):
-                    root = self.fixture_root()
-                    path = root / relative_path
-                    path.write_text(
-                        path.read_text(encoding="utf-8") + f"\n{contradiction}\n",
-                        encoding="utf-8",
-                    )
-
-                    failures = repository_contract_failures(root)
-
-                    self.assertTrue(
-                        any(
-                            str(path) in failure and contradiction in failure
-                            for failure in failures
-                        ),
-                        failures,
-                    )
-
-    def test_scheduled_relay_allows_transfer_language(self):
-        transfer_rules = (
-            "A new agent will continue in a new chat.",
-            "A fresh task takes over after every committed work unit.",
-            "Continue work in another chat after each checkpoint.",
-            "Handoff to a successor agent after this work unit.",
-            "Release the repository lock after every work unit.",
-        )
-        for relative_path in self.contract_paths:
-            for rule in transfer_rules:
+    def test_obsolete_same_task_and_takeover_rules_are_rejected(self):
+        for relative_path in CONTRACT_PATHS:
+            for rule in OBSOLETE_RULES:
                 with self.subTest(path=relative_path, rule=rule):
                     root = self.fixture_root()
                     path = root / relative_path
-                    marker = self.scheduled_section_start[relative_path]
-                    text = path.read_text(encoding="utf-8")
-                    self.assertIn(marker, text)
-                    if relative_path == Path("docs/main/DEVELOPMENT_LOOP.md"):
-                        replacement = f"{marker}\n{rule}"
-                    else:
-                        replacement = f"{rule}\n{marker}"
                     path.write_text(
-                        text.replace(marker, replacement, 1),
+                        path.read_text(encoding="utf-8") + f"\n{rule}\n",
                         encoding="utf-8",
                     )
 
                     failures = repository_contract_failures(root)
 
-                    self.assertEqual(failures, [], "\n".join(failures))
+                    self.assertTrue(any(rule in failure for failure in failures), failures)
 
-    def test_active_state_rejects_unrecognized_run_state_fields(self):
-        invalid_fields = (
-            "Automation state",
-            "Execution mode",
-            "Handoff owner",
-            "Next task",
-        )
-        for field in invalid_fields:
-            with self.subTest(field=field):
-                root = self.fixture_root()
-                path = root / self.active_state_relative_path()
-                text = path.read_text(encoding="utf-8")
-                path.write_text(
-                    text.replace(
-                        "## Goal Progress",
-                        f"- {field}: handoff prepared for a new chat\n\n"
-                        "## Goal Progress",
-                        1,
-                    ),
-                    encoding="utf-8",
-                )
+    def test_no_goal_state_is_stopped_and_pending_owner_authorization(self):
+        failures = current_state_failures()
 
-                failures = active_implementation_state_failures(root)
+        self.assertEqual(failures, [], "\n".join(failures))
 
-                self.assertTrue(any(field in failure for failure in failures), failures)
-
-    def test_active_state_rejects_unstructured_run_state_entry(self):
+    def test_no_goal_state_rejects_an_active_relay(self):
         root = self.fixture_root()
-        path = root / self.active_state_relative_path()
-        text = path.read_text(encoding="utf-8")
-        path.write_text(
+        current_path = root / "docs/plans/CURRENT.md"
+        text = current_path.read_text(encoding="utf-8")
+        current_path.write_text(
+            text.replace("- Fresh-task relay: stopped", "- Fresh-task relay: active", 1),
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("Fresh-task relay" in failure for failure in failures), failures)
+
+    def test_no_goal_state_rejects_a_hidden_active_goal(self):
+        root = self.fixture_root()
+        hidden_goal = root / "docs/plans/hidden-goal/GOAL.md"
+        hidden_goal.parent.mkdir(parents=True, exist_ok=True)
+        hidden_goal.write_text(
+            "# Hidden Goal\n\nStatus: active; owner-approved goal.\n",
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("zero active goals" in failure for failure in failures), failures)
+
+    def test_current_and_incomplete_run_fields_are_required(self):
+        root = self.fixture_root()
+        current_path = root / "docs/plans/CURRENT.md"
+        text = current_path.read_text(encoding="utf-8")
+        current_path.write_text(
+            text.replace("- Incomplete run: none\n", "", 1),
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("Incomplete run" in failure for failure in failures), failures)
+
+    def test_standing_active_goal_binds_goal_and_state(self):
+        root, _, _ = self.active_state_fixture()
+
+        failures = current_state_failures(root)
+
+        self.assertEqual(failures, [], "\n".join(failures))
+
+    def test_owner_paused_active_goal_is_valid(self):
+        root, _, _ = self.active_state_fixture(owner_authorization="paused")
+
+        failures = current_state_failures(root)
+
+        self.assertEqual(failures, [], "\n".join(failures))
+
+    def test_unrelated_active_goal_cannot_supply_authority(self):
+        root, _, linked_goal_path = self.active_state_fixture()
+        linked_goal_path.write_text(
+            "# Sample Goal\n\nStatus: deferred; not active.\n",
+            encoding="utf-8",
+        )
+        unrelated_goal = root / "docs/plans/unrelated/GOAL.md"
+        unrelated_goal.parent.mkdir(parents=True, exist_ok=True)
+        unrelated_goal.write_text(
+            "# Unrelated Goal\n\nStatus: active; owner-approved goal.\n",
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(
+            any("linked goal must be the only active goal" in failure for failure in failures),
+            failures,
+        )
+
+    def test_active_goal_rejects_no_goal_status_line(self):
+        root, current_path, _ = self.active_state_fixture()
+        text = current_path.read_text(encoding="utf-8")
+        current_path.write_text(
             text.replace(
-                "## Goal Progress",
-                "- Handoff prepared for a new chat\n\n## Goal Progress",
+                "Status: Sample Goal is active under standing scheduled authorization.",
+                "Status: no active goal.",
                 1,
             ),
             encoding="utf-8",
         )
 
-        failures = active_implementation_state_failures(root)
+        failures = current_state_failures(root)
 
-        self.assertTrue(
-            any("Handoff prepared" in failure for failure in failures),
-            failures,
-        )
+        self.assertTrue(any("active-goal status" in failure for failure in failures), failures)
 
-    def test_active_state_requires_each_product_progress_field_once(self):
+    def test_no_goal_state_rejects_malformed_active_status(self):
         root = self.fixture_root()
-        path = root / self.active_state_relative_path()
-        text = path.read_text(encoding="utf-8")
-        text = re.sub(r"(?m)^- Alignment due:.*\n", "", text, count=1)
-        path.write_text(text, encoding="utf-8")
-
-        failures = active_implementation_state_failures(root)
-
-        self.assertTrue(any("Alignment due" in failure for failure in failures), failures)
-
-    def test_active_state_ignores_product_prose_outside_run_state(self):
-        root = self.fixture_root()
-        path = root / self.active_state_relative_path()
-        path.write_text(
-            path.read_text(encoding="utf-8")
-            + "\nProduct note: Task state is observable evidence.\n",
+        malformed_goal = root / "docs/plans/malformed/GOAL.md"
+        malformed_goal.parent.mkdir(parents=True, exist_ok=True)
+        malformed_goal.write_text(
+            "# Malformed Goal\n\nStatus: active.\n",
             encoding="utf-8",
         )
 
-        failures = active_implementation_state_failures(root)
+        failures = current_state_failures(root)
 
-        self.assertEqual(failures, [], "\n".join(failures))
+        self.assertTrue(any("zero active goals" in failure for failure in failures), failures)
 
-    def test_active_state_link_must_exist_once(self):
-        root = self.fixture_root()
-        current_path = root / "docs/plans/CURRENT.md"
+    def test_active_goal_requires_owner_approved_status(self):
+        root, _, goal_path = self.active_state_fixture()
+        goal_path.write_text(
+            "# Sample Goal\n\nStatus: active; agent-selected, not owner approved.\n",
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("must record owner approval" in failure for failure in failures), failures)
+
+    def test_active_goal_rejects_invalid_schedule_and_alignment(self):
+        root, current_path, _ = self.active_state_fixture()
         text = current_path.read_text(encoding="utf-8")
-        link_pattern = re.compile(
-            r"(?m)^- Shared implementation state:[ \t]*\n"
-            r"[ \t]*\[[^]]+\]\([^)\n]+\)\n"
+        text = text.replace(
+            "- Scheduled window: daily 18:00-23:00 America/Toronto",
+            "- Scheduled window: never",
+            1,
         )
-        match = link_pattern.search(text)
-        self.assertIsNotNone(match)
-        assert match is not None
-        link_block = match.group(0)
-
-        current_path.write_text(text.replace(link_block, "", 1), encoding="utf-8")
-        missing_failures = active_implementation_state_failures(root)
-        self.assertTrue(
-            any("expected exactly one" in failure for failure in missing_failures),
-            missing_failures,
-        )
-
-        current_path.write_text(text + "\n" + link_block, encoding="utf-8")
-        duplicate_failures = active_implementation_state_failures(root)
-        self.assertTrue(
-            any("expected exactly one" in failure for failure in duplicate_failures),
-            duplicate_failures,
-        )
-
-    def test_active_state_link_accepts_single_line_format(self):
-        root = self.fixture_root()
-        current_path = root / "docs/plans/CURRENT.md"
-        text = current_path.read_text(encoding="utf-8")
-        text = re.sub(
-            r"(?m)^- Shared implementation state:[ \t]*\n[ \t]*(\[[^]]+\]\([^)\n]+\))",
-            r"- Shared implementation state: \1",
-            text,
-            count=1,
-        )
+        text = text.replace("- Alignment due: no", "- Alignment due: later", 1)
         current_path.write_text(text, encoding="utf-8")
 
-        failures = active_implementation_state_failures(root)
+        failures = current_state_failures(root)
 
-        self.assertEqual(failures, [], "\n".join(failures))
+        self.assertTrue(any("Scheduled window" in failure for failure in failures), failures)
+        self.assertTrue(any("Alignment due" in failure for failure in failures), failures)
+
+    def test_active_goal_rejects_implementation_without_a_current_run(self):
+        root, current_path, state_path = self.active_state_fixture()
+        current_text = current_path.read_text(encoding="utf-8").replace(
+            "- Run status: awaiting scheduled fresh task",
+            "- Run status: implementation",
+            1,
+        )
+        current_path.write_text(current_text, encoding="utf-8")
+        state_file = state_path.parent / "IMPLEMENTATION_PLAN.md"
+        state_file.write_text(
+            state_file.read_text(encoding="utf-8").replace(
+                "- Run status: awaiting scheduled fresh task",
+                "- Run status: implementation",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("Run status is invalid" in failure for failure in failures), failures)
+
+    def test_pending_decision_requires_matching_run_status(self):
+        root, current_path, state_path = self.active_state_fixture()
+        current_text = current_path.read_text(encoding="utf-8").replace(
+            "- Pending owner decision: none",
+            "- Pending owner decision: choose a boundary",
+            1,
+        )
+        current_path.write_text(current_text, encoding="utf-8")
+        state_file = state_path.parent / "IMPLEMENTATION_PLAN.md"
+        state_file.write_text(
+            state_file.read_text(encoding="utf-8").replace(
+                "- Pending owner decision: none",
+                "- Pending owner decision: choose a boundary",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(
+            any("pending owner decision requires" in failure for failure in failures),
+            failures,
+        )
+
+    def test_duplicate_current_run_state_snapshot_is_rejected(self):
+        root = self.fixture_root()
+        current_path = root / "docs/plans/CURRENT.md"
+        current_path.write_text(
+            current_path.read_text(encoding="utf-8")
+            + "\n## Run State Snapshot\n\n- Active goal id: hidden\n",
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("exactly one Run State Snapshot" in failure for failure in failures), failures)
+
+    def test_duplicate_active_implementation_snapshot_is_rejected(self):
+        root, _, goal_path = self.active_state_fixture()
+        state_path = goal_path.parent / "IMPLEMENTATION_PLAN.md"
+        state_path.write_text(
+            state_path.read_text(encoding="utf-8")
+            + "\n## Run State Snapshot\n\n- Active goal id: hidden\n",
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("exactly one Run State Snapshot" in failure for failure in failures), failures)
+
+    def test_alignment_due_routes_only_to_alignment(self):
+        root, current_path, goal_path = self.active_state_fixture()
+        current_path.write_text(
+            current_path.read_text(encoding="utf-8").replace(
+                "- Alignment due: no",
+                "- Alignment due: yes",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        state_path = goal_path.parent / "IMPLEMENTATION_PLAN.md"
+        state_path.write_text(
+            state_path.read_text(encoding="utf-8").replace(
+                "- Alignment due: no",
+                "- Alignment due: yes",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertEqual(current_state_failures(root), [])
+
+        current_path.write_text(
+            current_path.read_text(encoding="utf-8").replace(
+                "- Run status: awaiting scheduled fresh task",
+                "- Run status: selecting",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        state_path.write_text(
+            state_path.read_text(encoding="utf-8").replace(
+                "- Run status: awaiting scheduled fresh task",
+                "- Run status: selecting",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = current_state_failures(root)
+
+        self.assertTrue(any("route only to alignment" in failure for failure in failures), failures)
 
 
 if __name__ == "__main__":
