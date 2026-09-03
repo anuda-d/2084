@@ -93,8 +93,8 @@ Ownership is never taken over or force-released by another task.
 If this index reports no active goal, stop after reading it unless the owner
 explicitly requested a bounded administrative change.
 
-Do not preload completed-goal records, historical experiments, the broader
-architecture proposal, or unrelated specifications.
+Do not preload completed-goal records, the broader architecture proposal, or
+unrelated specifications.
 Read a main architecture document only when the active specification routes to
 it or an invariant is unclear.
 
@@ -143,8 +143,8 @@ authoritative repository state and select or resume exactly one unit.
   saved local project, wait once briefly to confirm dispatch, and stop.
 - At or after 23:00, after any other terminal state, or while no goal has
   standing authorization, do not create a successor.
-- Never push, merge, deploy, publish, destructively clean, modify `experiments/`,
-  or absorb unrelated user work without explicit direction.
+- Never push, merge, deploy, publish, destructively clean, or absorb unrelated
+  user work without explicit direction.
 
 ## Commands
 

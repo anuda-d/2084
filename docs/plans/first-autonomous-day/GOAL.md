@@ -242,8 +242,7 @@ smallest useful gap, consult only the relevant implementation and tests plus:
   [Mara Model Harness Plan](../MARA_HARNESS_PLAN.md#deferred-architecture).
 
 The broader [Lie and Doublethink proposal](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md)
-is optional context, not an implementation checklist. Do not read or modify
-`experiments/` unless a later owner-approved goal explicitly targets it.
+is optional context, not an implementation checklist.
 
 Provider documentation or a live endpoint is required only for the final
 explicit live criterion or a selected adapter-specific defect. Normal

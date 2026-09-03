@@ -29,7 +29,7 @@ These are flexible working principles for coding agents and future contributors.
 
 ## While Exploring
 
-- Prefer small experiments that clarify one concept.
+- Prefer small probes that clarify one concept.
 - Explain assumptions that materially affect behavior.
 - Keep worldbuilding ideas separate from general simulation mechanisms where practical.
 - Avoid hardcoding a desired story and then describing it as emergence.
@@ -59,7 +59,7 @@ These are flexible working principles for coding agents and future contributors.
 - Check whether the change grants an agent hidden knowledge or impossible authority.
 - Keep consequential actions connected to understandable world responses.
 - Preserve enough information to explain surprising behavior.
-- Validate work in proportion to its maturity; early conceptual experiments need clarity more than production ceremony.
+- Validate work in proportion to its maturity; early conceptual prototypes need clarity more than production ceremony.
 
 ## Communicating Results
 
@@ -121,7 +121,5 @@ For now, favor one autonomous focal life, a small living world, understandable a
   recovery, but never a future task queue.
 - The main agent owns gap selection, implementation, integration, validation,
   progress recording, commits, and the final report.
-- Treat `experiments/` as read-only historical evidence unless an approved goal
-  explicitly targets it.
 - Do not select, broaden, or replace the active goal. Stop when the active goal
   is complete or when continuing requires an owner decision.

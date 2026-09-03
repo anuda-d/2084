@@ -62,7 +62,7 @@ was not overwritten or force-pushed. Details are in
 - Added a filtered snapshot-only terminal observer and a separately labelled
   omniscient inspector.
 - Added JSON-compatible complete history data and same-seed replay checks.
-- Preserved all recovered experiments and tests while promoting the reusable
+- Preserved relevant recovered behavior and tests while promoting the reusable
   engine to the top-level simulation code.
 
 ## 4. Exact commands
@@ -89,7 +89,6 @@ Equivalent direct test command:
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
-python3 -m unittest discover -s experiments/tests -p 'test_*.py'
 ```
 
 No package installation is required.

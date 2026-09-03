@@ -201,7 +201,6 @@ policies/     Deterministic rules and Mara's restricted model boundary
 observer/     The focal-safe terminal view and omniscient inspector
 tests/        Regression, boundary, privacy, replay, and audit evidence
 docs/         Product direction, architecture, goals, and verified progress
-experiments/  Older prototypes retained as historical evidence
 scripts/      Repository checks and development-loop safeguards
 ```
 

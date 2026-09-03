@@ -233,12 +233,9 @@ Read these in order before repository work:
 7. only the product specification relevant to the selected unit.
 
 Read the README, Core Construct, Architecture, UI Architecture, Design
-References, broader proposals, completed goals, and historical experiments only
-when the active specification routes there or an invariant is otherwise
-unclear.
+References, broader proposals, and completed goals only when the active
+specification routes there or an invariant is otherwise unclear.
 A proposal is not an implementation checklist.
-Treat `experiments/` as read-only historical evidence unless an approved goal
-explicitly targets it.
 
 If authoritative sources conflict in a way that changes product direction,
 worldbuilding, simulation behavior, scope, privacy, or lasting architecture,
