@@ -72,12 +72,14 @@ At or after 23:00, it finishes an already-started unit safely, writes the
 handoff, and does not create a successor.
 
 Hourly scheduled starts are recovery opportunities.
-They atomically claim the durable checkout lock and no-op when another task owns
-it.
+They may perform read-only orientation without the durable checkout lock.
+They atomically claim it immediately before the first repository write and
+no-op when another active task owns it.
 The unscoped Codex task listing is not an ownership precondition because it can
 hang and cannot reliably classify idle historical tasks.
 Do not call `list_threads` as part of the no-overlap gate.
-Ownership is never taken over or force-released by another task.
+A recorded owner may be replaced only through the guarded stale-lock recovery
+procedure after its exact terminal latest turn is verified.
 
 ## Required Read Order
 
@@ -93,8 +95,8 @@ Ownership is never taken over or force-released by another task.
 If this index reports no active goal, stop after reading it unless the owner
 explicitly requested a bounded administrative change.
 
-Do not preload completed-goal records, historical experiments, the broader
-architecture proposal, or unrelated specifications.
+Do not preload completed-goal records, the broader architecture proposal, or
+unrelated specifications.
 Read a main architecture document only when the active specification routes to
 it or an invariant is unclear.
 
@@ -109,17 +111,22 @@ authoritative repository state and select or resume exactly one unit.
 
 ## Run Contract
 
-- Before any subagent spawn or repository change, run
+- Read-only work does not require checkout ownership.
+- Immediately before the first repository write, run
   `python3 scripts/autonomous_loop_lock.py acquire`.
   The command uses `CODEX_THREAD_ID` automatically.
 - If the lock is held, inspect only the exact recorded owner with `read_thread`.
   An idle owner that asked for input still owns the checkout.
-  Wake the same owner when its exact terminal state permits recovery, then stop
-  the recovery task.
-- Before every later mutation phase or resumed turn, run
+  If its latest turn is verified as `completed`, `failed`, or `interrupted`, use
+  `recover --expected-task-id <owner-id> --expected-claim-token <token>
+  --verified-terminal-state <state>`.
+  Any owner mismatch or active, non-terminal, unreadable, or unknown state fails
+  closed.
+- Assert ownership after any resumed turn and immediately before commit by
+  running
   `python3 scripts/autonomous_loop_lock.py assert-owner`.
-- Release ownership at every non-relaying terminal state or immediately before
-  creating a relay successor.
+- Release ownership at completion, at every other non-relaying terminal state,
+  or immediately before creating a relay successor.
 - Select or resume only one smallest useful goal gap.
   Record the same value under `Current run` and `Incomplete run` before editing.
 - If `Alignment due: yes`, select only whole-goal alignment and do not select an
@@ -143,8 +150,8 @@ authoritative repository state and select or resume exactly one unit.
   saved local project, wait once briefly to confirm dispatch, and stop.
 - At or after 23:00, after any other terminal state, or while no goal has
   standing authorization, do not create a successor.
-- Never push, merge, deploy, publish, destructively clean, modify `experiments/`,
-  or absorb unrelated user work without explicit direction.
+- Never push, merge, deploy, publish, destructively clean, or absorb unrelated
+  user work without explicit direction.
 
 ## Commands
 

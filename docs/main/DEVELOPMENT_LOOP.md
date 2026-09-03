@@ -39,8 +39,9 @@ handoff, and does not create a successor.
 
 The hourly starts are recovery opportunities, not permission for overlap.
 Every scheduled or relayed task first inspects repository run state and
-atomically claims the durable checkout-ownership record before any subagent
-spawn or file change.
+performs any useful read-only orientation without checkout ownership.
+It atomically claims the durable checkout-ownership record immediately before
+the first repository write.
 If another durable owner is active, the new task exits without changing the
 repository.
 If no recorded owner exists and `Current run` and `Incomplete run` agree on one
@@ -146,7 +147,11 @@ handoff.
 
 ## No-Overlap Gate
 
-Before any subagent spawn or repository change, run
+Read-only work does not require checkout ownership.
+This includes orientation, exploration, independent review, and checks that do
+not alter tracked files.
+
+Immediately before the first repository write, run
 `python3 scripts/autonomous_loop_lock.py acquire`.
 The command obtains the current task ID from `CODEX_THREAD_ID` and atomically
 creates the durable local ownership record.
@@ -155,18 +160,20 @@ If acquisition reports `HELD_BY <owner-id>`, inspect that exact task with
 `read_thread`.
 Stop at **ACTIVE RUN EXISTS** when the recorded owner is queued, active, or owns
 a non-terminal latest turn.
-An idle owner that asked for input still owns the checkout.
-When the exact owner is idle or `notLoaded` after a failed or interrupted turn,
-send a follow-up to that same task instructing it to assert ownership and resume
-its matching recorded unit.
-When the exact owner completed a documented loop terminal state but failed to
-release, send a follow-up to that same task instructing it to release its own
-record and finish only the applicable handoff or relay.
-The recovery task that does not own the record then stops without repository
-changes.
-Ownership is never taken over or force-released by a different task.
-If the record is unreadable, exact-owner inspection fails, or the exact-owner
-follow-up cannot be dispatched, stop at **ACTIVE RUN STATUS UNKNOWN**.
+An owner whose latest turn is non-terminal, including an idle owner awaiting
+input, continues to own the checkout.
+If `read_thread` verifies that the exact recorded owner's latest turn is
+`completed`, `failed`, or `interrupted`, recover with
+`python3 scripts/autonomous_loop_lock.py recover --expected-task-id <owner-id>
+--expected-claim-token <token> --verified-terminal-state <state>`.
+Use the claim token returned with `HELD_BY` when the owner was inspected.
+Each successful resumed-owner assertion rotates that token.
+The recovery command atomically replaces only that expected owner.
+It fails closed if the recorded owner or claim token changed, the record is
+missing or unreadable, or the supplied state is not terminal.
+If exact-owner inspection fails or the exact-owner state is active,
+non-terminal, or unknown, stop at **ACTIVE RUN STATUS UNKNOWN**.
+Lock age is diagnostic only and never authorizes recovery.
 
 The unscoped Codex task listing is not an ownership precondition because it can
 hang, cannot filter by project, and cannot reliably classify idle historical
@@ -175,11 +182,12 @@ Do not call `list_threads` as part of the no-overlap gate.
 The atomic ownership record is the decisive single-writer proof for every task
 governed by this repository.
 
-Before every later repository mutation phase and after any resumed turn, run
-`python3 scripts/autonomous_loop_lock.py assert-owner`.
+Assert ownership after any resumed turn and immediately before commit by
+running `python3 scripts/autonomous_loop_lock.py assert-owner`.
 A mismatch stops all further repository work.
-Release ownership with `python3 scripts/autonomous_loop_lock.py release` at
-every non-relaying terminal state.
+Release ownership at completion and every other non-relaying terminal state
+only when the current task owns the record, by running
+`python3 scripts/autonomous_loop_lock.py release`.
 For a relay, assert and release ownership immediately before creating the
 successor, enter handoff-only state, and perform no more repository work.
 The successor must acquire ownership for itself.
@@ -206,7 +214,8 @@ Stop at **NEEDS OWNER DECISION** before acting when continuation requires:
 - direction after the owner pauses or stops the loop.
 
 When a decision is required, record the smallest concrete question, set `Run
-status` to `needs owner decision`, write the handoff, and do not relay.
+status` to `needs owner decision`, write the handoff, release ownership if the
+current task owns the record, and do not relay.
 
 ## Model Routing
 
@@ -233,12 +242,9 @@ Read these in order before repository work:
 7. only the product specification relevant to the selected unit.
 
 Read the README, Core Construct, Architecture, UI Architecture, Design
-References, broader proposals, completed goals, and historical experiments only
-when the active specification routes there or an invariant is otherwise
-unclear.
+References, broader proposals, and completed goals only when the active
+specification routes there or an invariant is otherwise unclear.
 A proposal is not an implementation checklist.
-Treat `experiments/` as read-only historical evidence unless an approved goal
-explicitly targets it.
 
 If authoritative sources conflict in a way that changes product direction,
 worldbuilding, simulation behavior, scope, privacy, or lasting architecture,
@@ -282,7 +288,6 @@ Before selecting or continuing a unit, confirm that:
 - when alignment is due, this task is the alignment unit rather than an
   implementation unit;
 - no overlapping task or recorded run exists;
-- the durable checkout-ownership record names the current task;
 - a current unit, if any, matches the incomplete unit;
 - the work is authorized by the active goal;
 - no future task queue is recorded;
@@ -298,14 +303,15 @@ Never reset or discard them without direction.
 
 Read the sources of authority, latest handoff, run fields, accepted evidence,
 and repository state.
-Confirm this is a fresh task, acquire durable checkout ownership, and confirm
-no overlap exists.
+Confirm this is a fresh task and perform read-only no-overlap checks.
 If `Alignment due: yes`, select only whole-goal alignment and do not select an
 implementation unit.
 
 ### 2. Select One Task
 
 Choose the smallest unmet goal gap that can create direct evidence in one task.
+Immediately before recording the selected run, acquire durable checkout
+ownership.
 Record only that task under `Current run` and `Incomplete run` in both the
 compact index and active implementation state.
 State:
@@ -381,11 +387,13 @@ After validation passes and review is clean:
    complete;
 7. synchronize `CURRENT.md`;
 8. stage only the coherent unit;
-9. create one local commit;
+9. assert checkout ownership and create one local commit;
 10. write the temporary handoff with `No next unit selected`;
-11. before 23:00, create one fresh successor when every relay precondition
+11. assert checkout ownership, release checkout ownership, and enter
+    handoff-only state;
+12. before 23:00, create one fresh successor when every relay precondition
     remains true; and
-12. stop at **UNIT COMMITTED - HANDOFF READY**.
+13. stop at **UNIT COMMITTED - HANDOFF READY**.
 
 The current task never selects the successor's unit.
 
@@ -411,12 +419,16 @@ Do not silently replace a non-viable selected unit.
 - For an unsafe baseline or overlap, preserve exact state, hand off when
   appropriate, and stop without relay.
 - Never remove work merely because a unit is blocked.
+- If the current task owns checkout ownership, release it after writing the
+  blocked handoff and before stopping.
 
 ## Owner Pause or Stop
 
 The owner may pause or stop the loop at any time.
 On pause, set owner authorization, cadence, relay, and run status to paused in
 both operational files, preserve any active unit, write a handoff, and stop.
+If the current task owns checkout ownership, release it after writing the
+handoff and before stopping.
 The scheduler must no-op while authorization is paused.
 
 Administrative state changes explicitly requested by the owner remain allowed.
@@ -442,12 +454,13 @@ At completion:
    `stopped`, relay to `stopped`, and standing authority to `none`;
 6. synchronize `CURRENT.md` and any owner-facing status document;
 7. run the final repository check;
-8. create the final local commit;
+8. assert checkout ownership and create the final local commit;
 9. write the final handoff using the captured completing goal id;
 10. pause the `autonomous-2084-development-loop` automation so it does not
     create later no-op recovery tasks;
-11. do not relay; and
-12. stop at **GOAL COMPLETE** without selecting another goal.
+11. release checkout ownership;
+12. do not relay; and
+13. stop at **GOAL COMPLETE** without selecting another goal.
 
 ## Terminal States
 

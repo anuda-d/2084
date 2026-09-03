@@ -17,12 +17,6 @@ living simulation slice began.
 
 Environment: Python 3.13.7.
 
-Command run from the repository root:
-
-```bash
-python3 -m unittest discover -s experiments/tests -p 'test_*.py'
-```
-
 Result before implementation changes: **63 tests passed in 0.109 seconds**.
 There were no initial test failures. The recovered README also referred to
 `./scripts/check.sh`, but that file was absent at the recovered head.
@@ -38,7 +32,7 @@ There were no initial test failures. The recovered README also referred to
 - Physical diary records retain a perspective-bound immutable entry and enforce
   possession and elapsed time.
 - The fixed transcript avoids displaying the raw objective history.
-- Separate deterministic-transition and replay experiments establish useful
+- Separate deterministic-transition and replay checks establish useful
   seed, immutability, and validation-before-mutation examples.
 
 ## Fixed-script behavior to replace at the new seam

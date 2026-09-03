@@ -7,11 +7,15 @@ import fcntl
 import hashlib
 import json
 import os
+import secrets
 import sys
 import tempfile
 import time
 from pathlib import Path
 from typing import Iterator
+
+
+TERMINAL_TASK_STATES = ("completed", "failed", "interrupted")
 
 
 def default_lock_path() -> Path:
@@ -48,8 +52,27 @@ def read_owner(path: Path) -> dict[str, object] | None:
     return record
 
 
-def write_owner(path: Path, task_id: str) -> None:
-    record = {"task_id": task_id, "claimed_at": int(time.time())}
+def write_owner(
+    path: Path,
+    task_id: str,
+    *,
+    recovered_from: str | None = None,
+    verified_terminal_state: str | None = None,
+) -> None:
+    record = {
+        "task_id": task_id,
+        "claimed_at": int(time.time()),
+        "claim_token": secrets.token_hex(16),
+    }
+    if recovered_from is not None:
+        record["recovered_from"] = recovered_from
+        record["verified_terminal_state"] = verified_terminal_state
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def write_record(path: Path, record: dict[str, object]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, path)
@@ -57,6 +80,18 @@ def write_owner(path: Path, task_id: str) -> None:
 
 def recorded_task_id(record: dict[str, object]) -> str:
     return str(record["task_id"])
+
+
+def recorded_claim_token(record: dict[str, object]) -> str:
+    token = record.get("claim_token")
+    if "claim_token" in record:
+        if isinstance(token, str) and token.strip():
+            return token
+        raise ValueError("UNREADABLE_LOCK invalid claim token")
+    claimed_at = record.get("claimed_at")
+    if isinstance(claimed_at, int) and not isinstance(claimed_at, bool):
+        return f"legacy:{claimed_at}"
+    raise ValueError("UNREADABLE_LOCK missing claim token")
 
 
 def current_task_id(explicit_task_id: str | None) -> str:
@@ -70,7 +105,10 @@ def acquire(path: Path, task_id: str) -> int:
     with guarded(path):
         owner = read_owner(path)
         if owner is not None:
-            print(f"HELD_BY {recorded_task_id(owner)}", file=sys.stderr)
+            print(
+                f"HELD_BY {recorded_task_id(owner)} {recorded_claim_token(owner)}",
+                file=sys.stderr,
+            )
             return 1
         write_owner(path, task_id)
     print(f"ACQUIRED {task_id}")
@@ -83,7 +121,7 @@ def status(path: Path) -> int:
     if owner is None:
         print("UNLOCKED")
     else:
-        print(f"HELD {recorded_task_id(owner)}")
+        print(f"HELD {recorded_task_id(owner)} {recorded_claim_token(owner)}")
     return 0
 
 
@@ -96,7 +134,47 @@ def assert_owner(path: Path, task_id: str) -> int:
         if recorded_task_id(owner) != task_id:
             print(f"OWNER_MISMATCH {recorded_task_id(owner)}", file=sys.stderr)
             return 1
-    print(f"OWNERSHIP_CONFIRMED {task_id}")
+        updated = dict(owner)
+        updated["claim_token"] = secrets.token_hex(16)
+        write_record(path, updated)
+        claim_token = str(updated["claim_token"])
+    print(f"OWNERSHIP_CONFIRMED {task_id} {claim_token}")
+    return 0
+
+
+def recover(
+    path: Path,
+    task_id: str,
+    expected_task_id: str,
+    expected_claim_token: str,
+    verified_terminal_state: str,
+) -> int:
+    with guarded(path):
+        owner = read_owner(path)
+        if owner is None:
+            print("NO_OWNER", file=sys.stderr)
+            return 1
+        recorded_owner = recorded_task_id(owner)
+        if recorded_owner != expected_task_id:
+            print(f"EXPECTED_OWNER_MISMATCH {recorded_owner}", file=sys.stderr)
+            return 1
+        recorded_token = recorded_claim_token(owner)
+        if recorded_token != expected_claim_token:
+            print(
+                f"EXPECTED_CLAIM_TOKEN_MISMATCH {recorded_token}",
+                file=sys.stderr,
+            )
+            return 1
+        if recorded_owner == task_id:
+            print("RECOVERY_OWNER_UNCHANGED", file=sys.stderr)
+            return 1
+        write_owner(
+            path,
+            task_id,
+            recovered_from=recorded_owner,
+            verified_terminal_state=verified_terminal_state,
+        )
+    print(f"RECOVERED {recorded_owner} {task_id} {verified_terminal_state}")
     return 0
 
 
@@ -129,6 +207,17 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("acquire", "assert-owner", "release"):
         add_current_task_argument(commands.add_parser(name))
 
+    recover_command = commands.add_parser("recover")
+    add_current_task_argument(recover_command)
+    recover_command.add_argument("--expected-task-id", required=True)
+    recover_command.add_argument("--expected-claim-token", required=True)
+    recover_command.add_argument(
+        "--verified-terminal-state",
+        required=True,
+        choices=TERMINAL_TASK_STATES,
+        help="Terminal latest-turn state verified with read_thread",
+    )
+
     commands.add_parser("status")
     return parser
 
@@ -143,6 +232,14 @@ def main(arguments: list[str] | None = None) -> int:
             return acquire(args.path, task_id)
         if args.command == "assert-owner":
             return assert_owner(args.path, task_id)
+        if args.command == "recover":
+            return recover(
+                args.path,
+                task_id,
+                args.expected_task_id,
+                args.expected_claim_token,
+                args.verified_terminal_state,
+            )
         return release(args.path, task_id)
     except (OSError, ValueError) as error:
         print(f"LOCK_ERROR {error}", file=sys.stderr)

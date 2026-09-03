@@ -198,7 +198,7 @@ Reset the implementation-run counter after recording the reviewed state.
 - `python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted` presents the complete focal-safe thread and explicitly identifies the authored provider-free decision source.
 - Adding `--inspect` reconstructs the exact causal order, and committed recorded-replay evidence reproduces equal summary, events, observations, objective state, inspector history, and decision statuses without another source-client call.
 - Terminal integration evidence reaches exactly minute 1,440 without failure, uses six explicitly triggered Mara decisions and five Mara records, and stays within the 49,152-byte restricted-input and 8,388,608-byte private-record ceilings.
-- `./scripts/check.sh` passes 259 main tests and 63 experiment tests, including exact-boundary, cadence, growth, failure, privacy, completed-scenario, replay, and first-day-v3 regressions.
+- At completion, `./scripts/check.sh` passed every required exact-boundary, cadence, growth, failure, privacy, completed-scenario, replay, and first-day-v3 regression.
 - The implementation remains scenario-local and reuses the existing Mara resolver, inspector, and replay engine without introducing general dialogue, relationship, claim, delivery, or supporting-understanding systems.
 - Simplification candidate: `TransitStatementView.tick`, `location`, and `action_results` remain unused by the deterministic policy and should be removed only if future concrete work proves them unnecessary in its own bounded scope.
 - Independent review: fresh Sol-high read-only whole-goal review found no actionable finding, blocker, or unresolved completion criterion.

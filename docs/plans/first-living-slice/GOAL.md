@@ -1,8 +1,8 @@
 # 2084: First Living Simulation Slice
 
 > Historical implementation brief. The completed reusable engine was later
-> promoted from `experiments/` into the top-level `simulation/`, `policies/`,
-> `scenarios/`, and `observer/` directories. Use the commands in the root
+> promoted into the top-level `simulation/`, `policies/`, `scenarios/`, and
+> `observer/` directories. Use the commands in the root
 > [`README.md`](../../../README.md) rather than the historical paths below. The later
 > [Lie and Doublethink architecture proposal](../LIE_AND_DOUBLETHINK_ARCHITECTURE.md)
 > describes the current deepening direction; it does not retroactively change
@@ -171,25 +171,23 @@ Avoid generic personality matrices, emotional simulations, full natural-language
 The exact filenames may vary, but responsibilities must be separated clearly. A reasonable target structure is:
 
 ```text
-experiments/
-    core/
-        events.py
-        world.py
-        observations.py
-        beliefs.py
-        agents.py
-        actions.py
-        simulation.py
-    policies/
-        focal_policy.py
-        supporting_policy.py
-        institution_policy.py
-    scenarios/
-        first_day.py
-    observer/
-        terminal.py
-        inspector.py
-    tests/
+simulation/
+    events.py
+    world.py
+    observations.py
+    beliefs.py
+    agents.py
+    actions.py
+policies/
+    focal_policy.py
+    supporting_policy.py
+    institution_policy.py
+scenarios/
+    first_day.py
+observer/
+    terminal.py
+    inspector.py
+tests/
 ```
 
 Do not perform a mechanical file split merely to match this tree. Extract responsibilities gradually while preserving behavior and tests.
@@ -348,14 +346,14 @@ Do not introduce distributed execution, background workers, real-time clocks, or
 Provide one documented command, preferably:
 
 ```bash
-python3 -m experiments.scenarios.first_day
+python3 -m scenarios.first_day
 ```
 
 Accept useful optional flags if they remain simple:
 
 ```bash
-python3 -m experiments.scenarios.first_day --seed 42 --ticks 30
-python3 -m experiments.scenarios.first_day --seed 42 --ticks 30 --inspect
+python3 -m scenarios.first_day --seed 42 --ticks 30
+python3 -m scenarios.first_day --seed 42 --ticks 30 --inspect
 ```
 
 Normal output should prioritize watchability. For each meaningful tick, show a compact record such as:
