@@ -5,12 +5,14 @@ These are flexible working principles for coding agents and future contributors.
 ## Before Working
 
 - Start with `docs/plans/CURRENT.md`; it is the compact operational index.
-- Before spawning subagents or changing the repository, follow the no-overlap
-  gate in `docs/main/DEVELOPMENT_LOOP.md` and claim checkout ownership with
+- Read-only work does not require checkout ownership.
+- Immediately before the first repository write, follow the no-overlap gate in
+  `docs/main/DEVELOPMENT_LOOP.md` and claim checkout ownership with
   `python3 scripts/autonomous_loop_lock.py acquire`.
 - The ownership command uses `CODEX_THREAD_ID` automatically.
-  A task must assert ownership before every later mutation phase and release it
-  at every terminal state or immediately before a relay handoff.
+  Assert ownership after any resumed turn and immediately before commit.
+  Release ownership at completion, at any other terminal state, or
+  immediately before a relay handoff.
 - For implementation, confirm that exactly one owner-approved goal is active
   with standing authorization.
 - If no goal is active, stop before implementation unless the owner explicitly
@@ -97,9 +99,10 @@ For now, favor one autonomous focal life, a small living world, understandable a
   Do not call `list_threads` as part of the no-overlap gate.
 - If acquisition reports another owner, inspect only that exact task with
   `read_thread`.
-  Wake that owner to resume or release when its exact terminal state permits,
-  then stop the recovery task.
-  Ownership is never taken over or force-released by a different task.
+  Recover the stale lock only when the exact owner has a terminal latest turn,
+  using `recover --expected-task-id` and the observed claim token with that
+  verified terminal state.
+  Active, unknown, or idle owners awaiting input continue to block recovery.
 - Before implementation, use one to three read-only explorer subagents for
   concrete independent questions.
   The orchestrator is the sole implementation writer.

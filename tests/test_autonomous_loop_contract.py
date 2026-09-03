@@ -133,6 +133,105 @@ class AutonomousLoopContractTests(unittest.TestCase):
                         failures,
                     )
 
+    def test_contract_requires_the_lean_lock_lifecycle(self):
+        lifecycle = (
+            "Read-only work does not require checkout ownership",
+            "Immediately before the first repository write",
+            "Assert ownership after any resumed turn and immediately before commit",
+            "Release ownership at completion",
+            "recover --expected-task-id",
+        )
+
+        for relative_path in CONTRACT_PATHS:
+            text = (ROOT / relative_path).read_text(encoding="utf-8")
+            for requirement in lifecycle:
+                with self.subTest(path=relative_path, requirement=requirement):
+                    self.assertIn(requirement, text)
+
+    def test_contract_requires_assertion_before_commit_and_release_after_handoff(self):
+        root = self.fixture_root()
+        path = root / "docs/main/DEVELOPMENT_LOOP.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace(
+                "9. assert checkout ownership and create one local commit;",
+                "9. create one local commit;",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = repository_contract_failures(root)
+
+        self.assertTrue(any("ordered lifecycle token" in failure for failure in failures))
+
+    def test_contract_requires_release_on_each_owned_terminal_path(self):
+        removals = (
+            "11. release checkout ownership;",
+            "If the current task owns checkout ownership, release it after writing the\n  blocked handoff and before stopping.",
+            "If the current task owns checkout ownership, release it after writing the\nhandoff and before stopping.",
+            "write the handoff, release ownership if the\ncurrent task owns the record, and do not relay.",
+        )
+        for removal in removals:
+            with self.subTest(removal=removal):
+                root = self.fixture_root()
+                path = root / "docs/main/DEVELOPMENT_LOOP.md"
+                text = path.read_text(encoding="utf-8")
+                path.write_text(text.replace(removal, "", 1), encoding="utf-8")
+
+                failures = repository_contract_failures(root)
+
+                self.assertTrue(any("ordered lifecycle token" in failure for failure in failures))
+
+        root = self.fixture_root()
+        path = root / "docs/main/DEVELOPMENT_LOOP.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace(
+                "If the current task owns checkout ownership, release it after writing the\nhandoff and before stopping.",
+                "",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = repository_contract_failures(root)
+
+        self.assertTrue(any("ordered lifecycle token" in failure for failure in failures))
+
+    def test_contract_rejects_relocated_normal_commit_lifecycle(self):
+        root = self.fixture_root()
+        path = root / "docs/main/DEVELOPMENT_LOOP.md"
+        text = path.read_text(encoding="utf-8")
+        sequence = (
+            "9. assert checkout ownership and create one local commit;\n"
+            "10. write the temporary handoff with `No next unit selected`;\n"
+            "11. assert checkout ownership, release checkout ownership, and enter\n"
+            "    handoff-only state;"
+        )
+        self.assertIn(sequence, text)
+        path.write_text(text.replace(sequence, "", 1) + "\n" + sequence, encoding="utf-8")
+
+        failures = repository_contract_failures(root)
+
+        self.assertTrue(any("Accept, Commit, Hand Off, Relay" in failure for failure in failures))
+
+        root = self.fixture_root()
+        path = root / "docs/main/DEVELOPMENT_LOOP.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            text.replace(
+                "11. assert checkout ownership, release checkout ownership, and enter",
+                "11. enter",
+                1,
+            ),
+            encoding="utf-8",
+        )
+
+        failures = repository_contract_failures(root)
+
+        self.assertTrue(any("ordered lifecycle token" in failure for failure in failures))
+
     def test_obsolete_same_task_and_takeover_rules_are_rejected(self):
         for relative_path in CONTRACT_PATHS:
             for rule in OBSOLETE_RULES:

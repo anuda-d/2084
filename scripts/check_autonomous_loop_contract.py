@@ -17,9 +17,13 @@ COMMON_REQUIREMENTS = (
     "No next unit selected",
     "fresh successor task",
     "autonomous_loop_lock.py acquire",
+    "Read-only work does not require checkout ownership",
+    "Immediately before the first repository write",
+    "Assert ownership after any resumed turn and immediately before commit",
+    "Release ownership at completion",
+    "recover --expected-task-id",
     "unscoped Codex task listing is not an ownership precondition",
     "Do not call `list_threads` as part of the no-overlap gate",
-    "Ownership is never taken over or force-released",
     "read_thread",
     "gpt-5.6-terra",
     "gpt-5.6-sol",
@@ -30,6 +34,9 @@ OBSOLETE_RULES = (
     "`get_goal`",
     "`update_goal`",
     "--verified-inactive",
+    "Before any subagent spawn or repository change",
+    "Before every later repository mutation phase",
+    "Ownership is never taken over or force-released",
     "full task-list page",
     "installed `$unlazy`",
 )
@@ -60,9 +67,45 @@ def reject_tokens(path: Path, tokens: tuple[str, ...]) -> list[str]:
     return [f"{path}: retained obsolete {token!r}" for token in tokens if token in text]
 
 
+def ordered_tokens(label: str, text: str, tokens: tuple[str, ...]) -> list[str]:
+    failures: list[str] = []
+    offset = 0
+    for token in tokens:
+        position = text.find(token, offset)
+        if position < 0:
+            failures.append(f"{label}: missing ordered lifecycle token {token!r}")
+            continue
+        offset = position + len(token)
+    return failures
+
+
+def require_order(path: Path, tokens: tuple[str, ...]) -> list[str]:
+    return ordered_tokens(str(path), path.read_text(encoding="utf-8"), tokens)
+
+
+def require_section_order(
+    path: Path,
+    heading: str,
+    tokens: tuple[str, ...],
+) -> list[str]:
+    text = path.read_text(encoding="utf-8")
+    body = section(text, heading)
+    if body is None:
+        return [f"{path}: missing section {heading!r}"]
+    return ordered_tokens(f"{path} [{heading}]", body, tokens)
+
+
 def section(text: str, heading: str) -> str | None:
     matches = re.findall(
         rf"(?ms)^## {re.escape(heading)}[ \t]*\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return matches[0] if len(matches) == 1 else None
+
+
+def subsection(text: str, heading: str) -> str | None:
+    matches = re.findall(
+        rf"(?ms)^### {re.escape(heading)}[ \t]*\n(.*?)(?=^### |^## |\Z)",
         text,
     )
     return matches[0] if len(matches) == 1 else None
@@ -325,6 +368,11 @@ def repository_contract_failures(root: Path = ROOT) -> list[str]:
                 "CODEX_THREAD_ID",
                 "MISSING_TASK_ID",
                 "assert-owner",
+                "recover",
+                "verified-terminal-state",
+                "expected-claim-token",
+                "EXPECTED_OWNER_MISMATCH",
+                "EXPECTED_CLAIM_TOKEN_MISMATCH",
                 "release",
                 "HELD_BY",
                 "UNREADABLE_LOCK",
@@ -332,6 +380,80 @@ def repository_contract_failures(root: Path = ROOT) -> list[str]:
         )
     )
     failures.extend(reject_tokens(lock_path, ("takeover", "verified_inactive")))
+    development_loop = root / "docs/main/DEVELOPMENT_LOOP.md"
+    failures.extend(
+        require_order(
+            development_loop,
+            (
+                "Read-only work does not require checkout ownership.",
+                "Immediately before the first repository write",
+                "Assert ownership after any resumed turn and immediately before commit",
+                "Release ownership at completion",
+            ),
+        )
+    )
+    failures.extend(
+        require_section_order(
+            development_loop,
+            "Owner Decision Boundary",
+            (
+                "write the handoff, release ownership if the",
+                "current task owns the record, and do not relay.",
+            ),
+        )
+    )
+    failures.extend(
+        require_section_order(
+            development_loop,
+            "Blocked Units",
+            (
+                "For an unsafe baseline or overlap",
+                "release it after writing the\n  blocked handoff and before stopping.",
+            ),
+        )
+    )
+    failures.extend(
+        require_section_order(
+            development_loop,
+            "Owner Pause or Stop",
+            (
+                "write a handoff, and stop.",
+                "release it after writing the\nhandoff and before stopping.",
+            ),
+        )
+    )
+    failures.extend(
+        require_section_order(
+            development_loop,
+            "Goal Completion",
+            (
+                "assert checkout ownership and create the final local commit;",
+                "write the final handoff using the captured completing goal id;",
+                "release checkout ownership;",
+            ),
+        )
+    )
+    development_text = development_loop.read_text(encoding="utf-8")
+    accept_body = subsection(
+        development_text,
+        "7. Accept, Commit, Hand Off, Relay, and Stop",
+    )
+    if accept_body is None:
+        failures.append(
+            f"{development_loop}: missing accept/commit/relay subsection"
+        )
+    else:
+        failures.extend(
+            ordered_tokens(
+                f"{development_loop} [Accept, Commit, Hand Off, Relay, and Stop]",
+                accept_body,
+                (
+                    "assert checkout ownership and create one local commit;",
+                    "write the temporary handoff with `No next unit selected`;",
+                    "assert checkout ownership, release checkout ownership, and enter",
+                ),
+            )
+        )
     failures.extend(current_state_failures(root))
     return failures
 
