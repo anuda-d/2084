@@ -10,9 +10,9 @@ sequence.
 ## Run State
 
 - Incomplete run: none
-- Last completed run: ST-8 provider-free scripted social presentation (2026-09-02)
-- Verified implementation runs since alignment: 2
-- Alignment due: no
+- Last completed run: ST-9 complete social inspector and recorded replay evidence (2026-09-02)
+- Verified implementation runs since alignment: 3
+- Alignment due: yes
 
 ## Goal Progress
 
@@ -26,12 +26,23 @@ sequence.
 | ST-6 World consequence | met | The world independently validates and resolves Mara's response into an ordinary consequence distinct from testimony and choice. |
 | ST-7 Counterfactual evidence | met | Separate deterministic counterfactuals remove Ilan's source evidence and physical eligibility and stop the chain at the correct boundary. |
 | ST-8 Provider-free watchability | met | A documented provider-free run presents the complete focal-safe thread, response, consequence, and compact quiet spans. |
-| ST-9 Inspection and reproduction | open | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
+| ST-9 Inspection and reproduction | met | Inspector and recorded playback retain and reproduce the exact ordered causal chain without another provider call. |
 | ST-10 Integration | open | Exact-day, cadence, growth, failure, privacy, regression, and full offline checks remain passing. |
 
 This table does not prescribe criterion order or future work units.
 
 ## Verified Implementation Runs
+
+### 2026-09-02 - ST-9 complete social inspector and recorded replay
+
+- Status: verified; ST-9 is met.
+- The provider-free scripted inspector reconstructs the objective transit change, Ilan's delivered source observation, his triggered deterministic decision, statement attempt and validated result, Mara's testimony delivery and understanding update, her testimony-triggered travel attempt, and the world's later arrival consequence.
+- Committed evidence asserts the exact scheduled-world, observation-delivery, decision, understanding-update, and action-completion timeline across dispatch sequences 5 through 11, including both consumed decisions and intra-dispatch attempt-before-result ordering.
+- Sealed source decision records replay through `MaraHarness.from_recorded_archive` with equal day summary, ordered events, observations, objective state, complete inspector history, and sanitized decision-status sequence while the source deterministic client's call count remains unchanged.
+- The README documents `python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted --inspect` as the provider-free command for the complete causal record.
+- Focused evidence: `python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_social_thread_inspector_and_recorded_replay_reconstruct_exact_chain` and the documented scripted inspector command.
+- Regression evidence: `./scripts/check.sh` passes the complete offline repository suite.
+- Independent review: fresh Sol-high read-only review found that the initial sorted sequence check omitted both decisions and allowed same-dispatch reversal, then confirmed the exact executed-work timeline, decision mappings, event order, and identity links and reported no remaining actionable or blocking findings.
 
 ### 2026-09-02 - ST-8 provider-free scripted social presentation
 
@@ -150,7 +161,7 @@ If no honest work unit advances the goal, make no implementation change.
 ## Current Run
 
 None.
-The latest completed run verified the ST-8 provider-free social presentation without selecting later work.
+The latest completed run verified the ST-9 complete inspector and recorded replay evidence without selecting later work.
 
 ## Completion Rules
 

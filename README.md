@@ -131,6 +131,7 @@ python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted
 The transcript explicitly identifies the deterministic scripted decision source.
 It shows only what Mara encounters, her ordinary attempted actions, and consequences admitted by the world.
 It does not present the authored comparison as a live or emergent choice.
+Add `--inspect` to the same command to reconstruct the complete provider-free causal chain, including Ilan's source observation and bounded choice, statement validation, testimony delivery, Mara's decision, and the resulting world resolution.
 
 Its live path is separately explicit and uses the same externally configured private-IP Ollama boundary:
 

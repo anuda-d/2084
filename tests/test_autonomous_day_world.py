@@ -3076,6 +3076,267 @@ class AutonomousDayWorldTests(unittest.TestCase):
             [record.model_input for record in source.private_decision_records],
         )
 
+    def test_social_thread_inspector_and_recorded_replay_reconstruct_exact_chain(
+        self,
+    ):
+        source_client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace obligation is due",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at the workplace",
+                "decision_reason": "arrival needs no further action",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after hearing Ilan",
+                "decision_reason": "the testimony creates a travel choice",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at home",
+                "decision_reason": "arrival needs no further action",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the home bulletin",
+                "decision_reason": "the bulletin needs no further action",
+            },
+        )
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="social-thread-recorded-replay-source",
+            ),
+        )
+
+        source_summary = source.run()
+        source_inspector = autonomous_day_inspector_data(source, source_summary)
+        events = source_inspector["history"]["events"]
+        observations = source_inspector["history"]["observations"]
+        results = source_inspector["history"]["action_results"]
+        transit_change = next(
+            event for event in events if event["kind"] == "transit_service_changed"
+        )
+        ilan_source = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == ILAN_ID
+        )
+        statement_attempt = next(
+            event
+            for event in events
+            if event["actor_id"] == ILAN_ID
+            and event["kind"] == "action_attempted"
+            and event["details"]["action_kind"] == "speak"
+        )
+        statement = next(
+            event
+            for event in events
+            if event["actor_id"] == ILAN_ID
+            and event["kind"] == "statement_completed"
+        )
+        statement_result = next(
+            result
+            for result in results
+            if result["actor_id"] == ILAN_ID
+            and result["action_kind"] == "speak"
+        )
+        testimony = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == MARA_ID
+            and observation["details"].get("evidence_kind")
+            == "social_testimony"
+        )
+        transition = next(
+            item
+            for item in source_inspector["history"]["understanding_transitions"]
+            if item["source_observation_id"] == testimony["observation_id"]
+        )
+        mara_response = next(
+            event
+            for event in events
+            if event["actor_id"] == MARA_ID
+            and event["kind"] == "action_attempted"
+            and event["tick"] == 511
+        )
+        mara_consequence = next(
+            event
+            for event in events
+            if event["actor_id"] == MARA_ID
+            and event["kind"] == "travel_completed"
+            and event["caused_by"] == [mara_response["event_id"]]
+        )
+        mara_result = next(
+            result
+            for result in results
+            if result["action_id"] == mara_response["action_id"]
+        )
+
+        self.assertEqual(ilan_source["event_id"], transit_change["event_id"])
+        self.assertEqual(statement["caused_by"], [statement_attempt["event_id"]])
+        self.assertEqual(
+            statement["details"]["evidence_observation_id"],
+            ilan_source["observation_id"],
+        )
+        self.assertEqual(statement_result["status"], "completed")
+        self.assertEqual(
+            statement_result["attempt_event_id"], statement_attempt["event_id"]
+        )
+        self.assertEqual(statement_result["outcome_event_id"], statement["event_id"])
+        self.assertEqual(testimony["event_id"], statement["event_id"])
+        self.assertEqual(testimony["delivery_tick"], 511)
+        self.assertEqual(transition["tick"], 511)
+        self.assertEqual(mara_response["details"]["action_kind"], "travel")
+        self.assertEqual(mara_consequence["tick"], 541)
+        self.assertEqual(mara_consequence["details"]["destination"], "home")
+        self.assertEqual(mara_result["status"], "completed")
+        self.assertEqual(
+            mara_result["attempt_event_id"], mara_response["event_id"]
+        )
+        self.assertEqual(
+            mara_result["outcome_event_id"], mara_consequence["event_id"]
+        )
+        decisions = source_inspector["runtime"]["consumed_decisions"]
+        ilan_decision = next(
+            decision
+            for decision in decisions
+            if decision["actor_id"] == ILAN_ID
+            and decision["due_time"]["total_minutes"] == 510
+        )
+        mara_decision = next(
+            decision
+            for decision in decisions
+            if decision["actor_id"] == MARA_ID
+            and decision["due_time"]["total_minutes"] == 511
+        )
+        self.assertEqual(
+            ilan_decision["triggers"][0]["source_id"],
+            ilan_source["observation_id"],
+        )
+        self.assertEqual(
+            mara_decision["triggers"][0]["source_id"],
+            testimony["observation_id"],
+        )
+        executed_by_item_id = {
+            work["item_id"]: work
+            for work in source_inspector["runtime"]["executed_work"]
+        }
+        ilan_decision_dispatch = executed_by_item_id[
+            ilan_decision["scheduled_work_id"]
+        ]
+        mara_decision_dispatch = executed_by_item_id[
+            mara_decision["scheduled_work_id"]
+        ]
+        self.assertEqual(
+            [
+                (
+                    work["sequence"],
+                    work["due_time"]["total_minutes"],
+                    work["phase"],
+                    work["kind"],
+                )
+                for work in source_inspector["runtime"]["executed_work"]
+                if 5 <= work["sequence"] <= 11
+            ],
+            [
+                (5, 510, "scheduled_world", "autonomous_day_institutional_service_change"),
+                (
+                    6,
+                    510,
+                    "observation_delivery",
+                    "autonomous_day_ilan_transit_observation_delivery",
+                ),
+                (7, 510, "decision", "decision_eligibility"),
+                (
+                    8,
+                    511,
+                    "observation_delivery",
+                    "autonomous_day_ilan_testimony_delivery",
+                ),
+                (
+                    9,
+                    511,
+                    "understanding_update",
+                    "autonomous_day_mara_testimony_understanding_update",
+                ),
+                (10, 511, "decision", "decision_eligibility"),
+                (
+                    11,
+                    541,
+                    "action_completion",
+                    "autonomous_day_mara_travel_completion",
+                ),
+            ],
+        )
+        self.assertEqual(transit_change["dispatch"]["sequence"], 5)
+        self.assertEqual(ilan_source["dispatch"]["sequence"], 6)
+        self.assertEqual(ilan_decision_dispatch["sequence"], 7)
+        ilan_artifact_dispatch = {"sequence": 7, "phase": "decision"}
+        self.assertEqual(statement_attempt["dispatch"], ilan_artifact_dispatch)
+        self.assertEqual(statement["dispatch"], ilan_artifact_dispatch)
+        self.assertEqual(statement_result["dispatch"], ilan_artifact_dispatch)
+        self.assertLess(events.index(statement_attempt), events.index(statement))
+        self.assertEqual(testimony["dispatch"]["sequence"], 8)
+        self.assertEqual(transition["dispatch"]["sequence"], 9)
+        self.assertEqual(mara_decision_dispatch["sequence"], 10)
+        mara_artifact_dispatch = {"sequence": 10, "phase": "decision"}
+        self.assertEqual(mara_response["dispatch"], mara_artifact_dispatch)
+        self.assertEqual(mara_consequence["dispatch"]["sequence"], 11)
+        self.assertEqual(mara_result["dispatch"]["sequence"], 11)
+        testimony_decision_status = next(
+            item
+            for item in source_inspector["model_path"]["decision_status_sequence"]
+            if item["tick"] == 511
+        )
+        self.assertEqual(testimony_decision_status["status"], "selected")
+        self.assertEqual(testimony_decision_status["validation_status"], "accepted")
+        self.assertEqual(testimony_decision_status["resolution_status"], "completed")
+        self.assertEqual(testimony_decision_status["resolved_tick"], 541)
+        self.assertEqual(
+            testimony_decision_status["dispatch"], mara_artifact_dispatch
+        )
+
+        source_call_count = len(source_client.inputs)
+        integrity_key = b"social-thread-replay-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+        )
+        replay_summary = replay.run()
+        replay_inspector = autonomous_day_inspector_data(replay, replay_summary)
+
+        self.assertEqual(len(source_client.inputs), source_call_count)
+        self.assertEqual(replay_summary.to_data(), source_summary.to_data())
+        self.assertEqual(replay.events, source.events)
+        self.assertEqual(replay.observations, source.observations)
+        self.assertEqual(
+            replay_inspector["objective_state"],
+            source_inspector["objective_state"],
+        )
+        self.assertEqual(replay_inspector["history"], source_inspector["history"])
+        self.assertEqual(
+            replay_inspector["model_path"]["decision_status_sequence"],
+            source_inspector["model_path"]["decision_status_sequence"],
+        )
+
     def test_recorded_safe_failure_decisions_replay_complete_autonomous_day_without_provider_calls(
         self,
     ):
