@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; conflict, obligation, physical-transit, and tradeoff boundaries accepted.
+Status: active; conflict, obligation, physical-transit, tradeoff, and follow-through boundaries accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 1
-- Last completed implementation run: consequential-choice tradeoff timing (CC-3)
+- Verified implementation runs since alignment: 2
+- Last completed implementation run: consequence delivery and follow-through (CC-7)
 - Last whole-goal alignment: 2026-09-06 after b2fda19
 
 Whole-goal alignment is current as of b2fda19.
@@ -41,7 +41,7 @@ The alignment record does not count as an implementation unit or claim product p
 | CC-4 Autonomous choice | unverified | Restricted model input leads to one of the documented competing-obligation alternatives without a prescribed branch. |
 | CC-5 Physical transit effect | accepted | Equivalent action paths under different actual service conditions cross the household deadline and change its outcome. |
 | CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
-| CC-7 Follow-through | unverified | Delivered consequences enter Mara's subsequent legitimate decision opportunity. |
+| CC-7 Follow-through | accepted | Mara receives a delivered missed-obligation result and a later legitimate decision opportunity that retains the conflict. |
 | CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
 | CC-9 Provider-free watchability | unverified | A documented focal-safe offline run makes the complete interaction understandable. |
 | CC-10 Inspection and replay | unverified | Ordered causal inspection and recorded playback reconstruct the complete chain. |
@@ -95,6 +95,51 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Consequence delivery and follow-through
+
+Criterion and claim: CC-7 gains an opt-in, finite delivery path for Mara's own
+missed obligation outcome, which creates a later eligible decision opportunity
+without interrupting a pending action.
+
+Observed evidence: after the minute-511 conflicting-account decision, the
+authored workplace-work branch fulfills workplace work at minute 631.
+The world records the missed household obligation at minute 632, then delivers
+an observation source-linked to that exact append-only event.
+Mara's minute-632 restricted input contains the delivered missed outcome, the
+remaining household obligation, and both reciprocal conflicting transit claims.
+It contains neither institutional records nor objective transit-status fields.
+The authored client chooses an ordinary wait at that follow-through decision.
+A separate path delivers a household miss at minute 630 while workplace work
+is pending, creates no mid-action decision, and retains the observation for
+the minute-631 action-result decision.
+
+Interpretation: the result remains a distinct world-resolved fact until its
+separate actor-safe delivery.
+It does not fabricate an action result for an obligation miss, expose hidden
+transit truth, force a repair, or interrupt an accepted action.
+
+Files: `scenarios/autonomous_day.py`, focused autonomous-day tests, README
+configuration guidance, and this operational evidence record.
+
+Validation: all 59 `tests.test_autonomous_day_world` tests passed.
+The normal and inspector autonomous-day commands reached the exact 24-hour
+boundary.
+`./scripts/check.sh` passed all 292 offline tests and `git diff --check`
+passed.
+
+Explorer and review: three fresh Terra-high read-only explorers examined
+delivery causality, restricted-input privacy, and temporal/replay boundaries.
+A fresh Sol-high review found no actionable blocker and independently reran
+the focused and full checks, scenario commands, and diff validation.
+
+Risks and unresolved assumptions: this provider-free delivery evidence does
+not yet establish full causal comparisons, recorded replay of the complete
+chain, a reviewed live-model day, or a broader obligation-notification system.
+The delivery channel remains a finite scenario-local personal schedule.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
 
 ### 2026-09-06 - Consequential-choice tradeoff timing
 

@@ -104,7 +104,11 @@ The official notice is published through the transit authority's Official Record
 The opt-in `include_deadline_governed_obligation_outcomes=True` configuration adds authored 10:31 workplace and 10:30 household deadlines.
 It records a fulfilled or missed objective outcome only from matching completed activity at the required location, with an exact-deadline completion counted as missed.
 A fulfilled outcome retains the existing actor-safe completed-action result and continuity requirement for Mara's next selected decision.
-A missed outcome remains inspector-only until a later legitimate delivery path is configured.
+A missed outcome remains inspector-only unless
+`include_obligation_outcome_delivery=True` is also configured.
+That opt-in delivers only Mara's own missed-obligation result through her
+personal obligation schedule, requests a later decision only when she is not
+busy, and never reveals objective transit state.
 
 The separate opt-in `include_consequential_choice_tradeoff_timing=True` profile requires deadline outcomes and exposes Mara's finite, authored obligation schedule in her restricted input.
 It sets both deadlines to 10:32, so a deterministic authored comparison can choose either post-testimony workplace work or homeward travel followed by household activity without changing the existing physical-transit profile.

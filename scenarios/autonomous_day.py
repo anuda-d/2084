@@ -78,6 +78,9 @@ _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
 _MARA_HOUSEHOLD_COMPLETION = "autonomous_day_mara_household_completion"
 _MARA_OBLIGATION_DEADLINE = "autonomous_day_mara_obligation_deadline"
+_MARA_OBLIGATION_OUTCOME_DELIVERY = (
+    "autonomous_day_mara_obligation_outcome_delivery"
+)
 _INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
@@ -276,6 +279,7 @@ def build_autonomous_day(
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
     include_deadline_governed_obligation_outcomes: bool = False,
+    include_obligation_outcome_delivery: bool = False,
     include_consequential_choice_tradeoff_timing: bool = False,
     include_service_dependent_travel: bool = False,
     homeward_travel_service_recovery_minute: int | None = None,
@@ -300,6 +304,13 @@ def build_autonomous_day(
         raise TypeError(
             "include_deadline_governed_obligation_outcomes must be boolean"
         )
+    if not isinstance(include_obligation_outcome_delivery, bool):
+        raise TypeError("include_obligation_outcome_delivery must be boolean")
+    if (
+        include_obligation_outcome_delivery
+        and not include_deadline_governed_obligation_outcomes
+    ):
+        raise ValueError("obligation outcome delivery requires deadline outcomes")
     if not isinstance(include_consequential_choice_tradeoff_timing, bool):
         raise TypeError("include_consequential_choice_tradeoff_timing must be boolean")
     if (
@@ -404,6 +415,7 @@ def build_autonomous_day(
         for deadline in configured_obligation_deadlines
     }
     obligation_outcomes: dict[str, Event] = {}
+    obligation_outcome_delivery_events: dict[str, Event] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
         int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
@@ -1084,6 +1096,74 @@ def build_autonomous_day(
             },
         )
         obligation_outcomes[deadline.obligation] = missed
+        if include_obligation_outcome_delivery:
+            delivery_item_id = (
+                f"mara-obligation-outcome-delivery-{missed.event_id}"
+            )
+            obligation_outcome_delivery_events[delivery_item_id] = missed
+            context.schedule(
+                ScheduledWork(
+                    item_id=delivery_item_id,
+                    due_time=context.current,
+                    phase=TemporalPhase.OBSERVATION_DELIVERY,
+                    kind=_MARA_OBLIGATION_OUTCOME_DELIVERY,
+                )
+            )
+
+    def deliver_mara_obligation_outcome(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Deliver Mara's own deadline result without exposing world state."""
+
+        if work.due_time != context.current:
+            raise RuntimeError("obligation outcome delivery released at the wrong time")
+        missed = obligation_outcome_delivery_events[work.item_id]
+        if (
+            missed.kind != "obligation_missed"
+            or missed.actor_id != MARA_ID
+            or missed.tick != context.current.total_minutes
+        ):
+            raise RuntimeError("obligation outcome source is invalid")
+        obligation = missed.details.get("obligation")
+        deadline_tick = missed.details.get("deadline_tick")
+        required_action_kind = missed.details.get("required_action_kind")
+        required_location = missed.details.get("required_location")
+        if (
+            not isinstance(obligation, str)
+            or not isinstance(deadline_tick, int)
+            or not isinstance(required_action_kind, str)
+            or not isinstance(required_location, str)
+        ):
+            raise RuntimeError("obligation outcome source lacks safe details")
+        mara = world.agents[MARA_ID]
+        observation = event_log.deliver(
+            agent_id=mara.agent_id,
+            event_id=missed.event_id,
+            source="Mara's personal obligation schedule",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "obligation_outcome",
+                "obligation": obligation,
+                "outcome": "missed",
+                "deadline_tick": deadline_tick,
+                "required_action_kind": required_action_kind,
+                "required_location": required_location,
+            },
+        )
+        mara.observations.append(observation)
+        if (
+            MARA_ID not in pending_actions
+            and (on_mara_decision is not None or mara_harness is not None)
+        ):
+            context.request_decision(
+                actor_id=mara.agent_id,
+                due_time=context.current,
+                trigger=DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=observation.observation_id,
+                ),
+            )
 
     def complete_mara_work(
         work: ScheduledWork,
@@ -1949,6 +2029,7 @@ def build_autonomous_day(
             _MARA_WORK_COMPLETION: complete_mara_work,
             _MARA_HOUSEHOLD_COMPLETION: complete_mara_household,
             _MARA_OBLIGATION_DEADLINE: resolve_mara_obligation_deadline,
+            _MARA_OBLIGATION_OUTCOME_DELIVERY: deliver_mara_obligation_outcome,
         },
         decision_handler=dispatch_actor_decision,
         model_backed_actor_ids=(MARA_ID,),
@@ -2161,6 +2242,16 @@ def render_autonomous_day(
                     observation_order_by_id[observation.observation_id],
                     f'{delivered_at.label} | Ilan told Mara in person: "'
                     f'{observation.details["proposition"].capitalize()}."',
+                )
+            )
+        elif observation.details.get("evidence_kind") == "obligation_outcome":
+            focal_updates.append(
+                (
+                    delivered_at,
+                    int(TemporalPhase.OBSERVATION_DELIVERY),
+                    observation_order_by_id[observation.observation_id],
+                    f"{delivered_at.label} | Mara learned that "
+                    f"{observation.details['obligation']} was missed.",
                 )
             )
     current_visible_time = summary.start

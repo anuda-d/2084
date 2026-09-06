@@ -2156,6 +2156,205 @@ class AutonomousDayWorldTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
             build_autonomous_day(include_consequential_choice_tradeoff_timing=True)
 
+    def test_obligation_outcome_delivery_requires_deadline_outcomes(self):
+        with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
+            build_autonomous_day(include_obligation_outcome_delivery=True)
+
+    def test_delivered_missed_obligation_preserves_conflict_for_follow_through(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the workplace shift",
+                "decision_reason": "the known shift deadline is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after workplace work",
+                "decision_reason": "the immediate activity is complete",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after learning the household result",
+                "decision_reason": "the missed household time is now known",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="consequential-choice-follow-through-test",
+            ),
+            include_conflicting_transit_accounts=True,
+            include_deadline_governed_obligation_outcomes=True,
+            include_obligation_outcome_delivery=True,
+            include_consequential_choice_tradeoff_timing=True,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        missed = next(
+            event
+            for event in day.events
+            if event.kind == "obligation_missed"
+            and event.details["obligation"] == "household time"
+        )
+        outcome_observation = next(
+            observation
+            for observation in day.world.agents[MARA_ID].observations
+            if observation.details.get("evidence_kind") == "obligation_outcome"
+        )
+        self.assertEqual(outcome_observation.event_id, missed.event_id)
+        self.assertEqual(outcome_observation.delivery_tick, 632)
+        self.assertEqual(
+            dict(outcome_observation.details),
+            {
+                "evidence_kind": "obligation_outcome",
+                "obligation": "household time",
+                "outcome": "missed",
+                "deadline_tick": 632,
+                "required_action_kind": "household",
+                "required_location": "home",
+            },
+        )
+
+        follow_through = client.inputs[-1]
+        self.assertEqual(follow_through["tick"], 632)
+        self.assertIn(
+            {
+                "observation_id": outcome_observation.observation_id,
+                "agent_id": MARA_ID,
+                "event_id": missed.event_id,
+                "source": "Mara's personal obligation schedule",
+                "delivery_tick": 632,
+                "details": dict(outcome_observation.details),
+            },
+            follow_through["delivered_observations"],
+        )
+        self.assertEqual(
+            follow_through["state"]["obligations"], ["household time"]
+        )
+        claims = follow_through["understanding"]["interpreted_claims"]
+        self.assertEqual({claim["asserted_value"] for claim in claims}, {0, 1})
+        self.assertTrue(all(claim["conflicts_with"] for claim in claims))
+        private_input = json.dumps(follow_through, sort_keys=True)
+        self.assertNotIn("institution_records", follow_through)
+        self.assertNotIn("current_status", private_input)
+        self.assertNotIn("service_status_at_departure", private_input)
+
+        delivered_decision = next(
+            decision
+            for decision in summary.consumed_decisions
+            if decision.actor_id == MARA_ID
+            and decision.due_time == SimulatedTime(632)
+        )
+        self.assertEqual(
+            delivered_decision.triggers,
+            (
+                DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=outcome_observation.observation_id,
+                ),
+            ),
+        )
+        normal_output = render_autonomous_day(day, summary)
+        self.assertIn(
+            "Day 0 10:32 | Mara learned that household time was missed.",
+            normal_output,
+        )
+
+    def test_obligation_outcome_delivery_does_not_interrupt_pending_activity(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "begin workplace work before its deadline",
+                "decision_reason": "the workplace obligation remains current",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the world resolves the work",
+                "decision_reason": "the delivered consequence can inform a pause",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="obligation-outcome-pending-activity-test",
+            ),
+            include_conflicting_transit_accounts=True,
+            include_deadline_governed_obligation_outcomes=True,
+            include_obligation_outcome_delivery=True,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        household_observation = next(
+            observation
+            for observation in day.world.agents[MARA_ID].observations
+            if observation.details.get("evidence_kind") == "obligation_outcome"
+            and observation.details["obligation"] == "household time"
+        )
+        self.assertEqual(household_observation.delivery_tick, 630)
+        self.assertNotIn(630, [model_input["tick"] for model_input in client.inputs])
+        self.assertEqual(client.inputs[-1]["tick"], 631)
+        self.assertIn(
+            household_observation.observation_id,
+            {
+                observation["observation_id"]
+                for observation in client.inputs[-1]["delivered_observations"]
+            },
+        )
+        self.assertFalse(
+            any(
+                decision.actor_id == MARA_ID
+                and decision.due_time == SimulatedTime(630)
+                for decision in summary.consumed_decisions
+            )
+        )
+
     def test_service_change_during_travel_does_not_retime_departure_snapshot(self):
         client = _SequenceClient(
             {
