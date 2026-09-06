@@ -1584,6 +1584,267 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertNotIn("Ilan", normal_output)
         self.assertNotIn("event-", normal_output)
 
+    def test_opt_in_deadline_outcomes_require_matching_completed_activity(self):
+        cases = (
+            (
+                "household",
+                (
+                    {
+                        "kind": "household",
+                        "parameters": {},
+                        "explanation": "complete household time at home",
+                        "decision_reason": "household time is available here",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after household time",
+                        "decision_reason": "the activity completed",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after the bulletin",
+                        "decision_reason": "the observation adds no action",
+                    },
+                ),
+                "household time",
+                "household",
+                "home",
+                480,
+                630,
+            ),
+            (
+                "work",
+                (
+                    {
+                        "kind": "travel",
+                        "parameters": {"destination": "workplace"},
+                        "explanation": "travel to the workplace",
+                        "decision_reason": "the workplace is reachable",
+                    },
+                    {
+                        "kind": "work",
+                        "parameters": {},
+                        "explanation": "complete the workplace shift",
+                        "decision_reason": "work is available here",
+                    },
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "pause after work",
+                        "decision_reason": "the shift completed",
+                    },
+                ),
+                "workplace shift",
+                "work",
+                "workplace",
+                570,
+                631,
+            ),
+        )
+
+        for (
+            name,
+            responses,
+            obligation,
+            action_kind,
+            location,
+            completion_tick,
+            deadline_tick,
+        ) in cases:
+            with self.subTest(activity=name):
+                day = build_autonomous_day(
+                    seed=42,
+                    mara_harness=MaraHarness.from_client(
+                        _SequenceClient(*responses),
+                        configuration_id=f"deadline-obligation-{name}-test",
+                    ),
+                    include_deadline_governed_obligation_outcomes=True,
+                )
+
+                summary = day.run()
+
+                self.assertTrue(summary.reached_end_boundary)
+                activity = next(
+                    event
+                    for event in day.events
+                    if event.actor_id == MARA_ID
+                    and event.kind
+                    == (
+                        "work_completed"
+                        if action_kind == "work"
+                        else "household_time_completed"
+                    )
+                )
+                fulfilled = next(
+                    event
+                    for event in day.events
+                    if event.kind == "obligation_fulfilled"
+                    and event.details["obligation"] == obligation
+                )
+                self.assertEqual(activity.tick, completion_tick)
+                self.assertEqual(fulfilled.tick, completion_tick)
+                self.assertEqual(fulfilled.action_id, activity.action_id)
+                self.assertEqual(fulfilled.caused_by, (activity.event_id,))
+                self.assertEqual(
+                    dict(fulfilled.details),
+                    {
+                        "obligation": obligation,
+                        "required_action_kind": action_kind,
+                        "required_location": location,
+                        "deadline_tick": deadline_tick,
+                        "location_at_resolution": location,
+                    },
+                )
+                self.assertNotIn(obligation, day.world.agents[MARA_ID].obligations)
+
+    def test_deadline_miss_precedes_activity_completing_at_exact_boundary(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait for the transit accounts",
+                "decision_reason": "no work begins yet",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "begin workplace work after the testimony",
+                "decision_reason": "work remains available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the physical work completes",
+                "decision_reason": "the action result arrived",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deadline-exact-boundary-test",
+            ),
+            include_deadline_governed_obligation_outcomes=True,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        missed = next(
+            event
+            for event in day.events
+            if event.kind == "obligation_missed"
+            and event.details["obligation"] == "workplace shift"
+        )
+        work_completed = next(
+            event
+            for event in day.events
+            if event.kind == "work_completed" and event.actor_id == MARA_ID
+        )
+        self.assertEqual(missed.tick, 631)
+        self.assertEqual(work_completed.tick, 631)
+        self.assertLess(
+            day.events.index(missed),
+            day.events.index(work_completed),
+        )
+        self.assertEqual(missed.action_id, None)
+        self.assertEqual(missed.caused_by, ())
+        self.assertEqual(
+            dict(missed.details),
+            {
+                "obligation": "workplace shift",
+                "required_action_kind": "work",
+                "required_location": "workplace",
+                "deadline_tick": 631,
+                "location_at_resolution": "workplace",
+            },
+        )
+        self.assertIn("workplace shift", day.world.agents[MARA_ID].obligations)
+        self.assertFalse(
+            any(
+                event.kind == "obligation_fulfilled"
+                and event.details["obligation"] == "workplace shift"
+                for event in day.events
+            )
+        )
+
+    def test_arrival_alone_does_not_fulfill_deadline_governed_household_time(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait for the transit accounts",
+                "decision_reason": "no activity begins yet",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after the testimony",
+                "decision_reason": "home is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after arriving home",
+                "decision_reason": "arrival is not household activity",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after the bulletin",
+                "decision_reason": "the observation adds no action",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="deadline-arrival-alone-test",
+            ),
+            include_deadline_governed_obligation_outcomes=True,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        home_arrival = next(
+            event
+            for event in day.events
+            if event.kind == "travel_completed"
+            and event.details["destination"] == "home"
+        )
+        household_missed = next(
+            event
+            for event in day.events
+            if event.kind == "obligation_missed"
+            and event.details["obligation"] == "household time"
+        )
+        self.assertEqual(home_arrival.tick, 541)
+        self.assertEqual(household_missed.tick, 630)
+        self.assertEqual(household_missed.details["location_at_resolution"], "home")
+        self.assertFalse(
+            any(
+                event.kind == "obligation_fulfilled"
+                and event.details["obligation"] == "household time"
+                for event in day.events
+            )
+        )
+        self.assertIn("household time", day.world.agents[MARA_ID].obligations)
+
     def test_normal_output_preserves_same_minute_focal_causal_order(self):
         client = _SequenceClient(
             {

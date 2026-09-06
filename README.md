@@ -101,6 +101,11 @@ It does not present the comparison as live or emergent behavior.
 The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
 The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
 
+The opt-in `include_deadline_governed_obligation_outcomes=True` configuration adds authored 10:31 workplace and 10:30 household deadlines.
+It records a fulfilled or missed objective outcome only from matching completed activity at the required location, with an exact-deadline completion counted as missed.
+A fulfilled outcome retains the existing actor-safe completed-action result and continuity requirement for Mara's next selected decision.
+A missed outcome remains inspector-only until a later legitimate delivery path is configured.
+
 Add `--inspect` to reconstruct the complete causal chain, including source observation, statement validation, testimony delivery, Mara's attempt, and world resolution.
 
 ## Local model mode

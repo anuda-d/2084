@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; first transit-claim conflict boundary accepted.
+Status: active; transit-claim conflict and deadline-governed obligation boundaries accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 1
-- Last completed implementation run: finite transit-claim conflict boundary (CC-1 and CC-2)
+- Verified implementation runs since alignment: 2
+- Last completed implementation run: deadline-governed obligation outcome boundary (CC-6)
 - Last whole-goal alignment: none
 
 The next alignment is due after at most three verified implementation units, or earlier when required by the operating contract.
@@ -40,7 +40,7 @@ The administrative activation does not count as an implementation unit or claim 
 | CC-3 Feasible tradeoff | unverified | At least two feasible ordinary choices have different work/household obligation outcomes. |
 | CC-4 Autonomous choice | unverified | Restricted model input leads to one of the documented competing-obligation alternatives without a prescribed branch. |
 | CC-5 Physical transit effect | unverified | Equivalent action paths under different actual service conditions cross an obligation deadline and change its outcome. |
-| CC-6 Obligation outcomes | unverified | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
+| CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
 | CC-7 Follow-through | unverified | Delivered consequences enter Mara's subsequent legitimate decision opportunity. |
 | CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
 | CC-9 Provider-free watchability | unverified | A documented focal-safe offline run makes the complete interaction understandable. |
@@ -92,11 +92,50 @@ No next unit selected.
 
 ## Candidate Evidence
 
-The accepted result is intentionally bounded to information and conflict.
-It does not add the later choice, transit-duration, obligation, or follow-through
-criteria.
+No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Deadline-governed obligation outcome boundary
+
+Criterion and claim: CC-6 gains an opt-in deadline configuration with one
+append-only fulfilled or missed objective outcome for each existing Mara
+obligation, determined by matching completed activity, actual location, and an
+exclusive authored deadline.
+
+Observed evidence: household activity completed at minute 480 produces a
+fulfillment caused by that completion before its minute-630 deadline, and
+workplace work completed at minute 570 produces fulfillment before its
+minute-631 deadline.
+Work beginning after the conflict completes at minute 631 only after the
+scheduled missed outcome at that same minute, so it cannot overwrite the miss.
+Travel arrival at home without household activity produces the minute-630
+household miss rather than fulfillment.
+
+Knowledge boundary: a fulfilled outcome continues through the existing
+actor-safe completion result, canonical obligation removal, and one bounded
+continuity requirement at Mara's next selected decision.
+A missed outcome adds no observation, model-view field, normal-view line, or
+follow-up decision before the later consequence-delivery boundary.
+
+Files: `scenarios/autonomous_day.py`, focused autonomous-day tests, README
+configuration guidance, and this operational evidence record.
+
+Validation: all 52 `tests.test_autonomous_day_world` tests passed, the default
+normal and inspector autonomous-day commands reached the exact day boundary,
+`git diff --check` passed, and `./scripts/check.sh` passed all 285 offline
+tests.
+
+Explorer and review: three fresh Terra-high read-only explorers checked the
+scenario-local design, deadline tests, and privacy boundary.
+The first fresh Sol-high review identified one documentation distinction, which
+was corrected and revalidated.
+A second fresh Sol-high review found no actionable blockers.
+
+Risks and unresolved assumptions: the authored timings are deliberately local
+to this opt-in configuration and support a later physical-transit comparison.
+This accepted evidence does not deliver a missed result or claim progress on
+the remaining criteria.
 
 Criterion and claim: CC-1 and CC-2 gain one finite Official Record notice,
 separate legitimate delivery, Ilan-owned source observation, physically

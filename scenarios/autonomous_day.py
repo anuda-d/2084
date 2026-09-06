@@ -76,6 +76,7 @@ _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
 _MARA_HOUSEHOLD_COMPLETION = "autonomous_day_mara_household_completion"
+_MARA_OBLIGATION_DEADLINE = "autonomous_day_mara_obligation_deadline"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -92,6 +93,37 @@ _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
 AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
 _SCRIPTED_SOCIAL_CONFIGURATION_ID = "scripted:autonomous-day-social-v0"
+
+
+@dataclass(frozen=True)
+class MaraObligationDeadline:
+    """One finite authored condition for an existing Mara obligation."""
+
+    obligation: str
+    activity_kind: Literal["work", "household"]
+    required_location: Literal["workplace", "home"]
+    deadline_minute: int
+
+
+# This opt-in configuration is deliberately local to the consequential-choice
+# scenario. A 10:31 workplace deadline lets the pre-testimony morning shift
+# finish in time, while a decision after the 08:31 conflict does not. A 10:30
+# household deadline makes a later equivalent travel-duration comparison able
+# to cross the deadline without changing the required household activity.
+_DEADLINE_GOVERNED_MARA_OBLIGATIONS = (
+    MaraObligationDeadline(
+        obligation="workplace shift",
+        activity_kind="work",
+        required_location="workplace",
+        deadline_minute=10 * 60 + 31,
+    ),
+    MaraObligationDeadline(
+        obligation="household time",
+        activity_kind="household",
+        required_location="home",
+        deadline_minute=10 * 60 + 30,
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -221,6 +253,7 @@ def build_autonomous_day(
     mara_harness: MaraHarness | None = None,
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
+    include_deadline_governed_obligation_outcomes: bool = False,
 ) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
@@ -238,6 +271,10 @@ def build_autonomous_day(
         raise TypeError("ilan_transit_policy must provide choose(view)")
     if not isinstance(include_conflicting_transit_accounts, bool):
         raise TypeError("include_conflicting_transit_accounts must be boolean")
+    if not isinstance(include_deadline_governed_obligation_outcomes, bool):
+        raise TypeError(
+            "include_deadline_governed_obligation_outcomes must be boolean"
+        )
 
     world = WorldState(
         tick=0,
@@ -282,6 +319,15 @@ def build_autonomous_day(
     ilan_statement_events: dict[str, Event] = {}
     ilan_testimony_observations: dict[str, Observation] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
+    obligation_deadlines = {
+        deadline.obligation: deadline
+        for deadline in _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+    }
+    obligation_deadlines_by_item_id = {
+        f"mara-obligation-deadline-{deadline.obligation.replace(' ', '-')}": deadline
+        for deadline in _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+    }
+    obligation_outcomes: dict[str, Event] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
         int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
@@ -878,6 +924,71 @@ def build_autonomous_day(
             ),
         )
 
+    def resolve_mara_fulfilled_obligation(
+        *,
+        obligation: str,
+        activity_kind: Literal["work", "household"],
+        completed: Event,
+    ) -> bool:
+        """Append one fulfilled outcome, never replacing a deadline outcome."""
+
+        if not include_deadline_governed_obligation_outcomes:
+            return True
+        deadline = obligation_deadlines[obligation]
+        mara = world.agents[MARA_ID]
+        if deadline.activity_kind != activity_kind:
+            raise RuntimeError("obligation activity kind does not match its rule")
+        if deadline.required_location != mara.location:
+            raise RuntimeError("obligation activity location does not match its rule")
+        if obligation in obligation_outcomes:
+            return False
+        if completed.tick >= deadline.deadline_minute:
+            raise RuntimeError("deadline outcome was not resolved before activity")
+        fulfilled = event_log.record(
+            tick=completed.tick,
+            kind="obligation_fulfilled",
+            actor_id=MARA_ID,
+            action_id=completed.action_id,
+            caused_by=(completed.event_id,),
+            details={
+                "obligation": obligation,
+                "required_action_kind": deadline.activity_kind,
+                "required_location": deadline.required_location,
+                "deadline_tick": deadline.deadline_minute,
+                "location_at_resolution": mara.location,
+            },
+        )
+        obligation_outcomes[obligation] = fulfilled
+        return True
+
+    def resolve_mara_obligation_deadline(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Resolve a still-pending obligation before same-minute completions."""
+
+        deadline = obligation_deadlines_by_item_id[work.item_id]
+        if work.due_time != context.current:
+            raise RuntimeError("Mara obligation deadline released at the wrong time")
+        if deadline.deadline_minute != context.current.total_minutes:
+            raise RuntimeError("Mara obligation deadline has the wrong configured tick")
+        if deadline.obligation in obligation_outcomes:
+            return
+        mara = world.agents[MARA_ID]
+        missed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="obligation_missed",
+            actor_id=MARA_ID,
+            details={
+                "obligation": deadline.obligation,
+                "required_action_kind": deadline.activity_kind,
+                "required_location": deadline.required_location,
+                "deadline_tick": deadline.deadline_minute,
+                "location_at_resolution": mara.location,
+            },
+        )
+        obligation_outcomes[deadline.obligation] = missed
+
     def complete_mara_work(
         work: ScheduledWork,
         context: DayWorkContext,
@@ -908,7 +1019,14 @@ def build_autonomous_day(
             status="completed",
         )
         mara = world.agents[MARA_ID]
-        if "workplace shift" in mara.obligations:
+        if (
+            "workplace shift" in mara.obligations
+            and resolve_mara_fulfilled_obligation(
+                obligation="workplace shift",
+                activity_kind="work",
+                completed=completed,
+            )
+        ):
             mara.obligations = tuple(
                 obligation
                 for obligation in mara.obligations
@@ -960,7 +1078,14 @@ def build_autonomous_day(
             status="completed",
         )
         mara = world.agents[MARA_ID]
-        if "household time" in mara.obligations:
+        if (
+            "household time" in mara.obligations
+            and resolve_mara_fulfilled_obligation(
+                obligation="household time",
+                activity_kind="household",
+                completed=completed,
+            )
+        ):
             mara.obligations = tuple(
                 obligation
                 for obligation in mara.obligations
@@ -1700,6 +1825,7 @@ def build_autonomous_day(
             _MARA_REST_COMPLETION: complete_mara_rest,
             _MARA_WORK_COMPLETION: complete_mara_work,
             _MARA_HOUSEHOLD_COMPLETION: complete_mara_household,
+            _MARA_OBLIGATION_DEADLINE: resolve_mara_obligation_deadline,
         },
         decision_handler=dispatch_actor_decision,
         model_backed_actor_ids=(MARA_ID,),
@@ -1728,6 +1854,16 @@ def build_autonomous_day(
                 kind=_OFFICIAL_TRANSIT_NOTICE_PUBLICATION,
             )
         )
+    if include_deadline_governed_obligation_outcomes:
+        for item_id, deadline in obligation_deadlines_by_item_id.items():
+            runtime.schedule(
+                ScheduledWork(
+                    item_id=item_id,
+                    due_time=SimulatedTime(deadline.deadline_minute),
+                    phase=TemporalPhase.SCHEDULED_WORLD,
+                    kind=_MARA_OBLIGATION_DEADLINE,
+                )
+            )
     if on_mara_decision is not None or mara_harness is not None:
         runtime.request_decision(
             actor_id=MARA_ID,
