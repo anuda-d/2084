@@ -755,6 +755,25 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
     continuity_view, continuity_projection = _restricted_continuity_view(view)
     stance = continuity_view.contextual_stance
     affordances = _action_affordances(continuity_view)
+    state: dict[str, object] = {
+        "location": continuity_view.location,
+        "aim": continuity_view.aim,
+        "required_resource_id": continuity_view.required_resource_id,
+        "required_units": continuity_view.required_units,
+        "resource_holdings": to_plain_data(continuity_view.resource_holdings),
+        "remaining_required_units": continuity_view.remaining_required_units,
+        "obligations": list(continuity_view.obligations),
+    }
+    if continuity_view.known_obligation_deadlines:
+        state["known_obligation_deadlines"] = [
+            {
+                "obligation": deadline.obligation,
+                "required_action_kind": deadline.required_action_kind,
+                "required_location": deadline.required_location,
+                "deadline_tick": deadline.deadline_tick,
+            }
+            for deadline in continuity_view.known_obligation_deadlines
+        ]
     return {
         "tick": continuity_view.tick,
         "character": {
@@ -762,15 +781,7 @@ def model_input_from_view(view: AgentView) -> dict[str, object]:
             "display_name": continuity_view.display_name,
             "role": continuity_view.role,
         },
-        "state": {
-            "location": continuity_view.location,
-            "aim": continuity_view.aim,
-            "required_resource_id": continuity_view.required_resource_id,
-            "required_units": continuity_view.required_units,
-            "resource_holdings": to_plain_data(continuity_view.resource_holdings),
-            "remaining_required_units": continuity_view.remaining_required_units,
-            "obligations": list(continuity_view.obligations),
-        },
+        "state": state,
         "decision_history": _decision_history_data(continuity_view),
         "continuity_projection": continuity_projection,
         "delivered_observations": [

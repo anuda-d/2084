@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; transit-claim conflict and deadline-governed obligation boundaries accepted.
+Status: active; conflict, obligation, physical-transit, and tradeoff boundaries accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 0
-- Last completed implementation run: service-dependent physical transit resolution (CC-5)
+- Verified implementation runs since alignment: 1
+- Last completed implementation run: consequential-choice tradeoff timing (CC-3)
 - Last whole-goal alignment: 2026-09-06 after b2fda19
 
 Whole-goal alignment is current as of b2fda19.
@@ -37,7 +37,7 @@ The alignment record does not count as an implementation unit or claim product p
 | --- | --- | --- |
 | CC-1 Shared referent and conflict | accepted | Both delivered transit accounts and their explicit same-interval conflict remain source-linked. |
 | CC-2 Legitimate access | accepted | Publication, source ownership, physical testimony delivery, and negative paths preserve knowledge boundaries. |
-| CC-3 Feasible tradeoff | unverified | At least two feasible ordinary choices have different work/household obligation outcomes. |
+| CC-3 Feasible tradeoff | accepted | The conflict-informed restricted input exposes Mara's finite authored schedule and ordinary work/home alternatives with distinct obligation outcomes. |
 | CC-4 Autonomous choice | unverified | Restricted model input leads to one of the documented competing-obligation alternatives without a prescribed branch. |
 | CC-5 Physical transit effect | accepted | Equivalent action paths under different actual service conditions cross the household deadline and change its outcome. |
 | CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
@@ -95,6 +95,54 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Consequential-choice tradeoff timing
+
+Criterion and claim: CC-3 gains a separate opt-in timing profile that gives
+Mara two feasible ordinary post-testimony alternatives with different
+work/household obligation outcomes, while exposing the finite authored
+deadlines through her existing restricted decision input.
+
+Observed evidence: at minute 511, after both delivered same-interval claims
+and their explicit conflict, deterministic authored clients receive Mara's
+workplace location, both pending obligations, the work, travel, and wait
+affordances, and two Mara-owned deadline constraints at minute 632.
+The workplace-work branch completes at minute 631, fulfills workplace work,
+and misses household time at minute 632.
+The homeward-travel then household branch completes household time at minute
+601, fulfills it, and misses workplace work at minute 632.
+
+Interpretation: the authored comparison holds delivered information and the
+decision boundary fixed while varying only the ordinary attempted choice.
+It demonstrates a genuine tradeoff without selecting a live-model branch or
+exposing current transit status or a predicted outcome.
+
+Files: `simulation/agents.py`, `simulation/engine.py`,
+`policies/model_focal_policy.py`, `scenarios/autonomous_day.py`, focused
+autonomous-day tests, README configuration guidance, and this operational
+evidence record.
+
+Validation: focused autonomous-day, model-focal-policy, and decision-request
+suites passed 96 tests.
+`./scripts/check.sh` passed all 289 offline tests.
+`git diff --check` passed.
+The unchanged normal and inspector autonomous-day commands reached the exact
+24-hour boundary.
+
+Explorer and review: three fresh Terra-high read-only explorers examined the
+timing, comparison evidence, and knowledge boundary.
+A fresh Sol-high reviewer found no actionable blocker and independently reran
+the 96 focused tests, full 289-test check, normal and inspector commands, and
+diff validation.
+
+Risks and unresolved assumptions: this provider-free evidence is honestly
+authored and does not claim autonomous live choice, delivered missed outcomes,
+watchability, inspection/replay of the complete chain, or a live-model day.
+The separate 10:32 profile preserves the accepted 10:30/10:31 physical-transit
+and exact-boundary profiles.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
 
 ### 2026-09-06 - Whole-goal alignment after b2fda19
 

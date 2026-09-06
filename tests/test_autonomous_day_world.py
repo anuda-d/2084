@@ -1998,6 +1998,164 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertEqual(household_outcome(reduced_day).kind, "obligation_missed")
         self.assertEqual(household_outcome(reduced_day).tick, 630)
 
+    def test_conflict_informed_choices_have_distinct_known_deadline_outcomes(self):
+        prefix = (
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+        )
+        branches = {
+            "work": (
+                {
+                    "kind": "work",
+                    "parameters": {},
+                    "explanation": "complete the workplace shift",
+                    "decision_reason": "the known shift deadline is reachable",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after workplace work",
+                    "decision_reason": "the immediate activity is complete",
+                },
+            ),
+            "home": (
+                {
+                    "kind": "travel",
+                    "parameters": {"destination": "home"},
+                    "explanation": "return home for household time",
+                    "decision_reason": "household time remains reachable",
+                },
+                {
+                    "kind": "household",
+                    "parameters": {},
+                    "explanation": "complete household time at home",
+                    "decision_reason": "the known household deadline is reachable",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after household time",
+                    "decision_reason": "the immediate activity is complete",
+                },
+            ),
+        }
+
+        def run_branch(name):
+            client = _SequenceClient(*prefix, *branches[name])
+            day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    client,
+                    configuration_id=f"consequential-choice-tradeoff-{name}",
+                ),
+                include_conflicting_transit_accounts=True,
+                include_deadline_governed_obligation_outcomes=True,
+                include_consequential_choice_tradeoff_timing=True,
+            )
+            return day, day.run(), client
+
+        work_day, work_summary, work_client = run_branch("work")
+        home_day, home_summary, home_client = run_branch("home")
+
+        self.assertTrue(work_summary.reached_end_boundary)
+        self.assertTrue(home_summary.reached_end_boundary)
+        expected_deadlines = [
+            {
+                "obligation": "workplace shift",
+                "required_action_kind": "work",
+                "required_location": "workplace",
+                "deadline_tick": 632,
+            },
+            {
+                "obligation": "household time",
+                "required_action_kind": "household",
+                "required_location": "home",
+                "deadline_tick": 632,
+            },
+        ]
+        for client in (work_client, home_client):
+            choice_input = client.inputs[3]
+            self.assertEqual(choice_input["tick"], 511)
+            self.assertEqual(choice_input["state"]["location"], "workplace")
+            self.assertEqual(
+                choice_input["state"]["obligations"],
+                ["workplace shift", "household time"],
+            )
+            self.assertEqual(
+                choice_input["state"]["known_obligation_deadlines"],
+                expected_deadlines,
+            )
+            self.assertEqual(
+                choice_input["action_contract"]["currently_applicable_kinds"],
+                ["travel", "work", "wait"],
+            )
+            self.assertEqual(
+                choice_input["action_contract"]["affordances_by_kind"]["travel"]
+                ["parameter_options"]["destination"],
+                ["home", "transit_stop"],
+            )
+            claims = choice_input["understanding"]["interpreted_claims"]
+            self.assertEqual(len(claims), 2)
+            self.assertEqual(
+                {claim["asserted_value"] for claim in claims},
+                {0, 1},
+            )
+            self.assertTrue(all(claim["conflicts_with"] for claim in claims))
+
+        def outcome_kinds(day):
+            return {
+                event.details["obligation"]: event.kind
+                for event in day.events
+                if event.kind in {"obligation_fulfilled", "obligation_missed"}
+            }
+
+        self.assertEqual(
+            outcome_kinds(work_day),
+            {
+                "workplace shift": "obligation_fulfilled",
+                "household time": "obligation_missed",
+            },
+        )
+        self.assertEqual(
+            outcome_kinds(home_day),
+            {
+                "workplace shift": "obligation_missed",
+                "household time": "obligation_fulfilled",
+            },
+        )
+        work_completion = next(
+            event
+            for event in work_day.events
+            if event.kind == "work_completed" and event.actor_id == MARA_ID
+        )
+        household_completion = next(
+            event
+            for event in home_day.events
+            if event.kind == "household_time_completed"
+        )
+        self.assertEqual(work_completion.tick, 631)
+        self.assertEqual(household_completion.tick, 601)
+
+    def test_tradeoff_timing_requires_deadline_outcomes(self):
+        with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
+            build_autonomous_day(include_consequential_choice_tradeoff_timing=True)
+
     def test_service_change_during_travel_does_not_retime_departure_snapshot(self):
         client = _SequenceClient(
             {

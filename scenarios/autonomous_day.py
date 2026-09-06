@@ -25,6 +25,7 @@ from simulation.agents import (
     ActionContinuityRequirement,
     AgentState,
     AgentView,
+    KnownObligationDeadline,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
     PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
     PolicyDecisionRecord,
@@ -124,6 +125,25 @@ _DEADLINE_GOVERNED_MARA_OBLIGATIONS = (
         activity_kind="household",
         required_location="home",
         deadline_minute=10 * 60 + 30,
+    ),
+)
+
+
+# This separate opt-in profile creates a post-testimony choice in which either
+# ordinary activity can still fulfill its own obligation.  It does not alter
+# the tighter profile used by the accepted physical-transit comparison.
+_CONSEQUENTIAL_CHOICE_TRADEOFF_MARA_OBLIGATIONS = (
+    MaraObligationDeadline(
+        obligation="workplace shift",
+        activity_kind="work",
+        required_location="workplace",
+        deadline_minute=10 * 60 + 32,
+    ),
+    MaraObligationDeadline(
+        obligation="household time",
+        activity_kind="household",
+        required_location="home",
+        deadline_minute=10 * 60 + 32,
     ),
 )
 
@@ -256,6 +276,7 @@ def build_autonomous_day(
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
     include_deadline_governed_obligation_outcomes: bool = False,
+    include_consequential_choice_tradeoff_timing: bool = False,
     include_service_dependent_travel: bool = False,
     homeward_travel_service_recovery_minute: int | None = None,
 ) -> AutonomousDay:
@@ -279,6 +300,15 @@ def build_autonomous_day(
         raise TypeError(
             "include_deadline_governed_obligation_outcomes must be boolean"
         )
+    if not isinstance(include_consequential_choice_tradeoff_timing, bool):
+        raise TypeError("include_consequential_choice_tradeoff_timing must be boolean")
+    if (
+        include_consequential_choice_tradeoff_timing
+        and not include_deadline_governed_obligation_outcomes
+    ):
+        raise ValueError(
+            "consequential-choice tradeoff timing requires deadline outcomes"
+        )
     if not isinstance(include_service_dependent_travel, bool):
         raise TypeError("include_service_dependent_travel must be boolean")
     if homeward_travel_service_recovery_minute is not None and (
@@ -301,6 +331,25 @@ def build_autonomous_day(
             "homeward_travel_service_recovery_minute requires service-dependent travel"
         )
 
+    configured_obligation_deadlines = (
+        _CONSEQUENTIAL_CHOICE_TRADEOFF_MARA_OBLIGATIONS
+        if include_consequential_choice_tradeoff_timing
+        else _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+    )
+    known_mara_obligation_deadlines = (
+        tuple(
+            KnownObligationDeadline(
+                obligation=deadline.obligation,
+                required_action_kind=deadline.activity_kind,
+                required_location=deadline.required_location,
+                deadline_tick=deadline.deadline_minute,
+            )
+            for deadline in configured_obligation_deadlines
+        )
+        if include_consequential_choice_tradeoff_timing
+        else ()
+    )
+
     world = WorldState(
         tick=0,
         seed=seed,
@@ -317,6 +366,7 @@ def build_autonomous_day(
                 location="home",
                 aim="live an ordinary day without privileged world knowledge",
                 obligations=("workplace shift", "household time"),
+                known_obligation_deadlines=known_mara_obligation_deadlines,
             ),
             ILAN_ID: AgentState(
                 agent_id=ILAN_ID,
@@ -347,11 +397,11 @@ def build_autonomous_day(
     transit_bulletin_observations: dict[str, Observation] = {}
     obligation_deadlines = {
         deadline.obligation: deadline
-        for deadline in _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+        for deadline in configured_obligation_deadlines
     }
     obligation_deadlines_by_item_id = {
         f"mara-obligation-deadline-{deadline.obligation.replace(' ', '-')}": deadline
-        for deadline in _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+        for deadline in configured_obligation_deadlines
     }
     obligation_outcomes: dict[str, Event] = {}
     understanding_transitions: list[dict[str, object]] = []
@@ -472,6 +522,7 @@ def build_autonomous_day(
             valid_actions=autonomous_day_mara_valid_actions(mara.location),
             household_action_available=mara.location == "home",
             continuity_requirements=mara.continuity_requirements,
+            known_obligation_deadlines=mara.known_obligation_deadlines,
         )
 
     selected_ilan_transit_policy = (

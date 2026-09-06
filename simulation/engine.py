@@ -350,6 +350,7 @@ class Simulation:
             ),
             valid_actions=tuple(sorted(ACTION_KINDS)),
             continuity_requirements=agent.continuity_requirements,
+            known_obligation_deadlines=agent.known_obligation_deadlines,
         )
 
     def agent_view(self, agent_id: str) -> AgentView:
