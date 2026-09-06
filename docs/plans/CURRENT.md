@@ -34,7 +34,7 @@ Owner-approved on 2026-09-06.
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Fresh-task relay: active
-- Alignment due: yes
+- Alignment due: no
 - Standing implementation authority: active
 
 ## Goal Boundary

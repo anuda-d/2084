@@ -19,17 +19,17 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Fresh-task relay: active
-- Alignment due: yes
+- Alignment due: no
 - Standing implementation authority: active
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 3
+- Verified implementation runs since alignment: 0
 - Last completed implementation run: service-dependent physical transit resolution (CC-5)
-- Last whole-goal alignment: none
+- Last whole-goal alignment: 2026-09-06 after b2fda19
 
-Alignment is due before the next implementation unit.
-The administrative activation does not count as an implementation unit or claim product progress.
+Whole-goal alignment is current as of b2fda19.
+The alignment record does not count as an implementation unit or claim product progress.
 
 ## Goal Progress
 
@@ -95,6 +95,49 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Whole-goal alignment after b2fda19
+
+Scope: this alignment reviews the complete active goal after the three accepted
+implementation runs for transit-claim conflict, deadline-governed obligation
+outcomes, and service-dependent transit resolution.
+It selects no implementation unit and makes no product-code change.
+
+Criterion assessment: CC-1, CC-2, CC-5, and CC-6 remain accepted with source
+and focused-test evidence for finite same-interval conflict, legitimate
+publication and testimony access, departure-snapshotted physical travel
+effects, and deadline/location/activity obligation outcomes.
+CC-3, CC-4, and CC-7 through CC-12 remain unverified.
+In particular, the post-conflict normal-service home path fulfills household
+time while missing work, whereas the comparable work path misses both because
+the 10:31 work deadline precedes its completion.
+That difference does not yet demonstrate the intended competing-obligation
+tradeoff, because the work alternative cannot fulfill its named obligation.
+
+Boundary and complexity assessment: the accepted behavior preserves
+append-only objective evidence, separate delivery and understanding, restricted
+model input, and focal-safe normal presentation.
+The three independent opt-in configuration flags and repeated transit-claim
+field propagation are manageable local complexity risks, but extracting a
+general provenance framework or refactoring for its own sake would exceed this
+goal.
+No removal is justified by this alignment.
+
+Validation: `python3 scripts/check_autonomous_loop_contract.py` passed.
+The focused autonomous-day, loop-contract, and lock suites passed 90 tests.
+`./scripts/check.sh` passed all 287 offline tests, including the existing
+exact-day, continuity, and model-growth checks.
+`git diff --check` passed.
+
+Independent review: a fresh read-only Sol-high reviewer audited every
+criterion against current source and tests, reran the full check, and found no
+actionable blocker.
+It confirmed the accepted statuses, the open criteria, and the CC-3 timing
+risk above.
+
+Acceptance: standing owner authorization accepts this alignment evidence only.
+No criterion status changes, product behavior changes, future work queue, or
+owner decision result from the alignment.
 
 ### 2026-09-06 - Service-dependent physical transit resolution
 
