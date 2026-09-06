@@ -3,8 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Literal
 
 from simulation.events import Observation
+
+
+@dataclass(frozen=True)
+class TransitServiceClaim:
+    """One finite transit proposition from delivered, non-authoritative evidence."""
+
+    route: Literal["workplace-home"]
+    service_interval_id: str
+    asserted_status: Literal["normal", "reduced"]
 
 
 @dataclass(frozen=True)
@@ -15,6 +25,7 @@ class InterpretedClaim:
     period_id: str | None
     origin_trace_id: str
     conflicts_with: tuple[str, ...] = ()
+    transit_service_claim: TransitServiceClaim | None = None
 
 
 @dataclass(frozen=True)
@@ -29,6 +40,7 @@ class MemoryTrace:
     asserted_value: int
     delivery_tick: int
     period_id: str | None
+    transit_service_claim: TransitServiceClaim | None = None
 
 
 @dataclass(frozen=True)
@@ -73,6 +85,7 @@ def trace_from_delivered_observation(
         "official_record_version",
         "social_testimony",
         "transit_service_status",
+        "official_transit_claim",
     }:
         return None
 
@@ -85,6 +98,25 @@ def trace_from_delivered_observation(
         return None
     if period_id is not None and not isinstance(period_id, str):
         return None
+
+    transit_service_claim: TransitServiceClaim | None = None
+    if evidence_kind in {"official_transit_claim", "social_testimony"}:
+        route = observation.details.get("route")
+        service_interval_id = observation.details.get("service_interval_id")
+        asserted_status = observation.details.get("asserted_status")
+        if route is not None or service_interval_id is not None or asserted_status is not None:
+            if (
+                route != "workplace-home"
+                or not isinstance(service_interval_id, str)
+                or not service_interval_id
+                or asserted_status not in {"normal", "reduced"}
+            ):
+                return None
+            transit_service_claim = TransitServiceClaim(
+                route=route,
+                service_interval_id=service_interval_id,
+                asserted_status=asserted_status,
+            )
 
     existing_claim = next(
         (
@@ -110,6 +142,7 @@ def trace_from_delivered_observation(
         asserted_value=asserted_value,
         delivery_tick=observation.delivery_tick,
         period_id=period_id,
+        transit_service_claim=transit_service_claim,
     )
     if existing_claim is not None:
         return trace, None
@@ -119,6 +152,7 @@ def trace_from_delivered_observation(
         asserted_value=asserted_value,
         period_id=period_id,
         origin_trace_id=trace_id,
+        transit_service_claim=transit_service_claim,
     )
 
 
@@ -149,6 +183,41 @@ def link_official_version_conflicts(
     if not conflicting_claim_ids:
         return existing_claims + (new_claim,)
 
+    linked_existing_claims = tuple(
+        replace(
+            claim,
+            conflicts_with=claim.conflicts_with + (new_claim.claim_id,),
+        )
+        if claim.claim_id in conflicting_claim_ids
+        else claim
+        for claim in existing_claims
+    )
+    return linked_existing_claims + (
+        replace(new_claim, conflicts_with=conflicting_claim_ids),
+    )
+
+
+def link_transit_service_conflicts(
+    existing_claims: tuple[InterpretedClaim, ...],
+    new_claim: InterpretedClaim,
+) -> tuple[InterpretedClaim, ...]:
+    """Link only delivered, conflicting finite transit claims by referent."""
+    transit_claim = new_claim.transit_service_claim
+    if transit_claim is None:
+        return existing_claims + (new_claim,)
+    conflicting_claim_ids = tuple(
+        claim.claim_id
+        for claim in existing_claims
+        if (
+            (existing_transit := claim.transit_service_claim) is not None
+            and existing_transit.route == transit_claim.route
+            and existing_transit.service_interval_id
+            == transit_claim.service_interval_id
+            and existing_transit.asserted_status != transit_claim.asserted_status
+        )
+    )
+    if not conflicting_claim_ids:
+        return existing_claims + (new_claim,)
     linked_existing_claims = tuple(
         replace(
             claim,

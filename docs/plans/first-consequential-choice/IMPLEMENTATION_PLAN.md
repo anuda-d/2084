@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; goal authorized, no implementation unit selected.
+Status: active; first transit-claim conflict boundary accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 0
-- Last completed implementation run: none
+- Verified implementation runs since alignment: 1
+- Last completed implementation run: finite transit-claim conflict boundary (CC-1 and CC-2)
 - Last whole-goal alignment: none
 
 The next alignment is due after at most three verified implementation units, or earlier when required by the operating contract.
@@ -35,8 +35,8 @@ The administrative activation does not count as an implementation unit or claim 
 
 | Criterion | Status | Required evidence |
 | --- | --- | --- |
-| CC-1 Shared referent and conflict | unverified | Both delivered transit accounts and their explicit same-interval conflict remain source-linked. |
-| CC-2 Legitimate access | unverified | Publication, source ownership, physical testimony delivery, and negative paths preserve knowledge boundaries. |
+| CC-1 Shared referent and conflict | accepted | Both delivered transit accounts and their explicit same-interval conflict remain source-linked. |
+| CC-2 Legitimate access | accepted | Publication, source ownership, physical testimony delivery, and negative paths preserve knowledge boundaries. |
 | CC-3 Feasible tradeoff | unverified | At least two feasible ordinary choices have different work/household obligation outcomes. |
 | CC-4 Autonomous choice | unverified | Restricted model input leads to one of the documented competing-obligation alternatives without a prescribed branch. |
 | CC-5 Physical transit effect | unverified | Equivalent action paths under different actual service conditions cross an obligation deadline and change its outcome. |
@@ -53,13 +53,80 @@ Earlier foundations do not automatically satisfy a new criterion without evidenc
 
 ## Verified Product Evidence
 
-None recorded for this goal.
-The completed foundations remain available as regressions; activation adds no simulation behavior.
+### 2026-09-06 - Finite transit-claim conflict boundary
+
+The opt-in `include_conflicting_transit_accounts=True` configuration preserves
+the completed default autonomous-day composition while publishing a finite
+normal-status workplace-home notice through the transit Official Record at
+minute 480.
+Publication is objective evidence and creates no Mara knowledge until she has
+workplace notice-board access.
+The independent minute-510 reduced-status service event reaches Ilan through
+his workplace terminal, and his deterministic statement carries only that
+delivered source into a separately world-resolved minute-511 testimony delivery.
+Mara retains source-linked official and social claims with reciprocal conflict
+links only when their route and service interval match and their asserted
+statuses differ.
+Focused tests also show that different service intervals do not conflict and
+that no-access publication leaves Mara without a trace or claim.
+
+Focused validation passed 80 tests across official records, understanding,
+supporting policy, and autonomous-day behavior.
+The normal autonomous-day command and inspector completed the exact day
+boundary, and `./scripts/check.sh` passed all 282 offline tests.
+Fresh Terra-high exploration examined the finite claim design, causal test
+coverage, and Official Record boundary.
+A fresh Sol-high review found no implementation-invariant blocker; it flagged
+and then confirmed correction of one stale implementation-state heading.
+The reviewer noted that explicit service-interval labels in the focal transcript
+and configuration-specific negative Ilan-access coverage remain useful later
+evidence, not blockers for this bounded result.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
 
 ## Current Run
 
 None.
 No next unit selected.
+
+## Candidate Evidence
+
+The accepted result is intentionally bounded to information and conflict.
+It does not add the later choice, transit-duration, obligation, or follow-through
+criteria.
+
+## Accepted Run Record
+
+Criterion and claim: CC-1 and CC-2 gain one finite Official Record notice,
+separate legitimate delivery, Ilan-owned source observation, physically
+validated testimony delivery, and a source-linked same-interval conflict.
+
+Observed evidence: the configured provider-free path delivers a normal official
+notice at minute 480 and reduced testimony at minute 511, retaining two traces
+and reciprocal conflict links.
+
+Interpretation: the scenario now demonstrates conflicting delivered accounts
+without treating either account as hidden objective truth.
+
+Files: `simulation/official_record.py`, `simulation/understanding.py`,
+`scenarios/autonomous_day.py`, focused tests, README configuration guidance,
+and this operational evidence record.
+
+Validation: 80 focused tests, the default normal and inspector commands, and
+`./scripts/check.sh` with all 282 offline tests passed.
+
+Explorer and review: three Terra-high read-only explorers completed independent
+design, test, and record-boundary checks.
+A fresh Sol-high review found no implementation-invariant blocker after one
+stale state heading was corrected.
+
+Risks and unresolved assumptions: the normal transcript does not yet print the
+service-interval identifier, and configuration-specific negative Ilan-access
+coverage remains later evidence work.
+The accepted evidence does not claim progress on the other ten criteria.
+
+Handoff: No next unit selected.
 
 ## Goal Activation
 

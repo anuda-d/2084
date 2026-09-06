@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -11,6 +12,18 @@ class RationScheduleVersion:
     artifact_id: str
     period_id: str
     entitlement_packets: int
+    previous_version_id: str | None = None
+
+
+@dataclass(frozen=True)
+class TransitNoticeVersion:
+    """One immutable finite transit claim published by an official record."""
+
+    version_id: str
+    artifact_id: str
+    route_id: str
+    service_interval_id: str
+    asserted_status: Literal["normal", "reduced"]
     previous_version_id: str | None = None
 
 
@@ -23,6 +36,7 @@ class OfficialRecord:
         self._artifact_id = artifact_id
         self._versions: tuple[RationScheduleVersion, ...] = ()
         self._current_version_id: str | None = None
+        self._transit_notice_versions: tuple[TransitNoticeVersion, ...] = ()
 
     @property
     def artifact_id(self) -> str:
@@ -45,6 +59,51 @@ class OfficialRecord:
             for version in self._versions
             if version.version_id == self._current_version_id
         )
+
+    @property
+    def transit_notice_versions(self) -> tuple[TransitNoticeVersion, ...]:
+        """Return immutable transit notices without changing ration semantics."""
+        return self._transit_notice_versions
+
+    def publish_transit_notice(
+        self,
+        *,
+        version_id: str,
+        artifact_id: str,
+        route_id: str,
+        service_interval_id: str,
+        asserted_status: Literal["normal", "reduced"],
+    ) -> TransitNoticeVersion:
+        """Append one finite transit notice to this official-record artifact."""
+        if artifact_id != self.artifact_id:
+            raise ValueError("transit notice artifact_id does not match the official record")
+        if not isinstance(version_id, str) or not version_id.strip():
+            raise ValueError("transit notice requires a non-empty version_id")
+        if any(
+            version.version_id == version_id
+            for version in self.transit_notice_versions
+        ):
+            raise ValueError("transit notice version_id already exists")
+        if not isinstance(route_id, str) or not route_id.strip():
+            raise ValueError("transit notice requires a non-empty route_id")
+        if (
+            not isinstance(service_interval_id, str)
+            or not service_interval_id.strip()
+        ):
+            raise ValueError(
+                "transit notice requires a non-empty service_interval_id"
+            )
+        if asserted_status not in {"normal", "reduced"}:
+            raise ValueError("transit notice asserted_status is unsupported")
+        version = TransitNoticeVersion(
+            version_id=version_id,
+            artifact_id=artifact_id,
+            route_id=route_id,
+            service_interval_id=service_interval_id,
+            asserted_status=asserted_status,
+        )
+        self._transit_notice_versions = (*self.transit_notice_versions, version)
+        return version
 
     def publish_initial(
         self,
@@ -119,7 +178,7 @@ class OfficialRecord:
 
     def to_data(self) -> dict[str, object]:
         """Return detached, JSON-compatible inspector data."""
-        return {
+        data: dict[str, object] = {
             "artifact_id": self.artifact_id,
             "current_version_id": self.current_version_id,
             "versions": [
@@ -133,3 +192,16 @@ class OfficialRecord:
                 for version in self.versions
             ],
         }
+        if self.transit_notice_versions:
+            data["transit_notice_versions"] = [
+                {
+                    "version_id": version.version_id,
+                    "artifact_id": version.artifact_id,
+                    "route_id": version.route_id,
+                    "service_interval_id": version.service_interval_id,
+                    "asserted_status": version.asserted_status,
+                    "previous_version_id": version.previous_version_id,
+                }
+                for version in self.transit_notice_versions
+            ]
+        return data

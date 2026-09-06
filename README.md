@@ -98,6 +98,9 @@ python3 -m scenarios.autonomous_day \
 The transcript identifies this decision source as deterministic and authored.
 It does not present the comparison as live or emergent behavior.
 
+The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
+The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
+
 Add `--inspect` to reconstruct the complete causal chain, including source observation, statement validation, testimony delivery, Mara's attempt, and world resolution.
 
 ## Local model mode

@@ -2122,6 +2122,145 @@ class AutonomousDayWorldTests(unittest.TestCase):
             {"sequence": 3, "phase": "observation_delivery"},
         )
 
+    def test_official_transit_publication_stays_undelivered_without_access(self):
+        day = build_autonomous_day(
+            seed=42,
+            include_conflicting_transit_accounts=True,
+        )
+
+        summary = day.run()
+
+        published = next(
+            event
+            for event in day.events
+            if event.kind == "official_transit_notice_published"
+        )
+        self.assertEqual(published.tick, 480)
+        self.assertEqual(
+            dict(published.details),
+            {
+                "artifact_id": "district-transit-notices",
+                "version_id": "district-transit-notice-day-0-evening-v1",
+                "route": "workplace-home",
+                "service_interval_id": "day-0-workplace-home-evening",
+                "asserted_status": "normal",
+                "proposition": "workplace-home tram service is normal",
+                "asserted_value": 0,
+            },
+        )
+        record = day.world.institution.official_record
+        self.assertEqual(
+            record.transit_notice_versions[0].version_id,
+            published.details["version_id"],
+        )
+        mara = day.world.agents[MARA_ID]
+        self.assertEqual(mara.observations, [])
+        self.assertEqual(mara.memory_traces, ())
+        self.assertEqual(mara.interpreted_claims, ())
+        self.assertEqual(day.world.institution.records["tram_service"], "reduced")
+        self.assertFalse(
+            any(
+                observation.agent_id == MARA_ID
+                and observation.event_id == published.event_id
+                for observation in day.observations
+            )
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 0},
+        )
+
+    def test_configured_transit_accounts_retain_one_same_interval_conflict(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the shift is due",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at the workplace",
+                "decision_reason": "arrival needs no further action",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "read the official notice",
+                "decision_reason": "the official account is now available",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "consider Ilan's account",
+                "decision_reason": "the testimony conflicts with the notice",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="configured-transit-conflict-test",
+            ),
+            include_conflicting_transit_accounts=True,
+        )
+
+        summary = day.run()
+
+        mara = day.world.agents[MARA_ID]
+        official, testimony = mara.observations
+        self.assertEqual(
+            [observation.details["evidence_kind"] for observation in mara.observations],
+            ["official_transit_claim", "social_testimony"],
+        )
+        self.assertEqual(
+            [observation.details["service_interval_id"] for observation in mara.observations],
+            ["day-0-workplace-home-evening"] * 2,
+        )
+        self.assertEqual(
+            [observation.details["asserted_status"] for observation in mara.observations],
+            ["normal", "reduced"],
+        )
+        self.assertEqual(
+            [trace.source_observation_id for trace in mara.memory_traces],
+            [official.observation_id, testimony.observation_id],
+        )
+        official_claim, testimony_claim = mara.interpreted_claims
+        self.assertEqual(
+            official_claim.conflicts_with,
+            (testimony_claim.claim_id,),
+        )
+        self.assertEqual(
+            testimony_claim.conflicts_with,
+            (official_claim.claim_id,),
+        )
+        self.assertEqual(
+            official_claim.transit_service_claim,
+            testimony_claim.transit_service_claim.__class__(
+                route="workplace-home",
+                service_interval_id="day-0-workplace-home-evening",
+                asserted_status="normal",
+            ),
+        )
+        self.assertEqual(
+            testimony_claim.transit_service_claim.asserted_status,
+            "reduced",
+        )
+        ilan_source = day.world.agents[ILAN_ID].observations[0]
+        final_input = client.inputs[-1]
+        self.assertNotIn(ilan_source.observation_id, json.dumps(final_input))
+        self.assertNotIn(ilan_source.event_id, json.dumps(final_input))
+        self.assertNotIn("institution_records", final_input)
+        self.assertIn(
+            "Day 0 08:00 | Official transit notice: workplace-home service is normal.",
+            render_autonomous_day(day, summary),
+        )
+        self.assertEqual(
+            summary.to_data()["decision_counts_by_actor"],
+            {ILAN_ID: 1, MARA_ID: 4},
+        )
+
     def test_withheld_ilan_source_observation_stops_social_chain(self):
         client = _SequenceClient(
             {
