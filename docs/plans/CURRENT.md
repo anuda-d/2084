@@ -1,11 +1,12 @@
 # Current Development Index
 
-Status: no active goal.
-First Accelerated-Day Social Thread completed on 2026-09-02.
+Status: First Consequential Choice Under Conflicting Information is active under standing scheduled authorization.
+Owner-approved on 2026-09-06.
 
 ## Active Work
 
-- Active goal: none
+- Goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
+- Shared implementation state: [Implementation State](first-consequential-choice/IMPLEMENTATION_PLAN.md)
 - Active work: none selected
 - Most recently completed goal:
   [First Accelerated-Day Social Thread](first-accelerated-day-social-thread/GOAL.md)
@@ -22,44 +23,33 @@ First Accelerated-Day Social Thread completed on 2026-09-02.
 
 ## Run State Snapshot
 
-- Active goal id: none
-- Owner authorization: pending
-- Authorization scope: none
-- Authorization source: none
-- Loop cadence: stopped
+- Active goal id: first-consequential-choice
+- Owner authorization: standing
+- Authorization scope: active goal
+- Authorization source: owner
+- Loop cadence: scheduled autonomous relay
 - Current run: none
 - Incomplete run: none
-- Run status: none
+- Run status: awaiting scheduled fresh task
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Fresh-task relay: stopped
+- Fresh-task relay: active
 - Alignment due: no
-- Standing implementation authority: none
+- Standing implementation authority: active
 
 ## Goal Boundary
 
-No product goal is active.
-Do not turn a completed goal, open question, proposal, or improvement idea into
-active work.
-The owner must approve exactly one new goal and set `Owner authorization:
-standing` before implementation can begin.
-The same activation change must set the
-`autonomous-2084-development-loop` automation to active and verify its saved
-2084 project target before scheduled work can begin.
-
-An explicit owner request may authorize one bounded administrative change while
-this index has no active product goal.
-That request does not activate product implementation, standing authority, or
-the scheduler.
+Exactly one product goal is active: First Consequential Choice Under Conflicting Information.
+Standing owner authorization covers only the linked goal's outcome, invariants, scope, and completion criteria.
+Do not turn a completed goal, open question, proposal, or improvement idea into additional active work.
+The owner must approve any replacement or expansion of the goal.
+This activation selects no implementation unit and does not change the development-loop architecture.
 
 ## Scheduled Autonomy
 
-The scheduled relay is stopped because no goal has standing authorization.
-When a future goal is activated, its repository state and this index must agree
-on the active goal id, authorization, current run, incomplete run, run status,
-scheduled window, relay status, alignment status, and standing authority.
-The activation is incomplete until the existing paused
-`autonomous-2084-development-loop` automation is updated to active.
+The linked goal has standing scheduled authorization under the existing development-loop contract.
+Its implementation state and this index must agree on the active goal id, authorization, current run, incomplete run, run status, scheduled window, relay status, alignment status, and standing authority.
+Scheduled work may begin only when the existing `autonomous-2084-development-loop` automation is verified active and targets the saved local 2084 project at `/Users/anuda/Desktop/2084`.
 
 During an authorized window, each fresh task owns at most one bounded work unit.
 Before selecting that unit and again before relay, inspect the exact
@@ -164,5 +154,7 @@ authoritative repository state and select or resume exactly one unit.
 
 ## Stop Condition
 
-The repository is at **NO ACTIVE GOAL - LOOP STOPPED**.
-The paused automation must not start implementation or create successor tasks.
+The repository is awaiting a scheduled fresh task for the sole active goal.
+No next unit selected.
+Stop without implementation or relay when authorization is paused, the exact automation is not active, state conflicts, or the development-loop contract requires an owner decision.
+When the goal is complete, synchronize completed state, pause the existing automation, release ownership, and stop without selecting another goal.
