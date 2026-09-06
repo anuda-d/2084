@@ -19,16 +19,16 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Fresh-task relay: active
-- Alignment due: no
+- Alignment due: yes
 - Standing implementation authority: active
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 2
-- Last completed implementation run: deadline-governed obligation outcome boundary (CC-6)
+- Verified implementation runs since alignment: 3
+- Last completed implementation run: service-dependent physical transit resolution (CC-5)
 - Last whole-goal alignment: none
 
-The next alignment is due after at most three verified implementation units, or earlier when required by the operating contract.
+Alignment is due before the next implementation unit.
 The administrative activation does not count as an implementation unit or claim product progress.
 
 ## Goal Progress
@@ -39,7 +39,7 @@ The administrative activation does not count as an implementation unit or claim 
 | CC-2 Legitimate access | accepted | Publication, source ownership, physical testimony delivery, and negative paths preserve knowledge boundaries. |
 | CC-3 Feasible tradeoff | unverified | At least two feasible ordinary choices have different work/household obligation outcomes. |
 | CC-4 Autonomous choice | unverified | Restricted model input leads to one of the documented competing-obligation alternatives without a prescribed branch. |
-| CC-5 Physical transit effect | unverified | Equivalent action paths under different actual service conditions cross an obligation deadline and change its outcome. |
+| CC-5 Physical transit effect | accepted | Equivalent action paths under different actual service conditions cross the household deadline and change its outcome. |
 | CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
 | CC-7 Follow-through | unverified | Delivered consequences enter Mara's subsequent legitimate decision opportunity. |
 | CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
@@ -95,6 +95,48 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Service-dependent physical transit resolution
+
+Criterion and claim: CC-5 gains an opt-in finite normal/reduced transit
+duration configuration that samples the actual service status when Mara's
+travel attempt is accepted and preserves that completion time if service
+changes while the trip is pending.
+
+Observed evidence: two provider-free comparison runs retain the same delivered
+normal official claim and reduced Ilan testimony, then make the same homeward
+travel and household attempts.
+An undelivered objective recovery at minute 511 gives the normal comparison a
+30-minute trip, arrival at minute 541, and household fulfillment at minute 601.
+The reduced comparison takes 60 minutes, arrives at minute 571, and misses the
+household deadline at minute 630 before the identical household activity
+completes at minute 631.
+An objective recovery at minute 520 during that reduced trip leaves its
+departure-snapshotted minute-571 completion unchanged.
+
+Knowledge boundary: Mara's restricted input contains the same delivered
+accounts at the minute-511 travel choice and no institutional records or
+departure service status.
+The recovery creates objective evidence without a delivery or decision request.
+Travel completion exposes its duration and sampled status only in the
+inspector-visible objective event.
+
+Files: `scenarios/autonomous_day.py`, focused autonomous-day tests, README
+configuration guidance, and this operational evidence record.
+
+Validation: all 54 `tests.test_autonomous_day_world` tests passed, the default
+normal and inspector autonomous-day commands reached the exact day boundary,
+`git diff --check` passed, and `./scripts/check.sh` passed all 287 offline tests.
+
+Explorer and review: three fresh Terra-high read-only explorers checked the
+scenario-local design, counterfactual test coverage, and privacy boundary.
+A fresh Sol-high review found no actionable blockers and confirmed that
+consequence delivery and watchability remain unclaimed.
+
+Risks and unresolved assumptions: the normal focal surface does not display an
+objective service status or missed obligation until a valid later delivery path
+exists.
+Alignment is due before another implementation unit.
 
 ### 2026-09-06 - Deadline-governed obligation outcome boundary
 

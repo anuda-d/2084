@@ -106,6 +106,11 @@ It records a fulfilled or missed objective outcome only from matching completed 
 A fulfilled outcome retains the existing actor-safe completed-action result and continuity requirement for Mara's next selected decision.
 A missed outcome remains inspector-only until a later legitimate delivery path is configured.
 
+The opt-in `include_service_dependent_travel=True` configuration samples the objective `normal` or `reduced` service state when Mara's travel attempt is accepted, using the authored 30- or 60-minute duration for that trip.
+`homeward_travel_service_recovery_minute` may record one objective recovery after the source observation without automatically delivering it to Mara.
+The accepted travel is not retimed if that recovery happens while it is pending.
+This preserves an ordinary comparison in which Mara retains the same conflicting accounts and action path while normal service permits household completion before its deadline and reduced service does not.
+
 Add `--inspect` to reconstruct the complete causal chain, including source observation, statement validation, testimony delivery, Mara's attempt, and world resolution.
 
 ## Local model mode

@@ -1845,6 +1845,239 @@ class AutonomousDayWorldTests(unittest.TestCase):
         )
         self.assertIn("household time", day.world.agents[MARA_ID].obligations)
 
+    def test_service_dependent_homeward_travel_changes_household_outcome(self):
+        responses = (
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after Ilan's testimony",
+                "decision_reason": "home remains reachable",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time on arrival",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after household activity",
+                "decision_reason": "the immediate activity is complete",
+            },
+        )
+
+        def run_comparison(recovery_minute):
+            client = _SequenceClient(*responses)
+            day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    client,
+                    configuration_id=(
+                        "service-dependent-homeward-travel-"
+                        f"{recovery_minute or 'reduced'}"
+                    ),
+                ),
+                include_conflicting_transit_accounts=True,
+                include_deadline_governed_obligation_outcomes=True,
+                include_service_dependent_travel=True,
+                homeward_travel_service_recovery_minute=recovery_minute,
+            )
+            return day, day.run(), client
+
+        normal_day, normal_summary, normal_client = run_comparison(511)
+        reduced_day, reduced_summary, reduced_client = run_comparison(None)
+
+        self.assertTrue(normal_summary.reached_end_boundary)
+        self.assertTrue(reduced_summary.reached_end_boundary)
+        self.assertEqual(
+            [
+                (
+                    observation.details["evidence_kind"],
+                    observation.details["route"],
+                    observation.details["service_interval_id"],
+                    observation.details["asserted_status"],
+                )
+                for observation in normal_day.world.agents[MARA_ID].observations
+            ],
+            [
+                (
+                    observation.details["evidence_kind"],
+                    observation.details["route"],
+                    observation.details["service_interval_id"],
+                    observation.details["asserted_status"],
+                )
+                for observation in reduced_day.world.agents[MARA_ID].observations
+            ],
+        )
+        self.assertEqual(
+            [
+                (attempt.kind, dict(attempt.parameters))
+                for attempt in normal_day.world.agents[MARA_ID].action_history
+            ],
+            [
+                (attempt.kind, dict(attempt.parameters))
+                for attempt in reduced_day.world.agents[MARA_ID].action_history
+            ],
+        )
+        for client in (normal_client, reduced_client):
+            testimony_input = client.inputs[3]
+            self.assertEqual(testimony_input["tick"], 511)
+            self.assertEqual(testimony_input["state"]["location"], "workplace")
+            self.assertEqual(
+                [
+                    observation["details"]["asserted_status"]
+                    for observation in testimony_input["delivered_observations"]
+                ],
+                ["normal", "reduced"],
+            )
+            self.assertNotIn("institution_records", testimony_input)
+            self.assertNotIn("service_status_at_departure", json.dumps(testimony_input))
+
+        def homeward_travel(day):
+            return next(
+                event
+                for event in day.events
+                if event.kind == "travel_completed"
+                and event.details["destination"] == "home"
+            )
+
+        normal_homeward = homeward_travel(normal_day)
+        reduced_homeward = homeward_travel(reduced_day)
+        self.assertEqual(
+            (normal_homeward.tick, dict(normal_homeward.details)),
+            (
+                541,
+                {
+                    "destination": "home",
+                    "duration_minutes": 30,
+                    "service_status_at_departure": "normal",
+                },
+            ),
+        )
+        self.assertEqual(
+            (reduced_homeward.tick, dict(reduced_homeward.details)),
+            (
+                571,
+                {
+                    "destination": "home",
+                    "duration_minutes": 60,
+                    "service_status_at_departure": "reduced",
+                },
+            ),
+        )
+
+        def household_outcome(day):
+            return next(
+                event
+                for event in day.events
+                if event.kind in {"obligation_fulfilled", "obligation_missed"}
+                and event.details["obligation"] == "household time"
+            )
+
+        self.assertEqual(household_outcome(normal_day).kind, "obligation_fulfilled")
+        self.assertEqual(household_outcome(normal_day).tick, 601)
+        self.assertEqual(household_outcome(reduced_day).kind, "obligation_missed")
+        self.assertEqual(household_outcome(reduced_day).tick, 630)
+
+    def test_service_change_during_travel_does_not_retime_departure_snapshot(self):
+        client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after Ilan's testimony",
+                "decision_reason": "home remains reachable",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time on arrival",
+                "decision_reason": "household time is available at home",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after household activity",
+                "decision_reason": "the immediate activity is complete",
+            },
+        )
+        day = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="pending-travel-service-recovery-test",
+            ),
+            include_conflicting_transit_accounts=True,
+            include_deadline_governed_obligation_outcomes=True,
+            include_service_dependent_travel=True,
+            homeward_travel_service_recovery_minute=520,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        homeward = next(
+            event
+            for event in day.events
+            if event.kind == "travel_completed"
+            and event.details["destination"] == "home"
+        )
+        recovery = next(
+            event
+            for event in day.events
+            if event.kind == "transit_service_changed" and event.tick == 520
+        )
+        self.assertEqual(
+            dict(recovery.details),
+            {
+                "route": "workplace-home",
+                "prior_status": "reduced",
+                "current_status": "normal",
+                "service_interval_id": "day-0-workplace-home-evening",
+            },
+        )
+        self.assertEqual(homeward.tick, 571)
+        self.assertEqual(homeward.details["duration_minutes"], 60)
+        self.assertEqual(homeward.details["service_status_at_departure"], "reduced")
+        self.assertNotIn(520, [model_input["tick"] for model_input in client.inputs])
+        self.assertEqual(len(day.world.agents[MARA_ID].observations), 2)
+
     def test_normal_output_preserves_same_minute_focal_causal_order(self):
         client = _SequenceClient(
             {

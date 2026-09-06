@@ -77,6 +77,7 @@ _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
 _MARA_HOUSEHOLD_COMPLETION = "autonomous_day_mara_household_completion"
 _MARA_OBLIGATION_DEADLINE = "autonomous_day_mara_obligation_deadline"
+_INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -88,6 +89,7 @@ _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
 _OFFICIAL_TRANSIT_NOTICE_PUBLICATION_MINUTE = 8 * 60
 _TRANSIT_SERVICE_INTERVAL_ID = "day-0-workplace-home-evening"
 _MARA_TRAVEL_DURATION_MINUTES = 30
+_MARA_TRAVEL_DURATION_BY_SERVICE_STATUS = {"normal": 30, "reduced": 60}
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
@@ -254,6 +256,8 @@ def build_autonomous_day(
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
     include_deadline_governed_obligation_outcomes: bool = False,
+    include_service_dependent_travel: bool = False,
+    homeward_travel_service_recovery_minute: int | None = None,
 ) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
@@ -274,6 +278,27 @@ def build_autonomous_day(
     if not isinstance(include_deadline_governed_obligation_outcomes, bool):
         raise TypeError(
             "include_deadline_governed_obligation_outcomes must be boolean"
+        )
+    if not isinstance(include_service_dependent_travel, bool):
+        raise TypeError("include_service_dependent_travel must be boolean")
+    if homeward_travel_service_recovery_minute is not None and (
+        not isinstance(homeward_travel_service_recovery_minute, int)
+        or isinstance(homeward_travel_service_recovery_minute, bool)
+        or not (
+            _TRANSIT_CHANGE_MINUTE
+            < homeward_travel_service_recovery_minute
+            < 24 * 60
+        )
+    ):
+        raise ValueError(
+            "homeward_travel_service_recovery_minute must be a day minute or None"
+        )
+    if (
+        homeward_travel_service_recovery_minute is not None
+        and not include_service_dependent_travel
+    ):
+        raise ValueError(
+            "homeward_travel_service_recovery_minute requires service-dependent travel"
         )
 
     world = WorldState(
@@ -313,6 +338,7 @@ def build_autonomous_day(
     )
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
+    mara_travel_resolution_details: dict[str, dict[str, object]] = {}
     transit_change_events: dict[str, Event] = {}
     official_transit_notice_events: dict[str, Event] = {}
     official_transit_notice_observations: dict[str, Observation] = {}
@@ -833,7 +859,13 @@ def build_autonomous_day(
                 "travel destination is not reachable from Mara's location",
             )
             return
-        completion_time = context.current.plus_minutes(_MARA_TRAVEL_DURATION_MINUTES)
+        service_status = world.institution.records["tram_service"]
+        duration_minutes = (
+            _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[service_status]
+            if include_service_dependent_travel
+            else _MARA_TRAVEL_DURATION_MINUTES
+        )
+        completion_time = context.current.plus_minutes(duration_minutes)
         pending_actions[MARA_ID] = PendingAction(
             action_id=action_id,
             attempt_event_id=attempted.event_id,
@@ -841,6 +873,10 @@ def build_autonomous_day(
             started_tick=context.current.total_minutes,
             completes_tick=completion_time.total_minutes,
         )
+        mara_travel_resolution_details[action_id] = {
+            "duration_minutes": duration_minutes,
+            "service_status_at_departure": service_status,
+        }
         context.schedule(
             ScheduledWork(
                 item_id=f"{action_id}-completion",
@@ -857,17 +893,26 @@ def build_autonomous_day(
         pending = pending_actions.pop(MARA_ID)
         if pending.completes_tick != context.current.total_minutes:
             raise RuntimeError("Mara travel released at the wrong time")
+        resolution_details = mara_travel_resolution_details.pop(pending.action_id)
+        duration_minutes = resolution_details["duration_minutes"]
+        if not isinstance(duration_minutes, int) or (
+            pending.started_tick + duration_minutes != pending.completes_tick
+        ):
+            raise RuntimeError("Mara travel duration does not match its completion")
         destination = pending.attempt.parameters["destination"]
         if not isinstance(destination, str):
             raise RuntimeError("Mara travel is missing its destination")
         world.agents[MARA_ID].location = destination
+        completed_details: dict[str, object] = {"destination": destination}
+        if include_service_dependent_travel:
+            completed_details.update(resolution_details)
         completed = event_log.record(
             tick=context.current.total_minutes,
             kind="travel_completed",
             actor_id=MARA_ID,
             action_id=pending.action_id,
             caused_by=(pending.attempt_event_id,),
-            details={"destination": destination},
+            details=completed_details,
         )
         result = append_mara_result(
             action_id=pending.action_id,
@@ -1540,6 +1585,32 @@ def build_autonomous_day(
                 )
             )
 
+    def restore_transit_service(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Record an objective recovery without delivering new knowledge."""
+
+        if work.due_time != context.current:
+            raise RuntimeError("transit recovery released at the wrong time")
+        prior_status = world.institution.records["tram_service"]
+        if prior_status != "reduced":
+            raise RuntimeError("transit recovery requires reduced service")
+        world.institution.records["tram_service"] = "normal"
+        changed_details: dict[str, object] = {
+            "route": "workplace-home",
+            "prior_status": prior_status,
+            "current_status": "normal",
+        }
+        if include_conflicting_transit_accounts:
+            changed_details["service_interval_id"] = _TRANSIT_SERVICE_INTERVAL_ID
+        event_log.record(
+            tick=context.current.total_minutes,
+            kind="transit_service_changed",
+            actor_id=world.institution.institution_id,
+            details=changed_details,
+        )
+
     def publish_official_transit_notice(
         work: ScheduledWork,
         context: DayWorkContext,
@@ -1807,6 +1878,7 @@ def build_autonomous_day(
             _SUPPORTING_WORK_START: start_supporting_work,
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
+            _INSTITUTIONAL_SERVICE_RECOVERY: restore_transit_service,
             _ILAN_TRANSIT_OBSERVATION_DELIVERY: (
                 deliver_ilan_transit_observation
             ),
@@ -1845,6 +1917,15 @@ def build_autonomous_day(
             kind=_SUPPORTING_WORK_START,
         )
     )
+    if homeward_travel_service_recovery_minute is not None:
+        runtime.schedule(
+            ScheduledWork(
+                item_id="district-transit-homeward-service-recovery",
+                due_time=SimulatedTime(homeward_travel_service_recovery_minute),
+                phase=TemporalPhase.SCHEDULED_WORLD,
+                kind=_INSTITUTIONAL_SERVICE_RECOVERY,
+            )
+        )
     if include_conflicting_transit_accounts:
         runtime.schedule(
             ScheduledWork(
