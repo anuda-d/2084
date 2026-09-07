@@ -155,6 +155,7 @@ The simulation never substitutes the scripted policy after a provider failure.
 
 Live choices may vary even at temperature zero.
 Recorded decisions reproduce world behavior without making another provider call.
+Replay requires the same seed and authored scenario configuration because an archive seals decisions, not scenario inputs.
 
 ### Create a private audit bundle
 

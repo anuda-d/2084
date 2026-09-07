@@ -4327,6 +4327,276 @@ class AutonomousDayWorldTests(unittest.TestCase):
             source_inspector["model_path"]["decision_status_sequence"],
         )
 
+    def test_consequential_choice_inspector_and_recorded_replay_reconstruct_exact_chain(
+        self,
+    ):
+        responses = (
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the conflicting account is not yet delivered",
+            },
+            {
+                "kind": "work",
+                "parameters": {},
+                "explanation": "complete the workplace shift",
+                "decision_reason": "the known shift deadline is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after workplace work",
+                "decision_reason": "the immediate activity is complete",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "pause after learning the household result",
+                "decision_reason": "the missed household time is now known",
+            },
+        )
+        scenario_kwargs = {
+            "include_conflicting_transit_accounts": True,
+            "include_deadline_governed_obligation_outcomes": True,
+            "include_obligation_outcome_delivery": True,
+            "include_consequential_choice_tradeoff_timing": True,
+        }
+        source_client = _SequenceClient(*responses)
+        source = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                source_client,
+                configuration_id="consequential-choice-recorded-replay-source",
+            ),
+            **scenario_kwargs,
+        )
+
+        source_summary = source.run()
+        source_inspector = autonomous_day_inspector_data(source, source_summary)
+        events = source_inspector["history"]["events"]
+        observations = source_inspector["history"]["observations"]
+        results = source_inspector["history"]["action_results"]
+        transitions = source_inspector["history"]["understanding_transitions"]
+        official_publication = next(
+            event
+            for event in events
+            if event["kind"] == "official_transit_notice_published"
+        )
+        transit_change = next(
+            event
+            for event in events
+            if event["kind"] == "transit_service_changed"
+        )
+        official_observation = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == MARA_ID
+            and observation["details"].get("evidence_kind")
+            == "official_transit_claim"
+        )
+        ilan_source = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == ILAN_ID
+            and observation["details"].get("evidence_kind")
+            == "transit_service_status"
+        )
+        statement = next(
+            event
+            for event in events
+            if event["actor_id"] == ILAN_ID
+            and event["kind"] == "statement_completed"
+        )
+        testimony = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == MARA_ID
+            and observation["details"].get("evidence_kind") == "social_testimony"
+        )
+        official_transition = next(
+            transition
+            for transition in transitions
+            if transition["source_observation_id"]
+            == official_observation["observation_id"]
+        )
+        testimony_transition = next(
+            transition
+            for transition in transitions
+            if transition["source_observation_id"] == testimony["observation_id"]
+        )
+        choice = next(
+            event
+            for event in events
+            if event["actor_id"] == MARA_ID
+            and event["kind"] == "action_attempted"
+            and event["tick"] == 511
+        )
+        work_completion = next(
+            event
+            for event in events
+            if event["actor_id"] == MARA_ID
+            and event["kind"] == "work_completed"
+        )
+        household_miss = next(
+            event
+            for event in events
+            if event["kind"] == "obligation_missed"
+            and event["details"]["obligation"] == "household time"
+        )
+        outcome_observation = next(
+            observation
+            for observation in observations
+            if observation["agent_id"] == MARA_ID
+            and observation["details"].get("evidence_kind")
+            == "obligation_outcome"
+        )
+        follow_through = next(
+            decision
+            for decision in source_inspector["runtime"]["consumed_decisions"]
+            if decision["actor_id"] == MARA_ID
+            and decision["due_time"]["total_minutes"] == 632
+        )
+        ilan_decision = next(
+            decision
+            for decision in source_inspector["runtime"]["consumed_decisions"]
+            if decision["actor_id"] == ILAN_ID
+            and decision["due_time"]["total_minutes"] == 510
+        )
+        executed_work = source_inspector["runtime"]["executed_work"]
+        work_by_item_id = {work["item_id"]: work for work in executed_work}
+        follow_through_dispatch = work_by_item_id[follow_through["scheduled_work_id"]]
+        ilan_decision_dispatch = work_by_item_id[ilan_decision["scheduled_work_id"]]
+
+        self.assertTrue(source_summary.reached_end_boundary)
+        self.assertEqual(official_observation["event_id"], official_publication["event_id"])
+        self.assertEqual(official_transition["tick"], 480)
+        self.assertEqual(official_publication["dispatch"]["sequence"], 4)
+        self.assertEqual(official_observation["dispatch"]["sequence"], 6)
+        self.assertEqual(official_transition["dispatch"]["sequence"], 7)
+        self.assertEqual(ilan_source["event_id"], transit_change["event_id"])
+        self.assertEqual(transit_change["tick"], 510)
+        self.assertEqual(ilan_source["delivery_tick"], 510)
+        self.assertEqual(
+            ilan_source["observation_id"],
+            statement["details"]["evidence_observation_id"],
+        )
+        self.assertEqual(
+            ilan_decision["triggers"][0]["source_id"],
+            ilan_source["observation_id"],
+        )
+        self.assertEqual(testimony["event_id"], statement["event_id"])
+        self.assertEqual(testimony_transition["tick"], 511)
+        self.assertEqual(transit_change["dispatch"]["sequence"], 9)
+        self.assertEqual(ilan_source["dispatch"]["sequence"], 10)
+        self.assertEqual(ilan_decision_dispatch["sequence"], 11)
+        self.assertEqual(ilan_decision_dispatch["phase"], "decision")
+        self.assertEqual(statement["dispatch"], {"sequence": 11, "phase": "decision"})
+        self.assertEqual(testimony["dispatch"]["sequence"], 12)
+        self.assertEqual(testimony_transition["dispatch"]["sequence"], 13)
+        self.assertEqual(
+            [
+                observation["details"]["asserted_status"]
+                for observation in (official_observation, testimony)
+            ],
+            ["normal", "reduced"],
+        )
+        self.assertEqual(
+            {
+                observation["details"]["route"]
+                for observation in (official_observation, testimony)
+            },
+            {"workplace-home"},
+        )
+        self.assertEqual(
+            {
+                observation["details"]["service_interval_id"]
+                for observation in (official_observation, testimony)
+            },
+            {"day-0-workplace-home-evening"},
+        )
+        claims = source.world.agents[MARA_ID].interpreted_claims
+        self.assertEqual(len(claims), 2)
+        self.assertEqual(claims[0].conflicts_with, (claims[1].claim_id,))
+        self.assertEqual(claims[1].conflicts_with, (claims[0].claim_id,))
+        self.assertEqual(choice["details"]["action_kind"], "work")
+        self.assertEqual(choice["dispatch"]["sequence"], 14)
+        self.assertEqual(work_completion["caused_by"], [choice["event_id"]])
+        self.assertEqual(work_completion["tick"], 631)
+        self.assertEqual(household_miss["tick"], 632)
+        self.assertEqual(outcome_observation["event_id"], household_miss["event_id"])
+        self.assertEqual(outcome_observation["delivery_tick"], 632)
+        self.assertEqual(household_miss["dispatch"]["sequence"], 18)
+        self.assertEqual(outcome_observation["dispatch"]["sequence"], 20)
+        self.assertEqual(follow_through_dispatch["sequence"], 21)
+        self.assertEqual(follow_through_dispatch["phase"], "decision")
+        self.assertEqual(
+            follow_through["triggers"][0]["source_id"],
+            outcome_observation["observation_id"],
+        )
+        work_result = next(
+            result for result in results if result["action_id"] == choice["action_id"]
+        )
+        self.assertEqual(work_result["status"], "completed")
+        self.assertEqual(work_result["outcome_event_id"], work_completion["event_id"])
+
+        source_call_count = len(source_client.inputs)
+        integrity_key = b"consequential-choice-replay-integrity-v1"
+        archive = RecordedDecisionArchive.seal(
+            source.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        replay = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+            **scenario_kwargs,
+        )
+        replay_summary = replay.run()
+        replay_inspector = autonomous_day_inspector_data(replay, replay_summary)
+
+        self.assertTrue(replay_summary.reached_end_boundary)
+        self.assertEqual(len(source_client.inputs), source_call_count)
+        self.assertEqual(replay_summary.to_data(), source_summary.to_data())
+        self.assertEqual(replay.events, source.events)
+        self.assertEqual(replay.observations, source.observations)
+        self.assertEqual(
+            replay.world.agents[MARA_ID].memory_traces,
+            source.world.agents[MARA_ID].memory_traces,
+        )
+        self.assertEqual(
+            replay.world.agents[MARA_ID].interpreted_claims,
+            source.world.agents[MARA_ID].interpreted_claims,
+        )
+        self.assertEqual(
+            replay.world.agents[MARA_ID].obligations,
+            source.world.agents[MARA_ID].obligations,
+        )
+        for field in ("runtime", "counts", "objective_state", "history"):
+            self.assertEqual(replay_inspector[field], source_inspector[field])
+        self.assertEqual(
+            replay_inspector["model_path"]["decision_status_sequence"],
+            source_inspector["model_path"]["decision_status_sequence"],
+        )
+        self.assertEqual(
+            [record.model_input for record in replay.private_decision_records],
+            [record.model_input for record in source.private_decision_records],
+        )
+
     def test_recorded_safe_failure_decisions_replay_complete_autonomous_day_without_provider_calls(
         self,
     ):

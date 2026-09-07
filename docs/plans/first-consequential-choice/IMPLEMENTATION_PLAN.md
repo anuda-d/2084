@@ -19,13 +19,13 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Fresh-task relay: active
-- Alignment due: no
+- Alignment due: yes
 - Standing implementation authority: active
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 2
-- Last completed implementation run: consequence delivery and follow-through (CC-7)
+- Verified implementation runs since alignment: 3
+- Last completed implementation run: consequential-choice inspection and recorded replay (CC-10)
 - Last whole-goal alignment: 2026-09-06 after b2fda19
 
 Whole-goal alignment is current as of b2fda19.
@@ -44,7 +44,7 @@ The alignment record does not count as an implementation unit or claim product p
 | CC-7 Follow-through | accepted | Mara receives a delivered missed-obligation result and a later legitimate decision opportunity that retains the conflict. |
 | CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
 | CC-9 Provider-free watchability | unverified | A documented focal-safe offline run makes the complete interaction understandable. |
-| CC-10 Inspection and replay | unverified | Ordered causal inspection and recorded playback reconstruct the complete chain. |
+| CC-10 Inspection and replay | accepted | Ordered causal inspection and recorded playback reconstruct the complete chain. |
 | CC-11 Reviewed live day | unverified | The existing local model selects a documented competing-obligation alternative and encounters its obligation consequence and follow-up in an audited exact day. |
 | CC-12 Integration and completion | unverified | Focused checks, full regressions, and final independent whole-goal review pass. |
 
@@ -95,6 +95,59 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Consequential-choice inspection and recorded replay
+
+Criterion and claim: CC-10 gains provider-free evidence that the sanitized
+inspector reconstructs the complete configured chain in deterministic temporal
+order and that sealed decisions replay that same chain without another source
+client call.
+
+Observed evidence: the fixed source configuration enables conflicting transit
+accounts, deadline outcomes, personal missed-outcome delivery, and the 10:32
+tradeoff timing.
+Its inspector evidence orders official publication, delivery, and understanding
+at minute 480; the objective service change, Ilan's source delivery, and his
+source-triggered statement at minute 510; testimony delivery, understanding,
+and Mara's work attempt at minute 511; then work completion at minute 631 and
+the household miss, source-linked outcome delivery, and triggered follow-up
+decision at minute 632.
+The delivered inspector accounts share their route and interval while asserting
+normal and reduced status respectively.
+Mara's retained relevant understanding has reciprocal source-linked conflict
+links without adding raw model inputs to the inspector.
+With the same seed and authored scenario configuration, a sealed recorded replay matches the source summary, events, observations, memory traces, interpreted claims, final obligations, inspector runtime, counts, objective state, history, sanitized decision statuses, and restricted inputs.
+The source client receives no additional call during replay.
+
+Interpretation: recorded decisions reproduce the complete configured causal
+evidence, not provider identity or scenario configuration.
+The archive seals decisions only, so the replay explicitly reapplies the same
+authored scenario inputs.
+
+Files: `tests/test_autonomous_day_world.py`, `README.md`, and this operational
+evidence record.
+
+Validation: the new focused replay test and all 60 autonomous-day world tests
+passed.
+`git diff --check` passed.
+`./scripts/check.sh` passed all 293 offline tests.
+
+Explorer and review: three fresh Terra-high read-only explorers established the
+replay and inspector evidence gap.
+The first fresh Sol-high review identified missing same-minute ordering
+assertions.
+A fresh Sol-high rereview then identified the missing Ilan decision-to-statement
+dispatch link.
+After each correction, focused and full validation passed again and a final
+fresh Sol-high review found no actionable blockers.
+
+Risks and unresolved assumptions: this deterministic recorded evidence does not
+substitute for CC-11's reviewed live model day.
+The inspector remains omniscient and separate from the normal focal-safe
+presentation.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
 
 ### 2026-09-06 - Consequence delivery and follow-through
 
