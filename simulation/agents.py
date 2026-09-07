@@ -39,6 +39,31 @@ class DiaryEntryKnowledge:
 
 
 @dataclass(frozen=True)
+class KnownObligationDeadline:
+    """One finite deadline that an actor may use in an ordinary choice."""
+
+    obligation: str
+    required_action_kind: str
+    required_location: str
+    deadline_tick: int
+
+    def __post_init__(self) -> None:
+        for label, value in (
+            ("obligation", self.obligation),
+            ("required_action_kind", self.required_action_kind),
+            ("required_location", self.required_location),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"known obligation deadline {label} must be non-empty")
+        if (
+            not isinstance(self.deadline_tick, int)
+            or isinstance(self.deadline_tick, bool)
+            or self.deadline_tick < 0
+        ):
+            raise ValueError("known obligation deadline tick must be non-negative")
+
+
+@dataclass(frozen=True)
 class ActionContinuityRequirement:
     """World-owned reference to one older action that still explains state.
 
@@ -108,6 +133,7 @@ class AgentState:
     required_units: int = 0
     resource_holdings: dict[str, int] = field(default_factory=dict)
     obligations: tuple[str, ...] = ()
+    known_obligation_deadlines: tuple[KnownObligationDeadline, ...] = ()
     last_attempt: ActionAttempt | None = None
     action_history: list[ActionAttempt] = field(default_factory=list)
     action_results: list[ActionResult] = field(default_factory=list)
@@ -152,6 +178,7 @@ class AgentView:
     valid_actions: tuple[str, ...]
     household_action_available: bool = False
     continuity_requirements: tuple[ActionContinuityRequirement, ...] = ()
+    known_obligation_deadlines: tuple[KnownObligationDeadline, ...] = ()
 
 
 @dataclass(frozen=True)

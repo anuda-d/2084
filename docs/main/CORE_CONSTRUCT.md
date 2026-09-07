@@ -7,7 +7,9 @@ It describes the current direction without pretending that the setting, systems,
 
 The current repository proves five bounded foundations: append-only objective history beside a mutable Official Record, source-linked Agent Understanding with one contextual contradiction and diary-resurfacing path, an optional model-backed Mara whose choices become real attempted actions, one complete accelerated 24-hour day with independent wider-world activity and bounded model continuity, and one provider-free social causal thread from a supporting character's restricted source evidence through a world-resolved focal consequence.
 All five foundations are implemented and retained as regression evidence.
-No next bounded product goal is currently selected.
+The active owner-approved goal is [First Consequential Choice Under Conflicting Information](../plans/first-consequential-choice/GOAL.md).
+It asks whether conflicting official transit information and personal testimony can inform a model-selected ordinary action whose physical consequences affect Mara's work and household obligations within one day.
+This goal is authorized but not yet implemented; its verified progress belongs in the linked implementation state.
 
 ## Central Idea
 

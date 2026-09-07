@@ -98,6 +98,27 @@ python3 -m scenarios.autonomous_day \
 The transcript identifies this decision source as deterministic and authored.
 It does not present the comparison as live or emergent behavior.
 
+The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
+The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
+
+The opt-in `include_deadline_governed_obligation_outcomes=True` configuration adds authored 10:31 workplace and 10:30 household deadlines.
+It records a fulfilled or missed objective outcome only from matching completed activity at the required location, with an exact-deadline completion counted as missed.
+A fulfilled outcome retains the existing actor-safe completed-action result and continuity requirement for Mara's next selected decision.
+A missed outcome remains inspector-only unless
+`include_obligation_outcome_delivery=True` is also configured.
+That opt-in delivers only Mara's own missed-obligation result through her
+personal obligation schedule, requests a later decision only when she is not
+busy, and never reveals objective transit state.
+
+The separate opt-in `include_consequential_choice_tradeoff_timing=True` profile requires deadline outcomes and exposes Mara's finite, authored obligation schedule in her restricted input.
+It sets both deadlines to 10:32, so a deterministic authored comparison can choose either post-testimony workplace work or homeward travel followed by household activity without changing the existing physical-transit profile.
+The schedule identifies only Mara's own obligation, required ordinary activity and location, and deadline - never actual transit status or a predicted outcome.
+
+The opt-in `include_service_dependent_travel=True` configuration samples the objective `normal` or `reduced` service state when Mara's travel attempt is accepted, using the authored 30- or 60-minute duration for that trip.
+`homeward_travel_service_recovery_minute` may record one objective recovery after the source observation without automatically delivering it to Mara.
+The accepted travel is not retimed if that recovery happens while it is pending.
+This preserves an ordinary comparison in which Mara retains the same conflicting accounts and action path while normal service permits household completion before its deadline and reduced service does not.
+
 Add `--inspect` to reconstruct the complete causal chain, including source observation, statement validation, testimony delivery, Mara's attempt, and world resolution.
 
 ## Local model mode
@@ -134,6 +155,7 @@ The simulation never substitutes the scripted policy after a provider failure.
 
 Live choices may vary even at temperature zero.
 Recorded decisions reproduce world behavior without making another provider call.
+Replay requires the same seed and authored scenario configuration because an archive seals decisions, not scenario inputs.
 
 ### Create a private audit bundle
 

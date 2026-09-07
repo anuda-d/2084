@@ -25,6 +25,7 @@ from simulation.agents import (
     ActionContinuityRequirement,
     AgentState,
     AgentView,
+    KnownObligationDeadline,
     MAX_RETAINED_PRIVATE_DECISION_RECORD_BYTES,
     PRIVATE_DECISION_RECORD_RESOLUTION_BASE_BYTES,
     PolicyDecisionRecord,
@@ -45,6 +46,7 @@ from simulation.scheduling import ScheduledWork, TemporalPhase
 from simulation.time import SimulatedTime
 from simulation.understanding import (
     link_official_version_conflicts,
+    link_transit_service_conflicts,
     trace_from_delivered_observation,
 )
 from simulation.world import ResourceState, WorldState
@@ -66,10 +68,20 @@ _MARA_TESTIMONY_UNDERSTANDING_UPDATE = (
 )
 _TRANSIT_BULLETIN_DELIVERY = "autonomous_day_transit_bulletin_delivery"
 _MARA_TRANSIT_UNDERSTANDING_UPDATE = "autonomous_day_mara_transit_understanding_update"
+_OFFICIAL_TRANSIT_NOTICE_PUBLICATION = "autonomous_day_official_transit_notice_publication"
+_OFFICIAL_TRANSIT_NOTICE_DELIVERY = "autonomous_day_official_transit_notice_delivery"
+_MARA_OFFICIAL_TRANSIT_UNDERSTANDING_UPDATE = (
+    "autonomous_day_mara_official_transit_understanding_update"
+)
 _MARA_TRAVEL_COMPLETION = "autonomous_day_mara_travel_completion"
 _MARA_REST_COMPLETION = "autonomous_day_mara_rest_completion"
 _MARA_WORK_COMPLETION = "autonomous_day_mara_work_completion"
 _MARA_HOUSEHOLD_COMPLETION = "autonomous_day_mara_household_completion"
+_MARA_OBLIGATION_DEADLINE = "autonomous_day_mara_obligation_deadline"
+_MARA_OBLIGATION_OUTCOME_DELIVERY = (
+    "autonomous_day_mara_obligation_outcome_delivery"
+)
+_INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery"
 
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
@@ -78,12 +90,65 @@ _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _ILAN_TRANSIT_OBSERVATION_LOCATIONS = frozenset({"workplace"})
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
 _TRANSIT_BULLETIN_LOCATIONS = frozenset({"home"})
+_OFFICIAL_TRANSIT_NOTICE_PUBLICATION_MINUTE = 8 * 60
+_TRANSIT_SERVICE_INTERVAL_ID = "day-0-workplace-home-evening"
 _MARA_TRAVEL_DURATION_MINUTES = 30
+_MARA_TRAVEL_DURATION_BY_SERVICE_STATUS = {"normal": 30, "reduced": 60}
 _MARA_REST_DURATION_MINUTES = 60
 _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
 AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
 _SCRIPTED_SOCIAL_CONFIGURATION_ID = "scripted:autonomous-day-social-v0"
+
+
+@dataclass(frozen=True)
+class MaraObligationDeadline:
+    """One finite authored condition for an existing Mara obligation."""
+
+    obligation: str
+    activity_kind: Literal["work", "household"]
+    required_location: Literal["workplace", "home"]
+    deadline_minute: int
+
+
+# This opt-in configuration is deliberately local to the consequential-choice
+# scenario. A 10:31 workplace deadline lets the pre-testimony morning shift
+# finish in time, while a decision after the 08:31 conflict does not. A 10:30
+# household deadline makes a later equivalent travel-duration comparison able
+# to cross the deadline without changing the required household activity.
+_DEADLINE_GOVERNED_MARA_OBLIGATIONS = (
+    MaraObligationDeadline(
+        obligation="workplace shift",
+        activity_kind="work",
+        required_location="workplace",
+        deadline_minute=10 * 60 + 31,
+    ),
+    MaraObligationDeadline(
+        obligation="household time",
+        activity_kind="household",
+        required_location="home",
+        deadline_minute=10 * 60 + 30,
+    ),
+)
+
+
+# This separate opt-in profile creates a post-testimony choice in which either
+# ordinary activity can still fulfill its own obligation.  It does not alter
+# the tighter profile used by the accepted physical-transit comparison.
+_CONSEQUENTIAL_CHOICE_TRADEOFF_MARA_OBLIGATIONS = (
+    MaraObligationDeadline(
+        obligation="workplace shift",
+        activity_kind="work",
+        required_location="workplace",
+        deadline_minute=10 * 60 + 32,
+    ),
+    MaraObligationDeadline(
+        obligation="household time",
+        activity_kind="household",
+        required_location="home",
+        deadline_minute=10 * 60 + 32,
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -212,6 +277,12 @@ def build_autonomous_day(
     on_mara_decision: MaraDecisionCallback | None = None,
     mara_harness: MaraHarness | None = None,
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
+    include_conflicting_transit_accounts: bool = False,
+    include_deadline_governed_obligation_outcomes: bool = False,
+    include_obligation_outcome_delivery: bool = False,
+    include_consequential_choice_tradeoff_timing: bool = False,
+    include_service_dependent_travel: bool = False,
+    homeward_travel_service_recovery_minute: int | None = None,
 ) -> AutonomousDay:
     """Build the first concrete world hosted by the successor day runtime."""
 
@@ -227,6 +298,68 @@ def build_autonomous_day(
         getattr(ilan_transit_policy, "choose", None)
     ):
         raise TypeError("ilan_transit_policy must provide choose(view)")
+    if not isinstance(include_conflicting_transit_accounts, bool):
+        raise TypeError("include_conflicting_transit_accounts must be boolean")
+    if not isinstance(include_deadline_governed_obligation_outcomes, bool):
+        raise TypeError(
+            "include_deadline_governed_obligation_outcomes must be boolean"
+        )
+    if not isinstance(include_obligation_outcome_delivery, bool):
+        raise TypeError("include_obligation_outcome_delivery must be boolean")
+    if (
+        include_obligation_outcome_delivery
+        and not include_deadline_governed_obligation_outcomes
+    ):
+        raise ValueError("obligation outcome delivery requires deadline outcomes")
+    if not isinstance(include_consequential_choice_tradeoff_timing, bool):
+        raise TypeError("include_consequential_choice_tradeoff_timing must be boolean")
+    if (
+        include_consequential_choice_tradeoff_timing
+        and not include_deadline_governed_obligation_outcomes
+    ):
+        raise ValueError(
+            "consequential-choice tradeoff timing requires deadline outcomes"
+        )
+    if not isinstance(include_service_dependent_travel, bool):
+        raise TypeError("include_service_dependent_travel must be boolean")
+    if homeward_travel_service_recovery_minute is not None and (
+        not isinstance(homeward_travel_service_recovery_minute, int)
+        or isinstance(homeward_travel_service_recovery_minute, bool)
+        or not (
+            _TRANSIT_CHANGE_MINUTE
+            < homeward_travel_service_recovery_minute
+            < 24 * 60
+        )
+    ):
+        raise ValueError(
+            "homeward_travel_service_recovery_minute must be a day minute or None"
+        )
+    if (
+        homeward_travel_service_recovery_minute is not None
+        and not include_service_dependent_travel
+    ):
+        raise ValueError(
+            "homeward_travel_service_recovery_minute requires service-dependent travel"
+        )
+
+    configured_obligation_deadlines = (
+        _CONSEQUENTIAL_CHOICE_TRADEOFF_MARA_OBLIGATIONS
+        if include_consequential_choice_tradeoff_timing
+        else _DEADLINE_GOVERNED_MARA_OBLIGATIONS
+    )
+    known_mara_obligation_deadlines = (
+        tuple(
+            KnownObligationDeadline(
+                obligation=deadline.obligation,
+                required_action_kind=deadline.activity_kind,
+                required_location=deadline.required_location,
+                deadline_tick=deadline.deadline_minute,
+            )
+            for deadline in configured_obligation_deadlines
+        )
+        if include_consequential_choice_tradeoff_timing
+        else ()
+    )
 
     world = WorldState(
         tick=0,
@@ -244,6 +377,7 @@ def build_autonomous_day(
                 location="home",
                 aim="live an ordinary day without privileged world knowledge",
                 obligations=("workplace shift", "household time"),
+                known_obligation_deadlines=known_mara_obligation_deadlines,
             ),
             ILAN_ID: AgentState(
                 agent_id=ILAN_ID,
@@ -265,10 +399,23 @@ def build_autonomous_day(
     )
     event_log = EventLog()
     pending_actions: dict[str, PendingAction] = {}
+    mara_travel_resolution_details: dict[str, dict[str, object]] = {}
     transit_change_events: dict[str, Event] = {}
+    official_transit_notice_events: dict[str, Event] = {}
+    official_transit_notice_observations: dict[str, Observation] = {}
     ilan_statement_events: dict[str, Event] = {}
     ilan_testimony_observations: dict[str, Observation] = {}
     transit_bulletin_observations: dict[str, Observation] = {}
+    obligation_deadlines = {
+        deadline.obligation: deadline
+        for deadline in configured_obligation_deadlines
+    }
+    obligation_deadlines_by_item_id = {
+        f"mara-obligation-deadline-{deadline.obligation.replace(' ', '-')}": deadline
+        for deadline in configured_obligation_deadlines
+    }
+    obligation_outcomes: dict[str, Event] = {}
+    obligation_outcome_delivery_events: dict[str, Event] = {}
     understanding_transitions: list[dict[str, object]] = []
     dispatch_history_checkpoints: dict[
         int, tuple[frozenset[str], frozenset[str], frozenset[str], int]
@@ -387,6 +534,7 @@ def build_autonomous_day(
             valid_actions=autonomous_day_mara_valid_actions(mara.location),
             household_action_available=mara.location == "home",
             continuity_requirements=mara.continuity_requirements,
+            known_obligation_deadlines=mara.known_obligation_deadlines,
         )
 
     selected_ilan_transit_policy = (
@@ -774,7 +922,13 @@ def build_autonomous_day(
                 "travel destination is not reachable from Mara's location",
             )
             return
-        completion_time = context.current.plus_minutes(_MARA_TRAVEL_DURATION_MINUTES)
+        service_status = world.institution.records["tram_service"]
+        duration_minutes = (
+            _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[service_status]
+            if include_service_dependent_travel
+            else _MARA_TRAVEL_DURATION_MINUTES
+        )
+        completion_time = context.current.plus_minutes(duration_minutes)
         pending_actions[MARA_ID] = PendingAction(
             action_id=action_id,
             attempt_event_id=attempted.event_id,
@@ -782,6 +936,10 @@ def build_autonomous_day(
             started_tick=context.current.total_minutes,
             completes_tick=completion_time.total_minutes,
         )
+        mara_travel_resolution_details[action_id] = {
+            "duration_minutes": duration_minutes,
+            "service_status_at_departure": service_status,
+        }
         context.schedule(
             ScheduledWork(
                 item_id=f"{action_id}-completion",
@@ -798,17 +956,26 @@ def build_autonomous_day(
         pending = pending_actions.pop(MARA_ID)
         if pending.completes_tick != context.current.total_minutes:
             raise RuntimeError("Mara travel released at the wrong time")
+        resolution_details = mara_travel_resolution_details.pop(pending.action_id)
+        duration_minutes = resolution_details["duration_minutes"]
+        if not isinstance(duration_minutes, int) or (
+            pending.started_tick + duration_minutes != pending.completes_tick
+        ):
+            raise RuntimeError("Mara travel duration does not match its completion")
         destination = pending.attempt.parameters["destination"]
         if not isinstance(destination, str):
             raise RuntimeError("Mara travel is missing its destination")
         world.agents[MARA_ID].location = destination
+        completed_details: dict[str, object] = {"destination": destination}
+        if include_service_dependent_travel:
+            completed_details.update(resolution_details)
         completed = event_log.record(
             tick=context.current.total_minutes,
             kind="travel_completed",
             actor_id=MARA_ID,
             action_id=pending.action_id,
             caused_by=(pending.attempt_event_id,),
-            details={"destination": destination},
+            details=completed_details,
         )
         result = append_mara_result(
             action_id=pending.action_id,
@@ -865,6 +1032,139 @@ def build_autonomous_day(
             ),
         )
 
+    def resolve_mara_fulfilled_obligation(
+        *,
+        obligation: str,
+        activity_kind: Literal["work", "household"],
+        completed: Event,
+    ) -> bool:
+        """Append one fulfilled outcome, never replacing a deadline outcome."""
+
+        if not include_deadline_governed_obligation_outcomes:
+            return True
+        deadline = obligation_deadlines[obligation]
+        mara = world.agents[MARA_ID]
+        if deadline.activity_kind != activity_kind:
+            raise RuntimeError("obligation activity kind does not match its rule")
+        if deadline.required_location != mara.location:
+            raise RuntimeError("obligation activity location does not match its rule")
+        if obligation in obligation_outcomes:
+            return False
+        if completed.tick >= deadline.deadline_minute:
+            raise RuntimeError("deadline outcome was not resolved before activity")
+        fulfilled = event_log.record(
+            tick=completed.tick,
+            kind="obligation_fulfilled",
+            actor_id=MARA_ID,
+            action_id=completed.action_id,
+            caused_by=(completed.event_id,),
+            details={
+                "obligation": obligation,
+                "required_action_kind": deadline.activity_kind,
+                "required_location": deadline.required_location,
+                "deadline_tick": deadline.deadline_minute,
+                "location_at_resolution": mara.location,
+            },
+        )
+        obligation_outcomes[obligation] = fulfilled
+        return True
+
+    def resolve_mara_obligation_deadline(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Resolve a still-pending obligation before same-minute completions."""
+
+        deadline = obligation_deadlines_by_item_id[work.item_id]
+        if work.due_time != context.current:
+            raise RuntimeError("Mara obligation deadline released at the wrong time")
+        if deadline.deadline_minute != context.current.total_minutes:
+            raise RuntimeError("Mara obligation deadline has the wrong configured tick")
+        if deadline.obligation in obligation_outcomes:
+            return
+        mara = world.agents[MARA_ID]
+        missed = event_log.record(
+            tick=context.current.total_minutes,
+            kind="obligation_missed",
+            actor_id=MARA_ID,
+            details={
+                "obligation": deadline.obligation,
+                "required_action_kind": deadline.activity_kind,
+                "required_location": deadline.required_location,
+                "deadline_tick": deadline.deadline_minute,
+                "location_at_resolution": mara.location,
+            },
+        )
+        obligation_outcomes[deadline.obligation] = missed
+        if include_obligation_outcome_delivery:
+            delivery_item_id = (
+                f"mara-obligation-outcome-delivery-{missed.event_id}"
+            )
+            obligation_outcome_delivery_events[delivery_item_id] = missed
+            context.schedule(
+                ScheduledWork(
+                    item_id=delivery_item_id,
+                    due_time=context.current,
+                    phase=TemporalPhase.OBSERVATION_DELIVERY,
+                    kind=_MARA_OBLIGATION_OUTCOME_DELIVERY,
+                )
+            )
+
+    def deliver_mara_obligation_outcome(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Deliver Mara's own deadline result without exposing world state."""
+
+        if work.due_time != context.current:
+            raise RuntimeError("obligation outcome delivery released at the wrong time")
+        missed = obligation_outcome_delivery_events[work.item_id]
+        if (
+            missed.kind != "obligation_missed"
+            or missed.actor_id != MARA_ID
+            or missed.tick != context.current.total_minutes
+        ):
+            raise RuntimeError("obligation outcome source is invalid")
+        obligation = missed.details.get("obligation")
+        deadline_tick = missed.details.get("deadline_tick")
+        required_action_kind = missed.details.get("required_action_kind")
+        required_location = missed.details.get("required_location")
+        if (
+            not isinstance(obligation, str)
+            or not isinstance(deadline_tick, int)
+            or not isinstance(required_action_kind, str)
+            or not isinstance(required_location, str)
+        ):
+            raise RuntimeError("obligation outcome source lacks safe details")
+        mara = world.agents[MARA_ID]
+        observation = event_log.deliver(
+            agent_id=mara.agent_id,
+            event_id=missed.event_id,
+            source="Mara's personal obligation schedule",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "obligation_outcome",
+                "obligation": obligation,
+                "outcome": "missed",
+                "deadline_tick": deadline_tick,
+                "required_action_kind": required_action_kind,
+                "required_location": required_location,
+            },
+        )
+        mara.observations.append(observation)
+        if (
+            MARA_ID not in pending_actions
+            and (on_mara_decision is not None or mara_harness is not None)
+        ):
+            context.request_decision(
+                actor_id=mara.agent_id,
+                due_time=context.current,
+                trigger=DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=observation.observation_id,
+                ),
+            )
+
     def complete_mara_work(
         work: ScheduledWork,
         context: DayWorkContext,
@@ -895,7 +1195,14 @@ def build_autonomous_day(
             status="completed",
         )
         mara = world.agents[MARA_ID]
-        if "workplace shift" in mara.obligations:
+        if (
+            "workplace shift" in mara.obligations
+            and resolve_mara_fulfilled_obligation(
+                obligation="workplace shift",
+                activity_kind="work",
+                completed=completed,
+            )
+        ):
             mara.obligations = tuple(
                 obligation
                 for obligation in mara.obligations
@@ -947,7 +1254,14 @@ def build_autonomous_day(
             status="completed",
         )
         mara = world.agents[MARA_ID]
-        if "household time" in mara.obligations:
+        if (
+            "household time" in mara.obligations
+            and resolve_mara_fulfilled_obligation(
+                obligation="household time",
+                activity_kind="household",
+                completed=completed,
+            )
+        ):
             mara.obligations = tuple(
                 obligation
                 for obligation in mara.obligations
@@ -1085,6 +1399,16 @@ def build_autonomous_day(
             and decision.triggers[0].source_id == evidence.observation_id
         )
         mara = world.agents[MARA_ID]
+        transit_claim_matches = evidence is not None and (
+            evidence.details.get("service_interval_id")
+            == _TRANSIT_SERVICE_INTERVAL_ID
+            and evidence.details.get("asserted_status")
+            == evidence.details.get("current_status")
+            and evidence.details.get("proposition")
+            == f"workplace-home tram service is {evidence.details.get('current_status')}"
+            and evidence.details.get("asserted_value")
+            == (1 if evidence.details.get("current_status") == "reduced" else 0)
+        )
         valid = (
             evidence is not None
             and evidence_triggered_decision
@@ -1100,9 +1424,13 @@ def build_autonomous_day(
             and evidence.details.get("current_status") in {"normal", "reduced"}
             and evidence.details.get("current_status")
             == source_event.details.get("current_status")
-            and evidence.details.get("proposition")
-            == "workplace-home tram service is reduced"
-            and evidence.details.get("asserted_value") == 1
+            and (
+                transit_claim_matches
+                if include_conflicting_transit_accounts
+                else evidence.details.get("proposition")
+                == "workplace-home tram service is reduced"
+                and evidence.details.get("asserted_value") == 1
+            )
             and attempt.parameters.get("proposition")
             == evidence.details.get("proposition")
             and attempt.parameters.get("asserted_value")
@@ -1115,19 +1443,30 @@ def build_autonomous_day(
             )
             return
 
+        completed_details: dict[str, object] = {
+            "recipient_id": MARA_ID,
+            "proposition": attempt.parameters["proposition"],
+            "asserted_value": attempt.parameters["asserted_value"],
+            "evidence_observation_id": evidence.observation_id,
+            "source_event_id": evidence.event_id,
+        }
+        if include_conflicting_transit_accounts:
+            completed_details.update(
+                {
+                    "route": evidence.details["route"],
+                    "service_interval_id": evidence.details[
+                        "service_interval_id"
+                    ],
+                    "asserted_status": evidence.details["asserted_status"],
+                }
+            )
         completed = event_log.record(
             tick=context.current.total_minutes,
             kind="statement_completed",
             actor_id=ILAN_ID,
             action_id=action_id,
             caused_by=(attempted.event_id,),
-            details={
-                "recipient_id": MARA_ID,
-                "proposition": attempt.parameters["proposition"],
-                "asserted_value": attempt.parameters["asserted_value"],
-                "evidence_observation_id": evidence.observation_id,
-                "source_event_id": evidence.event_id,
-            },
+            details=completed_details,
         )
         ilan.action_results.append(
             ActionResult(
@@ -1168,16 +1507,27 @@ def build_autonomous_day(
         mara = world.agents[MARA_ID]
         if ilan.location != mara.location or ilan.location != "workplace":
             return
+        testimony_details: dict[str, object] = {
+            "evidence_kind": "social_testimony",
+            "proposition": statement.details["proposition"],
+            "asserted_value": statement.details["asserted_value"],
+        }
+        if include_conflicting_transit_accounts:
+            testimony_details.update(
+                {
+                    "route": statement.details["route"],
+                    "service_interval_id": statement.details[
+                        "service_interval_id"
+                    ],
+                    "asserted_status": statement.details["asserted_status"],
+                }
+            )
         observation = event_log.deliver(
             agent_id=mara.agent_id,
             event_id=statement.event_id,
             source=f"{ilan.display_name} in person",
             delivery_tick=context.current.total_minutes,
-            details={
-                "evidence_kind": "social_testimony",
-                "proposition": statement.details["proposition"],
-                "asserted_value": statement.details["asserted_value"],
-            },
+            details=testimony_details,
         )
         mara.observations.append(observation)
         understanding_item_id = f"mara-understanding-{observation.observation_id}"
@@ -1222,11 +1572,18 @@ def build_autonomous_day(
         trace, new_claim = derived
         mara.memory_traces += (trace,)
         if new_claim is not None:
-            mara.interpreted_claims = link_official_version_conflicts(
-                mara.interpreted_claims,
-                mara.memory_traces[:-1],
-                new_claim,
-                trace,
+            mara.interpreted_claims = (
+                link_transit_service_conflicts(
+                    mara.interpreted_claims,
+                    new_claim,
+                )
+                if trace.transit_service_claim is not None
+                else link_official_version_conflicts(
+                    mara.interpreted_claims,
+                    mara.memory_traces[:-1],
+                    new_claim,
+                    trace,
+                )
             )
         understanding_transitions.append(
             {
@@ -1324,15 +1681,18 @@ def build_autonomous_day(
             raise RuntimeError("institutional work released at the wrong time")
         prior_status = world.institution.records["tram_service"]
         world.institution.records["tram_service"] = "reduced"
+        changed_details: dict[str, object] = {
+            "route": "workplace-home",
+            "prior_status": prior_status,
+            "current_status": "reduced",
+        }
+        if include_conflicting_transit_accounts:
+            changed_details["service_interval_id"] = _TRANSIT_SERVICE_INTERVAL_ID
         changed = event_log.record(
             tick=context.current.total_minutes,
             kind="transit_service_changed",
             actor_id=world.institution.institution_id,
-            details={
-                "route": "workplace-home",
-                "prior_status": prior_status,
-                "current_status": "reduced",
-            },
+            details=changed_details,
         )
         ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
         transit_change_events[ilan_delivery_item_id] = changed
@@ -1344,15 +1704,163 @@ def build_autonomous_day(
                 kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
             )
         )
-        mara_delivery_item_id = "home-transit-bulletin-delivery"
-        transit_change_events[mara_delivery_item_id] = changed
+        if not include_conflicting_transit_accounts:
+            mara_delivery_item_id = "home-transit-bulletin-delivery"
+            transit_change_events[mara_delivery_item_id] = changed
+            context.schedule(
+                ScheduledWork(
+                    item_id=mara_delivery_item_id,
+                    due_time=SimulatedTime(_TRANSIT_BULLETIN_MINUTE),
+                    phase=TemporalPhase.OBSERVATION_DELIVERY,
+                    kind=_TRANSIT_BULLETIN_DELIVERY,
+                )
+            )
+
+    def restore_transit_service(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        """Record an objective recovery without delivering new knowledge."""
+
+        if work.due_time != context.current:
+            raise RuntimeError("transit recovery released at the wrong time")
+        prior_status = world.institution.records["tram_service"]
+        if prior_status != "reduced":
+            raise RuntimeError("transit recovery requires reduced service")
+        world.institution.records["tram_service"] = "normal"
+        changed_details: dict[str, object] = {
+            "route": "workplace-home",
+            "prior_status": prior_status,
+            "current_status": "normal",
+        }
+        if include_conflicting_transit_accounts:
+            changed_details["service_interval_id"] = _TRANSIT_SERVICE_INTERVAL_ID
+        event_log.record(
+            tick=context.current.total_minutes,
+            kind="transit_service_changed",
+            actor_id=world.institution.institution_id,
+            details=changed_details,
+        )
+
+    def publish_official_transit_notice(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("official transit notice released at the wrong time")
+        record = world.institution.official_record
+        notice = record.publish_transit_notice(
+            version_id="district-transit-notice-day-0-evening-v1",
+            artifact_id=record.artifact_id,
+            route_id="workplace-home",
+            service_interval_id=_TRANSIT_SERVICE_INTERVAL_ID,
+            asserted_status="normal",
+        )
+        published = event_log.record(
+            tick=context.current.total_minutes,
+            kind="official_transit_notice_published",
+            actor_id=world.institution.institution_id,
+            details={
+                "artifact_id": notice.artifact_id,
+                "version_id": notice.version_id,
+                "route": notice.route_id,
+                "service_interval_id": notice.service_interval_id,
+                "asserted_status": notice.asserted_status,
+                "proposition": "workplace-home tram service is normal",
+                "asserted_value": 0,
+            },
+        )
+        delivery_item_id = "workplace-official-transit-notice-delivery"
+        official_transit_notice_events[delivery_item_id] = published
         context.schedule(
             ScheduledWork(
-                item_id=mara_delivery_item_id,
-                due_time=SimulatedTime(_TRANSIT_BULLETIN_MINUTE),
+                item_id=delivery_item_id,
+                due_time=context.current,
                 phase=TemporalPhase.OBSERVATION_DELIVERY,
-                kind=_TRANSIT_BULLETIN_DELIVERY,
+                kind=_OFFICIAL_TRANSIT_NOTICE_DELIVERY,
             )
+        )
+
+    def deliver_official_transit_notice(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("official transit notice delivery released at the wrong time")
+        mara = world.agents[MARA_ID]
+        if mara.location != "workplace":
+            return
+        published = official_transit_notice_events[work.item_id]
+        observation = event_log.deliver(
+            agent_id=mara.agent_id,
+            event_id=published.event_id,
+            source="workplace transit notice board",
+            delivery_tick=context.current.total_minutes,
+            details={
+                "evidence_kind": "official_transit_claim",
+                "artifact_id": published.details["artifact_id"],
+                "version_id": published.details["version_id"],
+                "route": published.details["route"],
+                "service_interval_id": published.details["service_interval_id"],
+                "asserted_status": published.details["asserted_status"],
+                "proposition": published.details["proposition"],
+                "asserted_value": published.details["asserted_value"],
+            },
+        )
+        mara.observations.append(observation)
+        understanding_item_id = f"mara-understanding-{observation.observation_id}"
+        official_transit_notice_observations[understanding_item_id] = observation
+        context.schedule(
+            ScheduledWork(
+                item_id=understanding_item_id,
+                due_time=context.current,
+                phase=TemporalPhase.UNDERSTANDING_UPDATE,
+                kind=_MARA_OFFICIAL_TRANSIT_UNDERSTANDING_UPDATE,
+            )
+        )
+        if on_mara_decision is not None or mara_harness is not None:
+            context.request_decision(
+                actor_id=mara.agent_id,
+                due_time=context.current,
+                trigger=DecisionTrigger(
+                    kind=DecisionTriggerKind.OBSERVATION_DELIVERED,
+                    source_id=observation.observation_id,
+                ),
+            )
+
+    def update_mara_official_transit_understanding(
+        work: ScheduledWork,
+        context: DayWorkContext,
+    ) -> None:
+        if work.due_time != context.current:
+            raise RuntimeError("official transit understanding released at the wrong time")
+        observation = official_transit_notice_observations[work.item_id]
+        mara = world.agents[MARA_ID]
+        derived = trace_from_delivered_observation(
+            observation,
+            trace_id=f"trace-{observation.observation_id}",
+            claim_id=f"claim-{observation.observation_id}",
+            existing_claims=mara.interpreted_claims,
+        )
+        if derived is None:
+            raise RuntimeError("official transit notice did not support understanding")
+        trace, new_claim = derived
+        mara.memory_traces += (trace,)
+        if new_claim is not None:
+            mara.interpreted_claims = link_transit_service_conflicts(
+                mara.interpreted_claims,
+                new_claim,
+            )
+        understanding_transitions.append(
+            {
+                "agent_id": mara.agent_id,
+                "tick": context.current.total_minutes,
+                "source_observation_id": observation.observation_id,
+                "source_event_id": observation.event_id,
+                "trace_id": trace.trace_id,
+                "claim_id": trace.interpreted_claim_id,
+                "claim_created": new_claim is not None,
+            }
         )
 
     def deliver_ilan_transit_observation(
@@ -1365,18 +1873,31 @@ def build_autonomous_day(
         if ilan.location not in _ILAN_TRANSIT_OBSERVATION_LOCATIONS:
             return
         source_event = transit_change_events[work.item_id]
+        details: dict[str, object] = {
+            "evidence_kind": "transit_service_status",
+            "route": "workplace-home",
+            "current_status": source_event.details["current_status"],
+            "proposition": (
+                "workplace-home tram service is "
+                f"{source_event.details['current_status']}"
+            ),
+            "asserted_value": (
+                1 if source_event.details["current_status"] == "reduced" else 0
+            ),
+        }
+        if include_conflicting_transit_accounts:
+            details.update(
+                {
+                    "service_interval_id": _TRANSIT_SERVICE_INTERVAL_ID,
+                    "asserted_status": source_event.details["current_status"],
+                }
+            )
         observation = event_log.deliver(
             agent_id=ilan.agent_id,
             event_id=source_event.event_id,
             source="workplace transit service terminal",
             delivery_tick=context.current.total_minutes,
-            details={
-                "evidence_kind": "transit_service_status",
-                "route": "workplace-home",
-                "current_status": source_event.details["current_status"],
-                "proposition": "workplace-home tram service is reduced",
-                "asserted_value": 1,
-            },
+            details=details,
         )
         ilan.observations.append(observation)
         context.request_decision(
@@ -1398,18 +1919,31 @@ def build_autonomous_day(
         if mara.location not in _TRANSIT_BULLETIN_LOCATIONS:
             return
         source_event = transit_change_events[work.item_id]
+        details: dict[str, object] = {
+            "evidence_kind": "transit_service_status",
+            "route": "workplace-home",
+            "current_status": source_event.details["current_status"],
+            "proposition": (
+                "workplace-home tram service is "
+                f"{source_event.details['current_status']}"
+            ),
+            "asserted_value": (
+                1 if source_event.details["current_status"] == "reduced" else 0
+            ),
+        }
+        if include_conflicting_transit_accounts:
+            details.update(
+                {
+                    "service_interval_id": _TRANSIT_SERVICE_INTERVAL_ID,
+                    "asserted_status": source_event.details["current_status"],
+                }
+            )
         observation = event_log.deliver(
             agent_id=mara.agent_id,
             event_id=source_event.event_id,
             source="home transit bulletin receiver",
             delivery_tick=context.current.total_minutes,
-            details={
-                "evidence_kind": "transit_service_status",
-                "route": "workplace-home",
-                "current_status": source_event.details["current_status"],
-                "proposition": "workplace-home tram service is reduced",
-                "asserted_value": 1,
-            },
+            details=details,
         )
         mara.observations.append(observation)
         understanding_item_id = f"mara-understanding-{observation.observation_id}"
@@ -1475,6 +2009,7 @@ def build_autonomous_day(
             _SUPPORTING_WORK_START: start_supporting_work,
             _SUPPORTING_WORK_COMPLETION: complete_supporting_work,
             _INSTITUTIONAL_SERVICE_CHANGE: change_transit_service,
+            _INSTITUTIONAL_SERVICE_RECOVERY: restore_transit_service,
             _ILAN_TRANSIT_OBSERVATION_DELIVERY: (
                 deliver_ilan_transit_observation
             ),
@@ -1484,10 +2019,17 @@ def build_autonomous_day(
             ),
             _TRANSIT_BULLETIN_DELIVERY: deliver_transit_bulletin,
             _MARA_TRANSIT_UNDERSTANDING_UPDATE: update_mara_transit_understanding,
+            _OFFICIAL_TRANSIT_NOTICE_PUBLICATION: publish_official_transit_notice,
+            _OFFICIAL_TRANSIT_NOTICE_DELIVERY: deliver_official_transit_notice,
+            _MARA_OFFICIAL_TRANSIT_UNDERSTANDING_UPDATE: (
+                update_mara_official_transit_understanding
+            ),
             _MARA_TRAVEL_COMPLETION: complete_mara_travel,
             _MARA_REST_COMPLETION: complete_mara_rest,
             _MARA_WORK_COMPLETION: complete_mara_work,
             _MARA_HOUSEHOLD_COMPLETION: complete_mara_household,
+            _MARA_OBLIGATION_DEADLINE: resolve_mara_obligation_deadline,
+            _MARA_OBLIGATION_OUTCOME_DELIVERY: deliver_mara_obligation_outcome,
         },
         decision_handler=dispatch_actor_decision,
         model_backed_actor_ids=(MARA_ID,),
@@ -1507,6 +2049,34 @@ def build_autonomous_day(
             kind=_SUPPORTING_WORK_START,
         )
     )
+    if homeward_travel_service_recovery_minute is not None:
+        runtime.schedule(
+            ScheduledWork(
+                item_id="district-transit-homeward-service-recovery",
+                due_time=SimulatedTime(homeward_travel_service_recovery_minute),
+                phase=TemporalPhase.SCHEDULED_WORLD,
+                kind=_INSTITUTIONAL_SERVICE_RECOVERY,
+            )
+        )
+    if include_conflicting_transit_accounts:
+        runtime.schedule(
+            ScheduledWork(
+                item_id="district-transit-evening-notice-publication",
+                due_time=SimulatedTime(_OFFICIAL_TRANSIT_NOTICE_PUBLICATION_MINUTE),
+                phase=TemporalPhase.SCHEDULED_WORLD,
+                kind=_OFFICIAL_TRANSIT_NOTICE_PUBLICATION,
+            )
+        )
+    if include_deadline_governed_obligation_outcomes:
+        for item_id, deadline in obligation_deadlines_by_item_id.items():
+            runtime.schedule(
+                ScheduledWork(
+                    item_id=item_id,
+                    due_time=SimulatedTime(deadline.deadline_minute),
+                    phase=TemporalPhase.SCHEDULED_WORLD,
+                    kind=_MARA_OBLIGATION_DEADLINE,
+                )
+            )
     if on_mara_decision is not None or mara_harness is not None:
         runtime.request_decision(
             actor_id=MARA_ID,
@@ -1653,6 +2223,17 @@ def render_autonomous_day(
                     f"{observation.details['current_status']}.",
                 )
             )
+        elif observation.details.get("evidence_kind") == "official_transit_claim":
+            focal_updates.append(
+                (
+                    delivered_at,
+                    int(TemporalPhase.OBSERVATION_DELIVERY),
+                    observation_order_by_id[observation.observation_id],
+                    f"{delivered_at.label} | Official transit notice: "
+                    f"{observation.details['route']} service is "
+                    f"{observation.details['asserted_status']}.",
+                )
+            )
         elif observation.details.get("evidence_kind") == "social_testimony":
             focal_updates.append(
                 (
@@ -1661,6 +2242,16 @@ def render_autonomous_day(
                     observation_order_by_id[observation.observation_id],
                     f'{delivered_at.label} | Ilan told Mara in person: "'
                     f'{observation.details["proposition"].capitalize()}."',
+                )
+            )
+        elif observation.details.get("evidence_kind") == "obligation_outcome":
+            focal_updates.append(
+                (
+                    delivered_at,
+                    int(TemporalPhase.OBSERVATION_DELIVERY),
+                    observation_order_by_id[observation.observation_id],
+                    f"{delivered_at.label} | Mara learned that "
+                    f"{observation.details['obligation']} was missed.",
                 )
             )
     current_visible_time = summary.start

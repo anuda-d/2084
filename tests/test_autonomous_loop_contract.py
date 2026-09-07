@@ -1,3 +1,4 @@
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +26,43 @@ class AutonomousLoopContractTests(unittest.TestCase):
                 (ROOT / relative_path).read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
+
+        # Keep the real contract prose, but make test state independent of the
+        # repository's current goal, authorization, and in-progress work.
+        current_path = root / "docs/plans/CURRENT.md"
+        current_text = current_path.read_text(encoding="utf-8")
+        current_text = re.sub(
+            r"(?m)^Status: [^\n]+$",
+            "Status: no active goal.",
+            current_text,
+            count=1,
+        )
+        fixture_sections = {
+            "Active Work": "- Active goal: none\n- Active work: none selected\n",
+            "Run State Snapshot": (
+                "- Active goal id: none\n"
+                "- Owner authorization: pending\n"
+                "- Authorization scope: none\n"
+                "- Authorization source: none\n"
+                "- Loop cadence: stopped\n"
+                "- Current run: none\n"
+                "- Incomplete run: none\n"
+                "- Run status: none\n"
+                "- Pending owner decision: none\n"
+                "- Scheduled window: daily 18:00-23:00 America/Toronto\n"
+                "- Fresh-task relay: stopped\n"
+                "- Alignment due: no\n"
+                "- Standing implementation authority: none\n"
+            ),
+        }
+        for heading, body in fixture_sections.items():
+            current_text = re.sub(
+                rf"(?ms)^## {re.escape(heading)}[ \t]*\n.*?(?=^## |\Z)",
+                f"## {heading}\n\n{body}\n",
+                current_text,
+                count=1,
+            )
+        current_path.write_text(current_text, encoding="utf-8")
         return root
 
     def active_state_fixture(self, owner_authorization="standing"):
@@ -248,7 +286,7 @@ class AutonomousLoopContractTests(unittest.TestCase):
                     self.assertTrue(any(rule in failure for failure in failures), failures)
 
     def test_no_goal_state_is_stopped_and_pending_owner_authorization(self):
-        failures = current_state_failures()
+        failures = current_state_failures(self.fixture_root())
 
         self.assertEqual(failures, [], "\n".join(failures))
 

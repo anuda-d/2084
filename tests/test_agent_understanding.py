@@ -6,6 +6,9 @@ from scenarios.first_day import CLERK_ID, CO_WORKER_ID, FOCAL_AGENT_ID, build_fi
 from simulation.actions import ActionAttempt
 from simulation.events import Observation, freeze_mapping
 from simulation.understanding import (
+    InterpretedClaim,
+    TransitServiceClaim,
+    link_transit_service_conflicts,
     select_private_diary_stance,
     select_public_counter_stance,
     trace_from_delivered_observation,
@@ -13,6 +16,66 @@ from simulation.understanding import (
 
 
 class AgentUnderstandingTests(unittest.TestCase):
+    def test_transit_conflicts_require_one_shared_service_interval(self):
+        normal = InterpretedClaim(
+            claim_id="claim-normal",
+            proposition="workplace-home tram service is normal",
+            asserted_value=0,
+            period_id=None,
+            origin_trace_id="trace-normal",
+            transit_service_claim=TransitServiceClaim(
+                route="workplace-home",
+                service_interval_id="day-0-evening",
+                asserted_status="normal",
+            ),
+        )
+        different_interval = InterpretedClaim(
+            claim_id="claim-reduced-later",
+            proposition="workplace-home tram service is reduced",
+            asserted_value=1,
+            period_id=None,
+            origin_trace_id="trace-reduced-later",
+            transit_service_claim=TransitServiceClaim(
+                route="workplace-home",
+                service_interval_id="day-0-later-evening",
+                asserted_status="reduced",
+            ),
+        )
+        same_interval = InterpretedClaim(
+            claim_id="claim-reduced",
+            proposition="workplace-home tram service is reduced",
+            asserted_value=1,
+            period_id=None,
+            origin_trace_id="trace-reduced",
+            transit_service_claim=TransitServiceClaim(
+                route="workplace-home",
+                service_interval_id="day-0-evening",
+                asserted_status="reduced",
+            ),
+        )
+
+        without_shared_referent = link_transit_service_conflicts(
+            link_transit_service_conflicts((), normal),
+            different_interval,
+        )
+        self.assertEqual(
+            [claim.conflicts_with for claim in without_shared_referent],
+            [(), ()],
+        )
+
+        with_shared_referent = link_transit_service_conflicts(
+            link_transit_service_conflicts((), normal),
+            same_interval,
+        )
+        self.assertEqual(
+            with_shared_referent[0].conflicts_with,
+            (same_interval.claim_id,),
+        )
+        self.assertEqual(
+            with_shared_referent[1].conflicts_with,
+            (normal.claim_id,),
+        )
+
     def test_supported_deliveries_create_immutable_source_linked_traces(self):
         simulation = build_first_day(seed=42)
         for _ in range(8):
