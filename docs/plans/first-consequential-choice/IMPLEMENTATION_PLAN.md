@@ -19,16 +19,16 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Fresh-task relay: active
-- Alignment due: yes
+- Alignment due: no
 - Standing implementation authority: active
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 3
+- Verified implementation runs since alignment: 0
 - Last completed implementation run: consequential-choice inspection and recorded replay (CC-10)
-- Last whole-goal alignment: 2026-09-06 after b2fda19
+- Last whole-goal alignment: 2026-09-06 after f66f6b2
 
-Whole-goal alignment is current as of b2fda19.
+Whole-goal alignment is current as of f66f6b2.
 The alignment record does not count as an implementation unit or claim product progress.
 
 ## Goal Progress
@@ -95,6 +95,54 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Whole-goal alignment after f66f6b2
+
+Scope: this alignment reviews the complete active goal after the three accepted
+implementation runs since the prior alignment, ending with CC-10 recorded
+replay evidence.
+It selects no implementation unit and makes no product-code change.
+
+Criterion assessment: CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, and CC-10 remain
+accepted with current source and focused-test evidence.
+CC-4, CC-8, CC-9, CC-11, and CC-12 remain unverified.
+The reviewed evidence confirms that CC-4 still lacks a live local-model run
+through the consequential-choice composition.
+CC-8 still lacks the required information-only comparison holding that full
+composition fixed while withholding only a source.
+CC-9 has no documented provider-free CLI composition for the complete chain.
+CC-11 likewise lacks a live consequential-choice CLI and an audit replay that
+reapplies its authored configuration.
+CC-12 remains open until those criteria and a final review pass.
+
+Boundary and complexity assessment: accepted behavior still preserves
+append-only objective evidence, distinct publication, delivery, understanding,
+and consequence records, restricted Mara input, focal-safe normal presentation,
+and deterministic recorded replay.
+The finite opt-in configuration remains manageable, but subsequent evidence
+should converge the complete consequential-choice composition behind one
+explicit configuration so the offline CLI, live audit, and replay cannot drift.
+General claim, provenance, or delivery framework extraction remains outside
+this goal.
+No removal is justified.
+
+Validation: `python3 scripts/check_autonomous_loop_contract.py` passed.
+All 60 `tests.test_autonomous_day_world` tests passed.
+`./scripts/check.sh` passed all 293 offline tests, including continuity and
+model-growth checks.
+`git diff --check` passed.
+The unchanged normal and inspector autonomous-day commands reached the exact
+24-hour boundary.
+
+Independent review: a fresh read-only Sol-high reviewer independently audited
+every criterion, current source, and focused tests.
+It found no regression or owner-decision blocker and confirmed the accepted and
+open statuses above.
+
+Acceptance: standing owner authorization accepts this alignment evidence only.
+No criterion status changes, product behavior changes, future work queue, or
+owner decision result from the alignment.
+No next unit selected.
 
 ### 2026-09-06 - Consequential-choice inspection and recorded replay
 
