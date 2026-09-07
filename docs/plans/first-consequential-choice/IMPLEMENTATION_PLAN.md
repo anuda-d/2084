@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 0
-- Last completed implementation run: consequential-choice inspection and recorded replay (CC-10)
+- Verified implementation runs since alignment: 1
+- Last completed implementation run: consequential-choice focal-safe CLI (CC-9)
 - Last whole-goal alignment: 2026-09-06 after f66f6b2
 
 Whole-goal alignment is current as of f66f6b2.
@@ -43,7 +43,7 @@ The alignment record does not count as an implementation unit or claim product p
 | CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
 | CC-7 Follow-through | accepted | Mara receives a delivered missed-obligation result and a later legitimate decision opportunity that retains the conflict. |
 | CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
-| CC-9 Provider-free watchability | unverified | A documented focal-safe offline run makes the complete interaction understandable. |
+| CC-9 Provider-free watchability | accepted | A documented focal-safe offline run makes the complete interaction understandable. |
 | CC-10 Inspection and replay | accepted | Ordered causal inspection and recorded playback reconstruct the complete chain. |
 | CC-11 Reviewed live day | unverified | The existing local model selects a documented competing-obligation alternative and encounters its obligation consequence and follow-up in an audited exact day. |
 | CC-12 Integration and completion | unverified | Focused checks, full regressions, and final independent whole-goal review pass. |
@@ -95,6 +95,49 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Consequential-choice focal-safe CLI
+
+Criterion and claim: CC-9 gains one documented provider-free command that
+shows the complete conflict-to-consequence composition through the normal
+focal-safe surface.
+
+Observed evidence: `python3 -m scenarios.autonomous_day --seed 42
+--focal-policy scripted --consequential-choice` shows the official normal and
+Ilan's reduced claims for the same delivered service interval, Mara's authored
+homeward travel, the reduced-service 60-minute arrival at 09:31, household
+completion at 10:31, a delivered missed workplace result, and a later authored
+wait at 10:32 before reaching exactly Day 1 00:00.
+Quiet spans remain compact.
+The normal surface does not show objective event names, identifiers, private
+decision data, transit duration metadata, or inspector-only evidence.
+
+Implementation: `--consequential-choice` atomically selects the finite
+conflict, deadline, delivery, tradeoff-timing, and service-dependent-travel
+configuration while preserving the default and existing scripted social
+commands.
+The provider-free client chooses its branch only from restricted state, and
+the separate live mode now records the authored build options needed for audit
+replay.
+
+Validation: all 86 focused autonomous-day CLI, world, and audit tests passed.
+Both the normal command and explicit inspector completed the exact day.
+`git diff --check` and `./scripts/check.sh` passed all 296 offline tests.
+
+Independent review: three fresh Terra-high explorers scoped the CLI,
+focal-safety, and regression boundary.
+A first Sol-high review found missing actual-travel configuration, visible
+interval, and audit-replay preservation.
+After correction and repeat validation, a fresh Sol-high rereview found no
+remaining blocker and accepted CC-9 only.
+
+Known risk: this provider-free branch is authored evidence only and does not
+establish CC-4 or CC-11's live-model autonomy claim.
+The inspector remains separate from the normal presentation.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
+No next unit selected.
 
 ### 2026-09-06 - Whole-goal alignment after f66f6b2
 

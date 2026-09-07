@@ -3104,7 +3104,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertNotIn(ilan_source.event_id, json.dumps(final_input))
         self.assertNotIn("institution_records", final_input)
         self.assertIn(
-            "Day 0 08:00 | Official transit notice: workplace-home service is normal.",
+            "Day 0 08:00 | Official transit notice: workplace-home service is "
+            "normal for service interval day-0-workplace-home-evening.",
             render_autonomous_day(day, summary),
         )
         self.assertEqual(

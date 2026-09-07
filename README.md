@@ -98,6 +98,26 @@ python3 -m scenarios.autonomous_day \
 The transcript identifies this decision source as deterministic and authored.
 It does not present the comparison as live or emergent behavior.
 
+The complete provider-free consequential-choice comparison keeps the same
+single-day world but exposes both delivered transit accounts for one explicit
+service interval, Mara's authored ordinary choice, its world-resolved travel
+and obligation consequence, and a later follow-up decision through the normal
+focal-safe transcript:
+
+```bash
+python3 -m scenarios.autonomous_day \
+  --seed 42 \
+  --focal-policy scripted \
+  --consequential-choice
+```
+
+This command uses a deterministic authored decision sequence rather than a
+live model.
+It is evidence for the observable composition, not a claim that Mara chose the
+branch autonomously.
+`--consequential-choice` also supports the explicit Ollama policy for the
+separate reviewed live-day criterion, but it rejects the inert offline policy.
+
 The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
 The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
 
