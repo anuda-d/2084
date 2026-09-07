@@ -288,6 +288,7 @@ def build_autonomous_day(
     mara_harness: MaraHarness | None = None,
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
+    include_ilan_transit_source_delivery: bool = True,
     include_deadline_governed_obligation_outcomes: bool = False,
     include_obligation_outcome_delivery: bool = False,
     include_consequential_choice_tradeoff_timing: bool = False,
@@ -310,6 +311,8 @@ def build_autonomous_day(
         raise TypeError("ilan_transit_policy must provide choose(view)")
     if not isinstance(include_conflicting_transit_accounts, bool):
         raise TypeError("include_conflicting_transit_accounts must be boolean")
+    if not isinstance(include_ilan_transit_source_delivery, bool):
+        raise TypeError("include_ilan_transit_source_delivery must be boolean")
     if not isinstance(include_deadline_governed_obligation_outcomes, bool):
         raise TypeError(
             "include_deadline_governed_obligation_outcomes must be boolean"
@@ -1704,16 +1707,17 @@ def build_autonomous_day(
             actor_id=world.institution.institution_id,
             details=changed_details,
         )
-        ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
-        transit_change_events[ilan_delivery_item_id] = changed
-        context.schedule(
-            ScheduledWork(
-                item_id=ilan_delivery_item_id,
-                due_time=context.current,
-                phase=TemporalPhase.OBSERVATION_DELIVERY,
-                kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
+        if include_ilan_transit_source_delivery:
+            ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
+            transit_change_events[ilan_delivery_item_id] = changed
+            context.schedule(
+                ScheduledWork(
+                    item_id=ilan_delivery_item_id,
+                    due_time=context.current,
+                    phase=TemporalPhase.OBSERVATION_DELIVERY,
+                    kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
+                )
             )
-        )
         if not include_conflicting_transit_accounts:
             mara_delivery_item_id = "home-transit-bulletin-delivery"
             transit_change_events[mara_delivery_item_id] = changed
@@ -2127,6 +2131,9 @@ def build_autonomous_day(
             {
                 "include_conflicting_transit_accounts": (
                     include_conflicting_transit_accounts
+                ),
+                "include_ilan_transit_source_delivery": (
+                    include_ilan_transit_source_delivery
                 ),
                 "include_deadline_governed_obligation_outcomes": (
                     include_deadline_governed_obligation_outcomes

@@ -120,6 +120,7 @@ separate reviewed live-day criterion, but it rejects the inert offline policy.
 
 The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
 The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
+For the deterministic CC-8 information comparison, `include_ilan_transit_source_delivery=False` withholds Ilan's access to the source observation while leaving the objective service change and official-account path intact.
 
 The opt-in `include_deadline_governed_obligation_outcomes=True` configuration adds authored 10:31 workplace and 10:30 household deadlines.
 It records a fulfilled or missed objective outcome only from matching completed activity at the required location, with an exact-deadline completion counted as missed.

@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; conflict, obligation, physical-transit, tradeoff, and follow-through boundaries accepted.
+Status: active; conflict, obligation, physical-transit, tradeoff, follow-through, and information-comparison boundaries accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -24,8 +24,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 1
-- Last completed implementation run: consequential-choice focal-safe CLI (CC-9)
+- Verified implementation runs since alignment: 2
+- Last completed implementation run: information-only consequential-choice comparison (CC-8)
 - Last whole-goal alignment: 2026-09-06 after f66f6b2
 
 Whole-goal alignment is current as of f66f6b2.
@@ -42,7 +42,7 @@ The alignment record does not count as an implementation unit or claim product p
 | CC-5 Physical transit effect | accepted | Equivalent action paths under different actual service conditions cross the household deadline and change its outcome. |
 | CC-6 Obligation outcomes | accepted | Location, completed activity, and deadline rules determine actual fulfillment or failure. |
 | CC-7 Follow-through | accepted | Mara receives a delivered missed-obligation result and a later legitimate decision opportunity that retains the conflict. |
-| CC-8 Causal comparisons | unverified | Information, action, and objective-condition comparisons isolate their distinct effects, including a transit-caused obligation outcome difference. |
+| CC-8 Causal comparisons | accepted | The finite source-withholding comparison holds objective transit and official-account evidence fixed while removing only downstream testimony and conflict knowledge. |
 | CC-9 Provider-free watchability | accepted | A documented focal-safe offline run makes the complete interaction understandable. |
 | CC-10 Inspection and replay | accepted | Ordered causal inspection and recorded playback reconstruct the complete chain. |
 | CC-11 Reviewed live day | unverified | The existing local model selects a documented competing-obligation alternative and encounters its obligation consequence and follow-up in an audited exact day. |
@@ -95,6 +95,64 @@ No next unit selected.
 No candidate evidence is pending independent review.
 
 ## Accepted Run Record
+
+### 2026-09-06 - Information-only consequential-choice comparison
+
+Criterion and claim: CC-8 gains a finite authored source-access comparison
+that holds objective transit conditions and the official account path fixed
+while withholding only Ilan's source delivery.
+
+Implementation: `include_ilan_transit_source_delivery=True` preserves the
+existing default and consequential-choice behavior.
+When false, it suppresses only scheduling the source observation from the
+already-recorded objective transit change to Ilan.
+The setting is captured in the sealed-decision replay build options.
+
+Observed evidence: paired provider-free full-composition runs use the same
+seed and all consequential-choice settings, varying only source delivery.
+Both reach the exact boundary, record equal reduced-service transit evidence,
+retain equal official publication and Mara official observation evidence, and
+end with the same objective transit status.
+Only the source-present run gives Ilan the source observation and decision,
+records his statement and Mara testimony, and gives Mara two reciprocal
+conflicting claims at minute 511.
+The withheld run contains no Ilan source, decision, statement, testimony, or
+testimony understanding transition, retains only the official normal claim
+without a conflict, and gives Mara no minute-511 decision input or hidden
+reduced-service material.
+Recorded playback of the source-withheld run matches its ordered events,
+observations, and summary without another source-client call.
+
+Interpretation: withholding access does not alter transit truth, the official
+account, or the world-owned service result.
+It removes only the social source chain and the resulting conflict knowledge.
+It legitimately removes the testimony-triggered minute-511 decision, so this
+comparison does not claim equal later dispatches or action history.
+
+Files: `scenarios/autonomous_day.py`, `tests/test_autonomous_day_world.py`,
+`README.md`, and this operational evidence record.
+
+Validation: the focused paired test passed, then all 87 autonomous-day world,
+CLI, and audit tests passed.
+The normal and inspector consequential-choice commands reached the exact
+24-hour boundary.
+`./scripts/check.sh` passed all 297 offline tests and `git diff --check`
+passed.
+
+Explorer and review: three fresh Terra-high read-only explorers scoped the
+authored access configuration, comparison assertions, and replay boundary.
+The first fresh Sol-high review found testimony-oriented fixture wording in the
+source-withheld decision record.
+After replacement with source-appropriate neutral responses and repeated
+validation, a fresh Sol-high rereview found no actionable blocker.
+
+Risks and unresolved assumptions: this deterministic comparison establishes
+only the information boundary.
+It does not establish live-model choice or the final integration criterion.
+
+Acceptance basis: standing owner authorization, focused and full validation,
+and clean fresh independent review.
+No next unit selected.
 
 ### 2026-09-06 - Consequential-choice focal-safe CLI
 
