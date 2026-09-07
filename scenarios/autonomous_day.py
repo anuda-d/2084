@@ -99,6 +99,9 @@ _MARA_WORK_DURATION_MINUTES = 120
 _MARA_HOUSEHOLD_DURATION_MINUTES = 60
 AD12_OLLAMA_MODEL = "qwen3:4b-instruct"
 _SCRIPTED_SOCIAL_CONFIGURATION_ID = "scripted:autonomous-day-social-v0"
+_SCRIPTED_CONSEQUENTIAL_CHOICE_CONFIGURATION_ID = (
+    "scripted:autonomous-day-consequential-choice-v0"
+)
 
 
 @dataclass(frozen=True)
@@ -227,6 +230,7 @@ class AutonomousDay:
     _committed_model_decision_dispatches: dict[str, dict[str, object]]
     _mara_harness_configured: bool
     _mara_provider_kind: str | None
+    _replay_build_options: Mapping[str, object]
 
     @property
     def events(self) -> tuple[Event, ...]:
@@ -263,6 +267,12 @@ class AutonomousDay:
         return self._mara_provider_kind
 
     @property
+    def replay_build_options(self) -> dict[str, object]:
+        """Return the authored inputs required to replay this exact day."""
+
+        return dict(self._replay_build_options)
+
+    @property
     def understanding_transitions(self) -> tuple[dict[str, object], ...]:
         """Return inspector-only records of canonical understanding changes."""
         return tuple(self._understanding_transitions)
@@ -278,6 +288,7 @@ def build_autonomous_day(
     mara_harness: MaraHarness | None = None,
     ilan_transit_policy: TransitStatementDecisionPolicy | None = None,
     include_conflicting_transit_accounts: bool = False,
+    include_ilan_transit_source_delivery: bool = True,
     include_deadline_governed_obligation_outcomes: bool = False,
     include_obligation_outcome_delivery: bool = False,
     include_consequential_choice_tradeoff_timing: bool = False,
@@ -300,6 +311,8 @@ def build_autonomous_day(
         raise TypeError("ilan_transit_policy must provide choose(view)")
     if not isinstance(include_conflicting_transit_accounts, bool):
         raise TypeError("include_conflicting_transit_accounts must be boolean")
+    if not isinstance(include_ilan_transit_source_delivery, bool):
+        raise TypeError("include_ilan_transit_source_delivery must be boolean")
     if not isinstance(include_deadline_governed_obligation_outcomes, bool):
         raise TypeError(
             "include_deadline_governed_obligation_outcomes must be boolean"
@@ -1694,16 +1707,17 @@ def build_autonomous_day(
             actor_id=world.institution.institution_id,
             details=changed_details,
         )
-        ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
-        transit_change_events[ilan_delivery_item_id] = changed
-        context.schedule(
-            ScheduledWork(
-                item_id=ilan_delivery_item_id,
-                due_time=context.current,
-                phase=TemporalPhase.OBSERVATION_DELIVERY,
-                kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
+        if include_ilan_transit_source_delivery:
+            ilan_delivery_item_id = "ilan-workplace-transit-observation-delivery"
+            transit_change_events[ilan_delivery_item_id] = changed
+            context.schedule(
+                ScheduledWork(
+                    item_id=ilan_delivery_item_id,
+                    due_time=context.current,
+                    phase=TemporalPhase.OBSERVATION_DELIVERY,
+                    kind=_ILAN_TRANSIT_OBSERVATION_DELIVERY,
+                )
             )
-        )
         if not include_conflicting_transit_accounts:
             mara_delivery_item_id = "home-transit-bulletin-delivery"
             transit_change_events[mara_delivery_item_id] = changed
@@ -2113,6 +2127,29 @@ def build_autonomous_day(
         _mara_provider_kind=(
             None if mara_harness is None else mara_harness.provider_kind
         ),
+        _replay_build_options=freeze_mapping(
+            {
+                "include_conflicting_transit_accounts": (
+                    include_conflicting_transit_accounts
+                ),
+                "include_ilan_transit_source_delivery": (
+                    include_ilan_transit_source_delivery
+                ),
+                "include_deadline_governed_obligation_outcomes": (
+                    include_deadline_governed_obligation_outcomes
+                ),
+                "include_obligation_outcome_delivery": (
+                    include_obligation_outcome_delivery
+                ),
+                "include_consequential_choice_tradeoff_timing": (
+                    include_consequential_choice_tradeoff_timing
+                ),
+                "include_service_dependent_travel": include_service_dependent_travel,
+                "homeward_travel_service_recovery_minute": (
+                    homeward_travel_service_recovery_minute
+                ),
+            }
+        ),
     )
 
 
@@ -2123,6 +2160,15 @@ def _focal_update_sort_key(
 
     visible_time, causal_phase, causal_order, _ = update
     return (visible_time.total_minutes, causal_phase, causal_order)
+
+
+def _focal_service_interval_suffix(details: Mapping[str, object]) -> str:
+    """Render an explicitly delivered finite transit-claim referent when present."""
+
+    service_interval_id = details.get("service_interval_id")
+    if not isinstance(service_interval_id, str) or not service_interval_id:
+        return ""
+    return f" for service interval {service_interval_id}"
 
 
 def render_autonomous_day(
@@ -2231,17 +2277,20 @@ def render_autonomous_day(
                     observation_order_by_id[observation.observation_id],
                     f"{delivered_at.label} | Official transit notice: "
                     f"{observation.details['route']} service is "
-                    f"{observation.details['asserted_status']}.",
+                    f"{observation.details['asserted_status']}"
+                    f"{_focal_service_interval_suffix(observation.details)}.",
                 )
             )
         elif observation.details.get("evidence_kind") == "social_testimony":
+            interval_suffix = _focal_service_interval_suffix(observation.details)
             focal_updates.append(
                 (
                     delivered_at,
                     int(TemporalPhase.OBSERVATION_DELIVERY),
                     observation_order_by_id[observation.observation_id],
                     f'{delivered_at.label} | Ilan told Mara in person: "'
-                    f'{observation.details["proposition"].capitalize()}."',
+                    f'{observation.details["proposition"].capitalize()}."'
+                    + (f"{interval_suffix}." if interval_suffix else ""),
                 )
             )
         elif observation.details.get("evidence_kind") == "obligation_outcome":
@@ -2618,9 +2667,65 @@ class _ScriptedSocialDecisionClient:
         }
 
 
+class _ScriptedConsequentialChoiceDecisionClient:
+    """Transparent provider-free Mara choices for the consequential comparison."""
+
+    def choose(self, model_input: Mapping[str, object]) -> Mapping[str, object]:
+        tick = model_input.get("tick")
+        state = model_input.get("state")
+        location = state.get("location") if isinstance(state, Mapping) else None
+        known_deadlines = (
+            state.get("known_obligation_deadlines")
+            if isinstance(state, Mapping)
+            else None
+        )
+        obligations = state.get("obligations") if isinstance(state, Mapping) else None
+        observations = model_input.get("delivered_observations")
+        heard_social_testimony = isinstance(observations, list) and any(
+            isinstance(observation, Mapping)
+            and isinstance(observation.get("details"), Mapping)
+            and observation["details"].get("evidence_kind")
+            == "social_testimony"
+            for observation in observations
+        )
+        if tick == _MARA_SCHEDULED_WAKE_MINUTE and location == "home":
+            return {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace for the morning shift",
+                "decision_reason": "the workplace obligation is due",
+            }
+        if heard_social_testimony and location == "workplace":
+            return {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "return home after hearing Ilan's transit warning",
+                "decision_reason": "the delivered testimony creates a new travel choice",
+            }
+        if (
+            location == "home"
+            and isinstance(known_deadlines, list)
+            and isinstance(obligations, list)
+            and "household time" in obligations
+        ):
+            return {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time at home",
+                "decision_reason": "the known household deadline remains relevant",
+            }
+        return {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "wait where the day can continue",
+            "decision_reason": "no other immediate action is needed",
+        }
+
+
 def _cli_mara_harness(
     *,
     policy_name: str,
+    consequential_choice: bool,
     ollama_base_url: str | None,
     ollama_model: str | None,
     mara_harness_factory: Callable[..., MaraHarness],
@@ -2630,6 +2735,11 @@ def _cli_mara_harness(
     if policy_name == "offline":
         return None
     if policy_name == "scripted":
+        if consequential_choice:
+            return MaraHarness.from_client(
+                _ScriptedConsequentialChoiceDecisionClient(),
+                configuration_id=_SCRIPTED_CONSEQUENTIAL_CHOICE_CONFIGURATION_ID,
+            )
         return MaraHarness.from_client(
             _ScriptedSocialDecisionClient(),
             configuration_id=_SCRIPTED_SOCIAL_CONFIGURATION_ID,
@@ -2670,6 +2780,14 @@ def main(
         ),
     )
     parser.add_argument(
+        "--consequential-choice",
+        action="store_true",
+        help=(
+            "run the explicit conflict-to-consequence composition; requires "
+            "a scripted or Ollama focal policy"
+        ),
+    )
+    parser.add_argument(
         "--ollama-base-url",
         help="private Ollama origin, required only with --focal-policy ollama",
     )
@@ -2706,9 +2824,12 @@ def main(
         )
     if args.audit_dir is not None and args.focal_policy != "ollama":
         parser.error("--audit-dir requires --focal-policy ollama")
+    if args.consequential_choice and args.focal_policy == "offline":
+        parser.error("--consequential-choice requires --focal-policy scripted or ollama")
     try:
         mara_harness = _cli_mara_harness(
             policy_name=args.focal_policy,
+            consequential_choice=args.consequential_choice,
             ollama_base_url=args.ollama_base_url,
             ollama_model=args.ollama_model,
             mara_harness_factory=mara_harness_factory,
@@ -2741,7 +2862,15 @@ def main(
         except (OSError, RuntimeError, ValueError) as error:
             parser.error(str(error))
 
-    day = build_autonomous_day(seed=args.seed, mara_harness=mara_harness)
+    day = build_autonomous_day(
+        seed=args.seed,
+        mara_harness=mara_harness,
+        include_conflicting_transit_accounts=args.consequential_choice,
+        include_deadline_governed_obligation_outcomes=args.consequential_choice,
+        include_obligation_outcome_delivery=args.consequential_choice,
+        include_consequential_choice_tradeoff_timing=args.consequential_choice,
+        include_service_dependent_travel=args.consequential_choice,
+    )
     try:
         summary = day.run()
     except Exception:
@@ -2753,8 +2882,13 @@ def main(
             day,
             summary,
             policy_disclosure=(
-                "Decision source: deterministic scripted comparison "
-                "(authored, not live or emergent)."
+                (
+                    "Decision source: deterministic scripted consequential-choice "
+                    "comparison (authored, not live or emergent)."
+                    if args.consequential_choice
+                    else "Decision source: deterministic scripted comparison "
+                    "(authored, not live or emergent)."
+                )
                 if args.focal_policy == "scripted"
                 else None
             ),

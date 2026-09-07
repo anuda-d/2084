@@ -3104,13 +3104,250 @@ class AutonomousDayWorldTests(unittest.TestCase):
         self.assertNotIn(ilan_source.event_id, json.dumps(final_input))
         self.assertNotIn("institution_records", final_input)
         self.assertIn(
-            "Day 0 08:00 | Official transit notice: workplace-home service is normal.",
+            "Day 0 08:00 | Official transit notice: workplace-home service is "
+            "normal for service interval day-0-workplace-home-evening.",
             render_autonomous_day(day, summary),
         )
         self.assertEqual(
             summary.to_data()["decision_counts_by_actor"],
             {ILAN_ID: 1, MARA_ID: 4},
         )
+
+    def test_source_withholding_removes_only_downstream_conflict_knowledge(self):
+        def responses(source_delivery):
+            initial_responses = (
+                {
+                    "kind": "travel",
+                    "parameters": {"destination": "workplace"},
+                    "explanation": "travel to the workplace",
+                    "decision_reason": "the workplace is reachable",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "wait after arriving at the workplace",
+                    "decision_reason": "the transit accounts have not arrived",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "wait after the official notice",
+                    "decision_reason": (
+                        "the conflicting account is not yet delivered"
+                        if source_delivery
+                        else "the official notice adds no immediate action"
+                    ),
+                },
+            )
+            if not source_delivery:
+                return initial_responses + (
+                    {
+                        "kind": "wait",
+                        "parameters": {},
+                        "explanation": "wait after the obligation result",
+                        "decision_reason": "the known obligation needs no immediate action",
+                    },
+                )
+            return initial_responses + (
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "wait after considering the testimony",
+                    "decision_reason": "the available accounts remain unresolved",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "wait after the obligation result",
+                    "decision_reason": "the missed obligation is now known",
+                },
+            )
+
+        scenario_kwargs = {
+            "include_conflicting_transit_accounts": True,
+            "include_deadline_governed_obligation_outcomes": True,
+            "include_obligation_outcome_delivery": True,
+            "include_consequential_choice_tradeoff_timing": True,
+            "include_service_dependent_travel": True,
+        }
+
+        def run_comparison(source_delivery):
+            client = _SequenceClient(*responses(source_delivery))
+            day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    client,
+                    configuration_id=(
+                        "consequential-choice-source-"
+                        f"{'present' if source_delivery else 'withheld'}"
+                    ),
+                ),
+                include_ilan_transit_source_delivery=source_delivery,
+                **scenario_kwargs,
+            )
+            return day, day.run(), client
+
+        source_day, source_summary, source_client = run_comparison(True)
+        withheld_day, withheld_summary, withheld_client = run_comparison(False)
+
+        self.assertTrue(source_summary.reached_end_boundary)
+        self.assertTrue(withheld_summary.reached_end_boundary)
+
+        def event_projection(day, kind):
+            event = next(event for event in day.events if event.kind == kind)
+            return (event.tick, event.actor_id, event.details)
+
+        self.assertEqual(
+            event_projection(source_day, "transit_service_changed"),
+            event_projection(withheld_day, "transit_service_changed"),
+        )
+        self.assertEqual(
+            event_projection(source_day, "official_transit_notice_published"),
+            event_projection(withheld_day, "official_transit_notice_published"),
+        )
+        self.assertEqual(
+            source_day.world.institution.records["tram_service"],
+            withheld_day.world.institution.records["tram_service"],
+        )
+        self.assertEqual(source_day.world.institution.records["tram_service"], "reduced")
+
+        def official_observation(day):
+            return next(
+                observation
+                for observation in day.world.agents[MARA_ID].observations
+                if observation.details.get("evidence_kind") == "official_transit_claim"
+            )
+
+        source_official = official_observation(source_day)
+        withheld_official = official_observation(withheld_day)
+        self.assertEqual(
+            (source_official.event_id, source_official.source, source_official.details),
+            (
+                withheld_official.event_id,
+                withheld_official.source,
+                withheld_official.details,
+            ),
+        )
+
+        source_ilan_observation = source_day.world.agents[ILAN_ID].observations[0]
+        self.assertEqual(
+            source_ilan_observation.details["evidence_kind"],
+            "transit_service_status",
+        )
+        self.assertEqual(withheld_day.world.agents[ILAN_ID].observations, [])
+        self.assertTrue(
+            any(
+                event.kind == "statement_completed" and event.actor_id == ILAN_ID
+                for event in source_day.events
+            )
+        )
+        self.assertFalse(
+            any(
+                event.kind == "statement_completed" and event.actor_id == ILAN_ID
+                for event in withheld_day.events
+            )
+        )
+        self.assertTrue(
+            any(
+                decision.actor_id == ILAN_ID
+                for decision in source_summary.consumed_decisions
+            )
+        )
+        self.assertFalse(
+            any(
+                decision.actor_id == ILAN_ID
+                for decision in withheld_summary.consumed_decisions
+            )
+        )
+
+        source_claims = source_day.world.agents[MARA_ID].interpreted_claims
+        withheld_claims = withheld_day.world.agents[MARA_ID].interpreted_claims
+        self.assertEqual(len(source_claims), 2)
+        self.assertEqual(len(withheld_claims), 1)
+        self.assertTrue(all(claim.conflicts_with for claim in source_claims))
+        self.assertEqual(withheld_claims[0].conflicts_with, ())
+        self.assertEqual(
+            [claim.transit_service_claim.asserted_status for claim in source_claims],
+            ["normal", "reduced"],
+        )
+        self.assertEqual(
+            withheld_claims[0].transit_service_claim.asserted_status,
+            "normal",
+        )
+        self.assertTrue(
+            any(
+                observation.details.get("evidence_kind") == "social_testimony"
+                for observation in source_day.world.agents[MARA_ID].observations
+            )
+        )
+        self.assertFalse(
+            any(
+                observation.details.get("evidence_kind") == "social_testimony"
+                for observation in withheld_day.world.agents[MARA_ID].observations
+            )
+        )
+        self.assertTrue(
+            any(
+                transition["source_observation_id"]
+                != source_official.observation_id
+                for transition in source_day._understanding_transitions
+            )
+        )
+        self.assertEqual(
+            withheld_day._understanding_transitions,
+            [
+                transition
+                for transition in withheld_day._understanding_transitions
+                if transition["source_observation_id"]
+                == withheld_official.observation_id
+            ],
+        )
+
+        source_conflict_input = next(
+            model_input
+            for model_input in source_client.inputs
+            if model_input["tick"] == 511
+        )
+        self.assertEqual(
+            len(source_conflict_input["understanding"]["interpreted_claims"]),
+            2,
+        )
+        self.assertFalse(
+            any(model_input["tick"] == 511 for model_input in withheld_client.inputs)
+        )
+        withheld_inputs = json.dumps(withheld_client.inputs)
+        self.assertNotIn("transit_service_status", withheld_inputs)
+        self.assertNotIn("social_testimony", withheld_inputs)
+        self.assertNotIn("workplace transit service terminal", withheld_inputs)
+        self.assertNotIn('"asserted_status": "reduced"', withheld_inputs)
+        self.assertNotIn("testimony", withheld_inputs)
+        self.assertNotIn("conflicting", withheld_inputs)
+        self.assertNotIn("unresolved", withheld_inputs)
+        self.assertFalse(
+            withheld_day._replay_build_options[
+                "include_ilan_transit_source_delivery"
+            ]
+        )
+        integrity_key = b"consequential-choice-source-withheld-replay"
+        archive = RecordedDecisionArchive.seal(
+            withheld_day.private_decision_records,
+            integrity_key=integrity_key,
+        )
+        source_call_count = len(withheld_client.inputs)
+        replay = build_autonomous_day(
+            seed=withheld_day.world.seed,
+            mara_harness=MaraHarness.from_recorded_archive(
+                archive,
+                integrity_key=integrity_key,
+            ),
+            **withheld_day.replay_build_options,
+        )
+        replay_summary = replay.run()
+
+        self.assertEqual(len(withheld_client.inputs), source_call_count)
+        self.assertEqual(replay_summary.to_data(), withheld_summary.to_data())
+        self.assertEqual(replay.events, withheld_day.events)
+        self.assertEqual(replay.observations, withheld_day.observations)
 
     def test_withheld_ilan_source_observation_stops_social_chain(self):
         client = _SequenceClient(

@@ -308,6 +308,7 @@ def _replay_matches(day: AutonomousDay, summary: DayRunSummary) -> bool:
             archive,
             integrity_key=integrity_key,
         ),
+        **day.replay_build_options,
     )
     replay_summary = replay.run()
     source_inspector = autonomous_day_inspector_data(day, summary)

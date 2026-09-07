@@ -196,6 +196,86 @@ class AutonomousDayCliTests(unittest.TestCase):
         ]
         self.assertEqual(result.stdout.splitlines(), expected_lines)
 
+    def test_scripted_consequential_choice_is_provider_free_and_focal_safe(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "scenarios.autonomous_day",
+                "--seed",
+                "42",
+                "--focal-policy",
+                "scripted",
+                "--consequential-choice",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        expected_lines = [
+            "2084 " + chr(8212) + " AUTONOMOUS DAY",
+            "Normal observer: focal-character knowledge only",
+            "Decision source: deterministic scripted consequential-choice "
+            "comparison (authored, not live or emergent).",
+            "",
+            "Start: Day 0 00:00 | Mara at Home",
+            "Day 0 00:00–Day 0 07:00 | No focal updates.",
+            "Day 0 07:00 | Mara attempted to travel.",
+            "Day 0 07:00–Day 0 07:30 | No focal updates.",
+            "Day 0 07:30 | Mara arrived at Workplace.",
+            "Day 0 07:30 | Mara attempted to wait.",
+            "Day 0 07:30 | Mara finished waiting.",
+            "Day 0 07:30–Day 0 08:00 | No focal updates.",
+            "Day 0 08:00 | Official transit notice: workplace-home service is "
+            "normal for service interval day-0-workplace-home-evening.",
+            "Day 0 08:00 | Mara attempted to wait.",
+            "Day 0 08:00 | Mara finished waiting.",
+            "Day 0 08:00–Day 0 08:31 | No focal updates.",
+            "Day 0 08:31 | Ilan told Mara in person: "
+            '\"Workplace-home tram service is reduced.\" for service interval '
+            "day-0-workplace-home-evening.",
+            "Day 0 08:31 | Mara attempted to travel.",
+            "Day 0 08:31–Day 0 09:31 | No focal updates.",
+            "Day 0 09:31 | Mara arrived at Home.",
+            "Day 0 09:31 | Mara attempted household activity.",
+            "Day 0 09:31–Day 0 10:31 | No focal updates.",
+            "Day 0 10:31 | Mara completed household time.",
+            "Day 0 10:31 | Mara attempted to wait.",
+            "Day 0 10:31 | Mara finished waiting.",
+            "Day 0 10:31–Day 0 10:32 | No focal updates.",
+            "Day 0 10:32 | Mara learned that workplace shift was missed.",
+            "Day 0 10:32 | Mara attempted to wait.",
+            "Day 0 10:32 | Mara finished waiting.",
+            "Day 0 10:32–Day 1 00:00 | No focal updates.",
+            "End: Day 1 00:00",
+            "Exact 24-hour boundary reached: yes",
+        ]
+        self.assertEqual(result.stdout.splitlines(), expected_lines)
+        for hidden in (
+            "INSPECTOR",
+            "event-",
+            "official_transit_notice_published",
+            "statement_completed",
+            "obligation_fulfilled",
+            "obligation_missed",
+            "service_status_at_departure",
+            "duration_minutes",
+            "executed_work",
+            "private_decision_records",
+        ):
+            self.assertNotIn(hidden, result.stdout)
+
+    def test_consequential_choice_rejects_inert_offline_policy(self):
+        error = io.StringIO()
+        with redirect_stderr(error), self.assertRaises(SystemExit) as raised:
+            main(["--consequential-choice"])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("requires --focal-policy scripted or ollama", error.getvalue())
+
     def test_inspector_is_explicit_and_reconstructs_successful_day(self):
         result = subprocess.run(
             [
@@ -455,6 +535,37 @@ class AutonomousDayCliTests(unittest.TestCase):
                 len(transport.calls),
                 verdict["measurements"]["provider_call_attempt_count"],
             )
+            self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
+            self.assertNotIn("127.0.0.1", output.getvalue())
+
+    def test_live_consequential_choice_audit_replays_its_authored_configuration(
+        self,
+    ):
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as parent:
+            audit_path = Path(parent) / "consequential-choice-live-run"
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "--seed",
+                        "42",
+                        "--consequential-choice",
+                        "--audit-dir",
+                        str(audit_path),
+                        "--focal-policy",
+                        "ollama",
+                        "--ollama-base-url",
+                        "http://127.0.0.1:11434",
+                        "--ollama-model",
+                        "qwen3:4b-instruct",
+                    ],
+                    mara_harness_factory=_fake_attested_ollama_harness_factory,
+                    ollama_identity_factory=_fake_ollama_identity_factory,
+                )
+
+            self.assertEqual(result, 0)
+            verdict = json.loads((audit_path / "verdict.json").read_text())
+            self.assertTrue(verdict["checks"]["recorded_replay_equal"])
             self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
             self.assertNotIn("127.0.0.1", output.getvalue())
 
