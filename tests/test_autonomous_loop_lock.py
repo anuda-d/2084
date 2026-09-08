@@ -47,6 +47,140 @@ class AutonomousLoopLockTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertRegex(result.stdout, r"^ACQUIRED task-from-environment\n$")
 
+    def test_orchestrator_can_transfer_checkout_to_one_scoped_writer_and_back(self):
+        acquired = self.run_lock(
+            "acquire",
+            "--task-id",
+            "orchestrator",
+            "--role",
+            "orchestrator",
+            "--generation-id",
+            "generation-1",
+        )
+        self.assertEqual(acquired.returncode, 0, acquired.stderr)
+
+        delegated = self.run_lock(
+            "transfer",
+            "--task-id",
+            "orchestrator",
+            "--to-task-id",
+            "writer",
+            "--to-role",
+            "writer",
+            "--generation-id",
+            "generation-1",
+            "--slice-id",
+            "slice-1",
+        )
+        self.assertEqual(delegated.returncode, 0, delegated.stderr)
+        record = json.loads(self.lock_path.read_text(encoding="utf-8"))
+        self.assertEqual(record["task_id"], "writer")
+        self.assertEqual(record["role"], "writer")
+        self.assertEqual(record["generation_id"], "generation-1")
+        self.assertEqual(record["slice_id"], "slice-1")
+
+        returned = self.run_lock(
+            "transfer",
+            "--task-id",
+            "writer",
+            "--to-task-id",
+            "orchestrator",
+            "--to-role",
+            "orchestrator",
+            "--generation-id",
+            "generation-1",
+        )
+        self.assertEqual(returned.returncode, 0, returned.stderr)
+        record = json.loads(self.lock_path.read_text(encoding="utf-8"))
+        self.assertEqual(record["task_id"], "orchestrator")
+        self.assertEqual(record["role"], "orchestrator")
+        self.assertNotIn("slice_id", record)
+
+    def test_transfer_rejects_wrong_owner_generation_and_role_scope(self):
+        self.assertEqual(
+            self.run_lock(
+                "acquire",
+                "--task-id",
+                "orchestrator",
+                "--generation-id",
+                "generation-1",
+            ).returncode,
+            0,
+        )
+
+        wrong_owner = self.run_lock(
+            "transfer",
+            "--task-id",
+            "other",
+            "--to-task-id",
+            "writer",
+            "--to-role",
+            "writer",
+            "--generation-id",
+            "generation-1",
+            "--slice-id",
+            "slice-1",
+        )
+        self.assertEqual(wrong_owner.returncode, 1)
+        self.assertIn("OWNER_MISMATCH orchestrator", wrong_owner.stderr)
+
+        wrong_generation = self.run_lock(
+            "transfer",
+            "--task-id",
+            "orchestrator",
+            "--to-task-id",
+            "writer",
+            "--to-role",
+            "writer",
+            "--generation-id",
+            "generation-2",
+            "--slice-id",
+            "slice-1",
+        )
+        self.assertEqual(wrong_generation.returncode, 1)
+        self.assertIn("GENERATION_MISMATCH generation-1", wrong_generation.stderr)
+
+        missing_slice = self.run_lock(
+            "transfer",
+            "--task-id",
+            "orchestrator",
+            "--to-task-id",
+            "writer",
+            "--to-role",
+            "writer",
+            "--generation-id",
+            "generation-1",
+        )
+        self.assertEqual(missing_slice.returncode, 2)
+        self.assertIn("TRANSFER_WRITER_REQUIRES_SLICE", missing_slice.stderr)
+
+    def test_acquire_rejects_invalid_role_scope(self):
+        writer_without_slice = self.run_lock(
+            "acquire",
+            "--task-id",
+            "writer",
+            "--role",
+            "writer",
+            "--generation-id",
+            "generation-1",
+        )
+        self.assertEqual(writer_without_slice.returncode, 2)
+        self.assertIn("ACQUIRE_WRITER_REQUIRES_SLICE", writer_without_slice.stderr)
+
+        orchestrator_with_slice = self.run_lock(
+            "acquire",
+            "--task-id",
+            "orchestrator",
+            "--role",
+            "orchestrator",
+            "--generation-id",
+            "generation-1",
+            "--slice-id",
+            "slice-1",
+        )
+        self.assertEqual(orchestrator_with_slice.returncode, 2)
+        self.assertIn("ACQUIRE_ORCHESTRATOR_REJECTS_SLICE", orchestrator_with_slice.stderr)
+
     def test_missing_task_identity_fails_closed(self):
         environment = os.environ.copy()
         environment.pop("CODEX_THREAD_ID", None)

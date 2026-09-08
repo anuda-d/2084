@@ -78,51 +78,30 @@ For now, favor one autonomous focal life, a small living world, understandable a
 ## Autonomous Development Loop
 
 - Use `docs/main/DEVELOPMENT_LOOP.md` as the complete operating contract.
-- Standing authorization exists only when `docs/plans/CURRENT.md` records one
-  active owner-approved goal with `Owner authorization: standing` and the
-  `autonomous-2084-development-loop` automation is active.
-  If no active goal is recorded, stop before implementation.
-- Before selecting a unit and again before relay, inspect that exact automation
-  and fail closed unless its status is active.
-- One implementation task owns at most one work unit.
-  Every work unit begins in a newly created fresh task.
-- After an accepted commit or another terminal unit state, write the compact
-  redacted temporary handoff required by the loop, record
-  `No next unit selected`, and stop the task.
-- During an authorized scheduled window, an accepted unit may create exactly
-  one fresh successor task in the same saved local project after its handoff.
-  The current task never selects the successor's unit.
-- Hourly scheduled tasks are recovery starts.
-  They no-op when another durable owner holds the checkout and resume exactly a
-  matching recorded incomplete unit when the same owner is recoverable.
+- Treat `docs/plans/AUTONOMOUS_LOOP_STATE.json` as the authoritative runtime state and `docs/plans/CURRENT.md` as its human-readable index.
+- The current runtime state is stopped and unauthorized.
+  Historical goal documents do not reactivate it.
+- Standing authorization exists only when the runtime state names one owner-approved goal, records `authorization.status` as `standing`, and the exact `autonomous-2084-development-loop` automation is active.
+- The scheduler is only a liveness and recovery trigger.
+  It never selects product work and must no-op when a valid orchestrator or writer owns the loop.
+- One orchestrator generation manages at most three sequential accepted slices, then performs whole-goal alignment and hands off to a fresh orchestrator.
+- Each slice has one fresh writer that is the sole repository modifier for the slice.
+  The writer may use read-only explorers and must use a fresh read-only reviewer.
+- Freeze the slice completion contract before transferring checkout ownership to the writer.
+  A slice counts only after every frozen gate, focused and full validation, and blocking review have passed.
+- Keep an incomplete slice active or recover it exactly.
+  Never replace it silently or count it as accepted.
+- Use the guarded state CLI and durable checkout lock for every lifecycle transition.
+  Revision mismatches, unknown ownership, and illegal transitions fail closed.
 - The unscoped Codex task listing is not an ownership precondition.
   Do not call `list_threads` as part of the no-overlap gate.
-- If acquisition reports another owner, inspect only that exact task with
-  `read_thread`.
-  Recover the stale lock only when the exact owner has a terminal latest turn,
-  using `recover --expected-task-id` and the observed claim token with that
-  verified terminal state.
+- If acquisition reports another owner, inspect only that exact task with `read_thread`.
+  Recover the stale lock only when the exact owner has a terminal latest turn, using `recover --expected-task-id` and the observed claim token with that verified terminal state, then rebind the exact recorded actor in runtime state.
   Active, unknown, or idle owners awaiting input continue to block recovery.
-- Before implementation, use one to three read-only explorer subagents for
-  concrete independent questions.
-  The orchestrator is the sole implementation writer.
-- Run focused checks and `./scripts/check.sh` before recording candidate
-  evidence.
-  Use a fresh read-only reviewer after implementation and after every material
-  correction.
-- If `Alignment due: yes`, the next fresh task performs only whole-goal
-  alignment and does not select an implementation unit.
-- Scheduled implementation, orchestration, and exploration use
-  `gpt-5.6-terra` with high reasoning.
-  Fresh independent review and goal alignment use `gpt-5.6-sol` with high
-  reasoning.
-  Do not use Luna in this loop.
-- The active goal, not the trigger or task, defines authorized product and
-  implementation scope.
-- Shared implementation state records verified product progress only.
-  It may record the current and incomplete run identifiers required for crash
-  recovery, but never a future task queue.
-- The main agent owns gap selection, implementation, integration, validation,
-  progress recording, commits, and the final report.
-- Do not select, broaden, or replace the active goal. Stop when the active goal
-  is complete or when continuing requires an owner decision.
+- Run focused checks and `./scripts/check.sh` before recording evidence.
+- Resolve blocking findings with the same writer and repeat validation and fresh review after material correction.
+- The active goal, not the trigger or task, defines authorized product and implementation scope.
+- Repository state and the guarded runtime state are authoritative.
+  Temporary handoffs are compact context only and never authority or a future task queue.
+- Do not select, broaden, or replace the active goal.
+  Stop when the active goal is complete or when continuing requires an owner decision.

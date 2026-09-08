@@ -1,489 +1,325 @@
-# Goal-Bounded Autonomous Development Loop
+# Three-Slice Goal-Bounded Autonomous Development Loop
 
-Status: current operating contract for scheduled development against one
-owner-approved goal.
+Status: current operating contract.
 
-This loop advances one approved 2084 goal through small, independently
-validated work units in successive fresh tasks.
-It operates only when `docs/plans/CURRENT.md` records exactly one active goal
-with standing owner authorization and the `autonomous-2084-development-loop`
-automation is active.
-Routine implementation, acceptance, local commit, handoff, and relay inside
-the approved goal do not wait for owner review.
+The loop advances one owner-approved goal through small, independently verified slices.
+It is currently stopped and unauthorized.
+The previous authorization record is historical evidence and does not activate this contract.
 
-The owner remains the authority for a new goal and for unresolved material
-product, worldbuilding, simulation, privacy, or lasting architecture decisions.
-Standing authorization never broadens or reinterprets the active goal.
+## Architecture
 
-An explicit owner request may authorize a bounded administrative change while
-no product goal is active.
-That authority covers only the requested maintenance and never starts the
-implementation loop, activates the scheduler, or selects product behavior.
+```text
+scheduled liveness / recovery trigger
+                |
+                v
+      orchestrator generation
+       owns 0..3 accepted slices
+                |
+       freeze one slice contract
+                |
+       transfer checkout ownership
+                v
+         one fresh writer
+          sole slice modifier
+         /                  \
+read-only explorers   fresh read-only reviewer
+         \                  /
+        implement -> validate -> review -> repair
+                |
+     accepted evidence and commit
+                |
+       return ownership and result
+                |
+       next slice, up to three
+                |
+       whole-goal alignment
+                |
+       compact durable handoff
+                |
+       fresh orchestrator generation
+```
 
-## Scheduled Operating Window
+The scheduler is only a liveness and recovery trigger.
+It does not select a slice, alter a goal, implement code, or create overlapping work.
 
-When standing authorization is active, the loop may start new units daily from
-18:00 until 23:00 in `America/Toronto`.
-The recurring scheduler starts a fresh recovery task once per hour at 18:00,
-19:00, 20:00, 21:00, and 22:00.
-Before selecting a new unit, inspect the exact
-`autonomous-2084-development-loop` automation and fail closed unless its status
-is active.
+The orchestrator owns goal interpretation, gap selection, frozen slice contracts, sequential delegation, result acceptance, and whole-goal alignment.
+One orchestrator generation may accept at most three slices.
+It does not implement product code.
 
-An accepted unit that finishes before 23:00 creates one fresh successor task in
-the same saved local project after writing its handoff.
-That relay provides back-to-back progress without allowing one task to own two
-units.
-At or after 23:00, the active task finishes its current unit safely, writes the
-handoff, and does not create a successor.
-
-The hourly starts are recovery opportunities, not permission for overlap.
-Every scheduled or relayed task first inspects repository run state and
-performs any useful read-only orientation without checkout ownership.
-It atomically claims the durable checkout-ownership record immediately before
-the first repository write.
-If another durable owner is active, the new task exits without changing the
-repository.
-If no recorded owner exists and `Current run` and `Incomplete run` agree on one
-unfinished unit, the fresh task resumes exactly that unit instead of selecting
-a replacement.
-If the run fields conflict, the ownership record is unreadable, or the recorded
-owner's state cannot be verified, stop safely without changes.
-
-Outside the scheduled window, a task may finish an already-recorded unit safely
-but may not select a new unit or relay a successor.
-An explicit owner instruction may perform bounded administrative work outside
-the window but does not silently start an implementation unit.
-
-## Goal and Work-Unit Boundary
-
-The active goal defines the outcome, invariants, authorized scope, validation
-standard, and completion condition.
-A work unit is the smallest coherent change that creates evidence for one unmet
-criterion.
-One implementation task owns at most one work unit.
-
-Standing authorization permits successive bounded units only inside the active
-goal.
-The loop selects each unit from current repository evidence after the prior
-unit is accepted and committed.
-It never records a future task queue.
-
-Each work unit:
-
-1. selects one smallest justified goal gap;
-2. obtains one to three independent read-only explorations;
-3. states one criterion, intended result, and evidence claim;
-4. implements one coherent change through the sole-writer orchestrator;
-5. runs focused checks and the full repository check;
-6. records candidate evidence;
-7. receives a fresh independent read-only review;
-8. resolves every blocking finding and repeats validation and fresh review after
-   a material correction;
-9. records accepted evidence and creates one local commit;
-10. writes the compact temporary handoff with `No next unit selected`;
-11. creates one fresh successor before 23:00 when relay remains authorized; and
-12. stops without selecting another unit.
-
-## Fresh-Task Handoff Contract
-
-Every implementation unit begins in a newly created fresh task.
-The first unit reads the active goal and implementation state without requiring
-a prior handoff.
-Every later unit reads the latest temporary handoff before selecting or
-continuing work.
-
-A task may orient, select or continue one unit, explore, implement, validate,
-review, correct, accept, commit, hand off, and relay.
-It may not select or implement a second unit.
-
-At every accepted, paused, blocked, or owner-decision terminal state, write a
-compact redacted handoff in the operating system temporary directory.
-Use `2084-<active-goal-id>-handoff.md` and capture the goal id before a
-completion transition clears it.
-
-The handoff contains only:
-
-- active goal id and exact terminal state;
-- accepted commit or exact incomplete working-tree state;
-- criterion and evidence status;
-- focused, full, scenario, inspector, and independent-review results as
-  applicable;
-- alignment count or checkpoint state;
-- risks and unresolved owner decisions;
-- `No next unit selected`; and
-- suggested skills for the next task.
-
-The handoff is context, not authority, accepted evidence, or a future task
-queue.
-If it is unavailable, the fresh task reconstructs factual state from the
-repository and does not infer missing decisions or discard work.
-
-## Fresh-Task Relay
-
-After an accepted local commit and handoff, read the current local time in
-`America/Toronto`.
-Inspect the exact `autonomous-2084-development-loop` automation again.
-If it is before 23:00, standing authorization remains active, and that
-automation's status is active:
-
-1. use the Codex project tools to identify the exact saved local project;
-2. assert and release checkout ownership, then enter handoff-only state and
-   perform no more repository work;
-3. create one fresh local task in that project with `gpt-5.6-terra` and high
-   reasoning;
-4. give it the active automation prompt and tell it to begin with the
-   authoritative read order;
-5. wait once, briefly, only to confirm dispatch; and
-6. stop the current task.
-
-Do not relay after a blocked, paused, owner-decision, unsafe-baseline,
-overlapping-run, or goal-complete terminal state.
-Do not relay at or after 23:00.
-Do not interpret failure to create a successor as permission to keep working in
-the current task.
-The next hourly recovery start may resume from repository state and the
-handoff.
-
-## No-Overlap Gate
-
-Read-only work does not require checkout ownership.
-This includes orientation, exploration, independent review, and checks that do
-not alter tracked files.
-
-Immediately before the first repository write, run
-`python3 scripts/autonomous_loop_lock.py acquire`.
-The command obtains the current task ID from `CODEX_THREAD_ID` and atomically
-creates the durable local ownership record.
-
-If acquisition reports `HELD_BY <owner-id>`, inspect that exact task with
-`read_thread`.
-Stop at **ACTIVE RUN EXISTS** when the recorded owner is queued, active, or owns
-a non-terminal latest turn.
-An owner whose latest turn is non-terminal, including an idle owner awaiting
-input, continues to own the checkout.
-If `read_thread` verifies that the exact recorded owner's latest turn is
-`completed`, `failed`, or `interrupted`, recover with
-`python3 scripts/autonomous_loop_lock.py recover --expected-task-id <owner-id>
---expected-claim-token <token> --verified-terminal-state <state>`.
-Use the claim token returned with `HELD_BY` when the owner was inspected.
-Each successful resumed-owner assertion rotates that token.
-The recovery command atomically replaces only that expected owner.
-It fails closed if the recorded owner or claim token changed, the record is
-missing or unreadable, or the supplied state is not terminal.
-If exact-owner inspection fails or the exact-owner state is active,
-non-terminal, or unknown, stop at **ACTIVE RUN STATUS UNKNOWN**.
-Lock age is diagnostic only and never authorizes recovery.
-
-The unscoped Codex task listing is not an ownership precondition because it can
-hang, cannot filter by project, and cannot reliably classify idle historical
-tasks.
-Do not call `list_threads` as part of the no-overlap gate.
-The atomic ownership record is the decisive single-writer proof for every task
-governed by this repository.
-
-Assert ownership after any resumed turn and immediately before commit by
-running `python3 scripts/autonomous_loop_lock.py assert-owner`.
-A mismatch stops all further repository work.
-Release ownership at completion and every other non-relaying terminal state
-only when the current task owns the record, by running
-`python3 scripts/autonomous_loop_lock.py release`.
-For a relay, assert and release ownership immediately before creating the
-successor, enter handoff-only state, and perform no more repository work.
-The successor must acquire ownership for itself.
-
-The recorded `Current run` and `Incomplete run` must also agree.
-A fresh task continues a recorded incomplete unit instead of selecting a
-replacement.
-
-## Owner Decision Boundary
-
-Routine work-unit evidence is accepted under standing authorization after
-focused and full validation plus clean fresh independent review.
-The owner is not a routine unit reviewer.
-
-Stop at **NEEDS OWNER DECISION** before acting when continuation requires:
-
-- selecting, replacing, broadening, or reinterpreting a goal;
-- a material product, worldbuilding, simulation, visual, scope, privacy, or
-  lasting architecture choice not already settled by authoritative documents;
-- resolving an open question that materially affects behavior;
-- destructive cleanup, disposal of user work, deployment, publication, push,
-  merge, or another external side effect;
-- authority to absorb overlapping unrelated changes; or
-- direction after the owner pauses or stops the loop.
-
-When a decision is required, record the smallest concrete question, set `Run
-status` to `needs owner decision`, write the handoff, release ownership if the
-current task owns the record, and do not relay.
-
-## Model Routing
-
-- The sole-writer orchestrator uses `gpt-5.6-terra` with high reasoning.
-- Read-only explorer agents use `gpt-5.6-terra` with high reasoning.
-- Every independent implementation and alignment review uses a fresh
-  `gpt-5.6-sol` agent with high reasoning.
-- Reviewers are read-only and may not edit, commit, choose product direction,
-  or determine a new goal.
-
-These development models are separate from any model used inside the 2084
-simulation.
+Each slice receives one fresh writer.
+That writer is the sole repository modifier from checkout transfer until the accepted commit or terminal handback.
+The writer may delegate bounded read-only exploration and must obtain a fresh read-only review after validation.
 
 ## Sources of Authority
 
-Read these in order before repository work:
+Read these sources in order:
 
 1. `AGENTS.md`;
 2. `docs/plans/CURRENT.md`;
-3. the active goal linked from `CURRENT.md`;
-4. the linked implementation state;
-5. the latest temporary handoff when available;
-6. relevant implementation and tests located at selection time; and
-7. only the product specification relevant to the selected unit.
+3. `docs/plans/AUTONOMOUS_LOOP_STATE.json`;
+4. this contract;
+5. the owner-approved active goal and its implementation evidence when authorization is standing;
+6. the latest compact handoff when it exists; and
+7. only the source and tests required by the frozen slice.
 
-Read the README, Core Construct, Architecture, UI Architecture, Design
-References, broader proposals, and completed goals only when the active
-specification routes there or an invariant is otherwise unclear.
-A proposal is not an implementation checklist.
+Repository code, committed evidence, and `AUTONOMOUS_LOOP_STATE.json` are authoritative.
+A temporary handoff is context only.
+It never grants authority, changes a goal, weakens a gate, or queues future work.
 
-If authoritative sources conflict in a way that changes product direction,
-worldbuilding, simulation behavior, scope, privacy, or lasting architecture,
-stop at **NEEDS OWNER DECISION**.
+## Runtime State Machine
 
-## Standing Authority
+All lifecycle changes use `scripts/autonomous_loop_state.py`.
+The CLI validates the complete state before and after mutation, writes atomically, and requires checkout ownership.
+Every mutation supplies the expected revision and a unique event identifier.
+A retry with the same event identifier is idempotent.
+A stale revision or reused event identifier fails closed.
 
-While the active goal has `Owner authorization: standing`, the loop may:
+```text
+stopped
+  -> ready
+  -> contracted
+  -> implementing
+  -> validating
+  -> reviewing
+       -> repairing -> validating
+       -> ready after accepted slice 1 or 2
+       -> alignment_required after accepted slice 3
+  -> aligning
+  -> handoff_ready
+  -> fresh generation at ready
+```
 
-- select successive bounded units during the scheduled window;
-- implement one coherent change per unit;
-- add or update focused tests and quality gates;
-- update implementation-state evidence;
-- simplify or remove loop-owned code when it is the safest bounded solution;
-- use read-only explorers and reviewers;
-- accept clean reviewed evidence;
-- create local commits;
-- create the required temporary handoff; and
-- create one fresh successor task before 23:00.
+`blocked` and `needs_owner_decision` are terminal recovery states.
+An incomplete slice stays in its exact phase and retains its frozen contract.
+It never counts toward the three-slice limit.
 
-Standing authority does not permit the loop to:
+## Authorization and Activation
 
-- select or invent a new goal;
-- broaden or reinterpret the active goal;
-- decide an unresolved owner question;
-- weaken tests, validation, simulation boundaries, or privacy rules;
-- absorb, overwrite, discard, or commit unrelated user work;
-- push, merge, deploy, publish, or create unrelated external side effects;
-- use destructive cleanup to make a unit pass; or
-- treat a reviewer as a product decision-maker.
+The runtime state is initially `stopped` with no active goal and no authorization.
+Historical goal files cannot activate it.
 
-## Preconditions
+Activation requires all of the following:
 
-Before selecting or continuing a unit, confirm that:
+- an explicit owner instruction selecting exactly one goal;
+- owner confirmation recorded by the administrative activation event;
+- synchronized human-readable goal and implementation evidence;
+- the exact saved automation updated to active only after repository activation is committed; and
+- no conflicting or unreadable owner or runtime state.
 
-- the task has not completed another unit;
-- current time permits new selection, or an incomplete unit is being finished;
-- exactly one active owner-approved goal is linked;
-- owner authorization is standing;
-- no owner decision is pending;
-- when alignment is due, this task is the alignment unit rather than an
-  implementation unit;
-- no overlapping task or recorded run exists;
-- a current unit, if any, matches the incomplete unit;
-- the work is authorized by the active goal;
-- no future task queue is recorded;
-- the checkout contains no unsafe overlapping user changes; and
-- the repository check passes, or a pre-existing unrelated failure is recorded.
+Agents may not infer activation from an old goal status, a scheduler trigger, a handoff, or unfinished product evidence.
 
-If unrelated changes overlap the unit, stop at **BASELINE BLOCKED**.
-Never reset or discard them without direction.
+## Scheduler Contract
 
-## One Work-Unit Run
+The `autonomous-2084-development-loop` automation runs only as a liveness and recovery trigger during the configured window.
+On every trigger it validates runtime state and ownership before doing anything else.
 
-### 1. Orient
+The scheduler no-ops when:
 
-Read the sources of authority, latest handoff, run fields, accepted evidence,
-and repository state.
-Confirm this is a fresh task and perform read-only no-overlap checks.
-If `Alignment due: yes`, select only whole-goal alignment and do not select an
-implementation unit.
+- runtime state is stopped or unauthorized;
+- the saved automation is paused;
+- another valid orchestrator or writer owns the checkout;
+- an active actor is non-terminal or awaiting input;
+- state or ownership is unreadable or inconsistent;
+- a blocker or owner decision is recorded; or
+- current time does not permit a new generation and no incomplete slice requires safe recovery.
 
-### 2. Select One Task
+The scheduler may create a fresh orchestrator only when authorized state is `ready` without an orchestrator or `handoff_ready` after a completed alignment.
+It may recover an exact recorded orchestrator or writer only after the exact task is verified `completed`, `failed`, or `interrupted`.
+It never creates a second writer or substitutes a different slice.
 
-Choose the smallest unmet goal gap that can create direct evidence in one task.
-Immediately before recording the selected run, acquire durable checkout
-ownership.
-Record only that task under `Current run` and `Incomplete run` in both the
-compact index and active implementation state.
-State:
+## Checkout Ownership
 
-> This work unit advances criterion X by producing result Y, verified by
-> evidence Z.
+Read-only orientation does not require checkout ownership.
+Immediately before the first repository write, run `python3 scripts/autonomous_loop_lock.py acquire` with the actor role and generation scope.
 
-Do not record later tasks.
-If no honest gap advances the goal, stop at **NO JUSTIFIED CHANGE**.
+The durable lock records task identity, role, generation, optional slice, claim token, and recovery evidence.
+The current owner must assert ownership after a resumed turn and immediately before commit.
 
-### 3. Explore
+The orchestrator freezes the slice contract while it owns the checkout.
+It then atomically transfers checkout ownership to the named fresh writer with `autonomous_loop_lock.py transfer`.
+The orchestrator performs no repository mutations while the writer owns the checkout.
 
-Use one to three read-only explorer agents for concrete independent questions.
-Wait for all explorers before editing.
-The orchestrator remains the sole writer.
+After acceptance and commit, the writer transfers ownership back to the same orchestrator generation.
+After alignment, the orchestrator releases ownership before a fresh generation begins.
 
-### 4. Implement
+The unscoped Codex task listing is not an ownership precondition.
+Do not call `list_threads` as part of the no-overlap gate.
+If acquisition reports another owner, inspect only that exact task with `read_thread`.
+Active, unknown, unreadable, or non-terminal owners continue to block recovery.
+Lock age never authorizes recovery.
 
-Make the smallest coherent change that can satisfy the claim.
-Do not add speculative extension points or future-feature seams.
+## Orchestrator Generation
 
-Preserve these invariants:
+An orchestrator generation begins with one fresh orchestrator and an accepted-slice count of zero.
+The orchestrator performs these steps sequentially:
+
+1. inspect current goal evidence and identify one smallest unmet gap;
+2. define a complete frozen slice contract;
+3. create one fresh writer for that slice;
+4. record the writer in runtime state;
+5. transfer checkout ownership to the writer;
+6. wait for a compact accepted or terminal result;
+7. verify the result matches runtime state and committed repository evidence;
+8. accept another slice only when fewer than three have been accepted; and
+9. perform whole-goal alignment immediately after the third accepted slice or earlier at goal completion.
+
+The orchestrator does not preselect later slices or persist a future task queue.
+It chooses each next slice from repository evidence after the preceding slice is accepted.
+
+## Frozen Slice Contract
+
+The orchestrator writes the complete contract before delegating the writer.
+The state machine stores the contract and its canonical SHA-256 digest.
+Any later contract mutation invalidates the state.
+
+Every contract contains exactly:
+
+- one goal criterion;
+- one intended observable result;
+- one evidence claim;
+- an explicit file or subsystem scope;
+- one or more `check` and `expect` gates; and
+- focused and full validation commands.
+
+The writer may report that a contract is impossible or requires an owner decision.
+The writer may not weaken, delete, reinterpret, or replace a gate.
+
+## Writer Slice
+
+The fresh writer begins only after the runtime state names it and checkout ownership has transferred.
+The writer owns exactly one slice.
+
+The writer:
+
+1. reads the frozen contract and relevant implementation;
+2. may delegate one to three concrete read-only exploration questions;
+3. implements only the contracted change;
+4. runs every frozen gate and focused validation;
+5. runs `./scripts/check.sh`;
+6. records factual validation evidence;
+7. obtains a fresh read-only reviewer that is neither the writer nor orchestrator;
+8. resolves every blocking finding with the same writer;
+9. repeats focused and full validation after material correction;
+10. obtains another fresh review after material correction;
+11. asserts ownership and commits the reviewed coherent implementation;
+12. records acceptance only when the supplied accepted commit is the exact current `HEAD`;
+13. commits the runtime acceptance transition; and
+14. transfers ownership and a compact result back to the orchestrator.
+
+A reviewer inspects the frozen claim, actual diff, test evidence, failure paths, and relevant product invariants.
+A reviewer cannot edit, commit, change the contract, select a new slice, or grant product authority.
+
+## Acceptance and Retry Bounds
+
+A slice counts toward the generation only when:
+
+- its contract digest still matches;
+- every frozen gate has the stated observable result;
+- focused validation passes;
+- the complete repository check passes;
+- a fresh independent review has no blocking finding;
+- every material correction was revalidated and freshly reviewed; and
+- the coherent implementation commit exists before the accepted-slice count advances.
+
+The subsequent runtime-state commit records the accepted evidence and exact implementation commit.
+
+Missing evidence is failure, not partial acceptance.
+An incomplete or rejected slice contributes zero to the accepted-slice count.
+
+The same writer receives no more than two repair cycles after blocking review.
+The exact slice may receive no more than three writer attempts across verified crash recovery.
+Exhausting either bound records `blocked` and stops automatic progress.
+
+## Recovery
+
+Recovery first validates state and reads the durable checkout owner.
+It then inspects only the exact recorded task.
+
+Recovery requires:
+
+- a latest task state of `completed`, `failed`, or `interrupted`;
+- the exact observed task identifier and claim token;
+- atomic lock recovery with matching terminal evidence;
+- matching actor identity in runtime state;
+- matching generation and slice scope; and
+- a state revision that has not changed since observation.
+
+After lock recovery, `recover-actor` rebinds only that exact orchestrator or writer.
+Writer recovery preserves the frozen contract and phase and increments the writer attempt.
+Orchestrator recovery preserves the generation and accepted-slice count and increments its recovery count.
+Any mismatch stops at `ACTIVE RUN STATUS UNKNOWN` without repository changes.
+
+## Whole-Goal Alignment and Handoff
+
+Three accepted slices make `alignment_required` mandatory.
+No fourth slice may be contracted in that generation.
+
+Whole-goal alignment checks:
+
+- accepted evidence against every goal criterion;
+- regressions and affected product invariants;
+- accumulated complexity and removal opportunities;
+- whether the goal is complete;
+- remaining evidence gaps; and
+- unresolved risks or owner decisions.
+
+The alignment report records goal status, the three accepted slices, remaining gaps, risks, and an evidence-based recommendation.
+The recommendation is not a selected next slice.
+
+After alignment, the orchestrator writes a compact durable handoff, clears itself from active runtime state, releases ownership, and stops.
+A new scheduled or relayed task may then begin a fresh generation when authorization remains standing.
+
+## Owner Decision and Terminal Boundaries
+
+Stop at `NEEDS OWNER DECISION` before:
+
+- selecting, replacing, broadening, or reinterpreting a goal;
+- deciding a material product, simulation, worldbuilding, privacy, visual, or lasting architecture question;
+- weakening a frozen gate or product invariant;
+- absorbing overlapping user changes;
+- destructive cleanup, publication, deployment, push, or merge; or
+- continuing after the owner pauses or stops the loop.
+
+Record the smallest concrete question and preserve exact working state.
+Release ownership only when the current task owns it.
+Do not relay from a blocked, unsafe, paused, or owner-decision state.
+
+## Product Invariants
+
+Every slice preserves these established boundaries:
 
 - `EventLog` is append-only objective evidence;
-- official-record changes do not rewrite history or automatically deliver an
-  observation;
-- agents act only from information and access actually available to them;
+- official-record changes never rewrite objective history or automatically deliver observations;
+- agents act only from information and access available to them;
 - public expression remains an attempted action;
 - model output is not automatically truth, memory, or consequence;
-- normal presentation and the omniscient inspector remain separate; and
+- normal presentation remains separate from omniscient inspection; and
 - the focal character remains autonomous rather than a player puppet.
 
-### 5. Validate
+## Migration Behavior
 
-Run focused checks first and then `./scripts/check.sh`.
-When observable simulation behavior changes, also run the normal scenario and
-inspector.
-Inspect the owned diff and verify the intended behavior or architecture claim
-directly.
+Schema version 2 starts stopped, with `goal_id: null` and no authorization.
+The prior active-goal wording remains in historical goal and implementation documents for auditability.
+It is not imported because the saved automation was paused at migration time.
 
-Review the diff for:
+There is no automatic compatibility bridge from the one-task-per-slice relay.
+Old temporary handoffs may inform orientation but cannot populate the new runtime state.
+The first activation requires an explicit owner-approved administrative migration.
 
-- impossible knowledge or authority;
-- accidental history mutation or observation delivery;
-- forced outcomes described as emergence;
-- tests changed beyond the intended behavior;
-- normal-view privacy leaks;
-- complexity that does not improve the active question; and
-- stale or contradictory documentation.
+## Validation
 
-### 6. Record and Review
+`scripts/check_autonomous_loop_contract.py` verifies the runtime schema, stopped migration state, required contract language, control scripts, canonical automation prompt, and absence of obsolete one-task-per-slice rules in current operating documents.
+`tests/test_autonomous_loop_state.py` exercises legal transitions, contract immutability, three-slice alignment, retry bounds, idempotency, compare-and-swap behavior, and exact actor recovery.
+`tests/test_autonomous_loop_lock.py` exercises atomic ownership, transfer, stale-owner recovery, and backward-compatible legacy lock records.
 
-Before review, record the criterion, claim, exact diff, observed evidence,
-validation, risks, and proposed accepted evidence.
+Run focused loop checks first:
 
-Use a fresh read-only `gpt-5.6-sol` high-reasoning reviewer.
-Provide the goal, relevant rules, actual diff, evidence claim, validation, and
-known risks.
-Resolve every blocker.
-A material correction repeats focused and full validation and uses a new fresh
-reviewer.
+```sh
+python3 -m unittest tests.test_autonomous_loop_state tests.test_autonomous_loop_lock tests.test_autonomous_loop_contract
+```
 
-### 7. Accept, Commit, Hand Off, Relay, and Stop
+Then run the full repository check:
 
-After validation passes and review is clean:
-
-1. record the factual review result;
-2. mark only supported criteria accepted;
-3. append the accepted run record;
-4. update alignment or checkpoint fields when applicable;
-5. clear `Current run` and `Incomplete run`;
-6. set `Run status` to `awaiting scheduled fresh task` unless the goal is
-   complete;
-7. synchronize `CURRENT.md`;
-8. stage only the coherent unit;
-9. assert checkout ownership and create one local commit;
-10. write the temporary handoff with `No next unit selected`;
-11. assert checkout ownership, release checkout ownership, and enter
-    handoff-only state;
-12. before 23:00, create one fresh successor when every relay precondition
-    remains true; and
-13. stop at **UNIT COMMITTED - HANDOFF READY**.
-
-The current task never selects the successor's unit.
-
-## Alignment and Saturation
-
-- A criterion with verified evidence is closed unless a regression or affected
-  invariant justifies reopening it.
-- After at most three implementation work units, perform a separate whole-goal
-  alignment before another implementation unit.
-- Alignment reviews evidence, complexity, removals, and completion.
-  It does not choose later work.
-- Two infrastructure-only units must not occur without focused behavioral
-  evidence unless the owner-approved goal explicitly authorizes architecture
-  work.
-- A no-change result is valid when no justified change advances the goal.
-
-## Blocked Units
-
-Do not silently replace a non-viable selected unit.
-
-- Resolve a technical blocker safely inside the same claim when possible.
-- For a required owner decision, record it, hand off, and stop without relay.
-- For an unsafe baseline or overlap, preserve exact state, hand off when
-  appropriate, and stop without relay.
-- Never remove work merely because a unit is blocked.
-- If the current task owns checkout ownership, release it after writing the
-  blocked handoff and before stopping.
-
-## Owner Pause or Stop
-
-The owner may pause or stop the loop at any time.
-On pause, set owner authorization, cadence, relay, and run status to paused in
-both operational files, preserve any active unit, write a handoff, and stop.
-If the current task owns checkout ownership, release it after writing the
-handoff and before stopping.
-The scheduler must no-op while authorization is paused.
-
-Administrative state changes explicitly requested by the owner remain allowed.
-Resuming requires an explicit owner instruction and synchronized standing
-state.
-The activation or resume change must set the
-`autonomous-2084-development-loop` automation to active before scheduled work
-can begin.
-
-## Goal Completion
-
-The active goal is complete only when every criterion has accepted evidence,
-the final repository check and required end-to-end behavior checks pass, and a
-final fresh independent review is clean.
-
-At completion:
-
-1. record final evidence and review;
-2. mark every criterion accepted;
-3. set the goal and implementation state to their canonical completed status;
-4. clear current and incomplete runs and pending decisions;
-5. set `Active goal id` to `none`, owner authorization to `pending`, cadence to
-   `stopped`, relay to `stopped`, and standing authority to `none`;
-6. synchronize `CURRENT.md` and any owner-facing status document;
-7. run the final repository check;
-8. assert checkout ownership and create the final local commit;
-9. write the final handoff using the captured completing goal id;
-10. pause the `autonomous-2084-development-loop` automation so it does not
-    create later no-op recovery tasks;
-11. release checkout ownership;
-12. do not relay; and
-13. stop at **GOAL COMPLETE** without selecting another goal.
-
-## Terminal States
-
-- **UNIT COMMITTED - HANDOFF READY**
-- **ALIGNMENT COMMITTED - HANDOFF READY**
-- **NEEDS OWNER DECISION - HANDOFF READY**
-- **OWNER AUTHORIZATION REQUIRED OR PAUSED**
-- **ACTIVE RUN EXISTS**
-- **ACTIVE RUN STATUS UNKNOWN**
-- **NO JUSTIFIED CHANGE**
-- **WORK UNIT BLOCKED - HANDOFF READY**
-- **BASELINE BLOCKED - HANDOFF READY**
-- **GOAL COMPLETE**
-
-## Accepted Run Record
-
-For every committed unit retain:
-
-1. criterion and claim;
-2. observed evidence and interpretation separately;
-3. exact files and local commit;
-4. focused and full validation plus applicable end-to-end evidence;
-5. explorer partition and fresh review result;
-6. risks and unresolved assumptions;
-7. acceptance basis under standing owner authorization; and
-8. confirmation that the handoff records `No next unit selected`.
+```sh
+./scripts/check.sh
+```
