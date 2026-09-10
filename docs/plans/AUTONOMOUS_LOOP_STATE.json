@@ -1,0 +1,16 @@
+{
+  "authorization": {
+    "goal_id": null,
+    "source": null,
+    "status": "none"
+  },
+  "events": [],
+  "last_handoff": null,
+  "orchestrator": null,
+  "phase": "stopped",
+  "revision": 0,
+  "schema_version": 2,
+  "slice": null,
+  "stop_reason": "migration_requires_explicit_owner_activation",
+  "writer_history": []
+}
