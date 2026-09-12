@@ -18,7 +18,7 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Current slice: none
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Standing implementation authority: active
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
@@ -557,6 +557,7 @@ The unfinished First Consequential Choice Under Conflicting Information goal was
 The owner-provided private Ollama endpoint reports version `0.33.3` and the exact required `qwen3:4b-instruct` model.
 This activation restores standing authorization only for the existing goal boundaries and does not select a slice or prescribe a model outcome.
 The guarded runtime transition and synchronized repository records are committed before the exact saved automation is enabled.
+Activation commit `8ccb31e` precedes the verified activation of the exact `autonomous-2084-development-loop` automation on the saved local 2084 project.
 
 ### 2026-09-06 - Owner-approved main goal
 

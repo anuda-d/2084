@@ -1,19 +1,19 @@
 # Current Development Index
 
-Status: First Consequential Choice Under Conflicting Information is selected for schema-version-2 activation under standing owner authorization.
+Status: First Consequential Choice Under Conflicting Information is active under standing owner authorization.
 
 ## Runtime Authority
 
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
 - Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
 - Owner authorization: standing for the active goal
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: none
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler must no-op until the repository activation is committed and the exact saved automation is active.
+The scheduler remains a liveness and recovery trigger and must no-op while a valid orchestrator or writer owns the loop.
 
 ## Migration Note
 
@@ -62,6 +62,6 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 ## Stop Condition
 
-The selected goal is authorized and ready for the first schema-version-2 orchestrator generation after the activation commit and scheduler activation.
+The selected goal is authorized and ready for the first schema-version-2 orchestrator generation.
 No next slice is selected.
-Do not select a slice until the guarded runtime state is ready and the exact automation is active.
+Do not select a slice until one orchestrator generation owns the guarded runtime state.

@@ -82,9 +82,14 @@ class AutonomousLoopContractTests(unittest.TestCase):
             "Owner authorization: standing for the active goal",
             "Owner authorization: none",
         )
+        scheduler_line = next(
+            line
+            for line in current.splitlines()
+            if line.startswith("- Scheduler status:")
+        )
         current = current.replace(
-            "Scheduler status: pending activation after the repository activation commit",
-            "Scheduler status: paused",
+            scheduler_line,
+            "- Scheduler status: paused",
         )
         current_path.write_text(current, encoding="utf-8")
 
@@ -97,9 +102,14 @@ class AutonomousLoopContractTests(unittest.TestCase):
     def test_ready_state_rejects_an_unknown_scheduler_summary(self):
         current_path = self.root / "docs/plans/CURRENT.md"
         current = current_path.read_text(encoding="utf-8")
+        scheduler_line = next(
+            line
+            for line in current.splitlines()
+            if line.startswith("- Scheduler status:")
+        )
         current = current.replace(
-            "Scheduler status: pending activation after the repository activation commit",
-            "Scheduler status: unknown",
+            scheduler_line,
+            "- Scheduler status: unknown",
         )
         current_path.write_text(current, encoding="utf-8")
 
