@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under owner-authorized replacement activation after an exhausted, unaccepted CC-11 live-day slice; nine criteria remain accepted and the live-model and final-integration criteria remain open.
+Status: stopped without standing authorization after two exhausted, unaccepted CC-11 live-day slices; nine criteria remain accepted and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -8,20 +8,20 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Run State Snapshot
 
-- Active goal id: first-consequential-choice
-- Owner authorization: standing
-- Authorization scope: active goal
-- Authorization source: owner
+- Active goal id: none in authoritative runtime state
+- Owner authorization: none
+- Authorization scope: none
+- Authorization source: none
 - Runtime schema: version 2
-- Runtime phase: ready
+- Runtime phase: stopped at revision 11
 - Current orchestrator generation: none
 - Current slice: none
 - Current writer: none
-- Frozen contract digest: none active; closed slice digest `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
-- Pending owner decision: none; the owner authorized replacement of the closed slice without weakening its failed contract
+- Frozen contract digest: none active; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
+- Pending owner decision: whether to preserve and accept the validated repairs in a smaller new slice and how to provide a legitimate conflict opportunity without steering the model
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: active
-- Standing implementation authority: active
+- Scheduler status: paused
+- Standing implementation authority: inactive
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
 
@@ -91,12 +91,36 @@ and clean fresh independent review.
 ## Current Slice
 
 None.
-The owner authorized a bounded replacement for the exhausted CC-11 slice, but activation does not itself select or queue that replacement.
+The runtime is stopped after the second bounded CC-11 slice exhausted its three live attempts without satisfying the frozen criterion.
+The validated repair diff remains uncommitted and unaccepted pending an owner decision.
 
 ## Candidate Evidence
 
-The uncommitted scalar-parameter schema repair in `policies/ollama_client.py` and its targeted regression in `tests/test_autonomous_day_cli.py` remain unaccepted candidate work.
-They did not receive formal validation or independent review and must not be treated as product evidence.
+The uncommitted scalar-parameter schema repair in `policies/ollama_client.py` and exact-day action-boundary repair in `scenarios/autonomous_day.py` remain unaccepted candidate work after the closed replacement slice.
+Focused adapter and end-to-end world coverage live in `tests/test_ollama_client.py` and `tests/test_autonomous_day_world.py`, but neither the implementation nor its tests are accepted product evidence because the frozen live gate did not pass.
+
+### 2026-09-11 - Replacement CC-11 validation did not satisfy the live gate
+
+The writer reproduced seed 44's minute-1410 `ValueError` provider-free through the complete consequential-choice composition before repairing it.
+The candidate world repair now rejects an otherwise available duration-bearing attempted action when its completion would exceed Day 1 00:00, records the actor-safe rejection before creating pending work, and permits the runtime to reach the exact boundary.
+The candidate adapter repair now adds scalar-string enums from actor-visible affordance options to a detached response schema without mutating caller-owned schema state across requests.
+
+The frozen focused command passed 110 tests, including the new schema-isolation and late-boundary regressions.
+The scripted consequential-choice command reached Day 1 00:00, `./scripts/check.sh` passed all 298 offline tests, and `git diff --check` passed.
+These results validate the candidate repairs but do not satisfy the complete frozen slice contract by themselves.
+
+Immediate Ollama preflights before each new sample verified service version `0.33.3` and exact `qwen3:4b-instruct` digest `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Seeds 45 and 46 each received the official claim, then Mara chose accepted travel away from the workplace before Ilan's testimony could be delivered.
+Seed 47 remained at home and did not receive the official claim or testimony.
+All three days reached Day 1 00:00, passed every generic audit check, reproduced equal recorded evidence without another provider call, and safely rejected their minute-1410 duration-bearing attempts.
+None contained a conflict-informed Mara decision, so none could be inspected against the documented CC-3 competing-obligation alternatives.
+
+Every new private bundle and the aggregate failed-slice verdict remain owner-only under `/private/tmp/2084-cc11-replacement-20260911`.
+The earlier failed seed-42, seed-43, and seed-44 bundles remain unchanged under `/private/tmp/2084-cc11-20260911`.
+The replacement slice is closed unaccepted, CC-4 and CC-11 remain open, and no implementation or runtime-acceptance commit exists.
+A fresh read-only reviewer found no blocking defect in the code repair or focused coverage and independently reproduced the 110-test focused pass, 298-test full pass, exact scripted day, generic bundle verification, and clean diff check.
+The reviewer rejected the complete slice because the exhausted samples provide no conflict-informed live decision and therefore cannot satisfy the immutable CC-11 gate.
+The runtime stopped at revision 11, the exact scheduler was paused, and all candidate repairs and private evidence remain preserved pending an owner decision.
 
 ## Unaccepted Slice Record
 

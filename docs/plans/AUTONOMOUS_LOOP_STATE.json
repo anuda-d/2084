@@ -1,8 +1,8 @@
 {
   "authorization": {
-    "goal_id": "first-consequential-choice",
-    "source": "owner",
-    "status": "standing"
+    "goal_id": null,
+    "source": null,
+    "status": "none"
   },
   "events": [
     {
@@ -40,16 +40,47 @@
       "id": "reactivate-first-consequential-choice-replacement-20260911",
       "revision": 6,
       "type": "activate"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "start-generation-gen-20260911-02",
+      "revision": 7,
+      "type": "start_generation"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "contract-cc11-repair-live-day-20260911",
+      "revision": 8,
+      "type": "contract_slice"
+    },
+    {
+      "actor": "/root/cc11_repair_writer",
+      "id": "begin-implementation-cc11-repair-live-day-20260911",
+      "revision": 9,
+      "type": "begin_implementation"
+    },
+    {
+      "actor": "/root/cc11_repair_writer",
+      "id": "begin-validation-cc11-repair-live-day-20260911",
+      "revision": 10,
+      "type": "begin_validation"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "stop-exhausted-cc11-replacement-20260911",
+      "revision": 11,
+      "type": "stop"
     }
   ],
   "last_handoff": null,
   "orchestrator": null,
-  "phase": "ready",
-  "revision": 6,
+  "phase": "stopped",
+  "revision": 11,
   "schema_version": 2,
   "slice": null,
-  "stop_reason": null,
+  "stop_reason": "Replacement CC-11 slice exhausted owner-approved live seeds 45-47 without a conflict-informed decision; validated repairs and all live evidence remain unaccepted pending an owner decision.",
   "writer_history": [
-    "/root/cc11_writer"
+    "/root/cc11_writer",
+    "/root/cc11_repair_writer"
   ]
 }
