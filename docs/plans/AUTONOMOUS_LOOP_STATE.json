@@ -1,8 +1,8 @@
 {
   "authorization": {
-    "goal_id": null,
-    "source": null,
-    "status": "none"
+    "goal_id": "first-consequential-choice",
+    "source": "owner",
+    "status": "standing"
   },
   "events": [
     {
@@ -34,15 +34,21 @@
       "id": "owner-authorized-close-cc11-live-day-20260911",
       "revision": 5,
       "type": "stop"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "reactivate-first-consequential-choice-replacement-20260911",
+      "revision": 6,
+      "type": "activate"
     }
   ],
   "last_handoff": null,
   "orchestrator": null,
-  "phase": "stopped",
-  "revision": 5,
+  "phase": "ready",
+  "revision": 6,
   "schema_version": 2,
   "slice": null,
-  "stop_reason": "owner_authorized_replacement_after_cc11_live_attempt_cap",
+  "stop_reason": null,
   "writer_history": [
     "/root/cc11_writer"
   ]

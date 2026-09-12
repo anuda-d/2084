@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: stopped without standing authorization after an exhausted, unaccepted CC-11 live-day slice; nine criteria remain accepted and the live-model and final-integration criteria remain open.
+Status: active under owner-authorized replacement activation after an exhausted, unaccepted CC-11 live-day slice; nine criteria remain accepted and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -8,20 +8,20 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Run State Snapshot
 
-- Active goal id: none in authoritative runtime state
-- Owner authorization: none
-- Authorization scope: none
-- Authorization source: none
+- Active goal id: first-consequential-choice
+- Owner authorization: standing
+- Authorization scope: active goal
+- Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: stopped
+- Runtime phase: ready
 - Current orchestrator generation: none
 - Current slice: none
 - Current writer: none
 - Frozen contract digest: none active; closed slice digest `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
-- Pending owner decision: none; the owner resolved closure by authorizing a later bounded CC-11 repair slice without weakening the failed contract
+- Pending owner decision: none; the owner authorized replacement of the closed slice without weakening its failed contract
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: paused
-- Standing implementation authority: inactive
+- Scheduler status: pending activation after the repository activation commit
+- Standing implementation authority: active
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
 
@@ -91,7 +91,7 @@ and clean fresh independent review.
 ## Current Slice
 
 None.
-The owner authorized a later replacement for the exhausted CC-11 slice, but this administrative closure does not reactivate the goal, select that replacement, or authorize implementation.
+The owner authorized a bounded replacement for the exhausted CC-11 slice, but activation does not itself select or queue that replacement.
 
 ## Candidate Evidence
 
@@ -585,6 +585,14 @@ The accepted evidence does not claim progress on the other ten criteria.
 Handoff: No next unit selected.
 
 ## Goal Activation
+
+### 2026-09-11 - Owner-authorized replacement activation
+
+After reviewing the exhausted three-attempt record, the owner explicitly authorized closing that slice unaccepted and replacing it with a new bounded CC-11 repair slice.
+The replacement must preserve every failed attempt, validate rather than assume the candidate adapter repair, diagnose the minute-1410 terminal failure, and use no more than three additional fully disclosed live attempts.
+This activation restores standing authority only for the unchanged First Consequential Choice Under Conflicting Information goal.
+It selects no slice and preserves the failed contract as historical unaccepted evidence.
+The paused automation is enabled only after the guarded activation and synchronized repository records are committed.
 
 ### 2026-09-11 - Schema-version-2 owner reactivation
 
