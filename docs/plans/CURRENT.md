@@ -1,26 +1,27 @@
 # Current Development Index
 
-Status: autonomous development is stopped and requires explicit owner activation.
+Status: First Consequential Choice Under Conflicting Information is selected for schema-version-2 activation under standing owner authorization.
 
 ## Runtime Authority
 
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
-- Active autonomous goal: none
-- Owner authorization: none
-- Scheduler status: paused
+- Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
+- Owner authorization: standing for the active goal
+- Scheduler status: pending activation after the repository activation commit
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: none
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler must no-op while the state is stopped or unauthorized.
+The scheduler must no-op until the repository activation is committed and the exact saved automation is active.
 
 ## Migration Note
 
-The previous loop recorded First Consequential Choice Under Conflicting Information as active under standing authorization.
-Its [goal](first-consequential-choice/GOAL.md) and [implementation evidence](first-consequential-choice/IMPLEMENTATION_PLAN.md) remain unchanged as historical evidence.
-That legacy authorization is deliberately not imported into schema version 2 because the saved automation was paused during migration.
-No product work may resume until the owner explicitly selects a goal, authorizes it, and activates the scheduler under the new contract.
+The legacy authorization is deliberately not imported by the schema-version-2 migration because the saved automation was paused.
+The unchanged legacy goal records remain historical evidence rather than runtime authority.
+On 2026-09-11, the owner delegated selection of the next sensible goal and then explicitly instructed continuation after the live Ollama service check.
+That instruction selects the unfinished [goal](first-consequential-choice/GOAL.md), grants standing implementation authorization within its existing boundaries, and authorizes activation of the existing scheduler.
+The live prerequisite was verified at the owner-provided private Ollama endpoint with the exact required `qwen3:4b-instruct` model before activation.
 
 ## New Loop Shape
 
@@ -61,6 +62,6 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 ## Stop Condition
 
-The loop is stopped, has no active autonomous goal, and has no standing authorization.
+The selected goal is authorized and ready for the first schema-version-2 orchestrator generation after the activation commit and scheduler activation.
 No next slice is selected.
-Do not start an orchestrator, writer, relay, or product change without a new explicit owner activation.
+Do not select a slice until the guarded runtime state is ready and the exact automation is active.

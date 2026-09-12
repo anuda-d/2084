@@ -3,8 +3,8 @@
 Status: current operating contract.
 
 The loop advances one owner-approved goal through small, independently verified slices.
-It is currently stopped and unauthorized.
-The previous authorization record is historical evidence and does not activate this contract.
+Its current phase and authorization are determined only by `docs/plans/AUTONOMOUS_LOOP_STATE.json`.
+Historical authorization records do not activate or override the runtime state.
 
 ## Architecture
 
@@ -308,7 +308,7 @@ The first activation requires an explicit owner-approved administrative migratio
 
 ## Validation
 
-`scripts/check_autonomous_loop_contract.py` verifies the runtime schema, stopped migration state, required contract language, control scripts, canonical automation prompt, and absence of obsolete one-task-per-slice rules in current operating documents.
+`scripts/check_autonomous_loop_contract.py` delegates runtime-state validation to the production state validator and verifies its synchronization with the current index, required contract language, control scripts, canonical automation prompt, and absence of obsolete one-task-per-slice rules in current operating documents.
 `tests/test_autonomous_loop_state.py` exercises legal transitions, contract immutability, three-slice alignment, retry bounds, idempotency, compare-and-swap behavior, and exact actor recovery.
 `tests/test_autonomous_loop_lock.py` exercises atomic ownership, transfer, stale-owner recovery, and backward-compatible legacy lock records.
 

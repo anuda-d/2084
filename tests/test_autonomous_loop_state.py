@@ -241,7 +241,7 @@ class AutonomousLoopStateTests(unittest.TestCase):
         )
         self.assertEqual(transfer.returncode, 0, transfer.stderr)
 
-    def test_repository_state_starts_stopped_and_unauthorized(self):
+    def test_repository_state_is_valid(self):
         result = subprocess.run(
             [
                 sys.executable,
@@ -256,7 +256,8 @@ class AutonomousLoopStateTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "STATE_VALID stopped 0\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("STATE_VALID "), result.stdout)
 
     def test_activation_requires_explicit_confirmation_and_checkout_owner(self):
         no_owner = self.mutate(

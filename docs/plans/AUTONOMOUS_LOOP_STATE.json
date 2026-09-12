@@ -1,16 +1,23 @@
 {
   "authorization": {
-    "goal_id": null,
-    "source": null,
-    "status": "none"
+    "goal_id": "first-consequential-choice",
+    "source": "owner",
+    "status": "standing"
   },
-  "events": [],
+  "events": [
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "activate-first-consequential-choice-20260911",
+      "revision": 1,
+      "type": "activate"
+    }
+  ],
   "last_handoff": null,
   "orchestrator": null,
-  "phase": "stopped",
-  "revision": 0,
+  "phase": "ready",
+  "revision": 1,
   "schema_version": 2,
   "slice": null,
-  "stop_reason": "migration_requires_explicit_owner_activation",
+  "stop_reason": null,
   "writer_history": []
 }

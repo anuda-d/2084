@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active; conflict, obligation, physical-transit, tradeoff, follow-through, and information-comparison boundaries accepted.
+Status: active under renewed standing authorization; nine criteria are accepted and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -12,15 +12,16 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Owner authorization: standing
 - Authorization scope: active goal
 - Authorization source: owner
-- Loop cadence: scheduled autonomous relay
-- Current run: none
-- Incomplete run: none
-- Run status: awaiting scheduled fresh task
+- Runtime schema: version 2
+- Runtime phase: ready after the activation transition
+- Current orchestrator generation: none
+- Current slice: none
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Fresh-task relay: active
-- Alignment due: no
+- Scheduler status: pending activation after the repository activation commit
 - Standing implementation authority: active
+- Live provider: Ollama `0.33.3` at the owner-provided private endpoint
+- Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
 
 ## Alignment State
 
@@ -548,6 +549,14 @@ The accepted evidence does not claim progress on the other ten criteria.
 Handoff: No next unit selected.
 
 ## Goal Activation
+
+### 2026-09-11 - Schema-version-2 owner reactivation
+
+The owner delegated selection of the next sensible goal and then instructed implementation to continue after checking the Ollama service.
+The unfinished First Consequential Choice Under Conflicting Information goal was selected because CC-4, CC-11, and CC-12 remain unverified while its other nine criteria are accepted.
+The owner-provided private Ollama endpoint reports version `0.33.3` and the exact required `qwen3:4b-instruct` model.
+This activation restores standing authorization only for the existing goal boundaries and does not select a slice or prescribe a model outcome.
+The guarded runtime transition and synchronized repository records are committed before the exact saved automation is enabled.
 
 ### 2026-09-06 - Owner-approved main goal
 

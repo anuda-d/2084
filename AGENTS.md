@@ -79,8 +79,8 @@ For now, favor one autonomous focal life, a small living world, understandable a
 
 - Use `docs/main/DEVELOPMENT_LOOP.md` as the complete operating contract.
 - Treat `docs/plans/AUTONOMOUS_LOOP_STATE.json` as the authoritative runtime state and `docs/plans/CURRENT.md` as its human-readable index.
-- The current runtime state is stopped and unauthorized.
-  Historical goal documents do not reactivate it.
+- The current runtime state and authorization are determined only by `docs/plans/AUTONOMOUS_LOOP_STATE.json`.
+  Historical goal documents never reactivate or override it.
 - Standing authorization exists only when the runtime state names one owner-approved goal, records `authorization.status` as `standing`, and the exact `autonomous-2084-development-loop` automation is active.
 - The scheduler is only a liveness and recovery trigger.
   It never selects product work and must no-op when a valid orchestrator or writer owns the loop.

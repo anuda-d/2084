@@ -8,6 +8,7 @@ from scripts.check_autonomous_loop_contract import (
     CURRENT_PATHS,
     OBSOLETE_CURRENT_RULES,
     REQUIRED_BY_PATH,
+    current_summary_failures,
     repository_contract_failures,
     state_failures,
 )
@@ -60,20 +61,99 @@ class AutonomousLoopContractTests(unittest.TestCase):
                 self.assertTrue(any(token in failure for failure in failures), failures)
         path.write_text(original, encoding="utf-8")
 
-    def test_runtime_state_must_remain_stopped_and_unauthorized_at_migration(self):
+    def test_runtime_state_must_satisfy_the_production_validator(self):
         state_path = self.root / "docs/plans/AUTONOMOUS_LOOP_STATE.json"
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        state["authorization"] = {
-            "status": "standing",
-            "goal_id": "legacy-goal",
-            "source": "owner",
-        }
-        state["phase"] = "ready"
+        state["schema_version"] = 999
         state_path.write_text(json.dumps(state), encoding="utf-8")
 
         failures = state_failures(self.root)
 
-        self.assertTrue(any("stopped and unauthorized" in item for item in failures))
+        self.assertTrue(any("UNSUPPORTED_SCHEMA_VERSION" in item for item in failures))
+
+    def test_ready_state_rejects_an_inactive_current_summary(self):
+        current_path = self.root / "docs/plans/CURRENT.md"
+        current = current_path.read_text(encoding="utf-8")
+        current = current.replace(
+            "Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)",
+            "Active autonomous goal: none",
+        )
+        current = current.replace(
+            "Owner authorization: standing for the active goal",
+            "Owner authorization: none",
+        )
+        current = current.replace(
+            "Scheduler status: pending activation after the repository activation commit",
+            "Scheduler status: paused",
+        )
+        current_path.write_text(current, encoding="utf-8")
+
+        failures = current_summary_failures(self.root)
+
+        self.assertIn("CURRENT_GOAL_MISMATCH", failures)
+        self.assertIn("CURRENT_AUTHORIZATION_MISMATCH", failures)
+        self.assertIn("CURRENT_SCHEDULER_MISMATCH", failures)
+
+    def test_ready_state_rejects_an_unknown_scheduler_summary(self):
+        current_path = self.root / "docs/plans/CURRENT.md"
+        current = current_path.read_text(encoding="utf-8")
+        current = current.replace(
+            "Scheduler status: pending activation after the repository activation commit",
+            "Scheduler status: unknown",
+        )
+        current_path.write_text(current, encoding="utf-8")
+
+        failures = current_summary_failures(self.root)
+
+        self.assertIn("CURRENT_SCHEDULER_MISMATCH", failures)
+
+    def test_active_orchestrator_and_slice_require_exact_current_identifiers(self):
+        state_path = self.root / "docs/plans/AUTONOMOUS_LOOP_STATE.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["orchestrator"] = {
+            "accepted_slices": 0,
+            "generation_id": "gen-test",
+            "recovery_count": 0,
+            "task_id": "orch-test",
+        }
+        state["slice"] = {"slice_id": "slice-test"}
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        failures = current_summary_failures(self.root)
+
+        self.assertIn("CURRENT_ORCHESTRATOR_MISMATCH", failures)
+        self.assertIn("CURRENT_SLICE_MISMATCH", failures)
+
+    def test_stopped_state_rejects_an_active_current_summary(self):
+        state_path = self.root / "docs/plans/AUTONOMOUS_LOOP_STATE.json"
+        state_path.write_text(
+            json.dumps(
+                {
+                    "authorization": {
+                        "goal_id": None,
+                        "source": None,
+                        "status": "none",
+                    },
+                    "events": [],
+                    "last_handoff": None,
+                    "orchestrator": None,
+                    "phase": "stopped",
+                    "revision": 0,
+                    "schema_version": 2,
+                    "slice": None,
+                    "stop_reason": "owner_stopped",
+                    "writer_history": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        failures = current_summary_failures(self.root)
+
+        self.assertIn("CURRENT_GOAL_MISMATCH", failures)
+        self.assertIn("CURRENT_AUTHORIZATION_MISMATCH", failures)
+        self.assertIn("CURRENT_SCHEDULER_MISMATCH", failures)
+        self.assertIn("CURRENT_PHASE_MISMATCH", failures)
 
     def test_legacy_authorization_discrepancy_is_explicit(self):
         current = (self.root / "docs/plans/CURRENT.md").read_text(encoding="utf-8")
