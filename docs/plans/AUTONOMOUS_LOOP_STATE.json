@@ -1,8 +1,8 @@
 {
   "authorization": {
-    "goal_id": "first-consequential-choice",
-    "source": "owner",
-    "status": "standing"
+    "goal_id": null,
+    "source": null,
+    "status": "none"
   },
   "events": [
     {
@@ -10,14 +10,40 @@
       "id": "activate-first-consequential-choice-20260911",
       "revision": 1,
       "type": "activate"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "start-generation-gen-20260911-01",
+      "revision": 2,
+      "type": "start_generation"
+    },
+    {
+      "actor": "01a088e4-3eda-7203-83c8-26dbe393f166",
+      "id": "contract-cc11-live-day-20260911",
+      "revision": 3,
+      "type": "contract_slice"
+    },
+    {
+      "actor": "/root/cc11_writer",
+      "id": "begin-implementation-cc11-live-day-20260911-attempt1",
+      "revision": 4,
+      "type": "begin_implementation"
+    },
+    {
+      "actor": "/root/cc11_writer",
+      "id": "owner-authorized-close-cc11-live-day-20260911",
+      "revision": 5,
+      "type": "stop"
     }
   ],
   "last_handoff": null,
   "orchestrator": null,
-  "phase": "ready",
-  "revision": 1,
+  "phase": "stopped",
+  "revision": 5,
   "schema_version": 2,
   "slice": null,
-  "stop_reason": null,
-  "writer_history": []
+  "stop_reason": "owner_authorized_replacement_after_cc11_live_attempt_cap",
+  "writer_history": [
+    "/root/cc11_writer"
+  ]
 }

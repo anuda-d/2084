@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under renewed standing authorization; nine criteria are accepted and the live-model and final-integration criteria remain open.
+Status: stopped without standing authorization after an exhausted, unaccepted CC-11 live-day slice; nine criteria remain accepted and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -8,18 +8,20 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Run State Snapshot
 
-- Active goal id: first-consequential-choice
-- Owner authorization: standing
-- Authorization scope: active goal
-- Authorization source: owner
+- Active goal id: none in authoritative runtime state
+- Owner authorization: none
+- Authorization scope: none
+- Authorization source: none
 - Runtime schema: version 2
-- Runtime phase: ready after the activation transition
+- Runtime phase: stopped
 - Current orchestrator generation: none
 - Current slice: none
-- Pending owner decision: none
+- Current writer: none
+- Frozen contract digest: none active; closed slice digest `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
+- Pending owner decision: none; the owner resolved closure by authorizing a later bounded CC-11 repair slice without weakening the failed contract
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: active
-- Standing implementation authority: active
+- Scheduler status: paused
+- Standing implementation authority: inactive
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
 
@@ -86,14 +88,48 @@ evidence, not blockers for this bounded result.
 Acceptance basis: standing owner authorization, focused and full validation,
 and clean fresh independent review.
 
-## Current Run
+## Current Slice
 
 None.
-No next unit selected.
+The owner authorized a later replacement for the exhausted CC-11 slice, but this administrative closure does not reactivate the goal, select that replacement, or authorize implementation.
 
 ## Candidate Evidence
 
-No candidate evidence is pending independent review.
+The uncommitted scalar-parameter schema repair in `policies/ollama_client.py` and its targeted regression in `tests/test_autonomous_day_cli.py` remain unaccepted candidate work.
+They did not receive formal validation or independent review and must not be treated as product evidence.
+
+## Unaccepted Slice Record
+
+### 2026-09-11 - Exhausted CC-11 live-day attempts
+
+Slice `cc11-live-day-20260911` used frozen contract digest `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`.
+All three allowed attempts used the real Ollama adapter with `qwen3:4b-instruct` after successful immediate version and exact-model preflights.
+Their private bundles remain under owner-only parent `/private/tmp/2084-cc11-20260911` with owner-only directory and artifact permissions.
+No raw private prompt or model response is reproduced here.
+
+Seed 42 reached Day 1 00:00 and its generic audit passed all integrity, model-identity, provider-provenance, causal-link, privacy, growth, exact-boundary, and recorded-replay checks.
+Its measurements recorded five model decisions, five provider calls, four selected responses, and one provider failure.
+It did not satisfy CC-11 because the conflict-informed minute-511 response attempted travel to Mara's current workplace, the world rejected that unavailable destination, and the model therefore selected neither documented competing-obligation alternative as an accepted action.
+
+Seed 43 reproduced the seed-42 result.
+It reached Day 1 00:00, its generic audit passed, and it recorded five model decisions, five provider calls, four selected responses, and one provider failure.
+Its conflict-informed same-location travel was likewise rejected and did not satisfy CC-11.
+
+The repeated failures exposed a candidate adapter gap: the restricted input listed reachable travel destinations, but the Ollama response schema accepted any non-empty destination string.
+The writer added an unaccepted candidate repair that constrains scalar response parameters to the affordance options already disclosed in restricted state without choosing among travel, work, and wait.
+The targeted schema regression and the existing native-chat request regression passed.
+This candidate repair was neither formally validated nor independently reviewed before the attempt cap was exhausted.
+
+Seed 44 ran against that candidate repair.
+The model selected accepted travel from the workplace to home at the minute-480 official-notice decision, so Mara was no longer physically available for Ilan's minute-511 testimony delivery and never encountered the required conflict.
+The model continued selecting reachable travel between home and the workplace, both obligations were missed and delivered, and a final late travel choice produced a terminal `ValueError` at minute 1410 rather than the exact day boundary.
+Its generic audit failed exact-boundary, terminal-failure, complete-causal-link, complete-model-dispatch, uncommitted-tail, and recorded-replay checks while model identity, provider provenance, privacy, and growth checks remained true.
+It recorded nineteen model decisions, nineteen provider calls, eighteen selected responses, and one provider failure.
+
+The three-attempt cap ended without a CC-11 pass.
+Formal slice validation did not begin, no fresh independent slice review occurred, no implementation commit was created, and the slice was not accepted or counted.
+The owner explicitly authorized closing this exhausted slice as unaccepted and replacing it later with a new bounded CC-11 repair slice rather than weakening or reinterpreting the frozen contract.
+That owner decision authorizes this closure record only in the current stopped runtime; no replacement slice is selected or active.
 
 ## Accepted Run Record
 

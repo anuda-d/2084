@@ -1,19 +1,21 @@
 # Current Development Index
 
-Status: First Consequential Choice Under Conflicting Information is active under standing owner authorization.
+Status: autonomous development is stopped without authorization after the owner-authorized closure of an exhausted, unaccepted CC-11 live-day slice.
 
 ## Runtime Authority
 
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
-- Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
-- Owner authorization: standing for the active goal
-- Scheduler status: active
+- Active autonomous goal: none
+- Owner authorization: none
+- Scheduler status: paused
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: none
+- Resolved owner decision: close `cc11-live-day-20260911` as unaccepted after its three-attempt cap and permit a later new bounded CC-11 repair slice without weakening the failed contract
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler remains a liveness and recovery trigger and must no-op while a valid orchestrator or writer owns the loop.
+The scheduler is paused and the runtime is stopped.
+The replacement authorization does not reactivate the goal, select a replacement slice, or authorize implementation in this administrative closure.
 
 ## Migration Note
 
@@ -62,6 +64,6 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 ## Stop Condition
 
-The selected goal is authorized and ready for the first schema-version-2 orchestrator generation.
-No next slice is selected.
-Do not select a slice until one orchestrator generation owns the guarded runtime state.
+The exhausted CC-11 slice is closed without acceptance and does not count toward the generation limit.
+The owner authorized replacing it with a new bounded CC-11 repair slice rather than weakening its frozen criterion.
+The authoritative runtime is stopped without standing authorization, the scheduler is paused, and no replacement slice is selected or active.

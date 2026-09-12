@@ -34,6 +34,38 @@ class AutonomousLoopContractTests(unittest.TestCase):
     def tearDown(self):
         self.tempdir.cleanup()
 
+    def write_current_summary(
+        self,
+        *,
+        status: str,
+        goal: str,
+        authorization: str,
+        scheduler: str,
+    ) -> None:
+        current_path = self.root / "docs/plans/CURRENT.md"
+        replacements = {
+            "Status:": f"Status: {status}",
+            "- Active autonomous goal:": f"- Active autonomous goal: {goal}",
+            "- Owner authorization:": f"- Owner authorization: {authorization}",
+            "- Scheduler status:": f"- Scheduler status: {scheduler}",
+        }
+        lines = current_path.read_text(encoding="utf-8").splitlines()
+        current_path.write_text(
+            "\n".join(
+                next(
+                    (
+                        replacement
+                        for prefix, replacement in replacements.items()
+                        if line.startswith(prefix)
+                    ),
+                    line,
+                )
+                for line in lines
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
     def test_repository_contract_is_consistent(self):
         self.assertEqual(repository_contract_failures(), [])
 
@@ -72,26 +104,22 @@ class AutonomousLoopContractTests(unittest.TestCase):
         self.assertTrue(any("UNSUPPORTED_SCHEMA_VERSION" in item for item in failures))
 
     def test_ready_state_rejects_an_inactive_current_summary(self):
-        current_path = self.root / "docs/plans/CURRENT.md"
-        current = current_path.read_text(encoding="utf-8")
-        current = current.replace(
-            "Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)",
-            "Active autonomous goal: none",
+        state_path = self.root / "docs/plans/AUTONOMOUS_LOOP_STATE.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["authorization"] = {
+            "goal_id": "first-consequential-choice",
+            "source": "owner",
+            "status": "standing",
+        }
+        state["phase"] = "ready"
+        state["stop_reason"] = None
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        self.write_current_summary(
+            status="autonomous development is stopped for this fixture",
+            goal="none",
+            authorization="none",
+            scheduler="paused",
         )
-        current = current.replace(
-            "Owner authorization: standing for the active goal",
-            "Owner authorization: none",
-        )
-        scheduler_line = next(
-            line
-            for line in current.splitlines()
-            if line.startswith("- Scheduler status:")
-        )
-        current = current.replace(
-            scheduler_line,
-            "- Scheduler status: paused",
-        )
-        current_path.write_text(current, encoding="utf-8")
 
         failures = current_summary_failures(self.root)
 
@@ -156,6 +184,15 @@ class AutonomousLoopContractTests(unittest.TestCase):
                 }
             ),
             encoding="utf-8",
+        )
+        self.write_current_summary(
+            status="autonomous development is active for this fixture",
+            goal=(
+                "[First Consequential Choice Under Conflicting Information]"
+                "(first-consequential-choice/GOAL.md)"
+            ),
+            authorization="standing for the active goal",
+            scheduler="active",
         )
 
         failures = current_summary_failures(self.root)
