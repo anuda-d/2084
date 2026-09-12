@@ -1,20 +1,20 @@
 # Current Development Index
 
-Status: First Consequential Choice Under Conflicting Information is selected for owner-authorized replacement activation after an exhausted, unaccepted CC-11 slice.
+Status: First Consequential Choice Under Conflicting Information is active under owner-authorized replacement activation after an exhausted, unaccepted CC-11 slice.
 
 ## Runtime Authority
 
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
 - Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
 - Owner authorization: standing for the active goal
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: preserve the unaccepted adapter repair for independent validation inside a new frozen slice
 - Resolved owner decision: close `cc11-live-day-20260911` as unaccepted after its three-attempt cap and permit a later new bounded CC-11 repair slice without weakening the failed contract
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler remains paused until the replacement activation is committed.
+The scheduler remains a liveness and recovery trigger and must no-op while a valid orchestrator or writer owns the loop.
 The replacement authorization reactivates only the existing goal and does not itself select a replacement slice.
 
 ## Migration Note
@@ -66,4 +66,4 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 The exhausted CC-11 slice remains closed without acceptance and does not count toward a generation limit.
 The owner authorized replacing it with a new bounded CC-11 repair slice rather than weakening its frozen criterion.
-The authoritative runtime is ready under standing authorization, the scheduler awaits post-commit activation, and no replacement slice is selected yet.
+The authoritative runtime is ready under standing authorization, the scheduler is active, and no replacement slice is selected yet.

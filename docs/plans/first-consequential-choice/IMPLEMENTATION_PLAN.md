@@ -20,7 +20,7 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Frozen contract digest: none active; closed slice digest `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
 - Pending owner decision: none; the owner authorized replacement of the closed slice without weakening its failed contract
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Standing implementation authority: active
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
@@ -593,6 +593,7 @@ The replacement must preserve every failed attempt, validate rather than assume 
 This activation restores standing authority only for the unchanged First Consequential Choice Under Conflicting Information goal.
 It selects no slice and preserves the failed contract as historical unaccepted evidence.
 The paused automation is enabled only after the guarded activation and synchronized repository records are committed.
+Replacement activation commit `0f38e96` precedes the verified reactivation of the exact saved automation.
 
 ### 2026-09-11 - Schema-version-2 owner reactivation
 
