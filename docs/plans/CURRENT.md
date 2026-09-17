@@ -7,7 +7,7 @@ Status: First Consequential Choice Under Conflicting Information is active under
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
 - Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
 - Owner authorization: standing for the active goal
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: none
@@ -17,7 +17,7 @@ Status: First Consequential Choice Under Conflicting Information is active under
 - Reactivation decision: preserve the validated schema and exact-day repairs as a smaller fresh slice, then address a legitimate non-steering conflict opportunity in a separate later slice
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler remains paused until this activation is committed and the exact saved automation is activated.
+The exact saved `autonomous-2084-development-loop` automation is active on the saved local 2084 project after activation commit `5569ba7`.
 The validated schema and exact-day repair diff remains uncommitted and unaccepted until it passes a fresh bounded contract, focused and full validation, and independent review.
 The later conflict-opportunity slice may expose a legitimate choice context but may not prescribe or substitute the live model outcome.
 
@@ -72,4 +72,4 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 Both exhausted CC-11 slices remain closed without acceptance and neither counts toward a generation limit.
 The authoritative runtime is ready with standing authorization at revision 12.
-After the activation commit and scheduler activation, a fresh orchestrator generation may contract the preserved repairs as its first bounded slice.
+A fresh orchestrator generation may contract the preserved repairs as its first bounded slice.

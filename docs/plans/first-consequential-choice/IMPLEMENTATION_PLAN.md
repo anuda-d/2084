@@ -20,7 +20,7 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Frozen contract digest: none active; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: pending activation after the repository activation commit
+- Scheduler status: active
 - Standing implementation authority: active
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
@@ -617,7 +617,7 @@ The owner directed the loop to preserve the validated schema and exact-day repai
 The owner also separated creation of a legitimate conflict opportunity into a later slice that may expose a real choice context but may not prescribe, substitute, or silently steer the live model outcome.
 Both exhausted live slices remain closed and unaccepted historical evidence.
 This activation selects no writer, records no accepted product evidence, and creates no future task queue.
-The exact saved automation remains paused until the guarded activation, synchronized records, validation, and activation commit are complete.
+Activation commit `5569ba7` precedes the verified activation of the exact saved `autonomous-2084-development-loop` automation on the local 2084 project.
 
 ### 2026-09-11 - Owner-authorized replacement activation
 
