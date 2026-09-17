@@ -1,25 +1,25 @@
 # Current Development Index
 
-Status: autonomous development is stopped without authorization after the owner-authorized replacement CC-11 slice exhausted its three live attempts without a conflict-informed decision.
+Status: First Consequential Choice Under Conflicting Information is active under renewed standing owner authorization, with the preserved CC-11 repairs awaiting a fresh bounded slice.
 
 ## Runtime Authority
 
 - Authoritative state: [Autonomous Loop State](AUTONOMOUS_LOOP_STATE.json)
-- Active autonomous goal: none
-- Historical unfinished goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
-- Owner authorization: none
-- Scheduler status: paused
+- Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
+- Owner authorization: standing for the active goal
+- Scheduler status: pending activation after the repository activation commit
 - Current orchestrator: none
 - Current slice: none
 - Recovery action: none
 - Closed replacement slice: `cc11-repair-live-day-20260911`, digest `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782`
 - Validation result: its offline repair gates pass, but seeds 45, 46, and 47 exhausted the live-attempt cap without a conflict-informed decision, so the slice is not accepted
 - Resolved owner decision: close `cc11-live-day-20260911` as unaccepted after its three-attempt cap and permit a later new bounded CC-11 repair slice without weakening the failed contract
+- Reactivation decision: preserve the validated schema and exact-day repairs as a smaller fresh slice, then address a legitimate non-steering conflict opportunity in a separate later slice
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
-The scheduler is paused and the runtime is stopped.
-The validated schema and exact-day repair diff remains uncommitted and unaccepted because the combined frozen slice did not satisfy its live gate.
-Automatic implementation cannot continue without a new owner decision.
+The scheduler remains paused until this activation is committed and the exact saved automation is activated.
+The validated schema and exact-day repair diff remains uncommitted and unaccepted until it passes a fresh bounded contract, focused and full validation, and independent review.
+The later conflict-opportunity slice may expose a legitimate choice context but may not prescribe or substitute the live model outcome.
 
 ## Migration Note
 
@@ -28,6 +28,8 @@ The unchanged legacy goal records remain historical evidence rather than runtime
 On 2026-09-11, the owner delegated selection of the next sensible goal and then explicitly instructed continuation after the live Ollama service check.
 That instruction selects the unfinished [goal](first-consequential-choice/GOAL.md), grants standing implementation authorization within its existing boundaries, and authorizes activation of the existing scheduler.
 The live prerequisite was verified at the owner-provided private Ollama endpoint with the exact required `qwen3:4b-instruct` model before activation.
+On 2026-09-16, the owner explicitly reselected this unfinished goal with standing authorization.
+The owner directed the loop to preserve the validated repairs as a smaller slice and keep the non-steering conflict opportunity as a separate concern.
 
 ## New Loop Shape
 
@@ -69,5 +71,5 @@ Unknown, active, or non-terminal ownership blocks recovery.
 ## Stop Condition
 
 Both exhausted CC-11 slices remain closed without acceptance and neither counts toward a generation limit.
-The authoritative runtime is stopped without standing authorization at revision 11, and the scheduler is paused.
-Continuing requires an owner decision about whether to preserve and accept the validated repairs as a smaller new slice and how to create a legitimate conflict opportunity without steering a live model outcome.
+The authoritative runtime is ready with standing authorization at revision 12.
+After the activation commit and scheduler activation, a fresh orchestrator generation may contract the preserved repairs as its first bounded slice.

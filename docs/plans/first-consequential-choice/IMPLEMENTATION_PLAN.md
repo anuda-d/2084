@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: stopped without standing authorization after two exhausted, unaccepted CC-11 live-day slices; nine criteria remain accepted and the live-model and final-integration criteria remain open.
+Status: active under renewed standing authorization; the preserved CC-11 repairs await a smaller bounded slice, and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -8,20 +8,20 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Run State Snapshot
 
-- Active goal id: none in authoritative runtime state
-- Owner authorization: none
-- Authorization scope: none
-- Authorization source: none
+- Active goal id: `first-consequential-choice`
+- Owner authorization: standing
+- Authorization scope: active goal
+- Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: stopped at revision 11
+- Runtime phase: ready at revision 12
 - Current orchestrator generation: none
 - Current slice: none
 - Current writer: none
 - Frozen contract digest: none active; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
-- Pending owner decision: whether to preserve and accept the validated repairs in a smaller new slice and how to provide a legitimate conflict opportunity without steering the model
+- Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
-- Scheduler status: paused
-- Standing implementation authority: inactive
+- Scheduler status: pending activation after the repository activation commit
+- Standing implementation authority: active
 - Live provider: Ollama `0.33.3` at the owner-provided private endpoint
 - Required live model: `qwen3:4b-instruct`, verified available on 2026-09-11
 
@@ -609,6 +609,15 @@ The accepted evidence does not claim progress on the other ten criteria.
 Handoff: No next unit selected.
 
 ## Goal Activation
+
+### 2026-09-16 - Owner reactivation after exhausted live attempts
+
+The owner explicitly reselected First Consequential Choice Under Conflicting Information and restored standing implementation authorization within its unchanged boundaries.
+The owner directed the loop to preserve the validated schema and exact-day repairs as a smaller fresh slice rather than treating the exhausted combined live slice as accepted.
+The owner also separated creation of a legitimate conflict opportunity into a later slice that may expose a real choice context but may not prescribe, substitute, or silently steer the live model outcome.
+Both exhausted live slices remain closed and unaccepted historical evidence.
+This activation selects no writer, records no accepted product evidence, and creates no future task queue.
+The exact saved automation remains paused until the guarded activation, synchronized records, validation, and activation commit are complete.
 
 ### 2026-09-11 - Owner-authorized replacement activation
 

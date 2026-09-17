@@ -1,8 +1,8 @@
 {
   "authorization": {
-    "goal_id": null,
-    "source": null,
-    "status": "none"
+    "goal_id": "first-consequential-choice",
+    "source": "owner",
+    "status": "standing"
   },
   "events": [
     {
@@ -70,15 +70,21 @@
       "id": "stop-exhausted-cc11-replacement-20260911",
       "revision": 11,
       "type": "stop"
+    },
+    {
+      "actor": "01a0ad2d-d6cf-76a3-bb76-f1fa50113332",
+      "id": "owner-reactivate-first-consequential-choice-20260916",
+      "revision": 12,
+      "type": "activate"
     }
   ],
   "last_handoff": null,
   "orchestrator": null,
-  "phase": "stopped",
-  "revision": 11,
+  "phase": "ready",
+  "revision": 12,
   "schema_version": 2,
   "slice": null,
-  "stop_reason": "Replacement CC-11 slice exhausted owner-approved live seeds 45-47 without a conflict-informed decision; validated repairs and all live evidence remain unaccepted pending an owner decision.",
+  "stop_reason": null,
   "writer_history": [
     "/root/cc11_writer",
     "/root/cc11_repair_writer"
