@@ -4991,6 +4991,67 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 integrity_key=integrity_key,
             )
 
+    def test_late_reachable_travel_is_rejected_without_crossing_day_boundary(self):
+        class _ReachableTravelClient:
+            def __init__(self):
+                self.inputs = []
+
+            def choose(self, model_input):
+                self.inputs.append(model_input)
+                destinations = model_input["action_contract"][
+                    "affordances_by_kind"
+                ]["travel"]["parameter_options"]["destination"]
+                return {
+                    "kind": "travel",
+                    "parameters": {"destination": destinations[0]},
+                    "explanation": "travel to a reachable destination",
+                    "decision_reason": "the destination is currently reachable",
+                }
+
+        client = _ReachableTravelClient()
+        day = build_autonomous_day(
+            seed=44,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="late-reachable-travel-boundary-test",
+            ),
+            include_conflicting_transit_accounts=True,
+            include_deadline_governed_obligation_outcomes=True,
+            include_obligation_outcome_delivery=True,
+            include_consequential_choice_tradeoff_timing=True,
+            include_service_dependent_travel=True,
+        )
+
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertIsNone(summary.runtime_failure)
+        self.assertEqual(summary.current, SimulatedTime(1440))
+        self.assertEqual(day.pending_action_count, 0)
+        self.assertTrue(
+            all(work.due_time <= summary.end for work in summary.executed_work)
+        )
+        self.assertEqual(client.inputs[-1]["tick"], 1410)
+        final_attempt, final_rejection = day.events[-2:]
+        self.assertEqual(final_attempt.kind, "action_attempted")
+        self.assertEqual(final_attempt.tick, 1410)
+        self.assertEqual(final_rejection.kind, "action_rejected")
+        self.assertEqual(final_rejection.tick, 1410)
+        self.assertEqual(final_rejection.caused_by, (final_attempt.event_id,))
+        self.assertEqual(
+            final_rejection.details["reason"],
+            "action cannot complete before the day boundary",
+        )
+        final_result = day.world.agents[MARA_ID].action_results[-1]
+        self.assertEqual(final_result.action_id, final_attempt.action_id)
+        self.assertEqual(final_result.action_kind, "travel")
+        self.assertEqual(final_result.status, "rejected")
+        self.assertEqual(final_result.resolved_tick, 1410)
+        final_decision = day.private_decision_records[-1]
+        self.assertEqual(final_decision.validation_status, "rejected")
+        self.assertEqual(final_decision.resolution_status, "rejected")
+        self.assertEqual(final_decision.resolved_tick, 1410)
+
     def test_recorded_autonomous_day_failure_is_explicit_for_altered_or_exhausted_evidence(
         self,
     ):

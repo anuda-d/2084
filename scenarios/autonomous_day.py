@@ -807,13 +807,6 @@ def build_autonomous_day(
                 )
             )
         )
-        replace_latest_private_decision_record(
-            decision_record.linked_to(
-                attempt_event_id=attempted.event_id,
-                action_id=action_id,
-                validation_status="accepted" if accepted else "rejected",
-            )
-        )
         scheduled_rest = (
             decision_record.status == "selected"
             and any(
@@ -822,10 +815,51 @@ def build_autonomous_day(
             )
             and mara.location == "home"
         )
-        if attempt.kind == "wait" and scheduled_rest:
-            completion_time = context.current.plus_minutes(
-                _MARA_REST_DURATION_MINUTES
+        duration_minutes: int | None = None
+        travel_service_status: str | None = None
+        if accepted:
+            if attempt.kind == "wait" and scheduled_rest:
+                duration_minutes = _MARA_REST_DURATION_MINUTES
+            elif attempt.kind == "household":
+                duration_minutes = _MARA_HOUSEHOLD_DURATION_MINUTES
+            elif attempt.kind == "work":
+                duration_minutes = _MARA_WORK_DURATION_MINUTES
+            elif attempt.kind == "travel":
+                travel_service_status = world.institution.records["tram_service"]
+                duration_minutes = (
+                    _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[
+                        travel_service_status
+                    ]
+                    if include_service_dependent_travel
+                    else _MARA_TRAVEL_DURATION_MINUTES
+                )
+        completion_time = (
+            context.current.plus_minutes(duration_minutes)
+            if duration_minutes is not None
+            else None
+        )
+        exceeds_day_boundary = (
+            completion_time is not None and completion_time > context.end
+        )
+        if exceeds_day_boundary:
+            accepted = False
+        replace_latest_private_decision_record(
+            decision_record.linked_to(
+                attempt_event_id=attempted.event_id,
+                action_id=action_id,
+                validation_status="accepted" if accepted else "rejected",
             )
+        )
+        if exceeds_day_boundary:
+            reject_mara_attempt(
+                attempt,
+                attempted,
+                "action cannot complete before the day boundary",
+            )
+            return
+        if attempt.kind == "wait" and scheduled_rest:
+            if completion_time is None:
+                raise RuntimeError("scheduled rest has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -868,9 +902,8 @@ def build_autonomous_day(
                     "household activity requires Mara to be at home",
                 )
                 return
-            completion_time = context.current.plus_minutes(
-                _MARA_HOUSEHOLD_DURATION_MINUTES
-            )
+            if completion_time is None:
+                raise RuntimeError("household activity has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -895,9 +928,8 @@ def build_autonomous_day(
                     "work requires Mara to be at the workplace",
                 )
                 return
-            completion_time = context.current.plus_minutes(
-                _MARA_WORK_DURATION_MINUTES
-            )
+            if completion_time is None:
+                raise RuntimeError("work has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -935,13 +967,12 @@ def build_autonomous_day(
                 "travel destination is not reachable from Mara's location",
             )
             return
-        service_status = world.institution.records["tram_service"]
-        duration_minutes = (
-            _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[service_status]
-            if include_service_dependent_travel
-            else _MARA_TRAVEL_DURATION_MINUTES
-        )
-        completion_time = context.current.plus_minutes(duration_minutes)
+        if (
+            completion_time is None
+            or duration_minutes is None
+            or travel_service_status is None
+        ):
+            raise RuntimeError("travel has no completion state")
         pending_actions[MARA_ID] = PendingAction(
             action_id=action_id,
             attempt_event_id=attempted.event_id,
@@ -951,7 +982,7 @@ def build_autonomous_day(
         )
         mara_travel_resolution_details[action_id] = {
             "duration_minutes": duration_minutes,
-            "service_status_at_departure": service_status,
+            "service_status_at_departure": travel_service_status,
         }
         context.schedule(
             ScheduledWork(
