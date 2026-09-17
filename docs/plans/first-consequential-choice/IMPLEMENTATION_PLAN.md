@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under renewed standing authorization; the preserved CC-11 repairs await a smaller bounded slice, and the live-model and final-integration criteria remain open.
+Status: active under renewed standing authorization; the preserved CC-11 repairs are contracted as a smaller prerequisite slice, and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -13,11 +13,11 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Authorization scope: active goal
 - Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: ready at revision 12
-- Current orchestrator generation: none
-- Current slice: none
-- Current writer: none
-- Frozen contract digest: none active; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
+- Runtime phase: contracted at revision 14
+- Current orchestrator generation: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
+- Current slice: `cc11-preserved-repairs-20260916`
+- Current writer: `/root/cc11_repairs_writer_20260916`
+- Frozen contract digest: `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Scheduler status: active
@@ -90,9 +90,10 @@ and clean fresh independent review.
 
 ## Current Slice
 
-None.
-The runtime is stopped after the second bounded CC-11 slice exhausted its three live attempts without satisfying the frozen criterion.
-The validated repair diff remains uncommitted and unaccepted pending an owner decision.
+`cc11-preserved-repairs-20260916` is frozen as a CC-11 prerequisite-correctness slice in generation `gen-20260916-01`.
+Its intended result is limited to detached per-request scalar string affordance enums and actor-safe rejection of duration-bearing actions that would finish after Day 1 00:00.
+Its gates require the focused adapter regressions, the seed-44 late-travel regression, the provider-free scripted consequential-choice command, clean diff validation, the complete adapter and world test modules, and `./scripts/check.sh`.
+The slice explicitly cannot claim CC-4 or CC-11, and it cannot treat a scripted decision as live-model evidence.
 
 ## Candidate Evidence
 

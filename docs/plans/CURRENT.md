@@ -1,6 +1,6 @@
 # Current Development Index
 
-Status: First Consequential Choice Under Conflicting Information is active under renewed standing owner authorization, with the preserved CC-11 repairs awaiting a fresh bounded slice.
+Status: First Consequential Choice Under Conflicting Information is active under renewed standing owner authorization, with a repair-only CC-11 prerequisite slice contracted.
 
 ## Runtime Authority
 
@@ -8,8 +8,8 @@ Status: First Consequential Choice Under Conflicting Information is active under
 - Active autonomous goal: [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md)
 - Owner authorization: standing for the active goal
 - Scheduler status: active
-- Current orchestrator: none
-- Current slice: none
+- Current orchestrator: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
+- Current slice: `cc11-preserved-repairs-20260916`, writer `/root/cc11_repairs_writer_20260916`
 - Recovery action: none
 - Closed replacement slice: `cc11-repair-live-day-20260911`, digest `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782`
 - Validation result: its offline repair gates pass, but seeds 45, 46, and 47 exhausted the live-attempt cap without a conflict-informed decision, so the slice is not accepted
@@ -72,4 +72,4 @@ Unknown, active, or non-terminal ownership blocks recovery.
 
 Both exhausted CC-11 slices remain closed without acceptance and neither counts toward a generation limit.
 The authoritative runtime is ready with standing authorization at revision 12.
-A fresh orchestrator generation may contract the preserved repairs as its first bounded slice.
+Generation `gen-20260916-01` has contracted the preserved repairs as its first bounded slice without claiming live-model evidence.
