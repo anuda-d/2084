@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under renewed standing authorization; the preserved CC-11 repairs are accepted and a non-steering conflict-opportunity prerequisite slice is contracted.
+Status: active under renewed standing authorization; the preserved CC-11 repairs and non-steering conflict-opportunity prerequisite are accepted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -13,13 +13,14 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Authorization scope: active goal
 - Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: contracted at revision 19
+- Runtime phase: ready at revision 23
 - Current orchestrator generation: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
-- Current slice: `cc4-conflict-opportunity-20260916`
-- Current writer: `/root/cc4_opportunity_writer_20260916`
-- Frozen contract digest: `7452133f97d0b099deca76929e57fb1ec67a1efa342f29cbc48458cf7987f4f5`
-- Accepted slices in current generation: 1
-- Last accepted slice: `cc11-preserved-repairs-20260916`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`
+- Current slice: none
+- Current writer: none
+- Frozen contract digest: none
+- Accepted slices in current generation: 2
+- Last accepted slice: `cc4-conflict-opportunity-20260916`, implementation commit `ab11c5570f1c2ade6604c946359259706b1bff1d`, digest `7452133f97d0b099deca76929e57fb1ec67a1efa342f29cbc48458cf7987f4f5`
+- Prior accepted slice: `cc11-preserved-repairs-20260916`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`
 - Closed slice digests: `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
@@ -30,8 +31,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 3
-- Last completed implementation run: scalar schema and exact-day prerequisite repairs
+- Verified implementation runs since alignment: 4
+- Last completed implementation run: access-gated conflict-opportunity timing
 - Last whole-goal alignment: 2026-09-06 after f66f6b2
 
 Whole-goal alignment is current as of f66f6b2.
@@ -93,17 +94,17 @@ and clean fresh independent review.
 
 ## Current Contracted Slice
 
-`cc4-conflict-opportunity-20260916` is frozen as a CC-4 opportunity prerequisite in generation `gen-20260916-01`.
-Its intended result is an explicit `--conflict-opportunity-timing` profile that moves only the opt-in objective service change to Day 0 07:59, allowing Ilan's source-backed testimony and the unchanged Day 0 08:00 official notice to be physically delivered and understood before one coalesced Mara decision when she remains at the workplace.
-The profile must retain source and physical-access failures, pass different deterministic work and travel choices through unchanged, preserve the existing consequential-choice profile when the option is absent, record and replay the authored option, and document that an opportunity does not guarantee or steer a live choice.
-The slice explicitly cannot claim CC-4 or CC-11 and performs no real live-model call.
+None.
+Runtime revision 23 is ready, and no next slice is selected.
 
 ## Last Accepted Slice
 
-`cc11-preserved-repairs-20260916` was accepted at runtime revision 18 as the first slice in generation `gen-20260916-01`.
-Implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e` constrains eligible scalar string response parameters to detached copies of each request's actor-visible affordance options without mutating shared schema state.
-The same commit rejects otherwise accepted duration-bearing Mara actions that would finish after Day 1 00:00 before pending work is created, with a matching actor-safe result and private decision resolution.
-This prerequisite slice does not claim CC-4 or CC-11 and does not treat a scripted decision as live-model evidence.
+`cc4-conflict-opportunity-20260916` was accepted at runtime revision 23 as the second slice in generation `gen-20260916-01`.
+Implementation commit `ab11c5570f1c2ade6604c946359259706b1bff1d` adds an explicit opt-in timing profile that moves only the objective transit change to Day 0 07:59 and preserves the unchanged Day 0 08:00 official notice.
+When legitimate source access and workplace co-location hold, both accounts and both understanding updates precede one coalesced 08:00 Mara decision with ordinary work and travel affordances.
+Source withholding or missing physical access still removes the corresponding testimony and conflict knowledge, while different deterministic client selections remain their own accepted attempted actions.
+The option is captured for recorded replay, the existing option-absent consequential-choice transcript remains unchanged, and the README documents that the opportunity neither guarantees Mara remains at work nor steers a live choice.
+This prerequisite does not claim CC-4 or CC-11 and made no real Ollama call.
 
 ## Prior Failed Slice Evidence
 
@@ -167,6 +168,65 @@ The owner explicitly authorized closing this exhausted slice as unaccepted and r
 That owner decision authorized only the closure record in the then-stopped runtime; it did not itself select or activate a replacement slice.
 
 ## Accepted Run Record
+
+### 2026-09-16 - Access-gated conflict-opportunity timing
+
+Criterion and claim: this accepted slice establishes only a legitimate CC-4
+opportunity prerequisite without claiming that CC-4 or CC-11 is satisfied.
+
+Implementation: the explicit `--conflict-opportunity-timing` option requires
+the consequential-choice composition and moves only its objective transit
+service change from minute 510 to minute 479.
+The official notice remains at minute 480.
+When Ilan has the source and Mara is physically available at the workplace,
+Ilan's source-backed statement completes at minute 479, testimony and the
+official notice are delivered at minute 480, and both source-linked
+understanding updates complete before one coalesced Mara decision.
+The restricted input contains both reciprocal conflicting claims, Mara's known
+obligation deadlines, and the existing ordinary work, travel, and wait
+affordances.
+The authored option is retained in replay build options.
+
+Observed evidence: separate deterministic clients selected workplace work and
+homeward travel from the same conflict-informed minute-480 input.
+Both selections passed through the normal model boundary as their own accepted
+attempted actions.
+Withholding Ilan's source removed his observation, statement, testimony, and
+the reduced claim from Mara's input while leaving the official claim.
+Keeping Mara at home allowed Ilan to receive the source but prevented his
+statement, testimony delivery, official-notice delivery, and all transit-claim
+knowledge for Mara.
+The prior `--consequential-choice` command without the option retained its
+accepted focal-safe transcript and timing.
+
+Replay and provider boundary: the CLI rejects the timing option without
+`--consequential-choice`.
+An audit using the in-process fake Ollama transport recorded the minute-479
+objective event and reproduced equal evidence through recorded decisions.
+No real Ollama request was made.
+
+Validation: every frozen gate passed.
+`python3 -m unittest tests.test_autonomous_day_world tests.test_autonomous_day_cli tests.test_autonomous_day_audit` passed all 92 focused tests in 4.517 seconds.
+`./scripts/check.sh` passed the autonomous-loop contract verifier and all 302
+offline tests in 17.211 seconds.
+`git diff --check` passed.
+
+Independent review: fresh read-only reviewer
+`/root/cc4_opportunity_writer_20260916/cc4_opportunity_reviewer_20260916`
+inspected the immutable contract, diff, gates, failure paths, replay behavior,
+and product invariants, then accepted the slice with no findings.
+
+Risks and unresolved assumptions: the opt-in profile does not guarantee Mara
+remains at the workplace or that a live model selects a documented
+competing-obligation alternative.
+Prior Mara actions, missing source access, or missing physical access may still
+remove the opportunity.
+CC-4 and CC-11 remain unverified.
+
+Acceptance basis: standing owner authorization, frozen contract digest
+`7452133f97d0b099deca76929e57fb1ec67a1efa342f29cbc48458cf7987f4f5`,
+implementation commit `ab11c5570f1c2ade6604c946359259706b1bff1d`,
+focused and full validation, and a clean fresh independent review.
 
 ### 2026-09-16 - Scalar schema and exact-day prerequisite repairs
 
