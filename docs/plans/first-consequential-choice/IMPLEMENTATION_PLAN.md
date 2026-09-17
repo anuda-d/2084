@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under renewed standing authorization; the preserved CC-11 repairs are accepted as prerequisite correctness evidence, and the live-model and final-integration criteria remain open.
+Status: active under renewed standing authorization; the preserved CC-11 repairs are accepted and a non-steering conflict-opportunity prerequisite slice is contracted.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -13,10 +13,11 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Authorization scope: active goal
 - Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: ready at revision 18
+- Runtime phase: contracted at revision 19
 - Current orchestrator generation: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
-- Current slice: none
-- Current writer: none
+- Current slice: `cc4-conflict-opportunity-20260916`
+- Current writer: `/root/cc4_opportunity_writer_20260916`
+- Frozen contract digest: `7452133f97d0b099deca76929e57fb1ec67a1efa342f29cbc48458cf7987f4f5`
 - Accepted slices in current generation: 1
 - Last accepted slice: `cc11-preserved-repairs-20260916`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`
 - Closed slice digests: `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
@@ -89,6 +90,13 @@ evidence, not blockers for this bounded result.
 
 Acceptance basis: standing owner authorization, focused and full validation,
 and clean fresh independent review.
+
+## Current Contracted Slice
+
+`cc4-conflict-opportunity-20260916` is frozen as a CC-4 opportunity prerequisite in generation `gen-20260916-01`.
+Its intended result is an explicit `--conflict-opportunity-timing` profile that moves only the opt-in objective service change to Day 0 07:59, allowing Ilan's source-backed testimony and the unchanged Day 0 08:00 official notice to be physically delivered and understood before one coalesced Mara decision when she remains at the workplace.
+The profile must retain source and physical-access failures, pass different deterministic work and travel choices through unchanged, preserve the existing consequential-choice profile when the option is absent, record and replay the authored option, and document that an opportunity does not guarantee or steer a live choice.
+The slice explicitly cannot claim CC-4 or CC-11 and performs no real live-model call.
 
 ## Last Accepted Slice
 

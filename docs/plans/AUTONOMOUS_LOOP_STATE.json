@@ -112,6 +112,12 @@
       "id": "accept-review-cc11-preserved-repairs-20260916",
       "revision": 18,
       "type": "record_review"
+    },
+    {
+      "actor": "01a0ad2d-d6cf-76a3-bb76-f1fa50113332",
+      "id": "contract-cc4-conflict-opportunity-20260916",
+      "revision": 19,
+      "type": "contract_slice"
     }
   ],
   "last_handoff": {
@@ -136,14 +142,69 @@
     "recovery_count": 0,
     "task_id": "01a0ad2d-d6cf-76a3-bb76-f1fa50113332"
   },
-  "phase": "ready",
-  "revision": 18,
+  "phase": "contracted",
+  "revision": 19,
   "schema_version": 2,
-  "slice": null,
+  "slice": {
+    "contract": {
+      "criterion": "CC-4 Autonomous choice opportunity prerequisite: add one documented opt-in consequential-choice timing profile that can deliver both conflicting accounts before a model decision without selecting, substituting, or prescribing Mara's action; this slice does not itself satisfy CC-4 or CC-11.",
+      "evidence_claim": "Provider-free deterministic comparisons and recorded replay prove only that the opt-in profile creates a legitimate, access-gated conflict-informed decision opportunity while preserving model freedom and existing defaults; they do not count as a live-model choice or reviewed live day.",
+      "gates": [
+        {
+          "check": "python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_opt_in_conflict_opportunity_coalesces_deliveries_before_unforced_choice",
+          "expect": "At tick 480, a physically co-located Mara decision follows both the official notice and Ilan's source-backed testimony plus both understanding updates, carries both observation triggers and linked conflicting claims, exposes ordinary work and travel affordances, and passes different deterministic client selections through as their own accepted attempted actions."
+        },
+        {
+          "check": "python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_conflict_opportunity_timing_preserves_source_and_physical_access_boundaries",
+          "expect": "Withheld Ilan source access or absent Mara workplace access prevents testimony and conflict knowledge, while the new timing profile grants neither actor hidden knowledge, automatic delivery, or a scripted Mara action."
+        },
+        {
+          "check": "python3 -m unittest tests.test_autonomous_day_cli.AutonomousDayCliTests.test_conflict_opportunity_timing_requires_consequential_choice tests.test_autonomous_day_cli.AutonomousDayCliTests.test_conflict_opportunity_audit_replays_authored_configuration",
+          "expect": "The CLI rejects the opt-in timing outside the consequential-choice composition, and a fake-provider audit records and replays the exact authored option without making any real live-model call."
+        },
+        {
+          "check": "python3 -m unittest tests.test_autonomous_day_cli.AutonomousDayCliTests.test_scripted_consequential_choice_is_provider_free_and_focal_safe",
+          "expect": "The existing consequential-choice command without the new option retains its accepted focal-safe transcript and timing."
+        },
+        {
+          "check": "rg -n -- '--conflict-opportunity-timing' README.md",
+          "expect": "README documents the explicit opt-in command and states that it creates an access-gated opportunity without guaranteeing or steering a live choice."
+        },
+        {
+          "check": "git diff --check",
+          "expect": "The complete bounded slice has no whitespace errors."
+        }
+      ],
+      "intended_result": "With --conflict-opportunity-timing, the objective transit change occurs at Day 0 07:59 so Ilan can observe it and complete his source-backed statement, while his testimony and the unchanged Day 0 08:00 official notice are both physically delivered and understood before a coalesced Mara decision at 08:00 when Mara remains at the workplace. The restricted decision input contains both source-linked conflicting claims and ordinary competing-obligation affordances, and different client choices pass through as their own attempted actions. Missing source evidence or physical access still prevents testimony, prior Mara choices may still remove the opportunity, and the existing consequential-choice profile remains byte-for-byte behaviorally unchanged when the new option is absent.",
+      "scope": [
+        "scenarios/autonomous_day.py",
+        "tests/test_autonomous_day_world.py",
+        "tests/test_autonomous_day_cli.py",
+        "tests/test_autonomous_day_audit.py",
+        "README.md",
+        "docs/plans/AUTONOMOUS_LOOP_STATE.json",
+        "docs/plans/CURRENT.md",
+        "docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md"
+      ],
+      "validation": [
+        "python3 -m unittest tests.test_autonomous_day_world tests.test_autonomous_day_cli tests.test_autonomous_day_audit",
+        "./scripts/check.sh"
+      ]
+    },
+    "contract_sha256": "7452133f97d0b099deca76929e57fb1ec67a1efa342f29cbc48458cf7987f4f5",
+    "evidence": null,
+    "repair_count": 0,
+    "review": null,
+    "reviewer_task_ids": [],
+    "slice_id": "cc4-conflict-opportunity-20260916",
+    "writer_attempt": 1,
+    "writer_task_id": "/root/cc4_opportunity_writer_20260916"
+  },
   "stop_reason": null,
   "writer_history": [
     "/root/cc11_writer",
     "/root/cc11_repair_writer",
-    "/root/cc11_repairs_writer_20260916"
+    "/root/cc11_repairs_writer_20260916",
+    "/root/cc4_opportunity_writer_20260916"
   ]
 }
