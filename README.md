@@ -118,6 +118,32 @@ branch autonomously.
 `--consequential-choice` also supports the explicit Ollama policy for the
 separate reviewed live-day criterion, but it rejects the inert offline policy.
 
+The separate conflict-opportunity timing is an explicit opt-in on that
+composition:
+
+```bash
+python3 -m scenarios.autonomous_day \
+  --seed 42 \
+  --focal-policy scripted \
+  --consequential-choice \
+  --conflict-opportunity-timing
+```
+
+`--conflict-opportunity-timing` is rejected without
+`--consequential-choice`.
+It moves only the objective transit change to Day 0 07:59, leaving the
+official notice at Day 0 08:00.
+When source access and workplace co-location both hold, Ilan's source-backed
+testimony and the official notice can be delivered and understood before one
+coalesced 08:00 Mara decision.
+This creates an access-gated opportunity without guaranteeing that Mara remains
+at the workplace, without guaranteeing a live choice, and without steering or
+substituting the model's attempted action.
+Withholding Ilan's source or removing Mara's physical access still prevents the
+corresponding testimony and conflict knowledge.
+Omitting the option preserves the existing consequential-choice timing and
+transcript.
+
 The opt-in `build_autonomous_day(include_conflicting_transit_accounts=True)` configuration preserves the completed default day while adding one finite official transit notice and a conflicting source-linked Ilan testimony for the same workplace-home service interval.
 The official notice is published through the transit authority's Official Record and reaches Mara only at the workplace notice board.
 For the deterministic CC-8 information comparison, `include_ilan_transit_source_delivery=False` withholds Ilan's access to the source observation while leaving the objective service change and official-account path intact.
@@ -134,6 +160,10 @@ busy, and never reveals objective transit state.
 The separate opt-in `include_consequential_choice_tradeoff_timing=True` profile requires deadline outcomes and exposes Mara's finite, authored obligation schedule in her restricted input.
 It sets both deadlines to 10:32, so a deterministic authored comparison can choose either post-testimony workplace work or homeward travel followed by household activity without changing the existing physical-transit profile.
 The schedule identifies only Mara's own obligation, required ordinary activity and location, and deadline - never actual transit status or a predicted outcome.
+The builder option `include_conflict_opportunity_timing=True` additionally
+requires conflicting transit accounts and that tradeoff profile.
+It records the authored timing in replay options so recorded decisions rebuild
+the same access-gated day without another provider call.
 
 The opt-in `include_service_dependent_travel=True` configuration samples the objective `normal` or `reduced` service state when Mara's travel attempt is accepted, using the authored 30- or 60-minute duration for that trip.
 `homeward_travel_service_recovery_minute` may record one objective recovery after the source observation without automatically delivering it to Mara.

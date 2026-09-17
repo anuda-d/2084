@@ -86,6 +86,7 @@ _INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
+_CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE = 8 * 60 - 1
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _ILAN_TRANSIT_OBSERVATION_LOCATIONS = frozenset({"workplace"})
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
@@ -292,6 +293,7 @@ def build_autonomous_day(
     include_deadline_governed_obligation_outcomes: bool = False,
     include_obligation_outcome_delivery: bool = False,
     include_consequential_choice_tradeoff_timing: bool = False,
+    include_conflict_opportunity_timing: bool = False,
     include_service_dependent_travel: bool = False,
     homeward_travel_service_recovery_minute: int | None = None,
 ) -> AutonomousDay:
@@ -333,13 +335,28 @@ def build_autonomous_day(
         raise ValueError(
             "consequential-choice tradeoff timing requires deadline outcomes"
         )
+    if not isinstance(include_conflict_opportunity_timing, bool):
+        raise TypeError("include_conflict_opportunity_timing must be boolean")
+    if include_conflict_opportunity_timing and not (
+        include_conflicting_transit_accounts
+        and include_consequential_choice_tradeoff_timing
+    ):
+        raise ValueError(
+            "conflict opportunity timing requires conflicting transit accounts "
+            "and consequential-choice tradeoff timing"
+        )
     if not isinstance(include_service_dependent_travel, bool):
         raise TypeError("include_service_dependent_travel must be boolean")
+    transit_change_minute = (
+        _CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE
+        if include_conflict_opportunity_timing
+        else _TRANSIT_CHANGE_MINUTE
+    )
     if homeward_travel_service_recovery_minute is not None and (
         not isinstance(homeward_travel_service_recovery_minute, int)
         or isinstance(homeward_travel_service_recovery_minute, bool)
         or not (
-            _TRANSIT_CHANGE_MINUTE
+            transit_change_minute
             < homeward_travel_service_recovery_minute
             < 24 * 60
         )
@@ -2134,7 +2151,7 @@ def build_autonomous_day(
     runtime.schedule(
         ScheduledWork(
             item_id="district-transit-morning-service-change",
-            due_time=SimulatedTime(_TRANSIT_CHANGE_MINUTE),
+            due_time=SimulatedTime(transit_change_minute),
             phase=TemporalPhase.SCHEDULED_WORLD,
             kind=_INSTITUTIONAL_SERVICE_CHANGE,
         )
@@ -2174,6 +2191,9 @@ def build_autonomous_day(
                 ),
                 "include_consequential_choice_tradeoff_timing": (
                     include_consequential_choice_tradeoff_timing
+                ),
+                "include_conflict_opportunity_timing": (
+                    include_conflict_opportunity_timing
                 ),
                 "include_service_dependent_travel": include_service_dependent_travel,
                 "homeward_travel_service_recovery_minute": (
@@ -2819,6 +2839,14 @@ def main(
         ),
     )
     parser.add_argument(
+        "--conflict-opportunity-timing",
+        action="store_true",
+        help=(
+            "move the consequential-choice service change to 07:59 so both "
+            "access-gated accounts can precede one 08:00 decision"
+        ),
+    )
+    parser.add_argument(
         "--ollama-base-url",
         help="private Ollama origin, required only with --focal-policy ollama",
     )
@@ -2857,6 +2885,10 @@ def main(
         parser.error("--audit-dir requires --focal-policy ollama")
     if args.consequential_choice and args.focal_policy == "offline":
         parser.error("--consequential-choice requires --focal-policy scripted or ollama")
+    if args.conflict_opportunity_timing and not args.consequential_choice:
+        parser.error(
+            "--conflict-opportunity-timing requires --consequential-choice"
+        )
     try:
         mara_harness = _cli_mara_harness(
             policy_name=args.focal_policy,
@@ -2900,6 +2932,7 @@ def main(
         include_deadline_governed_obligation_outcomes=args.consequential_choice,
         include_obligation_outcome_delivery=args.consequential_choice,
         include_consequential_choice_tradeoff_timing=args.consequential_choice,
+        include_conflict_opportunity_timing=args.conflict_opportunity_timing,
         include_service_dependent_travel=args.consequential_choice,
     )
     try:

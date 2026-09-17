@@ -276,6 +276,23 @@ class AutonomousDayCliTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("requires --focal-policy scripted or ollama", error.getvalue())
 
+    def test_conflict_opportunity_timing_requires_consequential_choice(self):
+        error = io.StringIO()
+        with redirect_stderr(error), self.assertRaises(SystemExit) as raised:
+            main(
+                [
+                    "--focal-policy",
+                    "scripted",
+                    "--conflict-opportunity-timing",
+                ]
+            )
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn(
+            "--conflict-opportunity-timing requires --consequential-choice",
+            error.getvalue(),
+        )
+
     def test_inspector_is_explicit_and_reconstructs_successful_day(self):
         result = subprocess.run(
             [
@@ -566,6 +583,44 @@ class AutonomousDayCliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             verdict = json.loads((audit_path / "verdict.json").read_text())
             self.assertTrue(verdict["checks"]["recorded_replay_equal"])
+            self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
+            self.assertNotIn("127.0.0.1", output.getvalue())
+
+    def test_conflict_opportunity_audit_replays_authored_configuration(self):
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as parent:
+            audit_path = Path(parent) / "conflict-opportunity-live-run"
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "--seed",
+                        "42",
+                        "--consequential-choice",
+                        "--conflict-opportunity-timing",
+                        "--audit-dir",
+                        str(audit_path),
+                        "--focal-policy",
+                        "ollama",
+                        "--ollama-base-url",
+                        "http://127.0.0.1:11434",
+                        "--ollama-model",
+                        "qwen3:4b-instruct",
+                    ],
+                    mara_harness_factory=_fake_attested_ollama_harness_factory,
+                    ollama_identity_factory=_fake_ollama_identity_factory,
+                )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(len(_FakeOllamaTransport.instances), 1)
+            verdict = json.loads((audit_path / "verdict.json").read_text())
+            self.assertTrue(verdict["checks"]["recorded_replay_equal"])
+            inspector = json.loads((audit_path / "inspector.json").read_text())
+            transit_change = next(
+                event
+                for event in inspector["history"]["events"]
+                if event["kind"] == "transit_service_changed"
+            )
+            self.assertEqual(transit_change["tick"], 479)
             self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
             self.assertNotIn("127.0.0.1", output.getvalue())
 

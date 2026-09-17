@@ -2156,6 +2156,338 @@ class AutonomousDayWorldTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
             build_autonomous_day(include_consequential_choice_tradeoff_timing=True)
 
+    def test_opt_in_conflict_opportunity_coalesces_deliveries_before_unforced_choice(
+        self,
+    ):
+        prefix = (
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving at the workplace",
+                "decision_reason": "the transit accounts have not arrived",
+            },
+        )
+        branches = {
+            "work": (
+                {
+                    "kind": "work",
+                    "parameters": {},
+                    "explanation": "complete the workplace shift",
+                    "decision_reason": "the known shift deadline is reachable",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after workplace work",
+                    "decision_reason": "the immediate activity is complete",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after the missed obligation",
+                    "decision_reason": "the delivered result needs no forced reply",
+                },
+            ),
+            "travel": (
+                {
+                    "kind": "travel",
+                    "parameters": {"destination": "home"},
+                    "explanation": "return home for household time",
+                    "decision_reason": "household time remains reachable",
+                },
+                {
+                    "kind": "household",
+                    "parameters": {},
+                    "explanation": "complete household time at home",
+                    "decision_reason": "the known household deadline is reachable",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after household time",
+                    "decision_reason": "the immediate activity is complete",
+                },
+                {
+                    "kind": "wait",
+                    "parameters": {},
+                    "explanation": "pause after the missed obligation",
+                    "decision_reason": "the delivered result needs no forced reply",
+                },
+            ),
+        }
+
+        def run_branch(name):
+            client = _SequenceClient(*prefix, *branches[name])
+            day = build_autonomous_day(
+                seed=42,
+                mara_harness=MaraHarness.from_client(
+                    client,
+                    configuration_id=f"conflict-opportunity-{name}",
+                ),
+                include_conflicting_transit_accounts=True,
+                include_deadline_governed_obligation_outcomes=True,
+                include_obligation_outcome_delivery=True,
+                include_consequential_choice_tradeoff_timing=True,
+                include_conflict_opportunity_timing=True,
+                include_service_dependent_travel=True,
+            )
+            return day, day.run(), client
+
+        results = {name: run_branch(name) for name in branches}
+        for day, summary, client in results.values():
+            self.assertTrue(summary.reached_end_boundary)
+            transit_change = next(
+                event
+                for event in day.events
+                if event.kind == "transit_service_changed"
+            )
+            self.assertEqual(transit_change.tick, 479)
+
+            decision = next(
+                decision
+                for decision in summary.consumed_decisions
+                if decision.actor_id == MARA_ID
+                and decision.due_time.total_minutes == 480
+            )
+            transit_observations = [
+                observation
+                for observation in day.world.agents[MARA_ID].observations
+                if observation.details.get("evidence_kind")
+                in {"official_transit_claim", "social_testimony"}
+            ]
+            self.assertEqual(len(transit_observations), 2)
+            self.assertEqual(
+                {observation.delivery_tick for observation in transit_observations},
+                {480},
+            )
+            self.assertEqual(
+                {trigger.source_id for trigger in decision.triggers},
+                {
+                    observation.observation_id
+                    for observation in transit_observations
+                },
+            )
+            self.assertEqual(
+                {trigger.kind for trigger in decision.triggers},
+                {DecisionTriggerKind.OBSERVATION_DELIVERED},
+            )
+
+            transitions = [
+                transition
+                for transition in day.understanding_transitions
+                if transition["tick"] == 480
+            ]
+            self.assertEqual(
+                {transition["source_observation_id"] for transition in transitions},
+                {
+                    observation.observation_id
+                    for observation in transit_observations
+                },
+            )
+            decision_work = next(
+                work
+                for work in summary.executed_work
+                if work.item_id == decision.scheduled_work_id
+            )
+            understanding_work = [
+                work
+                for work in summary.executed_work
+                if work.due_time.total_minutes == 480
+                and work.phase == "understanding_update"
+            ]
+            self.assertEqual(len(understanding_work), 2)
+            self.assertLess(
+                max(work.sequence for work in understanding_work),
+                decision_work.sequence,
+            )
+
+            choice_input = client.inputs[2]
+            self.assertEqual(choice_input["tick"], 480)
+            self.assertEqual(choice_input["state"]["location"], "workplace")
+            self.assertEqual(
+                choice_input["action_contract"]["currently_applicable_kinds"],
+                ["travel", "work", "wait"],
+            )
+            self.assertEqual(
+                choice_input["action_contract"]["affordances_by_kind"]["travel"]
+                ["parameter_options"]["destination"],
+                ["home", "transit_stop"],
+            )
+            claims = choice_input["understanding"]["interpreted_claims"]
+            self.assertEqual(
+                {claim["asserted_value"] for claim in claims},
+                {0, 1},
+            )
+            self.assertEqual(
+                {claim["proposition"] for claim in claims},
+                {
+                    "workplace-home tram service is normal",
+                    "workplace-home tram service is reduced",
+                },
+            )
+            self.assertTrue(all(claim["conflicts_with"] for claim in claims))
+
+        selected_kinds = {}
+        for name, (day, _, _) in results.items():
+            record = next(
+                record
+                for record in day.private_decision_records
+                if record.tick == 480
+            )
+            selected_kinds[name] = record.attempted_action_kind
+            self.assertEqual(record.status, "selected")
+            self.assertEqual(record.validation_status, "accepted")
+            attempted = next(
+                event
+                for event in day.events
+                if event.tick == 480
+                and event.kind == "action_attempted"
+                and event.actor_id == MARA_ID
+            )
+            self.assertEqual(
+                attempted.details["action_kind"],
+                record.attempted_action_kind,
+            )
+        self.assertEqual(selected_kinds, {"work": "work", "travel": "travel"})
+
+    def test_conflict_opportunity_timing_preserves_source_and_physical_access_boundaries(
+        self,
+    ):
+        common = {
+            "include_conflicting_transit_accounts": True,
+            "include_deadline_governed_obligation_outcomes": True,
+            "include_consequential_choice_tradeoff_timing": True,
+            "include_conflict_opportunity_timing": True,
+            "include_service_dependent_travel": True,
+        }
+        withheld_client = _SequenceClient(
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after arriving",
+                "decision_reason": "no account has arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "only the official account was delivered",
+            },
+        )
+        withheld = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                withheld_client,
+                configuration_id="conflict-opportunity-source-withheld",
+            ),
+            include_ilan_transit_source_delivery=False,
+            **common,
+        )
+        withheld_summary = withheld.run()
+
+        absent_client = _SequenceClient(
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "remain at home through the morning",
+                "decision_reason": "no travel is required by the policy",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait at home",
+                "decision_reason": "no transit account was delivered here",
+            },
+        )
+        absent = build_autonomous_day(
+            seed=42,
+            mara_harness=MaraHarness.from_client(
+                absent_client,
+                configuration_id="conflict-opportunity-workplace-absent",
+            ),
+            **common,
+        )
+        absent_summary = absent.run()
+
+        self.assertTrue(withheld_summary.reached_end_boundary)
+        self.assertTrue(absent_summary.reached_end_boundary)
+        for day in (withheld, absent):
+            transit_change = next(
+                event
+                for event in day.events
+                if event.kind == "transit_service_changed"
+            )
+            self.assertEqual(transit_change.tick, 479)
+            self.assertTrue(
+                any(
+                    event.kind == "official_transit_notice_published"
+                    and event.tick == 480
+                    for event in day.events
+                )
+            )
+
+        self.assertEqual(withheld.world.agents[ILAN_ID].observations, [])
+        self.assertFalse(
+            any(event.kind == "statement_completed" for event in withheld.events)
+        )
+        withheld_input = next(
+            model_input
+            for model_input in withheld_client.inputs
+            if model_input["tick"] == 480
+        )
+        self.assertEqual(
+            [
+                claim["asserted_value"]
+                for claim in withheld_input["understanding"][
+                    "interpreted_claims"
+                ]
+            ],
+            [0],
+        )
+        self.assertNotIn("reduced", json.dumps(withheld_input))
+
+        self.assertEqual(len(absent.world.agents[ILAN_ID].observations), 1)
+        self.assertFalse(
+            any(event.kind == "statement_completed" for event in absent.events)
+        )
+        self.assertFalse(
+            any(
+                observation.details.get("evidence_kind")
+                in {"official_transit_claim", "social_testimony"}
+                for observation in absent.world.agents[MARA_ID].observations
+            )
+        )
+        absent_input = next(
+            model_input
+            for model_input in absent_client.inputs
+            if model_input["tick"] == 480
+        )
+        self.assertEqual(absent_input["state"]["location"], "home")
+        self.assertEqual(
+            absent_input["understanding"]["interpreted_claims"],
+            [],
+        )
+        self.assertNotIn("reduced", json.dumps(absent_input))
+        absent_record = next(
+            record
+            for record in absent.private_decision_records
+            if record.tick == 480
+        )
+        self.assertEqual(absent_record.attempted_action_kind, "wait")
+        self.assertEqual(absent_record.validation_status, "accepted")
+
     def test_obligation_outcome_delivery_requires_deadline_outcomes(self):
         with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
             build_autonomous_day(include_obligation_outcome_delivery=True)
