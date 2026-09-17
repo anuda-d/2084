@@ -1,6 +1,6 @@
 # First Consequential Choice Under Conflicting Information Implementation State
 
-Status: active under renewed standing authorization; the preserved CC-11 repairs are contracted as a smaller prerequisite slice, and the live-model and final-integration criteria remain open.
+Status: active under renewed standing authorization; the preserved CC-11 repairs are accepted as prerequisite correctness evidence, and the live-model and final-integration criteria remain open.
 
 This is shared state for the owner-approved [goal](GOAL.md).
 It records verified evidence and operational state only, never a future task queue or implementation sequence.
@@ -13,11 +13,13 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 - Authorization scope: active goal
 - Authorization source: owner
 - Runtime schema: version 2
-- Runtime phase: contracted at revision 14
+- Runtime phase: ready at revision 18
 - Current orchestrator generation: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
-- Current slice: `cc11-preserved-repairs-20260916`
-- Current writer: `/root/cc11_repairs_writer_20260916`
-- Frozen contract digest: `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`; closed slice digests `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
+- Current slice: none
+- Current writer: none
+- Accepted slices in current generation: 1
+- Last accepted slice: `cc11-preserved-repairs-20260916`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`
+- Closed slice digests: `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782` and `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`
 - Pending owner decision: none
 - Scheduled window: daily 18:00-23:00 America/Toronto
 - Scheduler status: active
@@ -27,8 +29,8 @@ The unchanged [Development Loop](../../main/DEVELOPMENT_LOOP.md) governs every i
 
 ## Alignment State
 
-- Verified implementation runs since alignment: 2
-- Last completed implementation run: information-only consequential-choice comparison (CC-8)
+- Verified implementation runs since alignment: 3
+- Last completed implementation run: scalar schema and exact-day prerequisite repairs
 - Last whole-goal alignment: 2026-09-06 after f66f6b2
 
 Whole-goal alignment is current as of f66f6b2.
@@ -88,17 +90,17 @@ evidence, not blockers for this bounded result.
 Acceptance basis: standing owner authorization, focused and full validation,
 and clean fresh independent review.
 
-## Current Slice
+## Last Accepted Slice
 
-`cc11-preserved-repairs-20260916` is frozen as a CC-11 prerequisite-correctness slice in generation `gen-20260916-01`.
-Its intended result is limited to detached per-request scalar string affordance enums and actor-safe rejection of duration-bearing actions that would finish after Day 1 00:00.
-Its gates require the focused adapter regressions, the seed-44 late-travel regression, the provider-free scripted consequential-choice command, clean diff validation, the complete adapter and world test modules, and `./scripts/check.sh`.
-The slice explicitly cannot claim CC-4 or CC-11, and it cannot treat a scripted decision as live-model evidence.
+`cc11-preserved-repairs-20260916` was accepted at runtime revision 18 as the first slice in generation `gen-20260916-01`.
+Implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e` constrains eligible scalar string response parameters to detached copies of each request's actor-visible affordance options without mutating shared schema state.
+The same commit rejects otherwise accepted duration-bearing Mara actions that would finish after Day 1 00:00 before pending work is created, with a matching actor-safe result and private decision resolution.
+This prerequisite slice does not claim CC-4 or CC-11 and does not treat a scripted decision as live-model evidence.
 
-## Candidate Evidence
+## Prior Failed Slice Evidence
 
-The uncommitted scalar-parameter schema repair in `policies/ollama_client.py` and exact-day action-boundary repair in `scenarios/autonomous_day.py` remain unaccepted candidate work after the closed replacement slice.
-Focused adapter and end-to-end world coverage live in `tests/test_ollama_client.py` and `tests/test_autonomous_day_world.py`, but neither the implementation nor its tests are accepted product evidence because the frozen live gate did not pass.
+The following record explains why the 2026-09-11 replacement slice was not accepted.
+Its live-gate failure remains historical, while the repair-only work was later accepted under the separate 2026-09-16 contract recorded above.
 
 ### 2026-09-11 - Replacement CC-11 validation did not satisfy the live gate
 
@@ -118,10 +120,10 @@ None contained a conflict-informed Mara decision, so none could be inspected aga
 
 Every new private bundle and the aggregate failed-slice verdict remain owner-only under `/private/tmp/2084-cc11-replacement-20260911`.
 The earlier failed seed-42, seed-43, and seed-44 bundles remain unchanged under `/private/tmp/2084-cc11-20260911`.
-The replacement slice is closed unaccepted, CC-4 and CC-11 remain open, and no implementation or runtime-acceptance commit exists.
+The replacement slice is closed unaccepted, CC-4 and CC-11 remain open, and no implementation or runtime-acceptance commit was created for that replacement slice.
 A fresh read-only reviewer found no blocking defect in the code repair or focused coverage and independently reproduced the 110-test focused pass, 298-test full pass, exact scripted day, generic bundle verification, and clean diff check.
 The reviewer rejected the complete slice because the exhausted samples provide no conflict-informed live decision and therefore cannot satisfy the immutable CC-11 gate.
-The runtime stopped at revision 11, the exact scheduler was paused, and all candidate repairs and private evidence remain preserved pending an owner decision.
+At that closure, the runtime stopped at revision 11, the exact scheduler was paused, and all candidate repairs and private evidence remained preserved pending an owner decision.
 
 ## Unaccepted Slice Record
 
@@ -154,9 +156,33 @@ It recorded nineteen model decisions, nineteen provider calls, eighteen selected
 The three-attempt cap ended without a CC-11 pass.
 Formal slice validation did not begin, no fresh independent slice review occurred, no implementation commit was created, and the slice was not accepted or counted.
 The owner explicitly authorized closing this exhausted slice as unaccepted and replacing it later with a new bounded CC-11 repair slice rather than weakening or reinterpreting the frozen contract.
-That owner decision authorizes this closure record only in the current stopped runtime; no replacement slice is selected or active.
+That owner decision authorized only the closure record in the then-stopped runtime; it did not itself select or activate a replacement slice.
 
 ## Accepted Run Record
+
+### 2026-09-16 - Scalar schema and exact-day prerequisite repairs
+
+Criterion and claim: this accepted slice establishes prerequisite correctness for a later CC-11 attempt without claiming that CC-4 or CC-11 is satisfied.
+
+Implementation: each Ollama request adds eligible scalar string affordance options to a detached response-schema copy, leaves numeric parameters unconstrained, and does not mutate caller-owned schema state across requests.
+The autonomous-day resolver computes completion only for otherwise accepted duration-bearing Mara actions and rejects an action actor-safely when its completion would exceed Day 1 00:00, before pending work is created.
+
+Observed evidence: the seed-44 provider-free consequential-choice composition reaches tick 1440 without runtime failure or pending work.
+Its minute-1410 reachable travel attempt records a causally linked rejection, a matching actor-safe action result, and a matching rejected private decision resolution.
+The scripted command identifies its decision source as authored rather than live or emergent.
+
+Validation: both exact schema gates and the late-travel gate passed.
+`python3 -m unittest tests.test_ollama_client tests.test_autonomous_day_world` passed all 80 focused tests.
+`./scripts/check.sh` passed the loop contract verifier and all 298 offline tests.
+`git diff --check` passed.
+No live Ollama call was made.
+
+Independent review: fresh read-only reviewer `/root/cc11_repairs_writer_20260916/cc11_repairs_reviewer_20260916` independently reran the gates and validation, inspected the failure paths and relevant product invariants, and accepted the slice with no findings.
+
+Risks and unresolved assumptions: this evidence does not establish a conflict-informed live-model choice, obligation consequence, or follow-up.
+CC-4 and CC-11 remain unverified, and any later conflict opportunity must remain legitimate and non-steering.
+
+Acceptance basis: standing owner authorization, frozen contract digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, focused and full validation, and a clean fresh independent review.
 
 ### 2026-09-06 - Information-only consequential-choice comparison
 

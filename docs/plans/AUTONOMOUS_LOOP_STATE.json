@@ -88,64 +88,58 @@
       "id": "contract-cc11-preserved-repairs-20260916",
       "revision": 14,
       "type": "contract_slice"
+    },
+    {
+      "actor": "/root/cc11_repairs_writer_20260916",
+      "id": "begin-implementation-cc11-preserved-repairs-20260916",
+      "revision": 15,
+      "type": "begin_implementation"
+    },
+    {
+      "actor": "/root/cc11_repairs_writer_20260916",
+      "id": "begin-validation-cc11-preserved-repairs-20260916",
+      "revision": 16,
+      "type": "begin_validation"
+    },
+    {
+      "actor": "/root/cc11_repairs_writer_20260916",
+      "id": "begin-review-cc11-preserved-repairs-20260916",
+      "revision": 17,
+      "type": "begin_review"
+    },
+    {
+      "actor": "/root/cc11_repairs_writer_20260916",
+      "id": "accept-review-cc11-preserved-repairs-20260916",
+      "revision": 18,
+      "type": "record_review"
     }
   ],
-  "last_handoff": null,
+  "last_handoff": {
+    "accepted_commit": "bc25194725b7ea32f05b711e1faf29ffc50b1f4e",
+    "contract_sha256": "a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89",
+    "evidence": {
+      "contract_gates": "Both exact Ollama schema tests passed; the exact late-reachable-travel regression passed; the seed-44 provider-free scripted consequential-choice command reached Day 1 00:00 and identified itself as authored, not live or emergent; git diff --check passed. No live Ollama call was made and this evidence does not claim CC-4 or CC-11.",
+      "focused": "python3 -m unittest tests.test_ollama_client tests.test_autonomous_day_world passed 80 tests in 6.748s, including the scalar-schema isolation and late reachable-travel boundary regressions.",
+      "full": "./scripts/check.sh passed the autonomous-loop contract verifier and all 298 offline tests in 17.052s, including continuity and growth checks."
+    },
+    "generation_id": "gen-20260916-01",
+    "review": {
+      "findings": [],
+      "reviewer_task_id": "/root/cc11_repairs_writer_20260916/cc11_repairs_reviewer_20260916",
+      "verdict": "accept"
+    },
+    "slice_id": "cc11-preserved-repairs-20260916"
+  },
   "orchestrator": {
-    "accepted_slices": 0,
+    "accepted_slices": 1,
     "generation_id": "gen-20260916-01",
     "recovery_count": 0,
     "task_id": "01a0ad2d-d6cf-76a3-bb76-f1fa50113332"
   },
-  "phase": "contracted",
-  "revision": 14,
+  "phase": "ready",
+  "revision": 18,
   "schema_version": 2,
-  "slice": {
-    "contract": {
-      "criterion": "CC-11 Reviewed live day prerequisite correctness only: preserve the scalar affordance-schema and exact-day action-boundary repairs without claiming that CC-4 or CC-11 is satisfied.",
-      "evidence_claim": "Focused adapter and world regressions plus a provider-free consequential-choice day demonstrate only that the preserved repairs remove the observed schema ambiguity and minute-1410 terminal failure; they do not supply or imply a conflict-informed live-model decision.",
-      "gates": [
-        {
-          "check": "python3 -m unittest tests.test_ollama_client.OllamaDecisionClientTests.test_request_formats_use_only_current_scalar_affordance_options tests.test_ollama_client.OllamaDecisionClientTests.test_affordance_schema_preparation_does_not_mutate_caller_state",
-          "expect": "Current per-request string options appear as detached response-schema enums, numeric options remain unconstrained, and caller-owned schema state remains unchanged across calls."
-        },
-        {
-          "check": "python3 -m unittest tests.test_autonomous_day_world.AutonomousDayWorldTests.test_late_reachable_travel_is_rejected_without_crossing_day_boundary",
-          "expect": "The seed-44 consequential-choice composition reaches tick 1440 with no runtime failure or pending action, and the minute-1410 travel attempt is causally rejected with matching actor-safe result and private decision resolution."
-        },
-        {
-          "check": "python3 -m scenarios.autonomous_day --seed 44 --focal-policy scripted --consequential-choice",
-          "expect": "The provider-free consequential-choice command completes at Day 1 00:00 without a runtime failure while remaining explicitly scripted rather than live evidence."
-        },
-        {
-          "check": "git diff --check",
-          "expect": "The complete bounded slice has no whitespace errors."
-        }
-      ],
-      "intended_result": "Each Ollama request constrains eligible scalar string parameters to the options in that request's actor-visible affordances without mutating shared schema state, and any otherwise accepted duration-bearing Mara action that would finish after Day 1 00:00 is actor-safely rejected before pending work is created so the composed day reaches the exact boundary.",
-      "scope": [
-        "policies/ollama_client.py",
-        "scenarios/autonomous_day.py",
-        "tests/test_ollama_client.py",
-        "tests/test_autonomous_day_world.py",
-        "docs/plans/AUTONOMOUS_LOOP_STATE.json",
-        "docs/plans/CURRENT.md",
-        "docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md"
-      ],
-      "validation": [
-        "python3 -m unittest tests.test_ollama_client tests.test_autonomous_day_world",
-        "./scripts/check.sh"
-      ]
-    },
-    "contract_sha256": "a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89",
-    "evidence": null,
-    "repair_count": 0,
-    "review": null,
-    "reviewer_task_ids": [],
-    "slice_id": "cc11-preserved-repairs-20260916",
-    "writer_attempt": 1,
-    "writer_task_id": "/root/cc11_repairs_writer_20260916"
-  },
+  "slice": null,
   "stop_reason": null,
   "writer_history": [
     "/root/cc11_writer",

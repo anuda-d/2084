@@ -1,6 +1,6 @@
 # Current Development Index
 
-Status: First Consequential Choice Under Conflicting Information is active under renewed standing owner authorization, with a repair-only CC-11 prerequisite slice contracted.
+Status: First Consequential Choice Under Conflicting Information is active under renewed standing owner authorization, with the repair-only CC-11 prerequisite slice accepted and the generation ready for orchestrator reassessment.
 
 ## Runtime Authority
 
@@ -9,7 +9,8 @@ Status: First Consequential Choice Under Conflicting Information is active under
 - Owner authorization: standing for the active goal
 - Scheduler status: active
 - Current orchestrator: `gen-20260916-01`, task `01a0ad2d-d6cf-76a3-bb76-f1fa50113332`
-- Current slice: `cc11-preserved-repairs-20260916`, writer `/root/cc11_repairs_writer_20260916`
+- Current slice: none
+- Last accepted slice: `cc11-preserved-repairs-20260916`, implementation commit `bc25194725b7ea32f05b711e1faf29ffc50b1f4e`, digest `a3a9c0b4d5c9fd8cd0b1c1006177eb93adb26ea1d4208ba4066a689dfa163f89`
 - Recovery action: none
 - Closed replacement slice: `cc11-repair-live-day-20260911`, digest `356a7846f4f82993101834faad1f77e0eaf97adc5a03d5b4ccb7d02c612fc782`
 - Validation result: its offline repair gates pass, but seeds 45, 46, and 47 exhausted the live-attempt cap without a conflict-informed decision, so the slice is not accepted
@@ -17,8 +18,10 @@ Status: First Consequential Choice Under Conflicting Information is active under
 - Reactivation decision: preserve the validated schema and exact-day repairs as a smaller fresh slice, then address a legitimate non-steering conflict opportunity in a separate later slice
 
 The JSON runtime state is authoritative when this summary and runtime state disagree.
+The orchestrator must reassess repository evidence before selecting another bounded slice.
 The exact saved `autonomous-2084-development-loop` automation is active on the saved local 2084 project after activation commit `5569ba7`.
-The validated schema and exact-day repair diff remains uncommitted and unaccepted until it passes a fresh bounded contract, focused and full validation, and independent review.
+The schema and exact-day repairs are accepted prerequisite evidence after their fresh bounded contract, focused and full validation, and independent review.
+They do not satisfy CC-4 or CC-11 and include no new live-model evidence.
 The later conflict-opportunity slice may expose a legitimate choice context but may not prescribe or substitute the live model outcome.
 
 ## Migration Note
@@ -71,5 +74,5 @@ Unknown, active, or non-terminal ownership blocks recovery.
 ## Stop Condition
 
 Both exhausted CC-11 slices remain closed without acceptance and neither counts toward a generation limit.
-The authoritative runtime is ready with standing authorization at revision 12.
-Generation `gen-20260916-01` has contracted the preserved repairs as its first bounded slice without claiming live-model evidence.
+The authoritative runtime is ready with standing authorization at revision 18.
+Generation `gen-20260916-01` has accepted the preserved repairs as its first bounded slice without claiming live-model evidence.
