@@ -356,12 +356,15 @@ class Runner:
 def main(arguments: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("development-loop.toml"))
-    parser.add_argument("command", choices=("run", "status", "enable", "pause", "resume", "doctor"))
+    parser.add_argument("command", choices=("run", "status", "enable", "pause", "resume", "doctor", "dashboard"))
     parser.add_argument("--service", action="store_true", help="Stay available while blocked or complete, without model calls")
     args = parser.parse_args(arguments)
     try:
         runner = Runner(Config(args.config))
-        if args.command == "status":
+        if args.command == "dashboard":
+            from .dashboard import open_dashboard
+            return open_dashboard(runner)
+        elif args.command == "status":
             status = runner.store.read()
             status["window_open"] = runner.config.window.remaining(runner.clock()) > runner.config.window.checkpoint
             print(json.dumps(status, indent=2))

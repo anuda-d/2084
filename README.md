@@ -110,8 +110,11 @@ Preserve failed samples and the goal's bounded live-experiment authorization.
 ```sh
 ./scripts/check.sh
 python3 -m devloop status
+python3 -m devloop dashboard
 ```
 
+The full-screen dashboard shows live activity, Git changes, checks, and result details.
+Use `h/l` or `1-4` to switch views, `j/k` to scroll, `p` to pause, `r` to resume, and `q` to close the dashboard without stopping the loop.
 The Mac runs development and tests; the Windows PC supplies only the optional Ollama endpoint.
 [Development Loop](docs/main/DEVELOPMENT_LOOP.md) documents installation, pause/resume, validation, and runner-owned commits.
 Start agent work from [CURRENT.md](docs/plans/CURRENT.md) and [AGENTS.md](AGENTS.md).

@@ -76,8 +76,32 @@ Goal-file or runner-configuration changes require inspection and a new `enable`,
 The approval identity hashes the entire goal file, so even a documentation-only link edit requires re-enabling after review; it does not renew exhausted live-experiment budgets.
 
 Status contains the active session, phase, remaining gap, latest result, and paths to detailed execution logs.
-This CLI is the initial control interface; external notifications are not configured.
 A time-window pause preserves the session, candidate, and retry count automatically.
+
+## Terminal dashboard
+
+Run `python3 -m devloop dashboard` for an interactive view of the existing runner.
+It uses Python's built-in curses support and needs an interactive terminal at least 52 columns wide and 16 rows tall.
+Wider terminals show a sidebar with the operating window, model, service state, and token usage.
+
+| Keys | Action |
+| --- | --- |
+| `1-4`, `h/l`, arrows, Tab | Switch Activity, Changes, Checks, and Details |
+| `j/k`, Ctrl-d/Ctrl-u | Scroll by a line or half a page |
+| `g/G` | Top of view or follow newest output |
+| `[` / `]` | Older or newer execution log |
+| `/`, Esc | Filter the current view or clear the filter |
+| `p/r` | Pause or resume with the runner's existing checks |
+| `?`, `:help` | Show help |
+| `q`, `:q` | Close the dashboard without changing execution |
+
+`:pause` and `:resume` also work.
+Views refresh automatically without model calls or Ollama probes; the endpoint in Details is configuration, not a health result.
+Activity translates structured events into messages and command output, including bounded tails of older logs.
+Changes shows local Git status, tracked diffs, and recent commits; Checks shows recorded validation and current feedback.
+Pause/resume never bypass a blocked goal or reset the repair budget.
+Opening the dashboard does not start the service, and closing it does not pause the loop.
+External notifications are not configured.
 
 ## Mac background service
 
