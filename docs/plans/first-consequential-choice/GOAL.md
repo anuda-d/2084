@@ -2,7 +2,7 @@
 
 Status: active; owner-approved goal on 2026-09-06.
 
-This goal follows the completed [First Accelerated-Day Social Thread](../first-accelerated-day-social-thread/GOAL.md).
+This goal follows the completed [First Accelerated-Day Social Thread](IMPLEMENTATION_PLAN.md#completed-foundations).
 It connects the existing accelerated day, source-linked understanding, restricted model decisions, and social testimony around an ordinary choice with physical consequences.
 
 ## Question
@@ -135,7 +135,7 @@ A successful live day establishes this implemented interaction boundary, not gen
 Begin with this goal and its [shared implementation state](IMPLEMENTATION_PLAN.md), following [Development Loop](../../main/DEVELOPMENT_LOOP.md).
 Locate only the implementation and tests needed for a selected criterion.
 For time, action, knowledge, and model boundaries, consult the relevant sections of [Architecture](../../main/ARCHITECTURE.md).
-For observer scope, consult the implemented-surface and contradiction sections of [UI Architecture](../../main/UI_ARCHITECTURE.md).
+For observer scope, consult [presentation and evidence](../../main/ARCHITECTURE.md#presentation-and-evidence).
 For approved commands and the existing local live audit, consult the relevant sections of the [README](../../../README.md).
 Earlier completed-goal evidence is a regression reference when needed, not an additional implementation checklist.
 

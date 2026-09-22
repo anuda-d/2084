@@ -16,7 +16,7 @@ During that window the runner immediately continues after accepted work, using t
 Starting at 20:37 works just as starting at 18:00 does.
 Outside the window it waits without invoking a model.
 The final two minutes are reserved for stopping child processes and preserving unfinished work.
-There is no hourly work cadence or fixed number of changes per generation.
+There is no hourly work cadence or fixed number of changes per session.
 
 The Mac must be awake to work.
 During active work the runner uses `caffeinate` to prevent idle sleep, bounded by the window's end and the runner's lifetime.
@@ -72,7 +72,8 @@ Wait until status reports no `child_pid` before editing the checkout.
 `resume` continues the same configured goal without resetting failures or bypassing a block.
 `enable` authorizes the configured goal or resets an inspected blocking condition; stop the background service before using it.
 Do not use it blindly to cycle through failures.
-Goal or runner-configuration changes require inspection and a new `enable`, and unfinished work must first be resolved.
+Goal-file or runner-configuration changes require inspection and a new `enable`, and unfinished work must first be resolved.
+The approval identity hashes the entire goal file, so even a documentation-only link edit requires re-enabling after review; it does not renew exhausted live-experiment budgets.
 
 Status contains the active session, phase, remaining gap, latest result, and paths to detailed execution logs.
 This CLI is the initial control interface; external notifications are not configured.
@@ -110,8 +111,7 @@ Keep the retired `autonomous-2084-development-loop` Codex automation paused and 
 ## Migration and verification
 
 The previous per-slice contracts, generation transfers, and manually synchronized runtime summaries are retired.
-Their original state is preserved in `docs/archive/development-loop-20260916.json`, with the prior human-readable snapshot beside it.
-Those files are historical evidence and cannot activate this runner.
+Their original records remain in Git at migration commit `0e52fc7735a48f06da74805f00c3474d5a012d31`; they are historical evidence, not current instructions.
 The existing product goal and accepted implementation evidence remain intact.
 
 ```sh

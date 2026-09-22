@@ -1,26 +1,29 @@
-# Current development index
+# Current Development
 
-The owner-approved product goal is [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md).
-Its [implementation evidence](first-consequential-choice/IMPLEMENTATION_PLAN.md) records accepted behavior and remaining criteria.
-CC-4, CC-11, and CC-12 still require completion evidence; neither the preserved prerequisite repairs nor the conflict-opportunity timing establishes a successful live model day.
+The sole owner-approved product goal is [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md).
+Its [implementation state](first-consequential-choice/IMPLEMENTATION_PLAN.md) records accepted behavior, authored inputs, failed live attempts, and remaining evidence.
+CC-4, CC-11, and CC-12 remain unverified.
+Accepted prerequisite repairs and conflict-opportunity timing do not establish a successful live model day.
 
-## Development
+## Work selection
 
-Use the shared [goal-development skill](../../.agents/skills/goal-development/SKILL.md) and [continuous development loop](../main/DEVELOPMENT_LOOP.md).
-`development-loop.toml` selects the approved goal and project-specific validation and review rules.
-Execution is allowed daily from 18:00 to 23:00 America/Toronto, with continuous work throughout the window.
-The working agent chooses and completes a meaningful remaining responsibility; the runner handles operational records and commits.
+Follow the [goal-development skill](../../.agents/skills/goal-development/SKILL.md) and [Development Loop](../main/DEVELOPMENT_LOOP.md).
+`development-loop.toml` selects the goal, context, checks, review boundaries, and daily 18:00-23:00 America/Toronto execution window.
+Continue unfinished work or choose one coherent remaining responsibility; the runner owns review dispatch, operational records, staging, and commits.
 
-Read only source, tests, and specifications relevant to the selected gap.
-Preserve information access, attempted-action boundaries, deterministic world consequences, exact-day behavior, and the distinction between authored and live evidence.
-An inconclusive experiment can identify a limitation without satisfying the goal.
-Never silently reopen an exhausted historical experiment or discard failed attempts to claim success.
+Read only source, tests, and the relevant [architecture](../main/ARCHITECTURE.md) boundary for that responsibility.
+Use [Core Construct](../main/CORE_CONSTRUCT.md) for product direction and reference limits, and [README](../../README.md) for commands.
+Preserve limited knowledge, attempted-action authority, deterministic consequence, exact-day behavior, and the distinction between authored and live evidence.
+An inconclusive experiment can expose a limitation without satisfying the goal.
+Never silently reopen an exhausted experiment or omit failed samples to claim success.
 
-## Operational state
+## Operations and documentation
 
-Run `python3 -m devloop status` for current state and `python3 -m devloop doctor` for local setup checks.
-Do not copy scheduler status, task identities, counters, or commit hashes into this index.
-The retired Codex automation remains paused.
-The replacement runs on the Mac; the Windows PC supplies only the Qwen endpoint.
-Resume execution after installation and verification when the loop should start working.
-The [historical loop snapshot](../archive/development-loop-20260916.md) and [original runtime record](../archive/development-loop-20260916.json) preserve prior evidence without controlling current execution.
+Run `python3 -m devloop status` for current state and `python3 -m devloop doctor` for setup checks.
+Runtime state belongs in the runner, not manually synchronized Markdown.
+The Mac runs development; the Windows PC supplies only the optional Qwen endpoint.
+The retired Codex automation must remain paused.
+
+Keep only documentation needed for current use, product direction, or development.
+Condense existing files below 200 lines rather than splitting them or adding per-task logs.
+Completed plans and detailed historical evidence remain recoverable from Git; the active implementation state retains the relevant conclusions and evidence anchors.
