@@ -6,13 +6,8 @@ These are flexible working principles for coding agents and future contributors.
 
 - Start with `docs/plans/CURRENT.md`; it is the compact operational index.
 - Read-only work does not require checkout ownership.
-- Immediately before the first repository write, follow the no-overlap gate in
-  `docs/main/DEVELOPMENT_LOOP.md` and claim checkout ownership with
-  `python3 scripts/autonomous_loop_lock.py acquire`.
-- The ownership command uses `CODEX_THREAD_ID` automatically.
-  Assert ownership after any resumed turn and immediately before commit.
-  Release ownership at completion, at any other terminal state, or
-  immediately before a relay handoff.
+- Use a dedicated loop checkout; the runner owns exclusive execution and Git commits.
+- For manual administrative work, pause the runner and confirm it has stopped before editing that checkout.
 - For implementation, confirm that exactly one owner-approved goal is active
   with standing authorization.
 - If no goal is active, stop before implementation unless the owner explicitly
@@ -77,31 +72,17 @@ For now, favor one autonomous focal life, a small living world, understandable a
 
 ## Autonomous Development Loop
 
-- Use `docs/main/DEVELOPMENT_LOOP.md` as the complete operating contract.
-- Treat `docs/plans/AUTONOMOUS_LOOP_STATE.json` as the authoritative runtime state and `docs/plans/CURRENT.md` as its human-readable index.
-- The current runtime state and authorization are determined only by `docs/plans/AUTONOMOUS_LOOP_STATE.json`.
-  Historical goal documents never reactivate or override it.
-- Standing authorization exists only when the runtime state names one owner-approved goal, records `authorization.status` as `standing`, and the exact `autonomous-2084-development-loop` automation is active.
-- The scheduler is only a liveness and recovery trigger.
-  It never selects product work and must no-op when a valid orchestrator or writer owns the loop.
-- One orchestrator generation manages at most three sequential accepted slices, then performs whole-goal alignment and hands off to a fresh orchestrator.
-- Each slice has one fresh writer that is the sole repository modifier for the slice.
-  The writer may use read-only explorers and must use a fresh read-only reviewer.
-- Freeze the slice completion contract before transferring checkout ownership to the writer.
-  A slice counts only after every frozen gate, focused and full validation, and blocking review have passed.
-- Keep an incomplete slice active or recover it exactly.
-  Never replace it silently or count it as accepted.
-- Use the guarded state CLI and durable checkout lock for every lifecycle transition.
-  Revision mismatches, unknown ownership, and illegal transitions fail closed.
-- The unscoped Codex task listing is not an ownership precondition.
-  Do not call `list_threads` as part of the no-overlap gate.
-- If acquisition reports another owner, inspect only that exact task with `read_thread`.
-  Recover the stale lock only when the exact owner has a terminal latest turn, using `recover --expected-task-id` and the observed claim token with that verified terminal state, then rebind the exact recorded actor in runtime state.
-  Active, unknown, or idle owners awaiting input continue to block recovery.
-- Run focused checks and `./scripts/check.sh` before recording evidence.
-- Resolve blocking findings with the same writer and repeat validation and fresh review after material correction.
-- The active goal, not the trigger or task, defines authorized product and implementation scope.
-- Repository state and the guarded runtime state are authoritative.
-  Temporary handoffs are compact context only and never authority or a future task queue.
-- Do not select, broaden, or replace the active goal.
-  Stop when the active goal is complete or when continuing requires an owner decision.
+- The owner-approved goal defines what work is authorized.
+- Follow `.agents/skills/goal-development/SKILL.md` for work selection and implementation quality.
+- `development-loop.toml` selects the goal, context, daily window, checks, and review boundaries.
+- `python3 -m devloop status` is the operational source of truth; do not transcribe runtime state into documents.
+- The runner continuously advances eligible work inside 18:00-23:00 America/Toronto, including after mid-window restarts.
+- One working agent chooses and implements a coherent responsibility; the same session continues across changes.
+- The runner performs repository checks, invokes independent review when warranted, and commits the exact validated result.
+- Report semantic review risks that automatic path checks may miss.
+- The runner owns staging, commits, retries, and runtime records; agents must not manipulate them.
+- Stop for missing product direction, exhausted repairs, an owner pause, or goal completion.
+- Do not create task contracts, orchestrator generations, future task queues, or per-task ledgers.
+- Preserve incomplete work across the end of the daily window; do not claim it is complete.
+- Never push, merge, deploy, broaden the goal, or modify the runner without explicit owner direction.
+- The retired Codex automation must remain paused; it is superseded by the Mac runner.

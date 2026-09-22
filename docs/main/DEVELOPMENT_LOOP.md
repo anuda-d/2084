@@ -1,325 +1,123 @@
-# Three-Slice Goal-Bounded Autonomous Development Loop
-
-Status: current operating contract.
-
-The loop advances one owner-approved goal through small, independently verified slices.
-Its current phase and authorization are determined only by `docs/plans/AUTONOMOUS_LOOP_STATE.json`.
-Historical authorization records do not activate or override the runtime state.
-
-## Architecture
-
-```text
-scheduled liveness / recovery trigger
-                |
-                v
-      orchestrator generation
-       owns 0..3 accepted slices
-                |
-       freeze one slice contract
-                |
-       transfer checkout ownership
-                v
-         one fresh writer
-          sole slice modifier
-         /                  \
-read-only explorers   fresh read-only reviewer
-         \                  /
-        implement -> validate -> review -> repair
-                |
-     accepted evidence and commit
-                |
-       return ownership and result
-                |
-       next slice, up to three
-                |
-       whole-goal alignment
-                |
-       compact durable handoff
-                |
-       fresh orchestrator generation
-```
-
-The scheduler is only a liveness and recovery trigger.
-It does not select a slice, alter a goal, implement code, or create overlapping work.
-
-The orchestrator owns goal interpretation, gap selection, frozen slice contracts, sequential delegation, result acceptance, and whole-goal alignment.
-One orchestrator generation may accept at most three slices.
-It does not implement product code.
-
-Each slice receives one fresh writer.
-That writer is the sole repository modifier from checkout transfer until the accepted commit or terminal handback.
-The writer may delegate bounded read-only exploration and must obtain a fresh read-only review after validation.
-
-## Sources of Authority
-
-Read these sources in order:
-
-1. `AGENTS.md`;
-2. `docs/plans/CURRENT.md`;
-3. `docs/plans/AUTONOMOUS_LOOP_STATE.json`;
-4. this contract;
-5. the owner-approved active goal and its implementation evidence when authorization is standing;
-6. the latest compact handoff when it exists; and
-7. only the source and tests required by the frozen slice.
-
-Repository code, committed evidence, and `AUTONOMOUS_LOOP_STATE.json` are authoritative.
-A temporary handoff is context only.
-It never grants authority, changes a goal, weakens a gate, or queues future work.
-
-## Runtime State Machine
-
-All lifecycle changes use `scripts/autonomous_loop_state.py`.
-The CLI validates the complete state before and after mutation, writes atomically, and requires checkout ownership.
-Every mutation supplies the expected revision and a unique event identifier.
-A retry with the same event identifier is idempotent.
-A stale revision or reused event identifier fails closed.
-
-```text
-stopped
-  -> ready
-  -> contracted
-  -> implementing
-  -> validating
-  -> reviewing
-       -> repairing -> validating
-       -> ready after accepted slice 1 or 2
-       -> alignment_required after accepted slice 3
-  -> aligning
-  -> handoff_ready
-  -> fresh generation at ready
-```
-
-`blocked` and `needs_owner_decision` are terminal recovery states.
-An incomplete slice stays in its exact phase and retains its frozen contract.
-It never counts toward the three-slice limit.
-
-## Authorization and Activation
-
-The runtime state is initially `stopped` with no active goal and no authorization.
-Historical goal files cannot activate it.
-
-Activation requires all of the following:
-
-- an explicit owner instruction selecting exactly one goal;
-- owner confirmation recorded by the administrative activation event;
-- synchronized human-readable goal and implementation evidence;
-- the exact saved automation updated to active only after repository activation is committed; and
-- no conflicting or unreadable owner or runtime state.
-
-Agents may not infer activation from an old goal status, a scheduler trigger, a handoff, or unfinished product evidence.
-
-## Scheduler Contract
-
-The `autonomous-2084-development-loop` automation runs only as a liveness and recovery trigger during the configured window.
-On every trigger it validates runtime state and ownership before doing anything else.
-
-The scheduler no-ops when:
-
-- runtime state is stopped or unauthorized;
-- the saved automation is paused;
-- another valid orchestrator or writer owns the checkout;
-- an active actor is non-terminal or awaiting input;
-- state or ownership is unreadable or inconsistent;
-- a blocker or owner decision is recorded; or
-- current time does not permit a new generation and no incomplete slice requires safe recovery.
-
-The scheduler may create a fresh orchestrator only when authorized state is `ready` without an orchestrator or `handoff_ready` after a completed alignment.
-It may recover an exact recorded orchestrator or writer only after the exact task is verified `completed`, `failed`, or `interrupted`.
-It never creates a second writer or substitutes a different slice.
-
-## Checkout Ownership
-
-Read-only orientation does not require checkout ownership.
-Immediately before the first repository write, run `python3 scripts/autonomous_loop_lock.py acquire` with the actor role and generation scope.
-
-The durable lock records task identity, role, generation, optional slice, claim token, and recovery evidence.
-The current owner must assert ownership after a resumed turn and immediately before commit.
-
-The orchestrator freezes the slice contract while it owns the checkout.
-It then atomically transfers checkout ownership to the named fresh writer with `autonomous_loop_lock.py transfer`.
-The orchestrator performs no repository mutations while the writer owns the checkout.
-
-After acceptance and commit, the writer transfers ownership back to the same orchestrator generation.
-After alignment, the orchestrator releases ownership before a fresh generation begins.
-
-The unscoped Codex task listing is not an ownership precondition.
-Do not call `list_threads` as part of the no-overlap gate.
-If acquisition reports another owner, inspect only that exact task with `read_thread`.
-Active, unknown, unreadable, or non-terminal owners continue to block recovery.
-Lock age never authorizes recovery.
-
-## Orchestrator Generation
-
-An orchestrator generation begins with one fresh orchestrator and an accepted-slice count of zero.
-The orchestrator performs these steps sequentially:
-
-1. inspect current goal evidence and identify one smallest unmet gap;
-2. define a complete frozen slice contract;
-3. create one fresh writer for that slice;
-4. record the writer in runtime state;
-5. transfer checkout ownership to the writer;
-6. wait for a compact accepted or terminal result;
-7. verify the result matches runtime state and committed repository evidence;
-8. accept another slice only when fewer than three have been accepted; and
-9. perform whole-goal alignment immediately after the third accepted slice or earlier at goal completion.
-
-The orchestrator does not preselect later slices or persist a future task queue.
-It chooses each next slice from repository evidence after the preceding slice is accepted.
-
-## Frozen Slice Contract
-
-The orchestrator writes the complete contract before delegating the writer.
-The state machine stores the contract and its canonical SHA-256 digest.
-Any later contract mutation invalidates the state.
-
-Every contract contains exactly:
-
-- one goal criterion;
-- one intended observable result;
-- one evidence claim;
-- an explicit file or subsystem scope;
-- one or more `check` and `expect` gates; and
-- focused and full validation commands.
-
-The writer may report that a contract is impossible or requires an owner decision.
-The writer may not weaken, delete, reinterpret, or replace a gate.
-
-## Writer Slice
-
-The fresh writer begins only after the runtime state names it and checkout ownership has transferred.
-The writer owns exactly one slice.
-
-The writer:
-
-1. reads the frozen contract and relevant implementation;
-2. may delegate one to three concrete read-only exploration questions;
-3. implements only the contracted change;
-4. runs every frozen gate and focused validation;
-5. runs `./scripts/check.sh`;
-6. records factual validation evidence;
-7. obtains a fresh read-only reviewer that is neither the writer nor orchestrator;
-8. resolves every blocking finding with the same writer;
-9. repeats focused and full validation after material correction;
-10. obtains another fresh review after material correction;
-11. asserts ownership and commits the reviewed coherent implementation;
-12. records acceptance only when the supplied accepted commit is the exact current `HEAD`;
-13. commits the runtime acceptance transition; and
-14. transfers ownership and a compact result back to the orchestrator.
-
-A reviewer inspects the frozen claim, actual diff, test evidence, failure paths, and relevant product invariants.
-A reviewer cannot edit, commit, change the contract, select a new slice, or grant product authority.
-
-## Acceptance and Retry Bounds
-
-A slice counts toward the generation only when:
-
-- its contract digest still matches;
-- every frozen gate has the stated observable result;
-- focused validation passes;
-- the complete repository check passes;
-- a fresh independent review has no blocking finding;
-- every material correction was revalidated and freshly reviewed; and
-- the coherent implementation commit exists before the accepted-slice count advances.
-
-The subsequent runtime-state commit records the accepted evidence and exact implementation commit.
-
-Missing evidence is failure, not partial acceptance.
-An incomplete or rejected slice contributes zero to the accepted-slice count.
-
-The same writer receives no more than two repair cycles after blocking review.
-The exact slice may receive no more than three writer attempts across verified crash recovery.
-Exhausting either bound records `blocked` and stops automatic progress.
-
-## Recovery
-
-Recovery first validates state and reads the durable checkout owner.
-It then inspects only the exact recorded task.
-
-Recovery requires:
-
-- a latest task state of `completed`, `failed`, or `interrupted`;
-- the exact observed task identifier and claim token;
-- atomic lock recovery with matching terminal evidence;
-- matching actor identity in runtime state;
-- matching generation and slice scope; and
-- a state revision that has not changed since observation.
-
-After lock recovery, `recover-actor` rebinds only that exact orchestrator or writer.
-Writer recovery preserves the frozen contract and phase and increments the writer attempt.
-Orchestrator recovery preserves the generation and accepted-slice count and increments its recovery count.
-Any mismatch stops at `ACTIVE RUN STATUS UNKNOWN` without repository changes.
-
-## Whole-Goal Alignment and Handoff
-
-Three accepted slices make `alignment_required` mandatory.
-No fourth slice may be contracted in that generation.
-
-Whole-goal alignment checks:
-
-- accepted evidence against every goal criterion;
-- regressions and affected product invariants;
-- accumulated complexity and removal opportunities;
-- whether the goal is complete;
-- remaining evidence gaps; and
-- unresolved risks or owner decisions.
-
-The alignment report records goal status, the three accepted slices, remaining gaps, risks, and an evidence-based recommendation.
-The recommendation is not a selected next slice.
-
-After alignment, the orchestrator writes a compact durable handoff, clears itself from active runtime state, releases ownership, and stops.
-A new scheduled or relayed task may then begin a fresh generation when authorization remains standing.
-
-## Owner Decision and Terminal Boundaries
-
-Stop at `NEEDS OWNER DECISION` before:
-
-- selecting, replacing, broadening, or reinterpreting a goal;
-- deciding a material product, simulation, worldbuilding, privacy, visual, or lasting architecture question;
-- weakening a frozen gate or product invariant;
-- absorbing overlapping user changes;
-- destructive cleanup, publication, deployment, push, or merge; or
-- continuing after the owner pauses or stops the loop.
-
-Record the smallest concrete question and preserve exact working state.
-Release ownership only when the current task owns it.
-Do not relay from a blocked, unsafe, paused, or owner-decision state.
-
-## Product Invariants
-
-Every slice preserves these established boundaries:
-
-- `EventLog` is append-only objective evidence;
-- official-record changes never rewrite objective history or automatically deliver observations;
-- agents act only from information and access available to them;
-- public expression remains an attempted action;
-- model output is not automatically truth, memory, or consequence;
-- normal presentation remains separate from omniscient inspection; and
-- the focal character remains autonomous rather than a player puppet.
-
-## Migration Behavior
-
-Schema version 2 starts stopped, with `goal_id: null` and no authorization.
-The prior active-goal wording remains in historical goal and implementation documents for auditability.
-It is not imported because the saved automation was paused at migration time.
-
-There is no automatic compatibility bridge from the one-task-per-slice relay.
-Old temporary handoffs may inform orientation but cannot populate the new runtime state.
-The first activation requires an explicit owner-approved administrative migration.
-
-## Validation
-
-`scripts/check_autonomous_loop_contract.py` delegates runtime-state validation to the production state validator and verifies its synchronization with the current index, required contract language, control scripts, canonical automation prompt, and absence of obsolete one-task-per-slice rules in current operating documents.
-`tests/test_autonomous_loop_state.py` exercises legal transitions, contract immutability, three-slice alignment, retry bounds, idempotency, compare-and-swap behavior, and exact actor recovery.
-`tests/test_autonomous_loop_lock.py` exercises atomic ownership, transfer, stale-owner recovery, and backward-compatible legacy lock records.
-
-Run focused loop checks first:
+# Continuous goal development
+
+One working agent advances the approved goal through coherent changes, with deterministic checks and conditional independent review.
+The shared runner is configured by `development-loop.toml`; implementation guidance lives in `.agents/skills/goal-development/SKILL.md`.
+
+## Execution
+
+The Mac hosts the repository, Codex CLI, development runner, and tests.
+The Windows PC only runs Ollama for the simulation's `qwen3:4b-instruct` model.
+The Mac connects to its private LAN endpoint through `OLLAMA_BASE_URL`.
+The configured address, `http://10.0.0.160:11434`, comes from the previously verified live setup; an environment value overrides it.
+The PC must be reachable for live experiments, while provider-free implementation and checks can run without it.
+
+The daily window is 18:00-23:00 America/Toronto.
+During that window the runner immediately continues after accepted work, using the same Codex session.
+Starting at 20:37 works just as starting at 18:00 does.
+Outside the window it waits without invoking a model.
+The final two minutes are reserved for stopping child processes and preserving unfinished work.
+There is no hourly work cadence or fixed number of changes per generation.
+
+The Mac must be awake to work.
+During active work the runner uses `caffeinate` to prevent idle sleep, bounded by the window's end and the runner's lifetime.
+It allows idle sleep while paused, blocked, complete, or outside the window.
+It does not wake a powered-off Mac or override lid-close sleep.
+Codex uses the Mac's existing CLI sign-in; the desktop app does not need to remain open.
+
+## Working procedure
+
+The approved goal defines direction and constraints.
+The working agent chooses a concrete remaining gap, investigates relevant behavior, implements a coherent responsibility, and performs focused verification.
+It returns a brief result and remaining uncertainty.
+Useful experiments may produce concise evidence artifacts; inconclusive outcomes never count as a satisfied goal criterion.
+
+The runner stages the candidate, runs configured repository checks, and binds acceptance to that Git tree.
+Changed content invalidates prior validation.
+Failing checks normally return work to the same agent for repair.
+Sensitive file paths, modification of existing tests, explicit semantic concerns, and whole-goal completion trigger independent read-only review.
+Routine passing changes do not require another agent.
+Three unsuccessful attempts block the current work; the count survives process restarts.
+
+After acceptance the runner commits the tested and reviewed tree locally.
+It immediately proceeds to the next meaningful gap while time remains.
+It never automatically pushes, merges, deploys, chooses a new goal, or changes its own configuration.
+
+## State and control
+
+Runtime state, raw execution logs, check results, and review results live under the repository's Git common directory in `development-loop/`.
+They are not repository commits or documents maintained by the agent.
+Only one runner may own a repository, including across its worktrees.
+Use a checkout reserved for the loop; pause and stop its child before manual edits.
+Unrelated dirty work blocks startup, while interrupted runner-owned changes remain available for continuation.
+An interrupted commit is reconciled against its exact parent and validated tree before another change starts.
+
+For a foreground run from a clean checkout:
 
 ```sh
-python3 -m unittest tests.test_autonomous_loop_state tests.test_autonomous_loop_lock tests.test_autonomous_loop_contract
+python3 -m devloop doctor
+python3 -m devloop enable
+python3 -m devloop run
 ```
 
-Then run the full repository check:
+For status and control from another terminal:
+
+```sh
+python3 -m devloop status
+python3 -m devloop pause
+python3 -m devloop resume
+```
+
+`pause` stops the child and preserves unfinished work.
+Wait until status reports no `child_pid` before editing the checkout.
+`resume` continues the same configured goal without resetting failures or bypassing a block.
+`enable` authorizes the configured goal or resets an inspected blocking condition; stop the background service before using it.
+Do not use it blindly to cycle through failures.
+Goal or runner-configuration changes require inspection and a new `enable`, and unfinished work must first be resolved.
+
+Status contains the active session, phase, remaining gap, latest result, and paths to detailed execution logs.
+This CLI is the initial control interface; external notifications are not configured.
+A time-window pause preserves the session, candidate, and retry count automatically.
+
+## Mac background service
+
+The Mac needs Python 3.11 or later, Git with an author identity, and an authenticated Codex CLI.
+Run the repository checks before installation.
+Installation registers a per-user `launchd` service and leaves execution paused:
 
 ```sh
 ./scripts/check.sh
+python3 scripts/install_development_loop.py install
+python3 -m devloop resume
 ```
+
+`launchd` keeps the lightweight runner available while the user is logged in and restarts it after a crash or next login.
+The runner itself controls the window and continuous work.
+After the Mac wakes, the runner checks the current time and continues if eligible.
+No model calls occur while paused, outside the window, blocked, or complete.
+The foreground `run` command exits on completion or a block; the background service stays available for control commands.
+
+To stop and remove the service while preserving work and state:
+
+```sh
+python3 -m devloop pause
+python3 scripts/install_development_loop.py remove
+```
+
+The default service label on a new installation is `local.devloop.2084`.
+Use `--label` to replace an existing service under another label; the installer remembers it for later installation and removal commands.
+Keep the retired `autonomous-2084-development-loop` Codex automation paused and remove any superseded scheduled launcher before enabling this one.
+
+## Migration and verification
+
+The previous per-slice contracts, generation transfers, and manually synchronized runtime summaries are retired.
+Their original state is preserved in `docs/archive/development-loop-20260916.json`, with the prior human-readable snapshot beside it.
+Those files are historical evidence and cannot activate this runner.
+The existing product goal and accepted implementation evidence remain intact.
+
+```sh
+python3 -m unittest tests.test_development_runner
+./scripts/check.sh
+```
+
+The runner tests exercise real Git commits and child processes with a controlled Codex substitute.
+They cover continuous progress, window boundaries, live service pause/resume, review routing, failed checks, preserved work, exclusive ownership, and interrupted commit recovery.

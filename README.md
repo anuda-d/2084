@@ -172,6 +172,12 @@ This preserves an ordinary comparison in which Mara retains the same conflicting
 
 Add `--inspect` to reconstruct the complete causal chain, including source observation, statement validation, testimony delivery, Mara's attempt, and world resolution.
 
+## Autonomous development
+
+See the [continuous development loop](docs/main/DEVELOPMENT_LOOP.md).
+The Mac runs the development agent, repository, and tests using Python 3.11 or later and Codex CLI.
+The Windows PC only serves Qwen through the configured Ollama LAN endpoint.
+
 ## Local model mode
 
 Model-backed Mara is optional and explicit.
