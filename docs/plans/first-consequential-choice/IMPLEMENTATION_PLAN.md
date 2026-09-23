@@ -115,6 +115,19 @@ Both obligations were later delivered as missed, and later decisions retained th
 The objective change at minute 479 therefore did not produce the required conflict-informed choice for this valid live path.
 The sample is contrary evidence, not a preferred-branch selection or CC-4/CC-11 success.
 
+## Candidate conflict-to-consequence live audit on 2026-09-22
+
+The reviewed minute-480 timing repair justified one new seed-49 run because no prior sample used that configuration.
+Its owner-only bundle is `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480`.
+The generic audit passed exact model identity, source stability, causal links, privacy, exact-day completion, and provider-free replay.
+It recorded 18 provider calls, 17 selected responses, one safe provider failure, a 22,654-byte peak restricted input, and 227,410 bytes of peak retained private evidence.
+Mara arrived at the workplace at minute 480, received the official claim, and began accepted homeward travel.
+Ilan's source-backed testimony reached her at minute 481 while that travel remained pending.
+At minute 540, Mara's restricted home-state input retained both explicitly conflicting claims, and the model selected accepted travel to the workplace as the work-side competing alternative.
+Both obligations were world-resolved as missed at minute 632.
+The next legitimate decision at minute 660 retained the conflict and both delivered missed-obligation observations.
+This is candidate CC-4 and CC-11 evidence pending independent semantic review, not goal completion.
+
 ## Authorization and remaining evidence
 
 The owner approved this goal on 2026-09-06 and restored standing authority within unchanged boundaries on 2026-09-16.
