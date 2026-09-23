@@ -101,6 +101,18 @@ Their recorded private location is `/private/tmp/2084-cc11-replacement-20260911`
 Independent review found no blocking repair defect but rejected acceptance because no sample exercised the required live choice.
 The replacement also closed unaccepted; generic integrity does not establish missing product behavior.
 
+## Unaccepted access-timing live audit on 2026-09-22
+
+The accepted access-gated timing configuration justified one new seed-48 run because no earlier sample had exercised that configuration.
+Its owner-only bundle is `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed48-complete`.
+The generic audit passed exact model identity, source stability, causal links, privacy, exact-day completion, and provider-free replay.
+It recorded 20 provider calls, 16 selected responses, and four safe provider failures.
+The first malformed response became a safe wait at minute 420, and Mara then selected travel to the workplace at minute 450, arriving at minute 480.
+Mara received the official normal-service claim at that minute but no Ilan testimony or explicit conflict, then selected travel home from that official-only input.
+Both obligations were later delivered as missed, and later decisions retained the official claim but not a conflict.
+The objective change at minute 479 therefore did not produce the required conflict-informed choice for this valid live path.
+The sample is contrary evidence, not a preferred-branch selection or CC-4/CC-11 success.
+
 ## Authorization and remaining evidence
 
 The owner approved this goal on 2026-09-06 and restored standing authority within unchanged boundaries on 2026-09-16.
