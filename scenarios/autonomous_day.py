@@ -86,7 +86,10 @@ _INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
-_CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE = 8 * 60 - 1
+# This coincides with Mara's earliest normal arrival after a safe-retry travel.
+# World activity still precedes arrival completion and observation delivery,
+# allowing Ilan to receive objective source evidence only when he is at work.
+_CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE = 8 * 60
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _ILAN_TRANSIT_OBSERVATION_LOCATIONS = frozenset({"workplace"})
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
@@ -2842,8 +2845,8 @@ def main(
         "--conflict-opportunity-timing",
         action="store_true",
         help=(
-            "move the consequential-choice service change to 07:59 so both "
-            "access-gated accounts can precede one 08:00 decision"
+            "move the consequential-choice service change to 08:00 so "
+            "source-backed testimony can reach Mara at her next decision"
         ),
     )
     parser.add_argument(

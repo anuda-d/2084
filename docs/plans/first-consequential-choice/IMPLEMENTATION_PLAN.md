@@ -36,11 +36,13 @@ The authored options are retained for recorded replay.
 | `include_consequential_choice_tradeoff_timing=True` | Requires deadline outcomes and sets both deadlines to 10:32, disclosed through Mara's own schedule. |
 | `include_service_dependent_travel=True` | Samples actual normal/reduced service when travel is accepted, using 30/60-minute duration. |
 | `homeward_travel_service_recovery_minute` | Optional objective recovery after the source observation; does not automatically inform Mara or retime pending travel. |
-| `include_conflict_opportunity_timing=True` | Requires conflicting accounts and the tradeoff profile; moves the objective change from minute 510 to 479 while retaining the minute-480 notice. |
+| `include_conflict_opportunity_timing=True` | Requires conflicting accounts and the tradeoff profile; moves the objective change from minute 510 to minute 480 while retaining the separately published minute-480 notice. |
 
 Publication alone grants no knowledge; Mara needs workplace notice-board access.
 Under original timing, Ilan receives the service source at 510 and valid testimony reaches Mara at 511.
-Under the earlier timing, legitimate source access and workplace co-location allow both accounts and understanding updates before one coalesced minute-480 decision.
+Under conflict-opportunity timing, Mara's minute-480 arrival precedes source and official observation delivery.
+Ilan can then speak from the source at minute 480, and testimony reaches Mara at minute 481 while a pending ordinary action retains her physical location until completion.
+Her next legitimate decision receives retained conflict rather than a forced same-minute response.
 Source withholding or missing physical access prevents the corresponding testimony/conflict.
 Earlier departure can still remove the opportunity; the option guarantees neither presence nor a live choice.
 

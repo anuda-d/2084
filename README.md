@@ -51,8 +51,9 @@ python3 -m scenarios.autonomous_day --seed 42 --focal-policy scripted --conseque
 ```
 
 The timing option requires `--consequential-choice`.
-It moves the objective service change to 07:59 and retains the 08:00 official notice.
-When Ilan has the source and Mara is at the workplace, both accounts can reach her before one coalesced 08:00 decision.
+It moves the objective service change to 08:00 and retains the separately published 08:00 official notice.
+When Ilan has the source and Mara reaches the workplace at that minute, he can make a source-backed statement and its testimony reaches her at 08:01.
+Mara retains the testimony while any ordinary action is pending and receives it at her next legitimate decision opportunity.
 It neither guarantees that access nor selects a model response.
 Omitting it preserves the original consequential-choice timing.
 The [active implementation state](docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md) records authored builder options, accepted comparisons, and outstanding live evidence.

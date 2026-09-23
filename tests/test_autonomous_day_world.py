@@ -2156,7 +2156,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires deadline outcomes"):
             build_autonomous_day(include_consequential_choice_tradeoff_timing=True)
 
-    def test_opt_in_conflict_opportunity_coalesces_deliveries_before_unforced_choice(
+    def test_opt_in_conflict_opportunity_retains_deliveries_before_unforced_choice(
         self,
     ):
         prefix = (
@@ -2171,6 +2171,12 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 "parameters": {},
                 "explanation": "wait after arriving at the workplace",
                 "decision_reason": "the transit accounts have not arrived",
+            },
+            {
+                "kind": "wait",
+                "parameters": {},
+                "explanation": "wait after the official notice",
+                "decision_reason": "the source-backed account may still arrive",
             },
         )
         branches = {
@@ -2247,13 +2253,13 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 for event in day.events
                 if event.kind == "transit_service_changed"
             )
-            self.assertEqual(transit_change.tick, 479)
+            self.assertEqual(transit_change.tick, 480)
 
             decision = next(
                 decision
                 for decision in summary.consumed_decisions
                 if decision.actor_id == MARA_ID
-                and decision.due_time.total_minutes == 480
+                and decision.due_time.total_minutes == 481
             )
             transit_observations = [
                 observation
@@ -2263,25 +2269,23 @@ class AutonomousDayWorldTests(unittest.TestCase):
             ]
             self.assertEqual(len(transit_observations), 2)
             self.assertEqual(
-                {observation.delivery_tick for observation in transit_observations},
-                {480},
-            )
-            self.assertEqual(
-                {trigger.source_id for trigger in decision.triggers},
                 {
-                    observation.observation_id
+                    (
+                        observation.details["evidence_kind"],
+                        observation.delivery_tick,
+                    )
                     for observation in transit_observations
                 },
-            )
-            self.assertEqual(
-                {trigger.kind for trigger in decision.triggers},
-                {DecisionTriggerKind.OBSERVATION_DELIVERED},
+                {
+                    ("official_transit_claim", 480),
+                    ("social_testimony", 481),
+                },
             )
 
             transitions = [
                 transition
                 for transition in day.understanding_transitions
-                if transition["tick"] == 480
+                if transition["tick"] in {480, 481}
             ]
             self.assertEqual(
                 {transition["source_observation_id"] for transition in transitions},
@@ -2298,7 +2302,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             understanding_work = [
                 work
                 for work in summary.executed_work
-                if work.due_time.total_minutes == 480
+                if work.due_time.total_minutes in {480, 481}
                 and work.phase == "understanding_update"
             ]
             self.assertEqual(len(understanding_work), 2)
@@ -2307,8 +2311,8 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 decision_work.sequence,
             )
 
-            choice_input = client.inputs[2]
-            self.assertEqual(choice_input["tick"], 480)
+            choice_input = client.inputs[3]
+            self.assertEqual(choice_input["tick"], 481)
             self.assertEqual(choice_input["state"]["location"], "workplace")
             self.assertEqual(
                 choice_input["action_contract"]["currently_applicable_kinds"],
@@ -2338,7 +2342,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             record = next(
                 record
                 for record in day.private_decision_records
-                if record.tick == 480
+                if record.tick == 481
             )
             selected_kinds[name] = record.attempted_action_kind
             self.assertEqual(record.status, "selected")
@@ -2346,7 +2350,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
             attempted = next(
                 event
                 for event in day.events
-                if event.tick == 480
+                if event.tick == 481
                 and event.kind == "action_attempted"
                 and event.actor_id == MARA_ID
             )
@@ -2355,6 +2359,106 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 record.attempted_action_kind,
             )
         self.assertEqual(selected_kinds, {"work": "work", "travel": "travel"})
+
+    def test_conflict_opportunity_reaches_next_decision_after_arrival_at_source_minute(
+        self,
+    ):
+        wait = {
+            "kind": "wait",
+            "parameters": {},
+            "explanation": "leave time for the immediate situation",
+            "decision_reason": "no further ordinary activity is selected",
+        }
+        client = _SequenceClient(
+            TimeoutError("model response unavailable"),
+            {
+                "kind": "travel",
+                "parameters": {"destination": "workplace"},
+                "explanation": "travel to the workplace",
+                "decision_reason": "the workplace is reachable",
+            },
+            {
+                "kind": "travel",
+                "parameters": {"destination": "home"},
+                "explanation": "travel home after the official notice",
+                "decision_reason": "home is reachable",
+            },
+            {
+                "kind": "household",
+                "parameters": {},
+                "explanation": "complete household time after the accounts arrive",
+                "decision_reason": "household time remains possible",
+            },
+            *(wait for _ in range(40)),
+        )
+        day = build_autonomous_day(
+            seed=48,
+            mara_harness=MaraHarness.from_client(
+                client,
+                configuration_id="conflict-opportunity-arrival-retention",
+            ),
+            include_conflicting_transit_accounts=True,
+            include_deadline_governed_obligation_outcomes=True,
+            include_obligation_outcome_delivery=True,
+            include_consequential_choice_tradeoff_timing=True,
+            include_conflict_opportunity_timing=True,
+            include_service_dependent_travel=True,
+        )
+        summary = day.run()
+
+        self.assertTrue(summary.reached_end_boundary)
+        self.assertEqual(
+            next(
+                event.tick
+                for event in day.events
+                if event.kind == "transit_service_changed"
+            ),
+            480,
+        )
+        self.assertEqual(
+            [observation.delivery_tick for observation in day.world.agents[ILAN_ID].observations],
+            [480],
+        )
+        social = [
+            observation
+            for observation in day.world.agents[MARA_ID].observations
+            if observation.details.get("evidence_kind") == "social_testimony"
+        ]
+        self.assertEqual([observation.delivery_tick for observation in social], [481])
+
+        arrival_record = next(
+            record
+            for record in day.private_decision_records
+            if record.tick == 480
+        )
+        self.assertEqual(arrival_record.attempted_action_kind, "travel")
+        self.assertEqual(arrival_record.resolved_tick, 540)
+        conflict_input = client.inputs[3]
+        self.assertEqual(conflict_input["tick"], 540)
+        self.assertEqual(conflict_input["state"]["location"], "home")
+        claims = conflict_input["understanding"]["interpreted_claims"]
+        self.assertEqual({claim["asserted_value"] for claim in claims}, {0, 1})
+        self.assertTrue(all(claim["conflicts_with"] for claim in claims))
+        follow_up_record = next(
+            record
+            for record in day.private_decision_records
+            if record.tick == 540
+        )
+        self.assertEqual(follow_up_record.attempted_action_kind, "household")
+        self.assertEqual(follow_up_record.validation_status, "accepted")
+
+        outcomes = {
+            event.details["obligation"]: event.kind
+            for event in day.events
+            if event.kind in {"obligation_fulfilled", "obligation_missed"}
+        }
+        self.assertEqual(
+            outcomes,
+            {
+                "household time": "obligation_fulfilled",
+                "workplace shift": "obligation_missed",
+            },
+        )
 
     def test_conflict_opportunity_timing_preserves_source_and_physical_access_boundaries(
         self,
@@ -2429,7 +2533,7 @@ class AutonomousDayWorldTests(unittest.TestCase):
                 for event in day.events
                 if event.kind == "transit_service_changed"
             )
-            self.assertEqual(transit_change.tick, 479)
+            self.assertEqual(transit_change.tick, 480)
             self.assertTrue(
                 any(
                     event.kind == "official_transit_notice_published"

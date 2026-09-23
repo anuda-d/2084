@@ -620,7 +620,7 @@ class AutonomousDayCliTests(unittest.TestCase):
                 for event in inspector["history"]["events"]
                 if event["kind"] == "transit_service_changed"
             )
-            self.assertEqual(transit_change["tick"], 479)
+            self.assertEqual(transit_change["tick"], 480)
             self.assertTrue(verify_autonomous_day_live_audit(audit_path)["passed"])
             self.assertNotIn("127.0.0.1", output.getvalue())
 
