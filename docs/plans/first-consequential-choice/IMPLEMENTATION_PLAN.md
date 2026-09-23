@@ -19,7 +19,7 @@ Use `python3 -m devloop status` for execution state and [Development Loop](../..
 | CC-9 Offline watchability | accepted | The authored command presents accounts, choice, consequence, follow-through, and quiet spans through a focal-safe surface. |
 | CC-10 Inspection/replay | accepted | Ordered causal inspection and recorded playback reconstruct the chain without another provider call. |
 | CC-11 Reviewed live day | accepted | Seed 49's reviewed exact day has the conflict-informed workplace-travel choice, delivered missed outcomes, follow-up, private audit, and recorded replay. |
-| CC-12 Integration/completion | unverified | Current regressions, full checks, and final independent whole-goal review must pass. |
+| CC-12 Integration/completion | unverified | Sixteen focused integration regressions and the runner's current checks pass; fresh whole-goal review remains required. |
 
 ## Authored configuration and accepted behavior
 
@@ -127,6 +127,12 @@ At minute 540, Mara's restricted home-state input retained both explicitly confl
 Both obligations were world-resolved as missed at minute 632.
 The next legitimate decision at minute 660 retained the conflict and both delivered missed-obligation observations.
 Independent semantic review accepted this as CC-4 and CC-11 evidence, confirming workplace travel as the work-directed alternative and the complete causal chain.
+
+## CC-12 candidate integration evidence on 2026-09-22
+
+Sixteen focused provider-free regressions passed for same-interval conflict, source withholding, competing outcomes, physical transit effect, access-gated timing, retained follow-through, causal inspection, recorded replay, focal-safe presentation, audit integrity, privacy, growth, and safe provider failure.
+The runner also passed its full 308-test discovery and both diff checks on the exact candidate tree.
+Those are the three checks implemented by `scripts/check.sh`, although its final independent whole-goal review remains required.
 
 ## Authorization and remaining evidence
 
