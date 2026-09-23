@@ -1,6 +1,6 @@
 # First Consequential Choice Implementation State
 
-Status: active; nine criteria are accepted, while CC-4, CC-11, and CC-12 remain unverified.
+Status: active; eleven criteria are accepted, while CC-12 remains unverified.
 This records product evidence for the [approved goal](GOAL.md), not operational state or a task queue.
 Use `python3 -m devloop status` for execution state and [Development Loop](../../main/DEVELOPMENT_LOOP.md) for runner ownership.
 
@@ -11,14 +11,14 @@ Use `python3 -m devloop status` for execution state and [Development Loop](../..
 | CC-1 Shared referent/conflict | accepted | Delivered official and social claims retain sources, the same interval, and reciprocal conflict links. |
 | CC-2 Legitimate access | accepted | Publication, Ilan's source ownership, and physical testimony delivery remain separate; missing access blocks downstream knowledge. |
 | CC-3 Feasible tradeoff | accepted | Restricted input exposes authored obligations and ordinary work/home alternatives with different outcomes. |
-| CC-4 Autonomous choice | unverified | The live model must select a documented competing-obligation alternative through the conflict-informed restricted boundary. |
+| CC-4 Autonomous choice | accepted | Seed 49 retained the delivered conflict at minute 540, and the live model selected accepted workplace travel through the restricted boundary. |
 | CC-5 Physical transit effect | accepted | Equivalent action paths under different actual service conditions cross the household deadline and change its outcome. |
 | CC-6 Obligation outcomes | accepted | Required location, completed activity, and explicit deadlines govern fulfillment or failure. |
 | CC-7 Follow-through | accepted | Mara receives an attributable missed-obligation result and a later decision opportunity retaining the conflict. |
 | CC-8 Causal comparisons | accepted | Information, action, and physical-condition comparisons isolate their respective effects. |
 | CC-9 Offline watchability | accepted | The authored command presents accounts, choice, consequence, follow-through, and quiet spans through a focal-safe surface. |
 | CC-10 Inspection/replay | accepted | Ordered causal inspection and recorded playback reconstruct the chain without another provider call. |
-| CC-11 Reviewed live day | unverified | An audited exact day must include the valid conflict-informed choice, obligation consequence, and follow-up. |
+| CC-11 Reviewed live day | accepted | Seed 49's reviewed exact day has the conflict-informed workplace-travel choice, delivered missed outcomes, follow-up, private audit, and recorded replay. |
 | CC-12 Integration/completion | unverified | Current regressions, full checks, and final independent whole-goal review must pass. |
 
 ## Authored configuration and accepted behavior
@@ -115,7 +115,7 @@ Both obligations were later delivered as missed, and later decisions retained th
 The objective change at minute 479 therefore did not produce the required conflict-informed choice for this valid live path.
 The sample is contrary evidence, not a preferred-branch selection or CC-4/CC-11 success.
 
-## Candidate conflict-to-consequence live audit on 2026-09-22
+## Accepted conflict-to-consequence live audit on 2026-09-22
 
 The reviewed minute-480 timing repair justified one new seed-49 run because no prior sample used that configuration.
 Its owner-only bundle is `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480`.
@@ -126,7 +126,7 @@ Ilan's source-backed testimony reached her at minute 481 while that travel remai
 At minute 540, Mara's restricted home-state input retained both explicitly conflicting claims, and the model selected accepted travel to the workplace as the work-side competing alternative.
 Both obligations were world-resolved as missed at minute 632.
 The next legitimate decision at minute 660 retained the conflict and both delivered missed-obligation observations.
-This is candidate CC-4 and CC-11 evidence pending independent semantic review, not goal completion.
+Independent semantic review accepted this as CC-4 and CC-11 evidence, confirming workplace travel as the work-directed alternative and the complete causal chain.
 
 ## Authorization and remaining evidence
 
@@ -136,8 +136,8 @@ Both exhausted combined live attempts remain closed and unaccepted.
 The replacement runner does not silently renew their sampling budgets.
 Read the goal's live-evidence authorization and this failed-attempt record before selecting a newly justified experiment.
 
-CC-4 and CC-11 require the live competing-obligation choice, world-resolved consequence, delivered follow-up, exact-day boundary, and reviewed reproducible private evidence.
-An older ordinary live day, timing prerequisite, authored comparison, or generic audit pass cannot substitute for that chain.
+CC-4 and CC-11 are established by the reviewed seed-49 live chain.
+An older ordinary live day, timing prerequisite, authored comparison, or generic audit pass did not substitute for that chain.
 Preserve contrary samples and report inconclusive outcomes honestly.
 Close CC-12 only after current checks and independent whole-goal review support every criterion.
 

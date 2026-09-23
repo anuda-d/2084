@@ -2,8 +2,8 @@
 
 The sole owner-approved product goal is [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md).
 Its [implementation state](first-consequential-choice/IMPLEMENTATION_PLAN.md) records accepted behavior, authored inputs, failed live attempts, and remaining evidence.
-CC-4, CC-11, and CC-12 remain unverified.
-Accepted prerequisite repairs and conflict-opportunity timing do not establish a successful live model day.
+CC-12 remains unverified.
+The accepted live day establishes CC-4 and CC-11, while final integration and a fresh whole-goal review remain required.
 
 ## Work selection
 
