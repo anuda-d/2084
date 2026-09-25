@@ -1,6 +1,6 @@
 # First Consequential Choice Implementation State
 
-Status: active; eleven criteria are accepted, while CC-12 remains unverified.
+Status: complete; all twelve criteria have accepted evidence.
 This records product evidence for the [approved goal](GOAL.md), not operational state or a task queue.
 Use `python3 -m devloop status` for execution state and [Development Loop](../../main/DEVELOPMENT_LOOP.md) for runner ownership.
 
@@ -19,7 +19,7 @@ Use `python3 -m devloop status` for execution state and [Development Loop](../..
 | CC-9 Offline watchability | accepted | The authored command presents accounts, choice, consequence, follow-through, and quiet spans through a focal-safe surface. |
 | CC-10 Inspection/replay | accepted | Ordered causal inspection and recorded playback reconstruct the chain without another provider call. |
 | CC-11 Reviewed live day | accepted | Seed 49's reviewed exact day has the conflict-informed workplace-travel choice, delivered missed outcomes, follow-up, private audit, and recorded replay. |
-| CC-12 Integration/completion | unverified | Sixteen focused integration regressions and the runner's current checks pass; fresh whole-goal review remains required. |
+| CC-12 Integration/completion | accepted | Sixteen focused integration regressions, the runner's current checks, and fresh independent whole-goal review passed. |
 
 ## Authored configuration and accepted behavior
 
@@ -128,13 +128,14 @@ Both obligations were world-resolved as missed at minute 632.
 The next legitimate decision at minute 660 retained the conflict and both delivered missed-obligation observations.
 Independent semantic review accepted this as CC-4 and CC-11 evidence, confirming workplace travel as the work-directed alternative and the complete causal chain.
 
-## CC-12 candidate integration evidence on 2026-09-22
+## CC-12 accepted integration evidence on 2026-09-22
 
 Sixteen focused provider-free regressions passed for same-interval conflict, source withholding, competing outcomes, physical transit effect, access-gated timing, retained follow-through, causal inspection, recorded replay, focal-safe presentation, audit integrity, privacy, growth, and safe provider failure.
 The runner also passed its full 308-test discovery and both diff checks on the exact candidate tree.
-Those are the three checks implemented by `scripts/check.sh`, although its final independent whole-goal review remains required.
+Those are the three checks implemented by `scripts/check.sh`.
+Fresh independent whole-goal review found all CC-1 through CC-12 criteria supported without boundary regressions.
 
-## Authorization and remaining evidence
+## Authorization and accepted evidence
 
 The owner approved this goal on 2026-09-06 and restored standing authority within unchanged boundaries on 2026-09-16.
 That reactivation separated acceptance of preserved repairs and a non-steering conflict opportunity from live success.
@@ -145,7 +146,7 @@ Read the goal's live-evidence authorization and this failed-attempt record befor
 CC-4 and CC-11 are established by the reviewed seed-49 live chain.
 An older ordinary live day, timing prerequisite, authored comparison, or generic audit pass did not substitute for that chain.
 Preserve contrary samples and report inconclusive outcomes honestly.
-Close CC-12 only after current checks and independent whole-goal review support every criterion.
+CC-12 was accepted after current checks and independent whole-goal review supported every criterion.
 
 ## Completed foundations
 

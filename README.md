@@ -56,7 +56,7 @@ When Ilan has the source and Mara reaches the workplace at that minute, he can m
 Mara retains the testimony while any ordinary action is pending and receives it at her next legitimate decision opportunity.
 It neither guarantees that access nor selects a model response.
 Omitting it preserves the original consequential-choice timing.
-The [active implementation state](docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md) records authored builder options, accepted comparisons, and outstanding live evidence.
+The [implementation state](docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md) records authored builder options, accepted comparisons, and accepted live/completion evidence.
 
 ## Optional local model
 

@@ -1,9 +1,9 @@
 # Current Development
 
 The sole owner-approved product goal is [First Consequential Choice Under Conflicting Information](first-consequential-choice/GOAL.md).
-Its [implementation state](first-consequential-choice/IMPLEMENTATION_PLAN.md) records accepted behavior, authored inputs, failed live attempts, and remaining evidence.
-CC-12 remains unverified.
-The accepted live day establishes CC-4 and CC-11, while final integration and a fresh whole-goal review remain required.
+Its [implementation state](first-consequential-choice/IMPLEMENTATION_PLAN.md) records accepted behavior, authored inputs, failed live attempts, and accepted live/completion evidence.
+All twelve completion criteria have accepted evidence.
+The final independent whole-goal review passed; the runner owns operational completion state.
 
 ## Work selection
 
