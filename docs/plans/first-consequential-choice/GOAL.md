@@ -2,7 +2,7 @@
 
 Status: active; owner-approved goal on 2026-09-06.
 
-This goal follows the completed [First Accelerated-Day Social Thread](../first-accelerated-day-social-thread/GOAL.md).
+This goal follows the completed [First Accelerated-Day Social Thread](IMPLEMENTATION_PLAN.md#completed-foundations).
 It connects the existing accelerated day, source-linked understanding, restricted model decisions, and social testimony around an ordinary choice with physical consequences.
 
 ## Question
@@ -86,7 +86,7 @@ Follow-through must use her delivered consequence and retained understanding; it
 - Equal configuration, seed, and deterministic or recorded decisions produce equal ordered world evidence and final state.
 - Preserve the exact 1,440-minute boundary, explicit decision triggers, temporal phase ordering, context and private-record ceilings, and safe provider-failure behavior.
 - No per-minute model or supporting-policy polling is introduced.
-- Preserve the existing development-loop contract, ownership gate, fresh-task boundary, model routing, review cadence, and scheduled window.
+- Use the current development guidance and the configured daily operating window.
 
 ## Completion Criteria
 
@@ -135,14 +135,15 @@ A successful live day establishes this implemented interaction boundary, not gen
 Begin with this goal and its [shared implementation state](IMPLEMENTATION_PLAN.md), following [Development Loop](../../main/DEVELOPMENT_LOOP.md).
 Locate only the implementation and tests needed for a selected criterion.
 For time, action, knowledge, and model boundaries, consult the relevant sections of [Architecture](../../main/ARCHITECTURE.md).
-For observer scope, consult the implemented-surface and contradiction sections of [UI Architecture](../../main/UI_ARCHITECTURE.md).
+For observer scope, consult [presentation and evidence](../../main/ARCHITECTURE.md#presentation-and-evidence).
 For approved commands and the existing local live audit, consult the relevant sections of the [README](../../../README.md).
 Earlier completed-goal evidence is a regression reference when needed, not an additional implementation checklist.
 
 ## Completion Boundary
 
-This is the sole active owner-approved goal with standing scheduled authorization recorded in `CURRENT.md` and the shared implementation state.
-Activation selects no implementation unit and creates no successor task.
-Each scheduled fresh task selects or resumes at most one justified unit using the unchanged development-loop contract.
+This remains the sole owner-approved product goal.
 Criteria describe required evidence, not an ordered task backlog.
-When every criterion has accepted evidence and final independent review is clean, complete the goal, synchronize operational and owner-facing status, write the required temporary handoff, pause the existing automation, release ownership, and stop without selecting another goal.
+The continuous runner described in [Development Loop](../../main/DEVELOPMENT_LOOP.md) manages execution within the configured window.
+The implementation agent chooses useful work, verifies its outcome, and continues until the goal is satisfied or genuinely blocked.
+When every criterion has supporting evidence and the required final independent goal review passes, report goal completion and stop without selecting a new goal.
+The runner records the operational result automatically.

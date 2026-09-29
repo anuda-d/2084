@@ -14,6 +14,7 @@ from observer.terminal import render_terminal
 from policies.mara_decision_request import (
     MAX_RESTRICTED_DECISION_INPUT_BYTES,
     restricted_decision_input_size_bytes,
+    structured_choice_json_schema,
 )
 from policies.model_focal_policy import (
     ModelFocalPolicy,
@@ -28,6 +29,7 @@ from policies.ollama_client import (
     OLLAMA_TEMPERATURE,
     OllamaDecisionClient,
     OllamaHttpResponse,
+    _response_schema_with_affordance_options,
 )
 from scenarios.first_day import FOCAL_AGENT_ID, build_first_day
 
@@ -207,6 +209,139 @@ class OllamaDecisionClientTests(unittest.TestCase):
         self.assertIn("num_ctx=16384", client.configuration_id)
         self.assertIn("num_predict=256", client.configuration_id)
         self.assertIn("timeout_seconds=60.0", client.configuration_id)
+
+    def test_request_formats_use_only_current_scalar_affordance_options(self):
+        transport = FakeOllamaTransport(
+            ollama_response(valid_wait_content()),
+            ollama_response(valid_wait_content()),
+        )
+        client = OllamaDecisionClient(
+            base_url=TEST_BASE_URL,
+            model="qwen3:4b-instruct",
+            transport=transport,
+        )
+
+        def restricted_input(destination):
+            return {
+                "action_contract": {
+                    "supported_kinds": [
+                        "travel",
+                        "consult_official_record",
+                        "request_allocation",
+                        "write_diary",
+                    ],
+                    "affordances_by_kind": {
+                        "travel": {
+                            "currently_applicable": True,
+                            "parameter_options": {
+                                "destination": [destination],
+                            },
+                        },
+                        "consult_official_record": {
+                            "currently_applicable": False,
+                            "parameter_options": {"artifact_id": []},
+                        },
+                        "request_allocation": {
+                            "currently_applicable": True,
+                            "parameter_options": {"requested_units": [1, 2]},
+                        },
+                        "write_diary": {
+                            "currently_applicable": True,
+                            "parameter_options": {"object_id": ["mara-diary"]},
+                        },
+                    },
+                },
+            }
+
+        client.choose(restricted_input("home"))
+        client.choose(restricted_input("workplace"))
+
+        def parameter_schema(call_index, kind, parameter):
+            branch = next(
+                candidate
+                for candidate in transport.calls[call_index]["payload"]["format"][
+                    "oneOf"
+                ]
+                if candidate["properties"]["kind"]["const"] == kind
+            )
+            return branch["properties"]["parameters"]["properties"][parameter]
+
+        self.assertEqual(
+            parameter_schema(0, "travel", "destination")["enum"],
+            ["home"],
+        )
+        self.assertEqual(
+            parameter_schema(1, "travel", "destination")["enum"],
+            ["workplace"],
+        )
+        self.assertEqual(
+            parameter_schema(0, "consult_official_record", "artifact_id")[
+                "enum"
+            ],
+            [],
+        )
+        self.assertNotIn(
+            "enum",
+            parameter_schema(0, "request_allocation", "requested_units"),
+        )
+        self.assertEqual(
+            parameter_schema(0, "write_diary", "object_id")["enum"],
+            ["mara-diary"],
+        )
+
+    def test_affordance_schema_preparation_does_not_mutate_caller_state(self):
+        response_schema = structured_choice_json_schema(("travel",))
+        original_schema = json.loads(json.dumps(response_schema))
+
+        first = _response_schema_with_affordance_options(
+            response_schema,
+            {
+                "action_contract": {
+                    "affordances_by_kind": {
+                        "travel": {
+                            "parameter_options": {"destination": ["home"]},
+                        },
+                    },
+                },
+            },
+        )
+        second = _response_schema_with_affordance_options(
+            response_schema,
+            {
+                "action_contract": {
+                    "affordances_by_kind": {
+                        "travel": {
+                            "parameter_options": {
+                                "destination": ["workplace"],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        unsupported = _response_schema_with_affordance_options(
+            response_schema,
+            {
+                "action_contract": {
+                    "affordances_by_kind": {
+                        "travel": {
+                            "parameter_options": {"destination": "home"},
+                        },
+                    },
+                },
+            },
+        )
+
+        self.assertEqual(response_schema, original_schema)
+        self.assertIsNot(first, response_schema)
+        def travel_parameter(schema):
+            return schema["oneOf"][0]["properties"]["parameters"][
+                "properties"
+            ]["destination"]
+
+        self.assertEqual(travel_parameter(first)["enum"], ["home"])
+        self.assertEqual(travel_parameter(second)["enum"], ["workplace"])
+        self.assertNotIn("enum", travel_parameter(unsupported))
 
     def test_policy_uses_extracted_choice_and_records_no_provider_envelope(self):
         secret_marker = "private-provider-thinking-marker"

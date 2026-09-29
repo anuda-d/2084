@@ -1,453 +1,164 @@
 # Architecture
 
-Status: current description of the implemented boundaries and known limits.
-
-This document describes the conceptual boundaries for 2084 and how the current first-day and accelerated autonomous-day scenarios implement them.
-The implementation is a working feasibility slice, not a settled production specification.
-
-The bounded Official Record, Agent Understanding, Model-Backed Focal Character, First Autonomous 24-Hour Living Day, and First Accelerated-Day Social Thread foundations are complete.
-The full 24-hour composition combines explicit simulated time, restricted model decisions, ordinary focal opportunities, independent supporting and institutional activity, bounded private evidence, offline reproduction, and focal-safe observation.
-One corrected exact-model live day reached the full boundary within every authority, privacy, cadence, failure, growth, source, and replay limit.
-An earlier retained audit exposed the end-boundary decision bug that the corrected run no longer reproduces.
-The separate thin-harness/fat-skills documents describe a possible generalization of the completed Mara boundary, not an implemented general agent runtime.
-
-## Implemented Time and Execution
-
-### Simulated-time primitive for the completed 24-hour goal
-
-The completed full-day work defines authoritative time as a non-negative integer count of whole simulated minutes.
-That integer is the sole ordering value; readable `Day N HH:MM` text is a projection and wall-clock time has no role.
-One `SimulatedDayClock` owns an explicit start, current time, and end at exactly start plus 1,440 minutes.
-It permits equal-time or forward advancement through that boundary and rejects backward or beyond-boundary movement.
-
-This primitive is not wired into legacy `Simulation.step()`.
-A `TemporalAgenda` can register uniquely identified work within the remaining day, order it by simulated minute, explicit causal phase, and stable identity, then move the day clock directly to the next due instant or the exact end boundary.
-The chosen successor equal-time order is scheduled world and institutional work, action completions, observation deliveries, understanding updates, then decisions.
-It releases only one phase at a time, so work caused by an earlier phase can enter a later phase before already-pending decisions are released.
-Once a phase has been released at a minute, inserting that phase or an earlier one is rejected.
-This seam returns due work; it does not execute it or fabricate intervening events.
-
-This chosen order is not an exact copy of every legacy path.
-In the legacy generic-broadcast path, institutional processing also delivers its broadcast before same-tick action completions.
-`first_day_v3` does not use that generic broadcast path.
-The successor agenda separates scheduled activity from observation delivery so those causal phases can remain explicit.
-
-The existing `first_day_v3` tick remains unchanged as regression evidence.
-The successor's offline command is a separate composition with its own exact 24-hour completion boundary; it does not redefine the legacy plot scenario.
-
-The successor `DecisionEligibility` seam places only five documented causes into the agenda's decision phase: initial activation, a terminal action result, a delivered observation, an explicit scheduled wake, or a safe-failure retry.
-Causes for one actor at one minute coalesce into one eligibility record.
-Time passage alone creates no record.
-Decision eligibility uses the half-open `[start, end)` day interval because no new attempted action can begin at the closed end boundary.
-The safe-failure cadence is one retry 30 simulated minutes later, with no retry if that instant would land at or beyond the day boundary.
-The successor consumes these records only at its dedicated composition decision handler; the legacy tick loop does not use this seam.
-
-An `AcceleratedDayRuntime` now provides the first isolated executor for these temporal seams.
-A composition registers handlers by authored work kind, and the runtime dispatches due batches through the agenda's causal phases.
-Handlers receive only current/end time and a validated scheduling method; they cannot advance time, release work, close registration, or re-enter the runtime through that interface.
-A composition may bind a time-advance observer; the autonomous day uses it only to synchronize `WorldState.tick` before due handlers execute and again at the final boundary.
-The runtime retains exact committed-work order and compact quiet spans, processes non-decision work due exactly at the end boundary, then closes the agenda against further registration.
-Decision eligibility remains end-exclusive even though the general agenda permits a final action completion or scheduled-world item at that instant.
-An unexpected handler or dispatch exception creates sanitized terminal evidence and freezes subsequent execution and registration to prevent false completion or retry mutation.
-It does not roll back handler side effects: append-only objective evidence from a handler that fails after mutation may remain outside the committed-work trace and requires direct history inspection.
-
-The runtime now owns the explicit decision-eligibility registry.
-A composition can request one of the five documented causes, and the runtime consumes the coalesced record in the decision phase before calling one dedicated decision handler.
-That handler can request the documented 30-minute safe-failure retry through its restricted context.
-Quiet advancement creates no handler call.
-
-A composition explicitly identifies any model-backed actor subject to the approved day budget.
-The runtime records decision-handler counts by actor, permits call 128, and turns a would-be call 129 into sanitized terminal failure before invoking the handler.
-Unmarked deterministic supporting actors are not silently assigned Mara's model-call ceiling.
-
-`scenarios.autonomous_day` is the first concrete full 24-hour successor composition hosted by this executor.
-Its authored schedule lets Ilan independently attempt a two-hour workplace shift at minute 480 and complete it at minute 600.
-Between those events, the district transit authority changes objective tram-service state at minute 510.
-These events append to the shared `EventLog` independently of Mara.
-The service change itself grants her no knowledge.
-A same-minute observation-phase delivery links the service-change evidence to Ilan only while he is at the authored workplace terminal.
-That committed delivery requests one non-model decision from an immutable transit-statement view containing only Ilan's actor-safe state, delivered evidence, current trigger, valid actions, and world-supplied addressability.
-The deterministic policy selects a cited statement when Mara is physically addressable or an ordinary wait otherwise, and the world separately validates and resolves the attempt.
-Statement validation requires the exact observation that triggered Ilan's decision, Ilan ownership, the authored workplace channel, the transit authority's source event, and strict structured action parameters before comparing the finite route, status, proposition, and assertion.
-A completed statement schedules one next-minute observation-delivery dispatch, which independently rechecks workplace co-location and only then appends a finite attributed testimony observation to Mara.
-Committed testimony then schedules one source-linked understanding update and, when Mara is idle and a focal policy is configured, one bounded decision in the subsequent same-minute phases.
-The trace and decision opportunity do not imply belief, agreement, or authority for the model to resolve its selected ordinary action.
-A separate observation-phase delivery at minute 660 links it to Mara only when she is physically at the authored home bulletin receiver; otherwise it remains undelivered.
-
-When an injected `MaraHarness` is configured, the successor gives it only Mara's restricted `AgentView` at documented eligibility points.
-Mara chooses attempted travel, workplace work, household activity, or an allowed `wait`; the composition validates and resolves those attempts, links the private decision evidence to their outcomes, and schedules only the resulting world-owned consequences.
-A scheduled-wake `wait` at home may be resolved as the world's 60-minute rest action; the model does not declare rest complete.
-The delivered bulletin updates source-linked understanding before any later restricted view.
-No choice receives objective history, another actor's private state, or authority to change time or resolve itself.
-The unconfigured default command is retained as a quiet offline composition check.
-An explicit scripted social comparison and recorded-replay tests exercise the same restricted Mara boundary without a live provider.
-
-The offline command `python3 -m scenarios.autonomous_day --seed 42` runs from `Day 0 00:00` through the exact `Day 1 00:00` boundary.
-Its unconfigured normal output presents the boundary, compact quiet spans, and Mara's accessible bulletin.
-A configured-harness run additionally presents world-confirmed focal activity without identifiers, private decision records, or hidden supporting activity.
-The explicit `--focal-policy scripted` command labels its authored deterministic decision source and presents the delivered Ilan testimony, Mara's resulting ordinary attempt, and the world-resolved consequence without a provider call.
-`--inspect` is explicitly omniscient.
-The composition is still a deliberately small world rather than a general schedule, employment, or social simulation; it proves an ordinary-day opportunity set, not one required dramatic route or generally believable live behavior.
-
-Adding `--inspect` replaces that focal projection with an explicitly omniscient JSON document.
-It includes the successful runtime work order and quiet spans, objective events and final state, agent-specific observations, action results, and exact counts for the narrow composition.
-When a terminal runtime failure occurs during a dispatch, it also places that uncommitted failed dispatch by its time, phase, and execution sequence.
-The composition records the objective-history boundary immediately before every dispatch, allowing the inspector to identify the events, observations, and action results appended by a failed dispatch without exposing its arbitrary identifier, kind, or exception material.
-
-```text
-The world and its systems advance
-        ↓
-Agents receive limited observations
-        ↓
-Agents update memories, beliefs, and plans
-        ↓
-Agents attempt available actions
-        ↓
-World rules resolve actions and conflicts
-        ↓
-Consequences affect people, institutions, and records
-        ↓
-The focal-character view presents only an appropriate projection
-```
-
-`Simulation.step()` currently performs this loop in a stable order:
-
-1. Increment the world tick.
-2. Apply a scheduled initial official-record publication, authorized record rewrite, then scheduled institutional claims and their broadcasts.
-  Publication and rewrite create objective evidence but no observation.
-3. Complete actions whose duration has elapsed.
-4. Deliver completion perceptions and queued prior-action outcomes.
-5. Update structured beliefs, source-linked understanding, and Mara's bounded contextual stance from newly delivered evidence.
-6. Ask each idle policy for one attempted action using a restricted view.
-7. Validate and resolve or schedule each attempt, linking any model decision evidence to validation and eventual outcome outside objective history.
-8. Retain a focal-character snapshot containing only admitted information.
-
-`Simulation.run()` repeatedly calls this boundary.
-The terminal command advances the loop automatically, while the engine remains discrete and world resolution remains deterministic for equal attempts.
-Scripted runs reproduce equal history from equal configuration and seed.
-Live model choices are not assumed deterministic; detached recorded decisions can be replayed through the same parser and resolver to reproduce world history without another provider call.
-There is no durable save/checkpoint format or user-facing replay command.
-
-## Current Implementation Map
-
-- `scenarios/first_day.py` is the composition boundary.
-  It creates the world, policies, rules, schedules, and completion conditions.
-- `scenarios/autonomous_day.py` composes the exact 24-hour runtime, authored wider-world schedule, bounded Mara decision opportunities, causal evidence, normal presentation, and omniscient inspector data.
-- `scenarios/autonomous_day_audit.py` writes and independently verifies one private live-run artifact bundle without turning that bundle into objective simulation history.
-- `simulation/time.py`, `simulation/temporal.py`, and `simulation/day_runtime.py` own whole-minute time, causal-phase scheduling, exact-boundary execution, decision eligibility, and terminal runtime evidence for the accelerated day.
-- `simulation/world.py` contains mutable objective state.
-- `simulation/events.py` contains immutable append-only events and agent-specific observations with source links.
-- `simulation/official_record.py` currently owns one ration schedule's stable artifact identity, immutable versions, same-period revision lineage, and current-version pointer.
-- `simulation/agents.py` separates mutable agent state from the immutable restricted view supplied to a policy.
-- `simulation/beliefs.py` derives the currently supported structured beliefs and contradiction links.
-- `simulation/understanding.py` defines source-linked memory traces, interpreted claims, contextual stance, and inspectable stance transitions; the engine currently coordinates their updates.
-- `simulation/actions.py` defines immutable action attempts, pending actions, actor-safe terminal results, and the shared model action-parameter contract.
-- `policies/` selects attempts without receiving objective world resources, hidden history, or private state belonging to other agents.
-  The scripted focal policy remains the default; an explicit model-backed policy can use the single local Ollama adapter or detached recorded decisions.
-- `characters/mara/` contains the versioned authored profile and reusable choose-next-action skill used by the model-backed policy.
-- `policies/mara_decision_request.py`, `policies/model_focal_policy.py`, and `policies/ollama_client.py` compose the restricted request, enforce the structured choice boundary, record or replay decisions, and make the one supported live provider call.
-- `simulation/engine.py` currently centralizes scheduling, validation, resolution, perception delivery, belief updates, history export, completion, and focal projection.
-- `observer/terminal.py` accepts only focal snapshots.
-  The separate `observer/inspector.py` accepts the full simulation and is explicitly omniscient.
-
-## Proposed Deepening Direction
-
-The possible deeper architecture is described in detail in [The Lie and Doublethink: Proposed Architecture](../plans/LIE_AND_DOUBLETHINK_ARCHITECTURE.md).
-It is a proposal, not a description of currently implemented modules.
-The completed bounded Official Record goal established the initial-publication, narrow public-consultation, and authorized rewrite seams described above.
-The completed bounded Agent Understanding goal added source-linked memory traces, explicit official-version conflict, one contextual public stance, and one diary-cued resurfacing transition.
-The completed Model-Backed Focal Character goal connected only Mara to a model while preserving those state boundaries.
-
-- **Official Record** currently owns the institution's narrow mutable public projection and authorized rewrite; broader suppression and fabrication remain proposed operations.
-- **Agent Understanding** currently owns the bounded source-linked memory, interpreted-claim conflict, contextual stance, and resurfacing evidence; confidence change, inhibition, and decay remain proposed deepening.
-- **Claim and Provenance** may be extracted only after Official Record and Agent Understanding create two real uses for shared claim identity, comparison, and lineage.
-- **Observation Delivery** would own channel, reach, access, delay, recipients, and source attribution when events or official artifacts become agent-specific observations.
-
-`EventLog` remains the append-only evidence of what actually occurred.
-Official Record sits beside it; it never replaces or edits it.
-
-## State Boundaries to Preserve
-
-### Objective world state
-
-Facts that are true in the simulation: time, locations, physical objects, resource quantities, actions that occurred, institutional operations, and other consequential conditions.
-
-Objective history should not be overwritten when an official record changes.
-A revised public account is a new world event, not a retroactive mutation of the simulation's actual past.
-
-### Observations
-
-Information delivered to a particular agent through perception, conversation, broadcasts, documents, or other channels.
-
-An observation should have a source and arrival time.
-Being present near an event does not necessarily mean an agent noticed or understood it.
-
-### Agent understanding
-
-What an agent currently retains or concludes.
-Memories and beliefs may have confidence, provenance, age, and context.
-They can be wrong without changing the world state.
-
-For initially supported contradictions, beliefs should use structured claims whose conflict is explicit.
-The system should not depend on an AI reliably discovering every contradiction in arbitrary prose.
-
-The bounded Agent Understanding path can select a context-specific public stance and later resurface an earlier claim through accessible diary evidence.
-Those transitions retain provenance in development evidence.
-More general inhibition, graded accessibility, and decay remain future work.
-Public expression remains a separate attempted action rather than a belief field silently overwritten by the institution.
-
-### Public expression and action
-
-What an agent says, performs, or attempts.
-This may differ from private belief because of fear, habit, strategy, social pressure, or uncertainty.
-
-An attempted action does not create its own outcome.
-The world resolves whether it is possible and what follows.
-
-### Institutional knowledge and official records
-
-Reports, sensor observations, evidence, suspicions, queues, decisions, and public claims available to institutions.
-
-Institutions act only on information they can access and process.
-Their official records may contradict world truth, private memory, or one another without gaining special authority over objective state.
-
-The implemented institution's current public projection may move from one immutable version to a later one.
-Possible future suppression or fabrication operations would still need to create new objective events rather than edit history.
-Uncontrolled physical copies, private records, observations, and agent memories may change only through valid world actions or delivery paths.
-
-### Observer presentation
-
-The projection shown to the person watching the simulation.
-The normal projection should be centered on the focal character and should not leak hidden NPC state, unseen events, or institutional secrets.
-
-A separate omniscient inspector may expose underlying state for development, explanation, and replay.
-It should be visibly distinct from the normal experience.
-
-## Focal Character and Wider World
-
-The focal character uses the same basic world rules as other agents.
-Their special role is presentational: the observer follows them more closely and may inspect a readable summary of their state.
-
-Time advancement should also update:
-
-- other agents' locations, schedules, and actions;
-- institutional broadcasts and operations;
-- reports, investigations, and processing delays;
-- relationships, rumors, resources, and pressures;
-- events that can occur or resolve without the focal character.
-
-The world does not need unlimited background simulation.
-Only systems capable of affecting decisions or consequences need to advance.
-
-## Decisions and Resolution
-
-Decision-making and world resolution should remain separate responsibilities.
-
-A decision process may consider:
-
-- current needs and aims;
-- available legal or physically possible actions;
-- observations, memories, beliefs, and confidence;
-- relationships and perceived risk;
-- time, location, resources, and current pressures;
-- public expectations and private preferences.
-
-The decision process may recommend an action and give a concise, user-facing explanation.
-It may not invent observations, alter hidden state, or declare success.
-
-Resolution validates the attempt, applies costs and time, handles conflicts, and produces consequences.
-Important resolutions should preserve enough evidence to explain what happened.
-
-### Model-backed focal policy
-
-The implemented AI boundary begins with the focal character.
-In explicit model mode, a versioned Mara profile, one reusable decision skill, and a fresh restricted state are sent to one local Ollama model.
-Its valid structured output becomes Mara's attempted action, rather than commentary on a choice made elsewhere.
-The scripted focal policy remains a separate default and is never a failure fallback.
-
-Persistent identity, embodied state, delivered observations, source-linked understanding, aims, obligations, holdings, accessible objects, and prior outcomes remain explicit agent or world state.
-The model receives only the restricted agent view.
-It cannot inspect the development inspector or hidden state, mutate the world, or declare success; existing world resolution remains authoritative.
-
-Live model output is not assumed deterministic.
-Inspector-only decision records therefore retain the restricted input, profile/skill identities, non-secret model configuration identity, sanitized structured response, attempted action, validation, and resolved outcome.
-Recorded-decision playback applies those choices through the same parser and resolver without another live call.
-Prompt text, endpoint addressing, raw provider failures, and hidden provider chain-of-thought stay out of objective history and normal presentation.
-Mara's concise `decision_reason` is intentionally retained as an attributed action explanation and rendered in the normal `Reason:` line.
-
-The completed 24-hour goal added four long-run guardrails to this boundary.
-The dynamic restricted JSON is measured exactly in UTF-8 and the Ollama adapter refuses inputs above 48 KiB before transport.
-Prior attempts and results use a 16-entry recent window with explicit total and omitted counts.
-The complete private decision-record collection uses canonical compact JSON measurement, cannot retain more than 8 MiB, and reports current and peak sizes only in the omniscient inspector.
-Delivered observations and each source-linked understanding collection now use a 64-entry recent projection with explicit total, included, and omitted counts.
-A model request is allowed only when that projection is complete and every retained belief, trace, claim, and contextual stance still has its source closure in the request.
-If it is not, Mara records an explicit safe failure before any provider call rather than silently asking a model to act on a partial continuity view.
-Canonical agent evidence remains unchanged.
-
-The autonomous-day composition owns one finite classification table covering every kind its Mara resolver accepts.
-Travel is represented after its immediate result by canonical location and reachable destinations; wait and scheduled rest create no persistent state; work and household can fulfill one named obligation.
-The resolver vocabulary and this table are independently declared and tested for set equality, so a new action kind cannot silently bypass a continuity classification.
-These scenario meanings do not leak into the generic model policy.
-
-For a persistent consequence not fully explained by the recent window, the world adds a bounded continuity requirement.
-Each requirement freezes the exact actor-safe attempt and result, their source identities and history row, a finite reason, the canonical state field and value it explains, and its clearing lifecycle.
-Completing the first workplace work or household time removes that obligation and retains the exact pair through every safe failure until one selected decision receives it while the obligation remains fulfilled.
-The model cannot author or clear the requirement.
-Missing, substituted, mismatched, duplicate, or more than eight active requirements make the projection incomplete before any provider call.
-Later voluntary repeats create no requirement; rejection changes no canonical state and remains available through bounded recent and latest-by-kind history.
-The omniscient growth evidence reports peak active and included requirement counts without exposing their private material.
-The successor executor separately enforces 128 decision-handler invocations for a marked model-bounded actor.
-Its default offline composition does not configure Mara's model policy, while an injected `MaraHarness` can exercise the same restricted boundary in tests and replay.
-
-An exception during `Simulation.step()` creates sanitized inspector-only runtime-failure evidence naming the failed tick and last committed snapshot.
-The append-only log may retain a partial failed-tick tail; the simulation is then terminal, cannot report completion, and rejects every later step before mutation.
-This is an explicit failure boundary, not rollback or restart.
-
-## Contradictory Reality
-
-A small doublethink-inspired system can begin with a source-linked claim and memory trace containing:
-
-- the proposition or subject;
-- the asserted value;
-- the source;
-- when it was observed or asserted;
-- the agent's confidence;
-- the context in which it is accepted, repeated, or acted upon;
-- explicit links to known conflicting claims.
-
-This permits an agent to remember one ration amount, repeat another at work, and remain uncertain in private without collapsing all three into a single loyalty score.
-
-The bounded slice already records one contextual public stance, explicit retrieval accessibility, and one diary-cued resurfacing transition.
-Possible deeper changes include graded accessibility, repetition effects, motivated reinterpretation, compartmentalization, inhibition, memory decay, and cognitive strain.
-These should be introduced one at a time, retained as inspectable transitions, and tied to visible behavior.
-A conflict must not trigger automatic memory deletion.
-
-## Bounded Institutions
-
-Surveillance and enforcement should be modeled as processes rather than omniscient powers.
-A possible path is:
-
-1. an action occurs;
-2. a sensor or person may observe it;
-3. an observation may become a report;
-4. the institution receives incomplete evidence;
-5. limited capacity determines what is processed;
-6. an authorized response may follow;
-7. other agents observe some version of that response and update their beliefs.
-
-Not every step needs to exist in the first implementation.
-The invariant is that institutions cannot act from private state or information they never obtained.
-
-Official-record operations follow the same rule: a role must have authority and access to a known target, processing may consume time or capacity, and a record change does not itself broadcast the result.
-The current delivery logic in `Simulation` separately determines who encounters the new projection; a standalone Observation Delivery module has not been extracted.
-
-## Physical Objects and the Diary
-
-Physical objects should have only the properties required for current interactions: identity, type, location, possession, and relevant state.
-
-The current diary is one such object.
-Reading and writing require physical access and consume their configured simulation duration.
-Entries preserve a structured claim, its source observations, and start and completion ticks from Mara's limited perspective.
-
-The diary does not need discovery AI, hiding mechanics, evidence rules, memory bonuses, or complex editing initially.
-Its object identity leaves room for those consequences if later behavior justifies them.
-
-## Records, Replay, and Explanation
-
-The normal experience need not look like a study dashboard, but the simulation should retain:
-
-- a configuration and random seed for each run;
-- an append-only event history;
-- observation deliveries and their sources;
-- belief or confidence changes that affect decisions;
-- attempted actions and resolved outcomes;
-- institutional inputs and decisions;
-- enough state to reproduce or inspect a surprising sequence.
-
-These records are development infrastructure.
-They help distinguish emergence from scripting and detect impossible knowledge, inconsistent state, or fabricated consequences.
-
-The current slice exports detached JSON-compatible configuration, events, observations, and belief transitions through `history_data()`.
-Equal scripted runs produce identical ordered history.
-`MaraHarness` is the public composition facade for model-backed Mara: it accepts only an `AgentView`, delegates one choice through the existing collaborators, and returns one `ActionAttempt`.
-It is not a simulation runtime or persistent mind.
-Separately, `MaraHarness.from_recorded_archive(...)` accepts private decision records sealed with a caller-held verification key and reproduces equal ordered world history through the same policy, parser, and resolver without another model call.
-A changed archive fails before replay can apply it, provided that key remains trusted.
-This is programmatic full-run reproduction, not a portable persistence format, checkpoint system, user-facing replay command, proof of record provenance against a party that controls the key, or a claim that equal live configuration produces equal samples.
-
-## Implemented Scenarios
-
-The first-day scenario contains:
-
-- one focal character with a deterministic scripted default and an explicit local model-backed decision mode;
-- two supporting characters with small deterministic policies;
-- a home, workplace, and allocation office connected by a travel graph;
-- one institution with a structured initial ration-schedule publication, one authored authorized rewrite, and no scheduled generic broadcast in the current scenario;
-- a workplace obligation and a three-unit household allocation need;
-- a three-packet published entitlement, a separate two-packet physical handover, and a later two-packet published entitlement encountered through reconsultation;
-- a basic physical diary;
-- autonomous step advancement, action durations, and a filtered focal view.
-
-The first-day scenario is a feasibility result rather than a general social simulation.
-Its starting need, route, publication and rewrite timing, hidden resource commitment, pressure value, conformity threshold, policy priorities, and action durations are authored.
-The policies choose from delivered information, but the resulting day should not be presented as an emergent plot.
-
-The accelerated autonomous-day scenario contains:
-
-- one exact 1,440-minute runtime with explicit scheduled-world, action-completion, observation-delivery, understanding-update, and decision phases;
-- one focal character whose offline default has no configured decision policy and who can instead use the explicit scripted social comparison, an injected or recorded client, or the explicit Ollama-backed `MaraHarness`;
-- one deterministic supporting-character workplace shift and one independent transit-service change;
-- authored travel, workplace work, household activity, rest, and wait opportunities resolved by the world;
-- bounded decision-input, evidence-retention, invocation-count, retry-cadence, and exact-boundary failure controls;
-- focal-safe simulated-time output with compact quiet spans and a separate omniscient causal inspector; and
-- one private live-run audit writer that performs exact-model preflight, captures source-state evidence and artifact hashes, checks privacy, and runs provider-free recorded replay; and
-- one standalone verifier that checks the stored bundle's filesystem safety, schemas, hashes, provenance fields, and recorded verdict without replaying decisions again.
-
-This composition proves bounded full-day execution and causal continuity.
-It does not provide a general schedule model, a dynamic social world, or a general provider-free Mara policy beyond the explicitly authored social comparison.
-
-## Current Technical Limits
-
-- The first model integration is deliberately narrow: only Mara can use one explicitly selected `qwen3:4b-instruct` model through one local Ollama adapter and one structured decision skill.
-  Supporting agents and institutions remain deterministic, and there is no provider framework, tool-using agent runtime, generic skill resolver, or opaque provider memory.
-- Live model sampling may vary.
-  Offline deterministic-client tests and recorded-decision playback prove the boundary and resulting world history, not deterministic or believable live behavior.
-- The scripted focal comparison is tailored to this first day.
-  The model skill does not encode that route, but it is still bounded to Mara and the current eight-action vocabulary rather than a general planner, need system, or schedule model.
-- `Simulation` is a single large coordinator whose action-specific resolution branches will need separation if the action vocabulary grows.
-- Model-selected action parameters have shared per-kind shape contracts, while action, event, and observation payloads still use generic immutable mappings rather than dedicated data types for every kind.
-- The shared world model uses simple per-agent integer holdings and one institution.
-  The first-day scenario has three locations, three agents, and one diary; the autonomous-day scenario has three locations, two agents, and no diary.
-  Neither scenario models physical resource lots, transfer logistics, use, or storage.
-- Belief creation recognizes one structured allocation proposition with fixed confidence values.
-  There is no memory decay or general inference.
-- Institutional reports and processing capacity are represented conceptually, but the current institution only applies the scheduled initial publication and one authored authorized rewrite.
-  The generic engine broadcast path remains, but the current scenario does not configure it.
-- Official Record currently supports one structured initial ration-schedule publication, a location-gated consultation of version one, and an authorized same-period rewrite that retains lineage and moves the current pointer to version two.
-  The consultation resolver recognizes accepted rewrite evidence, and the autonomous focal path later reconsults through configured access to receive version two without changing the retained version-one observation.
-  Focused evidence also covers unauthorized and stale-target rejection without changing the current projection.
-- The allocation resolver records the two-unit physical handover as a separate, resource-identified objective consequence.
-  Its later delivered outcome updates focal holdings without changing the published ration schedule.
-- Agent Understanding is deliberately bounded.
-  Its data types live in `simulation/understanding.py`, but transition logic remains coordinated by the large `Simulation` class and there is no memory decay, general inference, or model-authored canonical understanding.
-- Claim and Provenance has not been extracted, and observation payloads still repeat proposition, value, source, and revision fields as mappings.
-- There is no Observation Delivery module: reach, delay, co-location, and recipient selection remain centralized in `Simulation`.
-- A simulation-owned seeded random generator exists, but the current path makes no random choice.
-- The normal observer is terminal-only and read-only.
-  There is no graphical UI, pause control, intervention, service layer, or always-running world.
-
-## Open Architecture Questions
-
-- Which state must update every step, and which can update only when relevant?
-- What is the smallest useful action vocabulary?
-- Which authority, access, time, or capacity limit would justify a later Official Record experiment beyond the completed rewrite?
-- Should the first follow-up operation explore one suppressed reference or one fabricated artifact?
-- When do Official Record and Agent Understanding justify extracting Claim and Provenance?
-- Which delivery channel first needs stale or missed official versions?
-- How much independent NPC behavior is required to make the world feel alive?
-- What additional explanation evidence, if any, would remain agent-safe as the action vocabulary grows beyond the current concise attributed reason?
-- How should pauses, playback speed, and optional intervention affect time?
-- What needs to be deterministic or seeded for replay?
-- When should a new mechanism be removed rather than expanded?
-- Which responsibilities should leave `Simulation` first as additional actions and world systems are introduced?
-- When does history need durable persistence or executable replay rather than deterministic in-memory evidence?
+Status: implemented contracts and known limits for the first-day and accelerated-day prototypes.
+[Core Construct](CORE_CONSTRUCT.md) defines direction; the [active goal](../plans/first-consequential-choice/GOAL.md) defines authorized work.
+
+## Implementation map
+
+| Module | Responsibility |
+| --- | --- |
+| `scenarios/first_day.py` | Authored `first_day_v3` composition and CLI |
+| `scenarios/autonomous_day.py` | Exact-day composition, social/transit options, ordinary resolution, and presentation |
+| `scenarios/autonomous_day_audit.py` | Private live bundle creation, replay comparison, and standalone integrity verification |
+| `simulation/engine.py` | First-day scheduling, validation, resolution, delivery, understanding updates, and focal snapshots |
+| `simulation/world.py`, `simulation/events.py` | Mutable objective state and immutable append-only evidence |
+| `simulation/official_record.py` | Ration revisions and current pointer, plus separately retained finite transit notices |
+| `simulation/agents.py`, `simulation/understanding.py`, `simulation/beliefs.py` | Agent state, restricted views, actor-safe results, sourced claims, and stance transitions |
+| `simulation/actions.py` | Attempt/result types and shared parameter contracts |
+| `simulation/time.py`, `simulation/scheduling.py` | Whole-minute time and deterministic causal-phase agenda |
+| `simulation/day_runtime.py`, `simulation/decision_eligibility.py` | Exact-day execution, explicit decision triggers, budgets, and terminal evidence |
+| `policies/mara_harness.py`, `policies/model_focal_policy.py` | Public Mara facade, restricted serialization, strict choice parsing, safe failure, and recorded decisions |
+| `policies/mara_decision_request.py`, `policies/ollama_client.py` | Authored request layers, response schema, and one stateless local provider request |
+| `observer/terminal.py`, `observer/inspector.py` | First-day focal snapshots and separate omniscient inspection |
+
+## Authority and source evidence
+
+`WorldState` owns time, locations, physical objects, holdings, and consequential conditions.
+`EventLog` retains what occurred; official revision never rewrites objective history.
+Observations identify their recipient, arrival time, and source.
+An event, record publication, statement attempt, delivered observation, understanding update, and later action remain separate causal facts.
+Policies receive restricted views, not objective history, institutional secrets, or other actors' private state.
+
+An attempted action never resolves itself.
+The world validates parameters, authority, access, resources, and time, then schedules or resolves the consequence and supplies actor-safe results.
+A schema-valid but physically invalid model choice may be rejected by ordinary world rules.
+Normal presentation cannot turn inspector evidence into actor knowledge.
+
+## Official records and understanding
+
+The first-day record publishes an immutable three-packet entitlement under a stable artifact identity.
+Access-valid consultation delivers a version-linked observation later; publication alone delivers nothing.
+The two-packet physical handover is a separate resource consequence and does not alter entitlement.
+An authorized same-period rewrite appends a two-packet version, retains lineage, and changes the current pointer.
+Unauthorized or stale-target revisions leave that projection unchanged.
+Later consultation can deliver the new version without erasing the earlier observation.
+Transit notices likewise assert finite route/interval/status claims independently of actual service and delivery.
+
+Delivered evidence creates focal-owned traces linked to interpreted claims.
+Repeated delivery may create another trace for the same claim; undelivered versions create none.
+Official claims conflict only across compatible referents with incompatible values; the physical allocation proposition is separate from official entitlement.
+The transit conflict requires the same route and service interval, not merely different statuses at different times.
+Canonical source evidence survives conflict.
+
+At the allocation office, a delivered pressure signal above the configured threshold permits a `public_counter` stance sourced from the revised official claim.
+Pressure determines the context, not the stance's asserted value; departure clears that context.
+The policy uses the supplied stance to attempt speech, and rejection cannot rewrite understanding.
+A physically completed diary write preserves the earlier official claim and source.
+Only a delivered read of that entry creates the `private_diary` stance; a rejected read creates no resurfacing.
+The supplied private stance prompts one ordinary archive recheck, then clears after consultation, without changing confidence or deleting traces/conflicts.
+Supporting agents and institutions receive no focal-private stance or diary material.
+
+Transition logic remains in `Simulation` and the autonomous-day composition.
+There is no general claim language, memory decay, model-authored canonical understanding, standalone delivery module, or implemented official suppression/fabrication.
+
+## Time and decisions
+
+The first-day `Simulation.step()` order is institutional processing, due completions, completion perceptions and queued results, understanding updates, idle policy choices, action resolution, then focal snapshots.
+The legacy generic broadcast path delivers during institutional processing; `first_day_v3` does not configure it.
+Its tick-based 28-tick completion remains a separate regression from the accelerated day.
+
+The accelerated day uses non-negative whole simulated minutes with a start and exact end at start plus 1440.
+`TemporalAgenda` advances directly to due work or the endpoint without inventing activity during quiet spans.
+Equal-time phases are scheduled world/institution work, action completion, observation delivery, understanding update, then decision.
+Stable work identity breaks remaining ties.
+A released phase cannot accept new work in that or an earlier same-minute phase; earlier work may schedule a later phase before it is released.
+
+Handlers receive a restricted scheduling context and cannot advance the clock or re-enter execution through it.
+The composition synchronizes `WorldState.tick` when time advances.
+Five decision causes are supported: initial activation, terminal action result, delivered observation, explicit scheduled wake, and safe-failure retry.
+Causes coalesce per actor and minute; time passage alone never asks a policy or model to decide.
+Decision eligibility uses `[start, end)`; scheduled work and completions may still commit exactly at the closed end.
+Otherwise available duration-bearing Mara attempts that would complete after the end are rejected before pending work is created.
+
+Pending actions remain non-interruptible.
+Delivered information may be retained while Mara is busy and become usable at her next legitimate decision.
+The safe-failure cadence permits one authority-bound retry chain delayed by 30 simulated minutes, with no retry at or beyond the endpoint.
+Marked model-backed actors allow 128 decision-handler invocations; a would-be 129th fails before the handler runs.
+Deterministic supporting actors are not automatically assigned Mara's model-call budget.
+
+Unexpected dispatch failure records sanitized terminal evidence and freezes further execution and registration.
+This is not rollback: append-only effects from a failed handler can remain in an explicitly uncommitted tail.
+The legacy engine likewise records a failed tick and last committed snapshot and rejects later steps after terminal failure.
+Neither path may report false completion.
+
+## Model boundary and continuity
+
+`MaraHarness` exposes `AgentView -> ActionAttempt` and private decision evidence; the simulation decides when to invoke it.
+Requests contain stable boundary instructions, the versioned Mara profile, the reusable choice skill, and fresh restricted JSON.
+Profiles and skills cannot include hidden facts, future events, or a prescribed scenario route.
+Provider history is not a fourth memory channel.
+The world owns canonical state and consequence; judgment belongs in the authored skill/model, while validation and repeatable execution remain deterministic.
+
+The first-day policy supports eight action kinds; the autonomous day exposes travel, work, household, and wait.
+Shared parameter contracts enforce required, optional, forbidden, typed, bounded, and coupled fields before attempts are created.
+The Ollama response schema is copied per request; scalar enums use only disclosed affordance options and do not mutate caller-owned state.
+The local parser and world resolver remain authoritative over provider output.
+Timeout, unavailable service, malformed response, and invalid choice yield an explicit safe wait, never a scripted policy fallback.
+
+Dynamic restricted JSON is measured in UTF-8 and capped at 48 KiB before transport.
+Recent action history uses a 16-entry window plus latest attempts and completed/rejected results by finite kind.
+Delivered observations and source-linked understanding collections use 64-entry recent projections with total, included, and omitted counts.
+A request requires complete relevant continuity and source closure for every retained belief, trace, claim, and stance.
+Missing closure produces a safe failure before any provider call; canonical evidence is not discarded to make the request fit.
+Private decision records use canonical compact JSON measurement and cannot exceed 8 MiB.
+
+The autonomous-day world classifies persistent effects for every accepted action kind.
+Travel is explained by location/reachability; wait/rest has no persistent consequence; first work/household completion fulfills a named obligation.
+Up to eight world-owned continuity requirements can retain an exact actor-safe attempt/result pair, source identities, canonical consequence, and clearing lifecycle.
+A fulfilled obligation's pair survives safe failures until a selected decision receives it while the obligation remains fulfilled.
+Missing, substituted, mismatched, duplicate, or excess requirements fail before transport.
+Voluntary repeats add no requirement; the model cannot author or clear them.
+
+## Scenario-specific causality
+
+The default accelerated composition schedules Ilan's workplace shift from minute 480 to 600 and an independent transit change at 510.
+Only workplace-terminal access delivers the source to Ilan.
+His immutable decision view contains his delivered evidence, current trigger, actor-safe state, valid actions, and world-supplied addressability.
+His deterministic policy chooses a cited statement or ordinary wait.
+The world requires the exact triggering Ilan-owned observation, valid source/channel/parameters, and matching finite claim.
+An accepted statement schedules next-minute testimony; delivery independently rechecks workplace co-location before Mara gains an observation.
+Committed delivery precedes understanding and an eligible Mara decision.
+A home-bulletin path at minute 660 separately requires physical receiver access.
+
+Mara's ordinary world-owned opportunities include travel, 120-minute work, 60-minute household activity, and a scheduled-home wait resolved as 60-minute rest.
+The active goal's opt-in notice, tradeoff deadlines, service-dependent travel, access-gated timing, and information counterfactuals are documented in [implementation state](../plans/first-consequential-choice/IMPLEMENTATION_PLAN.md).
+Those authored options preserve the option-absent regressions and are retained in replay configuration.
+They create opportunities, not a required dramatic or live-model outcome.
+
+## Presentation and evidence
+
+Normal first-day output receives only focal snapshots; accelerated output shows admitted encounters, attempts, consequences, and compact quiet spans.
+Official accounts remain attributed claims, diary entries remain earlier perspectives, and scripted decisions are labelled as authored.
+A concise attributed decision reason may be public; prompts, endpoint details, raw failures, private records, and hidden reasoning may not enter objective history or normal output.
+The separate inspector is explicitly omniscient.
+Accelerated inspection reconstructs committed dispatch/phase order, observations, understanding, attempts/results, model status, budgets, and any uncommitted failed-dispatch tail.
+
+Detached `history_data()` preserves JSON-compatible objective evidence.
+Recorded decisions pass through the same parser and world resolver without another provider call and require matching restricted inputs, seed, and authored configuration.
+`MaraHarness.from_recorded_archive(...)` verifies a private HMAC-sealed archive against a caller-held key before replay.
+This detects edits while the key remains trusted; it is not proof against someone who controls the key or a durable save/checkpoint format.
+Live-bundle creation runs a replay comparison; standalone verification checks stored schemas, provenance, permissions, hashes, and verdict without replaying again.
+
+## Regression coverage and limits
+
+| Boundary | Existing test modules |
+| --- | --- |
+| First-day truth, access, records, stance, diary, and presentation | `test_living_simulation`, `test_official_record`, `test_agent_understanding`, `test_first_day_cli` |
+| Restricted choices, authored inputs, provider failure/privacy, and replay | `test_model_focal_policy`, `test_mara_harness`, `test_mara_decision_request`, `test_ollama_client` |
+| Time, ordering, eligibility, exact-day failure, and budgets | `test_simulated_time`, `test_temporal_agenda`, `test_day_runtime`, `test_decision_eligibility`, `test_day_decision_runtime`, `test_day_decision_budget` |
+| Social/transit causality, obligations, CLI, private audit, and replay | `test_supporting_policy`, `test_autonomous_day_world`, `test_autonomous_day_cli`, `test_autonomous_day_audit` |
+
+The scenario inputs, schedules, pressures, and scripted choices are authored.
+Equal deterministic or recorded choices prove reproduction; equal live settings do not guarantee equal sampling or believable behavior.
+The engine remains a large coordinator, payloads use immutable mappings, and holdings are simple integer quantities.
+There is no general economy, supporting-agent cognition, broad social model, graphical UI, durable save system, or user-facing replay command.

@@ -86,6 +86,10 @@ _INSTITUTIONAL_SERVICE_RECOVERY = "autonomous_day_institutional_service_recovery
 _ILAN_WORK_START_MINUTE = 8 * 60
 _MARA_SCHEDULED_WAKE_MINUTE = 7 * 60
 _TRANSIT_CHANGE_MINUTE = 8 * 60 + 30
+# This coincides with Mara's earliest normal arrival after a safe-retry travel.
+# World activity still precedes arrival completion and observation delivery,
+# allowing Ilan to receive objective source evidence only when he is at work.
+_CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE = 8 * 60
 _ILAN_WORK_DURATION_MINUTES = 2 * 60
 _ILAN_TRANSIT_OBSERVATION_LOCATIONS = frozenset({"workplace"})
 _TRANSIT_BULLETIN_MINUTE = 11 * 60
@@ -292,6 +296,7 @@ def build_autonomous_day(
     include_deadline_governed_obligation_outcomes: bool = False,
     include_obligation_outcome_delivery: bool = False,
     include_consequential_choice_tradeoff_timing: bool = False,
+    include_conflict_opportunity_timing: bool = False,
     include_service_dependent_travel: bool = False,
     homeward_travel_service_recovery_minute: int | None = None,
 ) -> AutonomousDay:
@@ -333,13 +338,28 @@ def build_autonomous_day(
         raise ValueError(
             "consequential-choice tradeoff timing requires deadline outcomes"
         )
+    if not isinstance(include_conflict_opportunity_timing, bool):
+        raise TypeError("include_conflict_opportunity_timing must be boolean")
+    if include_conflict_opportunity_timing and not (
+        include_conflicting_transit_accounts
+        and include_consequential_choice_tradeoff_timing
+    ):
+        raise ValueError(
+            "conflict opportunity timing requires conflicting transit accounts "
+            "and consequential-choice tradeoff timing"
+        )
     if not isinstance(include_service_dependent_travel, bool):
         raise TypeError("include_service_dependent_travel must be boolean")
+    transit_change_minute = (
+        _CONFLICT_OPPORTUNITY_TRANSIT_CHANGE_MINUTE
+        if include_conflict_opportunity_timing
+        else _TRANSIT_CHANGE_MINUTE
+    )
     if homeward_travel_service_recovery_minute is not None and (
         not isinstance(homeward_travel_service_recovery_minute, int)
         or isinstance(homeward_travel_service_recovery_minute, bool)
         or not (
-            _TRANSIT_CHANGE_MINUTE
+            transit_change_minute
             < homeward_travel_service_recovery_minute
             < 24 * 60
         )
@@ -807,13 +827,6 @@ def build_autonomous_day(
                 )
             )
         )
-        replace_latest_private_decision_record(
-            decision_record.linked_to(
-                attempt_event_id=attempted.event_id,
-                action_id=action_id,
-                validation_status="accepted" if accepted else "rejected",
-            )
-        )
         scheduled_rest = (
             decision_record.status == "selected"
             and any(
@@ -822,10 +835,51 @@ def build_autonomous_day(
             )
             and mara.location == "home"
         )
-        if attempt.kind == "wait" and scheduled_rest:
-            completion_time = context.current.plus_minutes(
-                _MARA_REST_DURATION_MINUTES
+        duration_minutes: int | None = None
+        travel_service_status: str | None = None
+        if accepted:
+            if attempt.kind == "wait" and scheduled_rest:
+                duration_minutes = _MARA_REST_DURATION_MINUTES
+            elif attempt.kind == "household":
+                duration_minutes = _MARA_HOUSEHOLD_DURATION_MINUTES
+            elif attempt.kind == "work":
+                duration_minutes = _MARA_WORK_DURATION_MINUTES
+            elif attempt.kind == "travel":
+                travel_service_status = world.institution.records["tram_service"]
+                duration_minutes = (
+                    _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[
+                        travel_service_status
+                    ]
+                    if include_service_dependent_travel
+                    else _MARA_TRAVEL_DURATION_MINUTES
+                )
+        completion_time = (
+            context.current.plus_minutes(duration_minutes)
+            if duration_minutes is not None
+            else None
+        )
+        exceeds_day_boundary = (
+            completion_time is not None and completion_time > context.end
+        )
+        if exceeds_day_boundary:
+            accepted = False
+        replace_latest_private_decision_record(
+            decision_record.linked_to(
+                attempt_event_id=attempted.event_id,
+                action_id=action_id,
+                validation_status="accepted" if accepted else "rejected",
             )
+        )
+        if exceeds_day_boundary:
+            reject_mara_attempt(
+                attempt,
+                attempted,
+                "action cannot complete before the day boundary",
+            )
+            return
+        if attempt.kind == "wait" and scheduled_rest:
+            if completion_time is None:
+                raise RuntimeError("scheduled rest has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -868,9 +922,8 @@ def build_autonomous_day(
                     "household activity requires Mara to be at home",
                 )
                 return
-            completion_time = context.current.plus_minutes(
-                _MARA_HOUSEHOLD_DURATION_MINUTES
-            )
+            if completion_time is None:
+                raise RuntimeError("household activity has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -895,9 +948,8 @@ def build_autonomous_day(
                     "work requires Mara to be at the workplace",
                 )
                 return
-            completion_time = context.current.plus_minutes(
-                _MARA_WORK_DURATION_MINUTES
-            )
+            if completion_time is None:
+                raise RuntimeError("work has no completion time")
             pending_actions[MARA_ID] = PendingAction(
                 action_id=action_id,
                 attempt_event_id=attempted.event_id,
@@ -935,13 +987,12 @@ def build_autonomous_day(
                 "travel destination is not reachable from Mara's location",
             )
             return
-        service_status = world.institution.records["tram_service"]
-        duration_minutes = (
-            _MARA_TRAVEL_DURATION_BY_SERVICE_STATUS[service_status]
-            if include_service_dependent_travel
-            else _MARA_TRAVEL_DURATION_MINUTES
-        )
-        completion_time = context.current.plus_minutes(duration_minutes)
+        if (
+            completion_time is None
+            or duration_minutes is None
+            or travel_service_status is None
+        ):
+            raise RuntimeError("travel has no completion state")
         pending_actions[MARA_ID] = PendingAction(
             action_id=action_id,
             attempt_event_id=attempted.event_id,
@@ -951,7 +1002,7 @@ def build_autonomous_day(
         )
         mara_travel_resolution_details[action_id] = {
             "duration_minutes": duration_minutes,
-            "service_status_at_departure": service_status,
+            "service_status_at_departure": travel_service_status,
         }
         context.schedule(
             ScheduledWork(
@@ -2103,7 +2154,7 @@ def build_autonomous_day(
     runtime.schedule(
         ScheduledWork(
             item_id="district-transit-morning-service-change",
-            due_time=SimulatedTime(_TRANSIT_CHANGE_MINUTE),
+            due_time=SimulatedTime(transit_change_minute),
             phase=TemporalPhase.SCHEDULED_WORLD,
             kind=_INSTITUTIONAL_SERVICE_CHANGE,
         )
@@ -2143,6 +2194,9 @@ def build_autonomous_day(
                 ),
                 "include_consequential_choice_tradeoff_timing": (
                     include_consequential_choice_tradeoff_timing
+                ),
+                "include_conflict_opportunity_timing": (
+                    include_conflict_opportunity_timing
                 ),
                 "include_service_dependent_travel": include_service_dependent_travel,
                 "homeward_travel_service_recovery_minute": (
@@ -2788,6 +2842,14 @@ def main(
         ),
     )
     parser.add_argument(
+        "--conflict-opportunity-timing",
+        action="store_true",
+        help=(
+            "move the consequential-choice service change to 08:00 so "
+            "source-backed testimony can reach Mara at her next decision"
+        ),
+    )
+    parser.add_argument(
         "--ollama-base-url",
         help="private Ollama origin, required only with --focal-policy ollama",
     )
@@ -2826,6 +2888,10 @@ def main(
         parser.error("--audit-dir requires --focal-policy ollama")
     if args.consequential_choice and args.focal_policy == "offline":
         parser.error("--consequential-choice requires --focal-policy scripted or ollama")
+    if args.conflict_opportunity_timing and not args.consequential_choice:
+        parser.error(
+            "--conflict-opportunity-timing requires --consequential-choice"
+        )
     try:
         mara_harness = _cli_mara_harness(
             policy_name=args.focal_policy,
@@ -2869,6 +2935,7 @@ def main(
         include_deadline_governed_obligation_outcomes=args.consequential_choice,
         include_obligation_outcome_delivery=args.consequential_choice,
         include_consequential_choice_tradeoff_timing=args.consequential_choice,
+        include_conflict_opportunity_timing=args.conflict_opportunity_timing,
         include_service_dependent_travel=args.consequential_choice,
     )
     try:

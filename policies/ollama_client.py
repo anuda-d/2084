@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from http.client import HTTPConnection, HTTPException, RemoteDisconnected
 from ipaddress import ip_address, ip_network
@@ -46,6 +47,57 @@ _PRIVATE_OLLAMA_NETWORKS = tuple(
         "::1/128",
     )
 )
+
+
+def _response_schema_with_affordance_options(
+    response_schema: dict[str, object],
+    model_input: Mapping[str, object],
+) -> dict[str, object]:
+    """Constrain scalar parameters to options already present in agent state."""
+
+    constrained_schema = deepcopy(response_schema)
+    action_contract = model_input.get("action_contract")
+    if not isinstance(action_contract, Mapping):
+        return constrained_schema
+    affordances = action_contract.get("affordances_by_kind")
+    branches = constrained_schema.get("oneOf")
+    if not isinstance(affordances, Mapping) or not isinstance(branches, list):
+        return constrained_schema
+
+    for branch in branches:
+        if not isinstance(branch, dict):
+            continue
+        properties = branch.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        kind_schema = properties.get("kind")
+        parameters_schema = properties.get("parameters")
+        if not isinstance(kind_schema, Mapping) or not isinstance(
+            parameters_schema,
+            dict,
+        ):
+            continue
+        kind = kind_schema.get("const")
+        affordance = affordances.get(kind)
+        parameter_properties = parameters_schema.get("properties")
+        if not isinstance(affordance, Mapping) or not isinstance(
+            parameter_properties,
+            dict,
+        ):
+            continue
+        options_by_parameter = affordance.get("parameter_options")
+        if not isinstance(options_by_parameter, Mapping):
+            continue
+        for name, options in options_by_parameter.items():
+            parameter_schema = parameter_properties.get(name)
+            if (
+                isinstance(parameter_schema, dict)
+                and parameter_schema.get("type") == "string"
+                and isinstance(options, (list, tuple))
+                and all(isinstance(option, str) and option for option in options)
+            ):
+                parameter_schema["enum"] = list(options)
+    return constrained_schema
 
 
 @dataclass(frozen=True)
@@ -275,12 +327,16 @@ class OllamaDecisionClient:
             raise RestrictedInputTooLargeError(
                 "restricted decision input exceeds the approved byte ceiling"
             )
+        response_schema = _response_schema_with_affordance_options(
+            prompt.response_schema_data(),
+            model_input,
+        )
         payload = {
             "model": self._model,
             "messages": prompt.messages_data(),
             "stream": False,
             "think": False,
-            "format": prompt.response_schema_data(),
+            "format": response_schema,
             "options": {
                 "temperature": OLLAMA_TEMPERATURE,
                 "num_predict": OLLAMA_NUM_PREDICT,
