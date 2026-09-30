@@ -39,6 +39,18 @@ paths = [
   "docs/main/ARCHITECTURE.md", "docs/plans/*/GOAL.md",
 ]
 test_paths = ["tests/**"]
+completion_paths = [
+  "README.md", "docs/plans/CURRENT.md", "docs/main/CORE_CONSTRUCT.md",
+  "docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md",
+]
+
+[evidence]
+directory = "~/.local/share/2084/evidence"
+required_for_completion = ["cc11-live-day"]
+recovery_roots = ["~/.local/share/2084"]
+
+[evidence.legacy]
+cc11-live-day = "/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480"
 
 [environment]
 # The Mac runs development; the Windows PC serves only the simulation's Qwen model.

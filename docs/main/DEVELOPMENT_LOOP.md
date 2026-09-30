@@ -33,10 +33,21 @@ Useful experiments may produce concise evidence artifacts; inconclusive outcomes
 
 The runner stages the candidate, runs configured repository checks, and binds acceptance to that Git tree.
 Changed content invalidates prior validation.
+Each completed check and review is persisted against the tree, approval identity, and registered evidence fingerprints.
+An interrupted check or review restarts; already-completed verification survives pauses and restarts when its inputs are unchanged.
 Failing checks normally return work to the same agent for repair.
 Sensitive file paths, modification of existing tests, explicit semantic concerns, and whole-goal completion trigger independent read-only review.
 Routine passing changes do not require another agent.
 Three unsuccessful attempts block the current work; the count survives process restarts.
+Outstanding review findings remain mandatory until an independent review resolves them, regardless of later worker flags.
+
+The worker prepares completion documentation together and returns `goal_complete` with its final changes.
+Structured results declare `review_scope` as `change` or `goal` and list `artifacts` with `id`, absolute `path`, and `supporting` or `contrary` classification.
+A review separately records `goal_criteria_verified` and whether its corrections are `completion_only`.
+The runner can check, review, commit, and complete that candidate in one transition.
+A commit preserving the same validated tree does not require another whole-goal review.
+Corrections within the configured completion-document allowlist receive a focused recheck only when an independent reviewer confirms unchanged behavior, criteria, authored inputs, and evidence.
+Otherwise the runner requires a full goal review; changed trees still run all configured repository checks.
 
 After acceptance the runner commits the tested and reviewed tree locally.
 It immediately proceeds to the next meaningful gap while time remains.
@@ -77,6 +88,30 @@ The approval identity hashes the entire goal file, so even a documentation-only 
 
 Status contains the active session, phase, remaining gap, latest result, and paths to detailed execution logs.
 A time-window pause preserves the session, candidate, and retry count automatically.
+The 45-minute per-execution limit uses both monotonic time and an absolute wall deadline, including an overdue process that has already exited on wake.
+Logs record phase, start, finish, last output, session elapsed time, and whether work completed, failed, timed out, paused, or crossed the window boundary.
+Session elapsed time includes waiting and is not a measure of productive coding time.
+
+## Durable evidence
+
+Private audit bundles live under `~/.local/share/2084/evidence`, outside the checkout, with owner-only permissions.
+The runner exposes this location as `DEVLOOP_EVIDENCE_DIR` and grants the worker bounded write access there.
+The live CLI requires an audit target beneath that root before constructing a provider during runner-managed work.
+Keep every failed or inconclusive attempt and return its artifact reference as contrary evidence.
+The registry retains goal association, original manifest digest, filesystem identity, and verification result without overwriting an existing identifier.
+Required completion artifacts must be supporting, present, and intact before goal review, verification reuse, and final acceptance.
+A generic audit pass does not establish the semantic goal criterion; independent review still assesses the claim.
+Status, doctor, and the dashboard show evidence availability separately from historical completion.
+
+With the runner paused, its child stopped, and the service unloaded, recover configured legacy bundles using:
+
+```sh
+python3 -m devloop migrate-evidence
+```
+
+Migration searches the documented locations and configured recovery roots, copies verified originals into private durable storage, and preserves the originals.
+Unrecoverable evidence remains explicitly unavailable while the historical completion verdict stays intact.
+Migration does not invent verification receipts, authorize new experiments, reset retries, or enable a goal.
 
 ## Terminal dashboard
 

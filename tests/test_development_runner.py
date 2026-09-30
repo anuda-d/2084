@@ -34,7 +34,7 @@ if not review:
  print(json.dumps({'type':'thread.started','thread_id':'fixture-session'}),flush=True)
 number = sum(not item['review'] for item in history)
 if review:
- result = {'verdict':'repair' if mode == 'review-fails' else 'pass','findings':'Fix the boundary' if mode == 'review-fails' else ''}
+ result = {'verdict':'repair' if mode == 'review-fails' else 'pass','findings':'Fix the boundary' if mode == 'review-fails' else '', 'goal_criteria_verified':mode != 'review-fails','completion_only':False}
 else:
  if mode == 'missing-result': sys.exit(0)
  if mode == 'crash': sys.exit(7)
@@ -46,6 +46,7 @@ else:
  if mode == 'blocked': outcome = 'blocked'
  if mode == 'false-progress': outcome = 'change_ready'; (root / 'app.py').write_text('value = 0\n')
  result = {'outcome':outcome,'summary':'Implemented behavior '+str(number),'evidence':'Executed the fixture behavior and its checks','remaining':'Need owner direction' if mode == 'blocked' else '','commit_message':'Implement behavior '+str(number),'review_required':False,'review_reason':''}
+ result.update(review_scope='goal' if outcome == 'goal_complete' else 'change', artifacts=[])
  if mode == 'wait-for-pause':
   import time
   time.sleep(30)

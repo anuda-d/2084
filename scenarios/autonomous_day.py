@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from pathlib import Path
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal
@@ -2892,6 +2894,12 @@ def main(
         parser.error(
             "--conflict-opportunity-timing requires --consequential-choice"
         )
+    managed_evidence = os.environ.get("DEVLOOP_EVIDENCE_DIR")
+    if managed_evidence and args.focal_policy == "ollama":
+        root = Path(managed_evidence).expanduser().resolve()
+        target = Path(args.audit_dir).expanduser().resolve() if args.audit_dir else None
+        if target is None or target == root or not target.is_relative_to(root):
+            parser.error("runner-managed live runs require --audit-dir beneath DEVLOOP_EVIDENCE_DIR")
     try:
         mara_harness = _cli_mara_harness(
             policy_name=args.focal_policy,

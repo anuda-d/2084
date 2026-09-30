@@ -38,5 +38,11 @@ The runner owns Git staging, commits, review dispatch, and runtime records.
 Do not commit, push, merge, deploy, change the runner configuration, or manipulate its state.
 A time limit is a pause, not completion; preserve unfinished work and state the next concrete step.
 Declare the goal complete only when every approved criterion has supporting evidence.
+Prepare all completion references together and return `goal_complete` with the final candidate changes.
+Use `review_scope=goal` for whole-goal verification; do not create a separate paperwork handoff after achieving the goal.
+The runner owns the final review, exact-tree commit, and operational completion transition.
+For runner-managed live experiments, use a new audit directory beneath `DEVLOOP_EVIDENCE_DIR`.
+Return structured artifact references for supporting and contrary evidence, preserving every attempt without overwriting earlier bundles.
+Use the configured required artifact identifiers only for evidence proposed to support completion.
 
 Load project-specific examples and constraints from the context files named in the runner prompt.

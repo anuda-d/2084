@@ -119,6 +119,7 @@ The sample is contrary evidence, not a preferred-branch selection or CC-4/CC-11 
 
 The reviewed minute-480 timing repair justified one new seed-49 run because no prior sample used that configuration.
 Its owner-only bundle is `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480`.
+This is the historical location; `python3 -m devloop status` reports current evidence availability independently of the acceptance record.
 The generic audit passed exact model identity, source stability, causal links, privacy, exact-day completion, and provider-free replay.
 It recorded 18 provider calls, 17 selected responses, one safe provider failure, a 22,654-byte peak restricted input, and 227,410 bytes of peak retained private evidence.
 Mara arrived at the workplace at minute 480, received the official claim, and began accepted homeward travel.

@@ -54,6 +54,25 @@ class Config:
         self.command = self.agent.get("command", ["codex"])
         self.limits = self.data["limits"]
         self.review = self.data.get("review", {})
+        self.evidence = self.data.get("evidence", {})
+        for key in ("required_for_completion", "recovery_roots"):
+            if not isinstance(self.evidence.get(key, []), list) or not all(
+                    isinstance(x, str) and x for x in self.evidence.get(key, [])):
+                raise ValueError(f"evidence.{key} must be a list of strings")
+        if self.evidence:
+            directory = self.evidence.get("directory")
+            if not isinstance(directory, str) or not Path(directory).expanduser().is_absolute():
+                raise ValueError("Evidence directory must be an absolute path")
+            if Path(directory).expanduser().resolve().is_relative_to(self.root):
+                raise ValueError("Evidence directory must be outside the checkout")
+        legacy = self.evidence.get("legacy", {})
+        if not isinstance(legacy, dict) or not all(isinstance(k, str) and isinstance(v, str)
+                and Path(v).expanduser().is_absolute() for k, v in legacy.items()):
+            raise ValueError("Legacy evidence must map identifiers to absolute paths")
+        if not isinstance(self.review.get("completion_paths", []), list) or not all(
+                isinstance(x, str) and x and not Path(x).is_absolute() and ".." not in Path(x).parts
+                and not any(c in x for c in "*?[") for x in self.review.get("completion_paths", [])):
+            raise ValueError("Completion review paths must be explicit repository-relative files")
         self.checks = self.data["validation"]["commands"]
         for command in [self.command, *self.checks]:
             if not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command):

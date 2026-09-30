@@ -37,6 +37,19 @@ class DashboardTests(unittest.TestCase):
         self.assertNotIn('"outcome"', str(rows))
         self.assertEqual(clean('\x1b[31mred\x1b[0m\x1b]0;danger\x07\r\x00'), 'red')
 
+    def test_completion_evidence_gap_and_execution_timing_are_distinct(self):
+        self.runner.config.evidence = {'required_for_completion':['live']}
+        self.runner.store.update(phase='complete', execution={
+            'started_at':100, 'finished_at':121, 'elapsed_seconds':21,
+            'last_output_at':110, 'stop_reason':'timeout'})
+        data = DashboardData(self.runner)
+        data.refresh()
+        rows = str(data.details())
+        self.assertIn('complete', rows)
+        self.assertIn('Previously accepted; original live evidence unavailable.', rows)
+        self.assertIn('21.0s; timeout', rows)
+        self.assertEqual(data.status()[0], 'PAUSED')
+
     def test_logs_handle_partial_events_and_follow_new_execution(self):
         folder = self.runner.store.directory / 'runs'
         folder.mkdir()

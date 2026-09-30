@@ -88,11 +88,13 @@ Recorded choices reproduce world behavior without another provider call when the
 A live autonomous-day run can write to a new directory that does not already exist:
 
 ```sh
+mkdir -p "$HOME/.local/share/2084/evidence"
+chmod 700 "$HOME/.local/share/2084/evidence"
 python3 -m scenarios.autonomous_day \
   --seed 42 --focal-policy ollama \
   --ollama-base-url http://192.168.1.50:11434 \
   --ollama-model qwen3:4b-instruct \
-  --audit-dir /private/tmp/2084-live-audit
+  --audit-dir "$HOME/.local/share/2084/evidence/live-audit-001"
 ```
 
 The bundle uses owner-only permissions and includes a focal-safe transcript, sanitized inspector, private decision records, measured verdict, and artifact manifest.
@@ -100,11 +102,13 @@ Its writer checks model/source identity, provider provenance, causal links, priv
 Recheck an unchanged bundle's stored evidence and integrity with:
 
 ```sh
-python3 -m scenarios.autonomous_day_audit /private/tmp/2084-live-audit
+python3 -m scenarios.autonomous_day_audit "$HOME/.local/share/2084/evidence/live-audit-001"
 ```
 
 A generic audit pass does not establish the active goal's conflict-informed choice criterion.
 Preserve failed samples and the goal's bounded live-experiment authorization.
+Runner-managed live runs require an audit beneath `DEVLOOP_EVIDENCE_DIR`; failed and inconclusive bundles remain there too.
+`python3 -m devloop status` reports current artifact availability separately from historical acceptance.
 
 ## Develop
 

@@ -8,11 +8,14 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Callable
 
 import fcntl
+
+from .protocol import validate_verification_state
 
 
 class Busy(RuntimeError):
@@ -53,6 +56,10 @@ class Store:
                 or type(data.get("failures")) is not int or data["failures"] < 0
                 or data.get("phase") not in {"paused", "ready", "working", "checking", "reviewing", "committing", "blocked", "complete"}):
             raise ValueError("Unsupported or corrupt runner state")
+        try:
+            validate_verification_state(data)
+        except (TypeError, KeyError) as error:
+            raise ValueError("Corrupt verification or evidence state") from error
         return data
 
     def update(self, **changes) -> dict:
@@ -134,21 +141,23 @@ def run_process(
         "pass_fds": (inherited_lock.fileno(),) if inherited_lock else (),
     }
     interrupted = False
-    with log.open("w", encoding="utf-8") as output:
-        process = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.PIPE,
+    with log.open("a", encoding="utf-8") as output, tempfile.TemporaryFile(mode="w+", encoding="utf-8") as input_file:
+        input_file.write(input_text or "")
+        input_file.seek(0)
+        initial_offset = output.tell()
+        process = subprocess.Popen(command, cwd=cwd, env=env, stdin=input_file,
                                    stdout=output, stderr=subprocess.STDOUT, text=True,
                                    encoding="utf-8", **options)
         try:
             started(process.pid)
-            try:
-                process.stdin.write(input_text or "")
-                process.stdin.close()
-            except BrokenPipeError:
-                pass
             with log.open(encoding="utf-8", errors="replace") as stream:
+                stream.seek(initial_offset)
                 pending = ""
                 while True:
-                    pending += stream.read()
+                    chunk = stream.read()
+                    if chunk:
+                        event({"type":"execution.output", "observed_at":time.time()})
+                    pending += chunk
                     lines = pending.split("\n")
                     pending = lines.pop()
                     for line in lines:
@@ -160,7 +169,10 @@ def run_process(
                             event(value)
                     if process.poll() is not None:
                         # The file may have grown after the read and before poll.
-                        for line in (pending + stream.read()).splitlines():
+                        tail = stream.read()
+                        if tail:
+                            event({"type":"execution.output", "observed_at":time.time()})
+                        for line in (pending + tail).splitlines():
                             try:
                                 value = json.loads(line)
                                 if isinstance(value, dict):

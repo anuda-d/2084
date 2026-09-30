@@ -52,6 +52,11 @@ def section(title: str, text: object, tone: str = "normal") -> list[Row]:
 
 def event_rows(record: dict) -> list[Row]:
     kind = record.get("type", "")
+    if kind in {"execution.started", "execution.finished"}:
+        text = f"{record.get('phase', '')}: "
+        text += (f"{record.get('elapsed_seconds', 0):.1f}s session elapsed; {record.get('stop_reason', '')}"
+                 if kind == "execution.finished" else "started")
+        return section("execution timing", text)
     item = record.get("item", {})
     if not isinstance(item, dict):
         return []
@@ -107,10 +112,16 @@ class DashboardData:
         self._log_rows: list[Row] = []
         self._git_at = 0.0
         self._git_rows: list[Row] = []
+        self._evidence_at = 0.0
+        self._evidence_status = {}
 
     def refresh(self):
         try:
             self.state = self.runner.store.read()
+            if not self._evidence_status or time.monotonic() - self._evidence_at >= 5:
+                self._evidence_status = self.runner.evidence.report()
+                self._evidence_at = time.monotonic()
+            self.state["evidence_status"] = self._evidence_status
             self.error = ""
             folder = self.runner.store.directory / "runs"
             self.logs = sorted((p for p in folder.glob("*.jsonl") if p.is_file()),
@@ -211,6 +222,17 @@ class DashboardData:
     def details(self) -> list[Row]:
         state = self.state
         rows = []
+        rows += section("Historical goal status", state.get("phase", "unknown"))
+        evidence = state.get("evidence_status", {})
+        rows += section("Evidence availability", evidence.get("summary", "Not checked"))
+        for artifact in evidence.get("artifacts", []):
+            rows += section(artifact["id"], f"{artifact['availability']}: {artifact.get('path', 'not registered')}")
+        execution = state.get("execution")
+        if execution:
+            elapsed = (execution.get("elapsed_seconds", 0) if execution.get("finished_at") is not None
+                       else max(0, time.time() - execution["started_at"]))
+            rows += section("Session elapsed", f"{elapsed:.1f}s; {execution.get('stop_reason') or 'running'}")
+            rows += section("Last output timestamp", execution.get("last_output_at") or "No output recorded")
         for title, key in (("Latest result", "summary"), ("Remaining work", "remaining"),
                            ("Last accepted evidence", "evidence"), ("Stop reason", "reason")):
             rows += section(title, state.get(key, ""))
