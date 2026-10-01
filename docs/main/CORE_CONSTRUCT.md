@@ -70,8 +70,8 @@ Any future intervention must be explicit and cannot grant impossible knowledge o
 ## Current scope
 
 The repository implements official-record revision, source-linked understanding and diary resurfacing, optional model-backed Mara, exact 24-hour execution, and one deterministic social-testimony chain.
-The active [consequential-choice goal](../plans/first-consequential-choice/GOAL.md) adds conflicting transit accounts and a work/household tradeoff.
-Its accepted implementation and live/completion evidence are recorded in [implementation state](../plans/first-consequential-choice/IMPLEMENTATION_PLAN.md).
+The completed [consequential-choice capability](../plans/first-consequential-choice/GOAL.md) adds conflicting transit accounts and a work/household tradeoff.
+Its accepted implementation, historical live evidence, and current evidence limitations are recorded in the [implementation record](../plans/first-consequential-choice/IMPLEMENTATION_PLAN.md).
 [Architecture](ARCHITECTURE.md) describes the implemented boundaries; it does not promise a general society, persistent mind, durable world, or human realism.
 
 ## References and limits

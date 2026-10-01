@@ -2,14 +2,8 @@
 __pycache__/
 *.py[cod]
 
-# Disposable harness artifacts
-/.unlazy/
+# Disposable local artifacts
 /.playwright-cli/
 /output/
 /drafts/
-/handoff/
-/handoffs/
-/*HANDOFF*.md
-/*handoff*.md
-/GATES.md
 /.venv/

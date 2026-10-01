@@ -5,7 +5,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -100,11 +99,6 @@ def _fake_ollama_identity_factory(*, base_url, model):
 
 class AutonomousDayCliTests(unittest.TestCase):
     def setUp(self):
-        # Standalone CLI fixtures do not inherit the enclosing runner's storage.
-        environment = patch.dict(os.environ)
-        environment.start()
-        self.addCleanup(environment.stop)
-        os.environ.pop("DEVLOOP_EVIDENCE_DIR", None)
         _FakeOllamaClient.instances.clear()
         _FakeOllamaTransport.instances.clear()
 

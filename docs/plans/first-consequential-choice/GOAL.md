@@ -1,6 +1,7 @@
 # First Consequential Choice Under Conflicting Information
 
-Status: active; owner-approved goal on 2026-09-06.
+Status: complete; all twelve criteria were accepted on 2026-09-22.
+The [implementation record](IMPLEMENTATION_PLAN.md) preserves the accepted findings and current evidence limitations.
 
 This goal follows the completed [First Accelerated-Day Social Thread](IMPLEMENTATION_PLAN.md#completed-foundations).
 It connects the existing accelerated day, source-linked understanding, restricted model decisions, and social testimony around an ordinary choice with physical consequences.
@@ -86,7 +87,6 @@ Follow-through must use her delivered consequence and retained understanding; it
 - Equal configuration, seed, and deterministic or recorded decisions produce equal ordered world evidence and final state.
 - Preserve the exact 1,440-minute boundary, explicit decision triggers, temporal phase ordering, context and private-record ceilings, and safe provider-failure behavior.
 - No per-minute model or supporting-policy polling is introduced.
-- Use the current development guidance and the configured daily operating window.
 
 ## Completion Criteria
 
@@ -112,10 +112,9 @@ The action comparison must demonstrate different actual obligation outcomes unde
 The physical comparison must show that objective conditions govern travel even when delivered information is identical, and that the resulting time or access difference changes an obligation outcome through its deadline.
 Hold the travel attempt and any subsequent required activity choices equivalent across this comparison so a changed later policy choice cannot substitute for the physical causal claim.
 
-The owner-approved live criterion authorizes bounded use of the existing local Ollama `qwen3:4b-instruct` integration and private audit workflow for this goal.
-It does not authorize a provider or model migration, a paid external API, or publication of private records.
+The accepted live evidence used the existing local Ollama `qwen3:4b-instruct` integration and private audit workflow.
 Do not require the model to trust Ilan, obey the official account, fulfill both obligations, or miss either obligation.
-If the live run never encounters the conflict or relies only on failure waits, record that limitation and leave CC-11 open.
+If a live run never encounters the conflict or relies only on failure waits, record that limitation instead of treating it as CC-11 evidence.
 Do not substitute scripted actions or conceal unsuccessful samples to claim completion.
 A successful live day establishes this implemented interaction boundary, not general believable psychology or reliable human judgment.
 
@@ -128,22 +127,12 @@ A successful live day establishes this implemented interaction boundary, not gen
 - New diary mechanics or public/private conformity mechanics unrelated to this transit choice
 - New populations, districts, institutions, economies, or thematic plots
 - General harness, delivery, claim, or provenance architecture projects
-- Changes to the agentic development-loop architecture or a future task queue
 
 ## Specification Routing
 
-Begin with this goal and its [shared implementation state](IMPLEMENTATION_PLAN.md), following [Development Loop](../../main/DEVELOPMENT_LOOP.md).
+This specification and its [implementation record](IMPLEMENTATION_PLAN.md) describe the completed consequential-choice capability.
 Locate only the implementation and tests needed for a selected criterion.
 For time, action, knowledge, and model boundaries, consult the relevant sections of [Architecture](../../main/ARCHITECTURE.md).
 For observer scope, consult [presentation and evidence](../../main/ARCHITECTURE.md#presentation-and-evidence).
-For approved commands and the existing local live audit, consult the relevant sections of the [README](../../../README.md).
-Earlier completed-goal evidence is a regression reference when needed, not an additional implementation checklist.
-
-## Completion Boundary
-
-This remains the sole owner-approved product goal.
-Criteria describe required evidence, not an ordered task backlog.
-The continuous runner described in [Development Loop](../../main/DEVELOPMENT_LOOP.md) manages execution within the configured window.
-The implementation agent chooses useful work, verifies its outcome, and continues until the goal is satisfied or genuinely blocked.
-When every criterion has supporting evidence and the required final independent goal review passes, report goal completion and stop without selecting a new goal.
-The runner records the operational result automatically.
+For runnable commands and the existing local live audit, consult the relevant sections of the [README](../../../README.md).
+Earlier completed-goal evidence remains a regression reference when needed.

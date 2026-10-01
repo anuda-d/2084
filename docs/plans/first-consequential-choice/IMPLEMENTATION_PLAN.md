@@ -1,12 +1,12 @@
-# First Consequential Choice Implementation State
+# First Consequential Choice Implementation Record
 
-Status: complete; all twelve criteria have accepted evidence.
-This records product evidence for the [approved goal](GOAL.md), not operational state or a task queue.
-Use `python3 -m devloop status` for execution state and [Development Loop](../../main/DEVELOPMENT_LOOP.md) for runner ownership.
+Status: complete; all twelve criteria were accepted on 2026-09-22.
+This records product evidence for the [completed goal](GOAL.md).
+The original accepted seed-49 private audit bundle is currently unavailable; the historical findings below cannot be independently reverified from that bundle.
 
-## Goal progress
+## Accepted criteria
 
-| Criterion | Status | Evidence or remaining requirement |
+| Criterion | Historical status | Accepted finding |
 | --- | --- | --- |
 | CC-1 Shared referent/conflict | accepted | Delivered official and social claims retain sources, the same interval, and reciprocal conflict links. |
 | CC-2 Legitimate access | accepted | Publication, Ilan's source ownership, and physical testimony delivery remain separate; missing access blocks downstream knowledge. |
@@ -18,8 +18,8 @@ Use `python3 -m devloop status` for execution state and [Development Loop](../..
 | CC-8 Causal comparisons | accepted | Information, action, and physical-condition comparisons isolate their respective effects. |
 | CC-9 Offline watchability | accepted | The authored command presents accounts, choice, consequence, follow-through, and quiet spans through a focal-safe surface. |
 | CC-10 Inspection/replay | accepted | Ordered causal inspection and recorded playback reconstruct the chain without another provider call. |
-| CC-11 Reviewed live day | accepted | Seed 49's reviewed exact day has the conflict-informed workplace-travel choice, delivered missed outcomes, follow-up, private audit, and recorded replay. |
-| CC-12 Integration/completion | accepted | Sixteen focused integration regressions, the runner's current checks, and fresh independent whole-goal review passed. |
+| CC-11 Reviewed live day | accepted | Seed 49's reviewed exact day included the conflict-informed workplace-travel choice, delivered missed outcomes, follow-up, private audit, and recorded replay; the original bundle is currently unavailable. |
+| CC-12 Integration/completion | accepted | Sixteen focused integration regressions, full repository checks, and fresh independent whole-goal review passed. |
 
 ## Authored configuration and accepted behavior
 
@@ -70,10 +70,9 @@ Negative source/access cases, option-absent presentation, and replay were preser
 Both prerequisites passed focused/full checks and independent review when accepted.
 Neither made a real Ollama call or satisfied CC-4 or CC-11.
 
-## Exhausted live attempts on 2026-09-11
+## Unaccepted live attempts on 2026-09-11
 
-The first bounded attempt allowed three samples through the concrete Ollama adapter and exact `qwen3:4b-instruct`, after immediate service/model preflights.
-Its historical contract digest was `272b4be03dd11fc8c8538f92bf015d8ca20f974a1bfe830368e44a2276c10f78`.
+The first experiment used three samples through the concrete Ollama adapter and exact `qwen3:4b-instruct`, after immediate service/model preflights.
 The record identifies owner-only bundles under `/private/tmp/2084-cc11-20260911`; their present availability has not been reverified by this cleanup.
 
 | Seed | Observed result | Why it failed CC-11 |
@@ -83,11 +82,11 @@ The record identifies owner-only bundles under `/private/tmp/2084-cc11-20260911`
 | 44 | Nineteen decisions/calls, eighteen selected responses, one provider failure; terminal `ValueError` at minute 1410. | Mara left at minute 480 before testimony, then late travel exceeded the day boundary. |
 
 Seeds 42-43 exposed the unconstrained scalar destination schema despite reachable options in restricted input.
-A candidate schema repair ran before seed 44 but had not completed formal validation/review when the cap ended.
+A candidate schema repair ran before seed 44 but had not completed formal validation/review when the experiment ended.
 Seed 44 missed both obligations and failed exact-boundary, terminal-failure, complete-causal-link, model-dispatch, uncommitted-tail, and replay checks; model identity, provenance, privacy, and growth checks passed.
 The original attempt closed unaccepted.
 
-The owner authorized a separate replacement capped at three additional fully disclosed samples, preserving the failed evidence and requiring validation of both repairs.
+The replacement experiment used three additional fully disclosed samples, preserving the failed evidence and validating both repairs.
 The writer reproduced the late failure provider-free before applying the exact-day repair and validating detached schemas.
 Immediate preflights for the replacement reported Ollama `0.33.3` and model digest `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
 These are historical observations, not current service availability claims.
@@ -118,8 +117,8 @@ The sample is contrary evidence, not a preferred-branch selection or CC-4/CC-11 
 ## Accepted conflict-to-consequence live audit on 2026-09-22
 
 The reviewed minute-480 timing repair justified one new seed-49 run because no prior sample used that configuration.
-Its owner-only bundle is `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480`.
-This is the historical location; `python3 -m devloop status` reports current evidence availability independently of the acceptance record.
+Its recorded owner-only bundle location was `/private/tmp/2084-cc11-conflict-opportunity-20260922-seed49-minute480`.
+The original bundle is currently unavailable; the following results describe its historical review.
 The generic audit passed exact model identity, source stability, causal links, privacy, exact-day completion, and provider-free replay.
 It recorded 18 provider calls, 17 selected responses, one safe provider failure, a 22,654-byte peak restricted input, and 227,410 bytes of peak retained private evidence.
 Mara arrived at the workplace at minute 480, received the official claim, and began accepted homeward travel.
@@ -132,22 +131,17 @@ Independent semantic review accepted this as CC-4 and CC-11 evidence, confirming
 ## CC-12 accepted integration evidence on 2026-09-22
 
 Sixteen focused provider-free regressions passed for same-interval conflict, source withholding, competing outcomes, physical transit effect, access-gated timing, retained follow-through, causal inspection, recorded replay, focal-safe presentation, audit integrity, privacy, growth, and safe provider failure.
-The runner also passed its full 308-test discovery and both diff checks on the exact candidate tree.
+Full discovery passed all 308 tests present at the time, and both diff checks passed on the same candidate tree.
 Those are the three checks implemented by `scripts/check.sh`.
 Fresh independent whole-goal review found all CC-1 through CC-12 criteria supported without boundary regressions.
 
-## Authorization and accepted evidence
+## Evidence interpretation
 
-The owner approved this goal on 2026-09-06 and restored standing authority within unchanged boundaries on 2026-09-16.
-That reactivation separated acceptance of preserved repairs and a non-steering conflict opportunity from live success.
-Both exhausted combined live attempts remain closed and unaccepted.
-The replacement runner does not silently renew their sampling budgets.
-Read the goal's live-evidence authorization and this failed-attempt record before selecting a newly justified experiment.
-
-CC-4 and CC-11 are established by the reviewed seed-49 live chain.
+Both earlier combined live experiments remain unaccepted.
+CC-4 and CC-11 were accepted based on the reviewed seed-49 live chain.
 An older ordinary live day, timing prerequisite, authored comparison, or generic audit pass did not substitute for that chain.
 Preserve contrary samples and report inconclusive outcomes honestly.
-CC-12 was accepted after current checks and independent whole-goal review supported every criterion.
+CC-12 was accepted after repository checks and independent whole-goal review supported every criterion.
 
 ## Completed foundations
 
@@ -161,14 +155,7 @@ CC-12 was accepted after current checks and independent whole-goal review suppor
 | Social thread, 2026-09-02 | Ilan's restricted source-backed statement, world-owned access/delivery, Mara's ordinary response, negative comparisons, and offline watchability/replay. |
 
 The ordinary-day audit first failed after an unnecessary nineteenth decision at the closed endpoint; its manifest SHA-256 was `08f2001b38640fc396822d52bd869ffbab3f74b737bee33c3978ede31acbbc86`.
-A separately owner-authorized corrected run from source `8c33f213b1ea58e51e6c326a8e22ba67dc664802` completed with 18 selected provider calls and zero provider failures.
+A corrected run from source `8c33f213b1ea58e51e6c326a8e22ba67dc664802` completed with 18 selected provider calls and zero provider failures.
 Its peak restricted input was 17,492/49,152 bytes and private evidence 181,753/8,388,608 bytes; authority, privacy, cadence, source, causal-link, growth, and replay checks passed.
 The successful manifest SHA-256 was `828541e3075ee776589ad7d6cab20e98ffb4e43a332d1c6de4ae1a0523ad2ee3`.
 The failed audit remains failed evidence despite that later success.
-
-Detailed completed plans, review logs, and retired-loop records remain in Git at `0e52fc7735a48f06da74805f00c3474d5a012d31`.
-Read a specific original only when its historical detail is needed, for example:
-
-```sh
-git show 0e52fc7735a48f06da74805f00c3474d5a012d31:docs/plans/first-autonomous-day/IMPLEMENTATION_PLAN.md
-```
