@@ -56,7 +56,7 @@ When Ilan has the source and Mara reaches the workplace at that minute, he can m
 Mara retains the testimony while any ordinary action is pending and receives it at her next legitimate decision opportunity.
 It neither guarantees that access nor selects a model response.
 Omitting it preserves the original consequential-choice timing.
-The [implementation state](docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md) records authored builder options, accepted comparisons, and accepted live/completion evidence.
+The [implementation record](docs/plans/first-consequential-choice/IMPLEMENTATION_PLAN.md) documents authored builder options, accepted comparisons, and historical live evidence.
 
 ## Optional local model
 
@@ -76,7 +76,7 @@ python3 -m scenarios.autonomous_day \
   --ollama-model qwen3:4b-instruct
 ```
 
-For the active goal's composition, add `--consequential-choice` and, when relevant, `--conflict-opportunity-timing`.
+For the consequential-choice composition, add `--consequential-choice` and, when relevant, `--conflict-opportunity-timing`.
 The first-day command accepts the same explicit provider flags.
 The adapter accepts no URL path, credentials, DNS name, redirect, proxy, model pull, provider history, or automatic transport retry.
 Timeouts, unavailable service, malformed responses, and invalid choices produce explicit safe waits without invoking the scripted policy.
@@ -88,11 +88,13 @@ Recorded choices reproduce world behavior without another provider call when the
 A live autonomous-day run can write to a new directory that does not already exist:
 
 ```sh
+mkdir -p "$HOME/.local/share/2084/evidence"
+chmod 700 "$HOME/.local/share/2084/evidence"
 python3 -m scenarios.autonomous_day \
   --seed 42 --focal-policy ollama \
   --ollama-base-url http://192.168.1.50:11434 \
   --ollama-model qwen3:4b-instruct \
-  --audit-dir /private/tmp/2084-live-audit
+  --audit-dir "$HOME/.local/share/2084/evidence/live-audit-001"
 ```
 
 The bundle uses owner-only permissions and includes a focal-safe transcript, sanitized inspector, private decision records, measured verdict, and artifact manifest.
@@ -100,25 +102,20 @@ Its writer checks model/source identity, provider provenance, causal links, priv
 Recheck an unchanged bundle's stored evidence and integrity with:
 
 ```sh
-python3 -m scenarios.autonomous_day_audit /private/tmp/2084-live-audit
+python3 -m scenarios.autonomous_day_audit "$HOME/.local/share/2084/evidence/live-audit-001"
 ```
 
-A generic audit pass does not establish the active goal's conflict-informed choice criterion.
-Preserve failed samples and the goal's bounded live-experiment authorization.
+A generic audit pass does not establish that Mara made a conflict-informed choice.
+Preserve failed and inconclusive samples alongside successful runs.
 
 ## Develop
 
 ```sh
 ./scripts/check.sh
-python3 -m devloop status
-python3 -m devloop dashboard
 ```
 
-The full-screen dashboard shows live activity, Git changes, checks, and result details.
-Use `h/l` or `1-4` to switch views, `j/k` to scroll, `p` to pause, `r` to resume, and `q` to close the dashboard without stopping the loop.
-The Mac runs development and tests; the Windows PC supplies only the optional Ollama endpoint.
-[Development Loop](docs/main/DEVELOPMENT_LOOP.md) documents installation, pause/resume, validation, and runner-owned commits.
-Start agent work from [CURRENT.md](docs/plans/CURRENT.md) and [AGENTS.md](AGENTS.md).
+The check runs provider-free tests and checks staged and unstaged diffs for whitespace errors.
+[CURRENT.md](docs/plans/CURRENT.md) summarizes the completed product scope, and [AGENTS.md](AGENTS.md) gives repository guidance.
 
 | Location | Responsibility |
 | --- | --- |
@@ -126,8 +123,8 @@ Start agent work from [CURRENT.md](docs/plans/CURRENT.md) and [AGENTS.md](AGENTS
 | `simulation/` | Time, world state, actions, events, records, and understanding |
 | `policies/`, `characters/mara/` | Deterministic policies and Mara's restricted model inputs |
 | `observer/` | Focal-safe terminal view and separate development inspector |
-| `devloop/`, `scripts/` | Development runner, service installation, and repository checks |
-| `tests/` | Behavioral, privacy, failure, replay, and runner regressions |
+| `scripts/` | Repository checks |
+| `tests/` | Behavioral, privacy, failure, and replay regressions |
 
 [Core Construct](docs/main/CORE_CONSTRUCT.md) defines product direction and reference boundaries.
 [Architecture](docs/main/ARCHITECTURE.md) records implemented contracts, limitations, and regression coverage.

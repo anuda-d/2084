@@ -1,7 +1,7 @@
 # Architecture
 
 Status: implemented contracts and known limits for the first-day and accelerated-day prototypes.
-[Core Construct](CORE_CONSTRUCT.md) defines direction; the [active goal](../plans/first-consequential-choice/GOAL.md) defines authorized work.
+[Core Construct](CORE_CONSTRUCT.md) defines product direction; the [consequential-choice specification](../plans/first-consequential-choice/GOAL.md) records the completed scenario's scope and acceptance criteria.
 
 ## Implementation map
 
@@ -131,7 +131,7 @@ Committed delivery precedes understanding and an eligible Mara decision.
 A home-bulletin path at minute 660 separately requires physical receiver access.
 
 Mara's ordinary world-owned opportunities include travel, 120-minute work, 60-minute household activity, and a scheduled-home wait resolved as 60-minute rest.
-The active goal's opt-in notice, tradeoff deadlines, service-dependent travel, access-gated timing, and information counterfactuals are documented in [implementation state](../plans/first-consequential-choice/IMPLEMENTATION_PLAN.md).
+The consequential-choice scenario's opt-in notice, tradeoff deadlines, service-dependent travel, access-gated timing, and information counterfactuals are documented in the [implementation record](../plans/first-consequential-choice/IMPLEMENTATION_PLAN.md).
 Those authored options preserve the option-absent regressions and are retained in replay configuration.
 They create opportunities, not a required dramatic or live-model outcome.
 
